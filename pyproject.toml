@@ -1,0 +1,5 @@
+[project]
+name = "transformer-visualizer"
+version = "0.1.0"
+description = "Herramienta interactiva de visualización e interpretabilidad de la arquitectura Transformer (MVVM)"
+requires-python = ">=3.14"
