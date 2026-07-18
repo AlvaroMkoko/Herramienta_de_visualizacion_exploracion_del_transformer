@@ -10,16 +10,26 @@ import QtQuick.Controls
 import "styles" as Style
 
 ApplicationWindow {
+    id: window
     visible: true
     width: 1280
     height: 800
 
      StackView {
-        id: stackView
+        id: stack
         anchors.fill: parent
 
-        initialItem: "screens/HomeScreen.qml"
+        // initialItem: "screens/HomeScreen.qml"
+        initialItem: Qt.resolvedUrl("screens/HomeScreen.qml")
     }
+
+    Component.onCompleted: {
+        stack.push("screens/HomeScreen.qml", {
+            "stackView": stack
+        })
+    }
+
+    
 
     
 }

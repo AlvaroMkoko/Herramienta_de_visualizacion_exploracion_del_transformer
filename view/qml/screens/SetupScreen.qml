@@ -1,20 +1,17 @@
 import QtQuick
 import QtQuick.Controls
+import "../styles" as Style
+import "../components"
 
 Page {
 
-    Label {
-        anchors.centerIn: parent
-        text: "Pantalla de configuración"
-    }
+    required property StackView stackView
 
-    Button {
+    BotonPrincipal {
         text: "Volver"
 
-        anchors.left: parent.left
-        anchors.top: parent.top
-        anchors.margins: 20
-
-        onClicked: StackView.view.pop()
+        onClicked: {
+            stackView.pop()
+        }
     }
 }
