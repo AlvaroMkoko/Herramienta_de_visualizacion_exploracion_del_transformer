@@ -1,3 +1,10 @@
+import sys
+
+from PySide6.QtWidgets import QApplication
+from PySide6.QtQml import QQmlApplicationEngine
+from PySide6.QtQuickControls2 import QQuickStyle
+
+
 """
 Punto de entrada de la aplicación.
 
@@ -14,7 +21,19 @@ TODO (Fase I - Sprint 1):
 """
 
 def main():
-    raise NotImplementedError("Pendiente: bootstrap de la aplicación (Fase I, Sprint 1)")
+  "Archivo principal para correr la pagina principal de QML"
+
+  QQuickStyle.setStyle("Basic")   # o "Basic" o "Material"
+
+  app = QApplication(sys.argv)
+
+  engine = QQmlApplicationEngine()
+  engine.load("view/qml/main.qml")
+
+  if not engine.rootObjects():
+      sys.exit(-1)
+
+  sys.exit(app.exec())
 
 
 if __name__ == "__main__":

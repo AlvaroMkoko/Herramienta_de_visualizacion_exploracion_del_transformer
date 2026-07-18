@@ -7,12 +7,19 @@
 
 import QtQuick
 import QtQuick.Controls
+import "styles" as Style
 
 ApplicationWindow {
     visible: true
     width: 1280
     height: 800
-    title: "Transformer Visualizer"
 
-    // TODO: StackView { id: navStack; anchors.fill: parent }
+     StackView {
+        id: stackView
+        anchors.fill: parent
+
+        initialItem: "screens/HomeScreen.qml"
+    }
+
+    
 }
