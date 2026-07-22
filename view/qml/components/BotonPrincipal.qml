@@ -4,11 +4,25 @@ import "../styles" as Style
 
 
     Button {
-        id: button
-        anchors.centerIn: parent
+        
+        /*
+        Boton lo que esta comentado es lo que se tiene que poner
+        cuando uses el modulo dentro de una Pagina
+        El "text: "hola"
+        onClicked: {
+            stackView.push("SetupScreen.qml", {
+                "stackView": stackView
+            })
+        }
+        */
 
-        width: 120
-        height: 25
+
+        id: button
+        //x: 0
+        //y: 0
+        implicitWidth: 120
+        implicitHeight: 25
+        
         // text: "Iniciar"
 
         hoverEnabled: true
@@ -50,7 +64,7 @@ import "../styles" as Style
         contentItem: Text {
             text: button.text
             color: Style.Theme.texto_primario
-            font.pixelSize: 14
+            font.pixelSize: Math.min(button.width, button.height) * 0.35
             font.bold: true
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter

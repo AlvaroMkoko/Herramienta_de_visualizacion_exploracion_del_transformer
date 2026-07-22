@@ -12,8 +12,8 @@ import "styles" as Style
 ApplicationWindow {
     id: window
     visible: true
-    width: 1280
-    height: 800
+    width: Style.Theme.baseWidth
+    height: Style.Theme.baseHeight
 
      StackView {
         id: stack

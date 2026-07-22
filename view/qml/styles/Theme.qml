@@ -4,9 +4,17 @@ import QtQuick
 
 QtObject {
 
+    // ========= Tamaño de ancho y largo
+
+    //Se supone que debe tener en cuenta el tamaño del monitor en el que se esta poniendo
+
+    readonly property real baseWidth: 1280
+    readonly property real baseHeight: 820
+
+    
     // ========= Colores principales =========
     readonly property color fondo: "#fffeff"
-    readonly property color fondo_gradiente: "#d0afe7"
+    readonly property color fondo_gradiente: "#e7d9f0"
     readonly property color boton: "#f3eff5"
     readonly property color boton_gradiente: "#dcc3ea"
     readonly property color boton_presionado: "#d9cae2"
@@ -20,8 +28,9 @@ QtObject {
     readonly property color texto_secundario: "#6B7280"
 
     // ========= Bordes =========
-    readonly property color borde: "#D1D5DB"
-    readonly property color borde_boton: "#26282a"
+    readonly property color borde: "#aeb0b3"
+    readonly property color borde_boton: "#afb4b9"
+    readonly property color borde_cuadro: "#9e979f"
     // ========= Estados =========
     readonly property color success: "#22C55E"
     readonly property color warning: "#F59E0B"
