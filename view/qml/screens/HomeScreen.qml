@@ -2,51 +2,34 @@ import QtQuick
 import QtQuick.Controls
 import "../styles" as Style
 import "../components"
-import "../components"
 
 PagePrincipal {
-
+    id:root
 
     Rectangle{
         anchors.fill: parent
         color: "transparent"
-        // anchors.centerIn: parent
-        // anchors.horizontalCenter: parent.horizontalCenter
-        // anchors.verticalCenter: parent.verticalCenter
-
+   
         Row{
             anchors.centerIn: parent
-            anchors.verticalCenterOffset: -300
+            anchors.verticalCenterOffset: -450 * sy
 
-
-
-            // width: 800; height: 400
-            
-            // anchors.horizontalCenter: parent.horizontalCenter
-            // anchors.verticalCenter: parent.verticalCenter
-            // anchors.verticalCenterOffset: -80   // Baja 80 píxeles
 
 
             spacing: 80
 
-
-            Rectangle {
+            /*
+            ===== COMPONENTE EN RectanglePrincipal===
+            */
+            RectanglePrincipal {
             id: rectangulo_blanco_1
 
-            x: 200 * sx
-            y: 550 * sy
-
-            width: 350 * sx
-            height: 350 * sy
-
-            radius: 10 * sx
-
-            color: "white"
-            border.color: Style.Theme.borde_cuadro
+            sx: root.sx
+            sy: root.sy
 
             Column {
                 anchors.centerIn: parent
-                spacing: 20 * sy
+                spacing: 20 * root.sy
 
                 
                 // Text {
@@ -62,46 +45,35 @@ PagePrincipal {
                 //     font.pixelSize: 24 * sx
                 // }
                 
-            // BotonPrincipal.qml
-            BotonPrincipal {
-                    id: botonInicio
-                    // anchors.bottom: parent
-                    anchors.bottomMargin: 20
+                // BotonPrincipal.qml
+                BotonPrincipal {
+                        id: botonInicio
+                        // anchors.bottom: parent
+                        anchors.bottomMargin: 20
 
-                    // x: 129 * sx
-                    // y: 480 * sy
+                        width: 300 * root.sx
+                        height: 60 * root.sy
 
-                    width: 300 * sx
-                    height: 60 * sy
+                        text: "Iniciar Entorno"
 
-                    text: "Iniciar Entorno"
-
-                    onClicked: {
-                        stackView.push("SetupScreen.qml", {
-                            "stackView": stackView
-                        })
+                        onClicked: {
+                            stackView.push("SetupScreen.qml", {
+                                "stackView": stackView
+                            })
+                        }
+                        
                     }
-                    
-                }
             }
         }
-        Rectangle {
+        RectanglePrincipal {
             id: rectangulo_blanco_2
 
-            x: 200 * sx
-            y: 550 * sy
-
-            width: 350 * sx
-            height: 350 * sy
-
-            radius: 10 * sx
-
-            color: "white"
-            border.color: Style.Theme.borde_cuadro
+            sx: root.sx
+            sy: root.sy
 
             Column {
                 anchors.centerIn: parent
-                spacing: 20 * sy
+                spacing: 20 * root.sy
 
                 
                 // Text {
@@ -124,11 +96,8 @@ PagePrincipal {
                     // anchors.bottom: parent
                     anchors.bottomMargin: 20
 
-                    // x: 129 * sx
-                    // y: 480 * sy
-
-                    width: 300 * sx
-                    height: 60 * sy
+                    width: 300 * root.sx
+                    height: 60 * root.sy
 
                     text: "Abrir Modelo"
 
@@ -142,23 +111,15 @@ PagePrincipal {
             }
         }
 
-            Rectangle {
+            RectanglePrincipal {
             id: rectangulo_blanco_3
-
-            x: 200 * sx
-            y: 550 * sy
-
-            width: 350 * sx
-            height: 350 * sy
-
-            radius: 10 * sx
-
-            color: "white"
-            border.color: Style.Theme.borde_cuadro
+            sx: root.sx
+            sy: root.sy
+                
 
             Column {
                 anchors.centerIn: parent
-                spacing: 20 * sy
+                spacing: 20 * root.sy
 
                 
                 // Text {
@@ -180,11 +141,8 @@ PagePrincipal {
                     // anchors.bottom: parent
                     anchors.bottomMargin: 20
 
-                    // x: 129 * sx
-                    // y: 480 * sy
-
-                    width: 300 * sx
-                    height: 60 * sy
+                    width: 300 * root.sx
+                    height: 60 * root.sy
 
                     text: "Abrir Comparación"
 
@@ -200,7 +158,7 @@ PagePrincipal {
 
         }
 
-    }
+    
 
 
 
@@ -221,14 +179,9 @@ PagePrincipal {
                     anchors.bottom: parent.bottom
                     anchors.left : parent.left
                     anchors.centerIn: parent
-                    // anchors.bottom: parent
-                    // anchors.bottomMargin: 
 
-                    // x: 129 * sx
-                    // y: 480 * sy
-
-                    width: 100 * sx
-                    height: 35 * sy
+                    width: 120 * root.sy
+                    height: 35 * root.sy
 
                     text: "Cargar Dataset"
 
@@ -247,4 +200,5 @@ PagePrincipal {
     
 
     
+}
 }

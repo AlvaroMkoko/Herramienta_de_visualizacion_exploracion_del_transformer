@@ -9,9 +9,11 @@ Page {
 
     required property StackView stackView
 
-    // Resolución base del diseño
+    // // Resolución base del diseño
     readonly property real baseWidth: 1920
     readonly property real baseHeight: 1080
+    // readonly property real baseWidth: 1280
+    // readonly property real baseHeight: 820
 
     // Factores de escala
     readonly property real sx: width / baseWidth

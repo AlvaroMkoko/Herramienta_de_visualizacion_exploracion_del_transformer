@@ -6,6 +6,8 @@ QtObject {
 
     // ========= Tamaño de ancho y largo
 
+    
+
     //Se supone que debe tener en cuenta el tamaño del monitor en el que se esta poniendo
 
     readonly property real baseWidth: 1280
