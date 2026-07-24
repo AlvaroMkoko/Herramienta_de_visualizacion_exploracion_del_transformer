@@ -12,7 +12,7 @@ PagePrincipal {
    
         Row{
             anchors.centerIn: parent
-            anchors.verticalCenterOffset: -450 * sy
+            anchors.verticalCenterOffset: 45 * sy
 
 
 

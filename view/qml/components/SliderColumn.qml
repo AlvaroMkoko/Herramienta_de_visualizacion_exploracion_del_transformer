@@ -11,7 +11,7 @@ Column {
     // Propiedades públicas
     property alias text: titulo.text
     property alias value: slider.value
-
+    property string tipo_dato: "entero"
     property real from: 0
     property real to: 10
     property real stepSize: 1
@@ -20,6 +20,8 @@ Column {
     property real sy: 1
 
     spacing: 6 * sy
+
+
     // width: parent.width
 
     Text {
@@ -87,7 +89,13 @@ Column {
 
             anchors.verticalCenter: slider.verticalCenter
 
-            text: Math.round(slider.value)
+             text: {
+        if (tipo_dato === "entero")
+            return Math.round(slider.value);
+        else
+            return slider.value.toFixed(3);
+    }
+            
 
             color: "#5A4FCF"
             font.pixelSize: 22 * root.sy

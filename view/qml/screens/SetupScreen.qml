@@ -23,15 +23,6 @@ PagePrincipal {
         }
     }
     
-    // BotonPrincipal {
-    //     text: "Volver"
-    //     x:20
-    //     y:600
-
-    //     onClicked: {
-    //         stackView.pop()
-    //     }
-    // }
 
     BotonPrincipal {
                 
@@ -52,10 +43,11 @@ PagePrincipal {
 
     Rectangle{
         
-        width:500 * sx
+        
+        width:350 * sx
         height:800 * sy
-        color: "transparent"
-        // color:"blue"
+        // color: "transparent"
+        color:"blue"
         // clip: true          // 👈 corta cualquier hijo que se salga del área
 
         
@@ -64,30 +56,27 @@ PagePrincipal {
         anchors.rightMargin: 40
 
         Column{
-            
-            // anchors.centerIn: parent.verticalCenter
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.horizontalCenterOffset: -100* sy
+            anchors.centerIn: parent
+            width: 350 *sx
+
             spacing: 30
             RectanglePrincipal {
                 
                 id: rectangulo_blanco_1
-                anchors.rightMargin: 400
+                width: parent.width 
                 sx: root.sx
                 sy: root.sy
 
-                width: 300*sx
+                
+
                 Column{
                     spacing: 10
-                    width: parent.width
-                    // property real padding: 20 * sx
-                    // leftPadding: padding
-                    // rightPadding: padding
+                    width: parent.width-30
                     anchors.margins: 15 * sx
 
 
                      SliderColumn {
-                        width: parent.width
+                        width: parent.width 
                         // anchors.fill: parent
                         anchors.margins: 30 * sx
 
@@ -106,6 +95,7 @@ PagePrincipal {
                             console.log("Nuevo valor:", value)
                         }
                     }
+
                     SliderColumn {
                     // anchors.fill: parent
                     width: parent.width
@@ -114,7 +104,7 @@ PagePrincipal {
                     sx: root.sx
                     sy: root.sy
 
-                    text: "Capas Encoder (Nx)"
+                    text: "Épocas"
 
                     from: 1
                     to: 24
@@ -134,13 +124,15 @@ PagePrincipal {
                     sx: root.sx
                     sy: root.sy
 
-                    text: "Capas Encoder (Nx)"
+                    text: "Learning Rate"
 
-                    from: 1
-                    to: 24
+                    from: 0
+                    to: 0.01
 
-                    stepSize: 1
-                    value: 6
+                    stepSize: 0.0001
+                    value: 0.25
+
+                    tipo_dato:"decimal"
 
                     onValueChanged: {
                         console.log("Nuevo valor:", value)
@@ -148,14 +140,13 @@ PagePrincipal {
                 }
 
                  SliderColumn {
-                    // anchors.fill: parent
                     width: parent.width
                     anchors.margins: 15 * sx
 
                     sx: root.sx
                     sy: root.sy
 
-                    text: "Capas Encoder (Nx)"
+                    text: "Batch Size"
 
                     from: 1
                     to: 24
@@ -170,21 +161,44 @@ PagePrincipal {
 
                 }
                 
-    
-                
-                
-
             }
+
+
+
+
 
             RectanglePrincipal{
 
                 id: rectangulo_blanco_2
-                anchors.rightMargin: 400
+                width: parent.width 
+                // anchors.rightMargin: 400
                 sx: root.sx
                 sy: root.sy
-                width: 300*sx
+                // width: 300*sx
                 height: 200*sy
 
+            }
+
+            BotonPrincipal {
+                        id: botonIniciarEntrenamiento
+                        // anchors.centerIn: parent
+                        // anchors.bottom:parent
+                        // anchors.bottomMargin: 400
+                        anchors.horizontalCenter: parent.horizontalCenter
+
+
+                        width: 200 * root.sx
+                        height: 50 * root.sy
+                        anchors.margins: 20
+
+                        text: "Iniciar Entrenamiento"
+
+                        onClicked: {
+                            stackView.push("TrainingScreen.qml", {
+                                "stackView": stackView
+                            })
+                        }
+                    
             }
         }
     }
@@ -193,7 +207,7 @@ PagePrincipal {
     
     Rectangle{
         
-        width:500 * sx
+        width:300 * sx
         height:700 * sy
         // color: "transparent"
         color:"blue"
@@ -235,7 +249,7 @@ PagePrincipal {
                         width: 200 * root.sx
                         height: 60 * root.sy
 
-                        text: "Abrir Modelo"
+                        text: "Gestionar DataSet"
 
                         onClicked: {
                             stackView.push("TrainingScreen.qml", {

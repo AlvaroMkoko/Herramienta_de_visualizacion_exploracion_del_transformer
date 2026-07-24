@@ -8,8 +8,8 @@ Rectangle {
     property real sx: 1.0
     property real sy: 1.0
 
-    x: 200 * sx
-    y: 550 * sy
+    // x: 200 * sx
+    // y: 550 * sy
     // width: 350 * sx
     // height: 
     implicitWidth: 350 * sx
