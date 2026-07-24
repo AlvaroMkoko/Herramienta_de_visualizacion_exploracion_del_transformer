@@ -192,7 +192,11 @@ class GestorConcurrencia(QObject):
         return self._trabajador is not None and self._trabajador.esta_pausado
 
     def ejecutar_en_segundo_plano(
-        self, funcion_generadora: Callable[..., Generator], *args, **kwargs
+        self,
+        funcion_generadora: Callable[..., Generator],
+        *args,
+        velocidad_inicial: float = 0.0,
+        **kwargs,
     ) -> None:
         """Lanza `funcion_generadora` en un QThread nuevo.
 
@@ -201,6 +205,14 @@ class GestorConcurrencia(QObject):
                 al `TrabajadorSegundoPlano` y es un generador: usa
                 `yield` para reportar cada paso (token + tensores) y
                 `return valor` para el resultado final.
+            velocidad_inicial: retardo (segundos) entre pasos, fijado
+                ANTES de arrancar el hilo. Usar esto en vez de llamar a
+                `establecer_velocidad()` justo después de iniciar evita
+                una condición de carrera: el hilo podría arrancar y
+                procesar el primer paso antes de que una llamada
+                posterior a `establecer_velocidad()` alcance a aplicarse.
+                Para ajustar la velocidad DURANTE una tarea ya en curso,
+                sí se usa `establecer_velocidad()` normalmente.
             *args, **kwargs: argumentos adicionales para `funcion_generadora`.
 
         Si ya hay una tarea en curso, la solicitud se ignora — evita
@@ -211,6 +223,7 @@ class GestorConcurrencia(QObject):
 
         self._hilo = QThread()
         self._trabajador = TrabajadorSegundoPlano(funcion_generadora, *args, **kwargs)
+        self._trabajador.establecer_velocidad(velocidad_inicial)
         self._trabajador.moveToThread(self._hilo)
 
         self._hilo.started.connect(self._trabajador.ejecutar)
