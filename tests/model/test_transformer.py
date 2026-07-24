@@ -334,3 +334,154 @@ class TestWeightTying:
         assert params_sin > params_con
         diferencia_esperada = config.tamano_vocabulario * config.dimension_modelo
         assert params_sin - params_con == diferencia_esperada
+
+
+# ---------------------------------------------------------------------------
+# Generación autoregresiva (Transformer.generar)
+# ---------------------------------------------------------------------------
+
+class TestGeneracion:
+    def test_forma_y_cantidad_de_pasos(self, modelo, config, batch_size):
+        # batch_size=1: la generacion interactiva no soporta batch (ver
+        # docstring de Transformer.generar)
+        tokens_origen = _generar_tokens(config, 1, 8)
+
+        generador = modelo.generar(
+            tokens_origen, id_token_inicio=1, max_tokens_nuevos=5, muestreo_codicioso=True
+        )
+        pasos = list(generador)
+
+        assert len(pasos) == 5
+        for paso in pasos:
+            assert paso["logits"].shape == (1, config.tamano_vocabulario)
+            assert isinstance(paso["token_id"], int)
+
+    def test_valor_de_retorno_incluye_todos_los_tokens_generados(self, modelo, config):
+        tokens_origen = _generar_tokens(config, 1, 8)
+
+        generador = modelo.generar(
+            tokens_origen, id_token_inicio=1, max_tokens_nuevos=5, muestreo_codicioso=True
+        )
+        pasos = []
+        try:
+            while True:
+                pasos.append(next(generador))
+        except StopIteration as fin:
+            tokens_generados = fin.value
+
+        assert tokens_generados.shape == (1, 5)
+        # el id_token_inicio (1) NO debe estar incluido en el resultado,
+        # solo los tokens generados
+        ids_de_los_pasos = [p["token_id"] for p in pasos]
+        assert tokens_generados.squeeze(0).tolist() == ids_de_los_pasos
+
+    def test_expone_pesos_de_atencion_de_cada_capa(self, modelo, config):
+        tokens_origen = _generar_tokens(config, 1, 8)
+
+        pasos = list(
+            modelo.generar(tokens_origen, id_token_inicio=1, max_tokens_nuevos=3, muestreo_codicioso=True)
+        )
+
+        for paso in pasos:
+            assert len(paso["pesos_atencion_cruzada_por_capa"]) == config.num_capas
+            assert len(paso["pesos_autoatencion_por_capa"]) == config.num_capas
+            assert len(paso["pesos_atencion_encoder_por_capa"]) == config.num_capas
+
+    def test_muestreo_codicioso_es_determinista(self, modelo, config):
+        """Dos corridas con muestreo_codicioso deben producir EXACTAMENTE
+        la misma secuencia (sin necesidad de fijar semilla — es
+        determinista por definicion, no depende de aleatoriedad)."""
+        tokens_origen = _generar_tokens(config, 1, 8)
+
+        pasos_1 = list(
+            modelo.generar(tokens_origen, id_token_inicio=1, max_tokens_nuevos=6, muestreo_codicioso=True)
+        )
+        pasos_2 = list(
+            modelo.generar(tokens_origen, id_token_inicio=1, max_tokens_nuevos=6, muestreo_codicioso=True)
+        )
+
+        ids_1 = [p["token_id"] for p in pasos_1]
+        ids_2 = [p["token_id"] for p in pasos_2]
+        assert ids_1 == ids_2
+
+    def test_id_token_fin_detiene_la_generacion_antes_de_max_tokens_nuevos(self, modelo, config):
+        """Se usa muestreo con temperatura (no codicioso) y semilla fija
+        para tener variedad de tokens y poder forzar una parada en un
+        punto conocido. Con muestreo_codicioso un modelo sin entrenar
+        puede colapsar y repetir siempre el mismo token, lo que haría
+        la prueba invalida (ver nota en la sesion de exploracion)."""
+        tokens_origen = _generar_tokens(config, 1, 8)
+
+        torch.manual_seed(7)
+        pasos_sin_parada = list(
+            modelo.generar(tokens_origen, id_token_inicio=1, max_tokens_nuevos=6, temperatura=1.0)
+        )
+        ids_referencia = [p["token_id"] for p in pasos_sin_parada]
+        assert len(set(ids_referencia)) > 1, "se necesita variedad de tokens para que la prueba sea valida"
+
+        id_fin_forzado = ids_referencia[2]
+
+        torch.manual_seed(7)  # misma semilla -> misma secuencia de muestreo
+        generador_con_fin = modelo.generar(
+            tokens_origen, id_token_inicio=1, id_token_fin=id_fin_forzado,
+            max_tokens_nuevos=6, temperatura=1.0,
+        )
+        pasos_con_fin = []
+        try:
+            while True:
+                pasos_con_fin.append(next(generador_con_fin))
+        except StopIteration as fin:
+            tokens_generados = fin.value
+
+        assert len(pasos_con_fin) == 3  # se detiene justo al generar el 3er token (indice 2)
+        assert pasos_con_fin[-1]["token_id"] == id_fin_forzado
+        assert tokens_generados.shape == (1, 3)
+
+    def test_sin_id_token_fin_genera_hasta_el_limite(self, modelo, config):
+        tokens_origen = _generar_tokens(config, 1, 8)
+
+        pasos = list(
+            modelo.generar(
+                tokens_origen, id_token_inicio=1, id_token_fin=None,
+                max_tokens_nuevos=7, muestreo_codicioso=True,
+            )
+        )
+
+        assert len(pasos) == 7
+
+    def test_encoder_se_ejecuta_una_sola_vez(self, modelo, config):
+        """Los pesos de atencion del ENCODER no deberian cambiar entre
+        pasos, porque la secuencia de entrada no cambia durante la
+        generacion (solo el decoder se recalcula en cada paso)."""
+        tokens_origen = _generar_tokens(config, 1, 8)
+
+        pasos = list(
+            modelo.generar(tokens_origen, id_token_inicio=1, max_tokens_nuevos=4, muestreo_codicioso=True)
+        )
+
+        pesos_encoder_paso_0 = pasos[0]["pesos_atencion_encoder_por_capa"]
+        pesos_encoder_ultimo_paso = pasos[-1]["pesos_atencion_encoder_por_capa"]
+
+        for capa_inicial, capa_final in zip(pesos_encoder_paso_0, pesos_encoder_ultimo_paso):
+            assert torch.equal(capa_inicial, capa_final)
+
+    def test_restaura_el_modo_entrenamiento_tras_generar(self, modelo, config):
+        tokens_origen = _generar_tokens(config, 1, 5)
+
+        modelo.train()
+        assert modelo.training is True
+
+        list(modelo.generar(tokens_origen, id_token_inicio=1, max_tokens_nuevos=2))
+
+        assert modelo.training is True  # debe volver al estado previo, no quedar en eval()
+
+    def test_generar_no_acumula_gradientes(self, modelo, config):
+        """generar() esta decorado con @torch.no_grad(); confirmamos que
+        no queda ningun grafo de computo colgando (los parametros no
+        deberian tener gradientes calculados solo por llamar a generar)."""
+        tokens_origen = _generar_tokens(config, 1, 5)
+
+        modelo.zero_grad()
+        list(modelo.generar(tokens_origen, id_token_inicio=1, max_tokens_nuevos=3, muestreo_codicioso=True))
+
+        assert all(p.grad is None for p in modelo.parameters())

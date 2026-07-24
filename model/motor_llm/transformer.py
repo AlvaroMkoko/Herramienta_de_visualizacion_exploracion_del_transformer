@@ -29,6 +29,7 @@ from .embedding import TokenEmbedding
 from .encoder import Encoder
 from .mascara import combinar_mascaras, crear_mascara_causal, crear_mascara_relleno
 from .positional_encoding import PositionalEncoding
+from .muestreo import muestrear, muestrear_codicioso
 
 
 class Transformer(nn.Module):
@@ -198,3 +199,88 @@ class Transformer(nn.Module):
             if self.config.id_token_relleno is not None
             else -100,
         )
+
+    @torch.no_grad()
+    def generar(
+        self,
+        tokens_origen: torch.Tensor,
+        id_token_inicio: int,
+        id_token_fin: int | None = None,
+        max_tokens_nuevos: int = 100,
+        temperatura: float = 1.0,
+        top_k: int | None = None,
+        top_p: float | None = None,
+        muestreo_codicioso: bool = False,
+    ):
+        """Generación autoregresiva: produce un token nuevo por paso.
+
+        Es un GENERADOR de Python (usa `yield`), no una función que
+        retorna todo el texto de una sola vez — así una capa superior
+        (ej. `viewmodel/inference_controller.py`) puede pausar, detener,
+        o inspeccionar los tensores intermedios DESPUÉS de cada token,
+        sin que este método sepa nada de threads, señales de Qt, ni UI.
+
+        El encoder se ejecuta UNA SOLA VEZ al principio (la secuencia de
+        entrada no cambia durante la generación); solo el decoder se
+        vuelve a ejecutar en cada paso, con la secuencia de destino cada
+        vez un token más larga.
+        """
+        modo_entrenamiento_previo = self.training
+        self.eval()
+        try:
+            mascara_encoder = None
+            if self.config.id_token_relleno is not None:
+                mascara_encoder = crear_mascara_relleno(
+                    tokens_origen, self.config.id_token_relleno
+                )
+
+            x_encoder = self.embedding_entrada(tokens_origen) * math.sqrt(
+                self.config.dimension_modelo
+            )
+            x_encoder = self.codificacion_posicional(x_encoder)
+            salida_encoder = self.encoder(x_encoder, mascara=mascara_encoder)
+
+            tokens_destino = torch.tensor(
+                [[id_token_inicio]], dtype=torch.long, device=tokens_origen.device
+            )
+
+            for paso in range(max_tokens_nuevos):
+                mascara_causal = crear_mascara_causal(
+                    tokens_destino.size(1), dispositivo=tokens_destino.device
+                )
+
+                x_decoder = self.embedding_salida(tokens_destino) * math.sqrt(
+                    self.config.dimension_modelo
+                )
+                x_decoder = self.codificacion_posicional(x_decoder)
+                salida_decoder = self.decoder(
+                    x_decoder, salida_encoder,
+                    mascara_causal=mascara_causal, mascara_encoder=mascara_encoder,
+                )
+
+                logits_ultimo_paso = self.capa_salida(salida_decoder[:, -1, :])
+
+                if muestreo_codicioso:
+                    token_nuevo = muestrear_codicioso(logits_ultimo_paso)
+                else:
+                    token_nuevo = muestrear(
+                        logits_ultimo_paso, temperatura=temperatura, top_k=top_k, top_p=top_p
+                    )
+
+                tokens_destino = torch.cat([tokens_destino, token_nuevo], dim=1)
+
+                yield {
+                    "paso": paso,
+                    "token_id": token_nuevo.item(),
+                    "logits": logits_ultimo_paso.detach(),
+                    "pesos_atencion_cruzada_por_capa": self.decoder.pesos_atencion_cruzada_por_capa(),
+                    "pesos_autoatencion_por_capa": self.decoder.pesos_autoatencion_por_capa(),
+                    "pesos_atencion_encoder_por_capa": self.encoder.pesos_atencion_por_capa(),
+                }
+
+                if id_token_fin is not None and token_nuevo.item() == id_token_fin:
+                    return tokens_destino[:, 1:]
+
+            return tokens_destino[:, 1:]
+        finally:
+            self.train(modo_entrenamiento_previo)
