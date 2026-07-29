@@ -6,7 +6,7 @@ import "../components"
 PagePrincipal {
     id:root
 
-    // required property StackView stackView
+    property bool mostrarTarjeta: false
 
 
     background: Rectangle {
@@ -43,12 +43,13 @@ PagePrincipal {
 
     Rectangle{
         
-        
-        width:350 * sx
-        height:800 * sy
+        property real size_width: 350
+        property real size_height:800
+        width:size_width * sx
+        height:size_height * sy
         // color: "transparent"
         color:"blue"
-        // clip: true          // 👈 corta cualquier hijo que se salga del área
+        // clip: true          
 
         
         anchors.right: parent.right
@@ -57,7 +58,7 @@ PagePrincipal {
 
         Column{
             anchors.centerIn: parent
-            width: 350 *sx
+            width: parent.size_width *sx
 
             spacing: 30
             RectanglePrincipal {
@@ -125,10 +126,8 @@ PagePrincipal {
                     sy: root.sy
 
                     text: "Learning Rate"
-
                     from: 0
                     to: 0.01
-
                     stepSize: 0.0001
                     value: 0.25
 
@@ -181,12 +180,7 @@ PagePrincipal {
 
             BotonPrincipal {
                         id: botonIniciarEntrenamiento
-                        // anchors.centerIn: parent
-                        // anchors.bottom:parent
-                        // anchors.bottomMargin: 400
                         anchors.horizontalCenter: parent.horizontalCenter
-
-
                         width: 200 * root.sx
                         height: 50 * root.sy
                         anchors.margins: 20
@@ -251,10 +245,13 @@ PagePrincipal {
 
                         text: "Gestionar DataSet"
 
+                        // onClicked: {
+                        //     stackView.push("TrainingScreen.qml", {
+                        //         "stackView": stackView
+                        //     })
+                        // }
                         onClicked: {
-                            stackView.push("TrainingScreen.qml", {
-                                "stackView": stackView
-                            })
+                            root.mostrarTarjeta = !root.mostrarTarjeta
                         }
                     
                     }
@@ -263,14 +260,96 @@ PagePrincipal {
 
 
             }
-                
-    
-                
-                
-
-            }
+   
+        }
 
             
+    }
+
+    Rectangle{
+        property real size_width: 300
+        width:size_width * sx
+        height:700 * sy
+        // color: "transparent"
+        color:"transparent"
+
+        
+
+        anchors.verticalCenter: parent.verticalCenter
+        anchors.centerIn: parent
+
+        visible: opacity > 0
+        opacity: root.mostrarTarjeta ? 1 : 0
+
+        Behavior on opacity {
+            NumberAnimation {
+                duration: 300
+            }
         }
+        RectanglePrincipal{
+            id: rectangulo_blanco_4
+            anchors.left: parent.left
+            // anchors.rightMargin: 400
+            sx: root.sx
+            sy: root.sy
+
+            width: parent.size_width * sx
+            // width: 300 * sx
+            Column{
+                    spacing: 10
+                    width: parent.width-30
+                    anchors.margins: 15 * sx
+
+
+                     SliderColumn {
+                            width: parent.width 
+                            // anchors.fill: parent
+                            anchors.margins: 30 * sx
+
+                            sx: root.sx
+                            sy: root.sy
+
+                            text: "Capas Encoder (Nx)"
+
+                            from: 1
+                            to: 24
+
+                            stepSize: 1
+                            value: 6
+
+                            onValueChanged: {
+                                console.log("Nuevo valor:", value)
+                            }
+                        }
+
+                    SliderColumn {
+                    // anchors.fill: parent
+                        width: parent.width
+                        anchors.margins: 15 * sx
+
+                        sx: root.sx
+                        sy: root.sy
+
+                        text: "Épocas"
+
+                        from: 1
+                        to: 24
+
+                        stepSize: 1
+                        value: 6
+
+                        onValueChanged: {
+                            console.log("Nuevo valor:", value)
+                        }
+                    }
+                 
+                }
+
+                }
+
+
+        }
+
+    }
+        
     
-}

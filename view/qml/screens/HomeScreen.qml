@@ -16,7 +16,7 @@ PagePrincipal {
 
 
 
-            spacing: 80
+            spacing: 80*sx
 
             /*
             ===== COMPONENTE EN RectanglePrincipal===
@@ -147,7 +147,7 @@ PagePrincipal {
                     text: "Abrir Comparación"
 
                     onClicked: {
-                        stackView.push("SetupScreen.qml", {
+                        stackView.push("ComparisonScreen.qml", {
                             "stackView": stackView
                         })
                     }
