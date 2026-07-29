@@ -2,6 +2,9 @@ import QtQuick
 import QtQuick.Controls
 import "../styles" as Style
 import "../components"
+import Vispy 1.0
+
+
 
 PagePrincipal {
     id:root
@@ -171,28 +174,88 @@ PagePrincipal {
         color:"white"
         radius:7
 
-        border.color: Style.Theme.borde_cuadro
+        border.color: Style.Theme.borde_cuadro  
+        
+        
 
 
-        BotonPrincipal {
-                    id: botonCargarDataSet
-                    anchors.bottom: parent.bottom
-                    anchors.left : parent.left
+        
+        
+        Row {
+            spacing: 10
+
+            Rectangle {
+                width: 150
+                height: 50
+                color: "blue"
+
+                Text {
                     anchors.centerIn: parent
 
-                    width: 120 * root.sy
-                    height: 35 * root.sy
-
-                    text: "Cargar Dataset"
-
-                    onClicked: {
-                        stackView.push("SetupScreen.qml", {
-                            "stackView": stackView
-                        })
-                    }
-                    
+                    text: "Proyectos"
+                    color: Style.Theme.texto_primario
+                    font.pixelSize: Math.min(parent.width, parent.height) * 0.30
+                    font.bold: false
                 }
+            }
+
+            BotonPrincipal {
+                id: botonCargarDataSet
+
+                width: 120 * root.sy
+                height: 35 * root.sy
+                
+
+                text: "Cargar Dataset"
+
+                onClicked: {
+                    stackView.push("SetupScreen.qml", {
+                        "stackView": stackView
+                    })
+                }
+               
+            }
+        }
+
         
+        
+    }
+
+    Rectangle {
+
+        anchors.fill: parent
+        color: "transparent"
+        z:10
+
+
+        VispyItem {
+
+            id: matriz
+
+            anchors.centerIn: parent
+
+            width: 400
+            height: 400
+        }
+
+
+        Button {
+
+            text: "Mostrar matriz"
+
+            anchors.bottom: parent.bottom
+
+
+            onClicked: {
+
+                matriz.setMatrix([
+                    [0,1,0,1],
+                    [1,1,0,0],
+                    [0,0,1,1],
+                    [1,0,1,0]
+                ])
+            }
+        }
     }
 
     
@@ -202,3 +265,4 @@ PagePrincipal {
     
 }
 }
+

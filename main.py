@@ -4,6 +4,21 @@ from PySide6.QtWidgets import QApplication
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuickControls2 import QQuickStyle
 
+# Modulos de View Model para la gestion de Datos
+# from viewmodel.main_viewmodel import MainViewModel
+# from viewmodel.setup_controller import SetupController
+# from viewmodel.training_controller import TrainingController
+# from viewmodel.inference_controller import InferenceController
+# from viewmodel.evaluation_controller import EvaluationController
+# from viewmodel.theory_controller import TheoryController
+# from viewmodel.signal_manager import SignalManager
+# from viewmodel.concurrency_manager import ConcurrencyManager
+# from viewmodel.visual_adapter import VisualAdapter
+# from view.canvas.animation_engine import SetupControllerr
+
+
+from PySide6.QtQml import qmlRegisterType
+from view.canvas.animation_engine import VispyItem
 
 """
 Punto de entrada de la aplicación.
@@ -27,8 +42,79 @@ def main():
 
   app = QApplication(sys.argv)
 
+#   mainViewModel = MainViewModel()
+#   #controladores
+#   setupController = SetupController()
+#   trainingController = TrainingController()
+#   inferenceController = InferenceController()
+#   evaluationController = EvaluationController()
+#   theoryController = TheoryController()
+#   signalManager = SignalManager()
+#   concurrencyManager = ConcurrencyManager()
+#   visualAdapter = VisualAdapter()
+#   visualAnimation = SetupControllerr()
+
+  qmlRegisterType(
+          VispyItem,
+          "Vispy",
+          1,
+          0,
+          "VispyItem"
+    )
+
   engine = QQmlApplicationEngine()
+#   engine.rootContext().setContextProperty(
+#     "/viewmodel/mainViewModel",
+#     mainViewModel
+# )
+
+#   engine.rootContext().setContextProperty(
+#       "/viewmodel/setupController",
+#       setupController
+#   )
+
+#   engine.rootContext().setContextProperty(
+#       "/viewmodel/trainingController",
+#       trainingController
+#   )
+
+#   engine.rootContext().setContextProperty(
+#       "/viewmodel/inferenceController",
+#       inferenceController
+#   )
+
+#   engine.rootContext().setContextProperty(
+#       "/viewmodel/evaluationController",
+#       evaluationController
+#   )
+
+#   engine.rootContext().setContextProperty(
+#       "/viewmodel/theoryController",
+#       theoryController
+#   )
+
+#   engine.rootContext().setContextProperty(
+#       "/viewmodel/signalManager",
+#       signalManager
+#   )
+
+#   engine.rootContext().setContextProperty(
+#       "/viewmodel/concurrencyManager",
+#       concurrencyManager
+#   )
+
+#   engine.rootContext().setContextProperty(
+#       "/viewmodel/visualAdapter",
+#       visualAdapter
+#   )
+#   engine.rootContext().setContextProperty(
+#       "SetupControllerr",
+#       visualAnimation
+#   )
+
+  
   engine.load("view/qml/main.qml")
+  
 
   if not engine.rootObjects():
       sys.exit(-1)
