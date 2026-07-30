@@ -3,7 +3,11 @@ import sys
 from PySide6.QtWidgets import QApplication
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuickControls2 import QQuickStyle
+import os
+os.environ["QSG_RHI_BACKEND"] = "opengl"
 
+import sys
+from PySide6.QtWidgets import QApplication
 # Modulos de View Model para la gestion de Datos
 # from viewmodel.main_viewmodel import MainViewModel
 # from viewmodel.setup_controller import SetupController
