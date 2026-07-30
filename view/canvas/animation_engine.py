@@ -26,16 +26,16 @@ class VispyRenderer(QQuickFramebufferObject.Renderer):
         # # shaders, imágenes, puntos, etc.
 
         # self.update()
-        # GL.glClearColor(
-        #     1.0,
-        #     0.0,
-        #     0.0,
-        #     1.0
-        # )
+        GL.glClearColor(
+            1.0,
+            0.0,
+            0.0,
+            1.0
+        )
 
-        # GL.glClear(
-        #     GL.GL_COLOR_BUFFER_BIT
-        # )
+        GL.glClear(
+            GL.GL_COLOR_BUFFER_BIT
+        )
 
         self.update()
 
