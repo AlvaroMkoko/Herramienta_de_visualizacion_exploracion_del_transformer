@@ -23,3 +23,6 @@ pytest-qt>=4.4.0
 # --- Calidad de código ---
 black>=24.0.0
 ruff>=0.4.0
+
+# --- Lector Pdf ---
+pypdf
