@@ -15,9 +15,10 @@ import "../styles" as Style
             })
         }
         */
-
+        property real size_text: 0.30
 
         id: button
+        
         //x: 0
         //y: 0
         implicitWidth: 120
@@ -64,7 +65,7 @@ import "../styles" as Style
         contentItem: Text {
             text: button.text
             color: Style.Theme.texto_primario
-            font.pixelSize: Math.min(button.width, button.height) * 0.30
+            font.pixelSize: Math.min(button.width, button.height) * button.size_text
             font.bold: true
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter

@@ -1,17 +1,15 @@
-
-
 import QtQuick
 import QtQuick.Controls
-import "../styles" as Style
-import "../components"
+import QtQuick.Layouts
 
-Column {
+ColumnLayout {
     id: root
 
     // Propiedades públicas
     property alias text: titulo.text
     property alias value: slider.value
     property string tipo_dato: "entero"
+
     property real from: 0
     property real to: 10
     property real stepSize: 1
@@ -21,25 +19,25 @@ Column {
 
     spacing: 6 * sy
 
-
-    // width: parent.width
-
     Text {
         id: titulo
 
+        Layout.fillWidth: true
+
         color: "#555555"
-        font.pixelSize: 14 * root.sy
+        font.pixelSize: 14 * sy
     }
 
-    Row {
-        width: parent.width
-        spacing: 2 * root.sx
+    RowLayout {
+        Layout.fillWidth: true
+
+        spacing: 6 * sx
 
         Slider {
             id: slider
 
-            anchors.verticalCenter: parent.verticalCenter
-            width: parent.width - valor.implicitWidth - parent.spacing
+            Layout.fillWidth: true
+            Layout.alignment: Qt.AlignVCenter
 
             from: root.from
             to: root.to
@@ -87,15 +85,11 @@ Column {
         Text {
             id: valor
 
-            anchors.verticalCenter: slider.verticalCenter
+            Layout.alignment: Qt.AlignVCenter
 
-             text: {
-        if (tipo_dato === "entero")
-            return Math.round(slider.value);
-        else
-            return slider.value.toFixed(3);
-    }
-            
+            text: tipo_dato === "entero"
+                    ? Math.round(slider.value)
+                    : slider.value.toFixed(3)
 
             color: "#5A4FCF"
             font.pixelSize: 22 * root.sy

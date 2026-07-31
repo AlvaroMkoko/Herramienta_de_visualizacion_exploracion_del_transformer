@@ -19,23 +19,69 @@ class VispyRenderer(QQuickFramebufferObject.Renderer):
 
     def render(self):
 
-        # # Aquí ocurre el render OpenGL
-        # gloo.clear("black")
-
-        # # Aquí después dibujarías tu matriz,
-        # # shaders, imágenes, puntos, etc.
-
-        # self.update()
         GL.glClearColor(
-            1.0,
-            0.0,
-            0.0,
+            0.1,
+            0.1,
+            0.1,
             1.0
         )
 
         GL.glClear(
             GL.GL_COLOR_BUFFER_BIT
         )
+
+
+        filas, columnas = self.matrix.shape
+
+
+        ancho = 2.0 / columnas
+        alto = 2.0 / filas
+
+
+        for i in range(filas):
+
+            for j in range(columnas):
+
+                valor = self.matrix[i,j]
+
+
+                if valor == 1:
+                    GL.glColor3f(1,0,0)   # rojo
+
+                else:
+                    GL.glColor3f(0.2,0.2,0.2)
+
+
+                x = -1 + j * ancho
+                y = 1 - (i+1)*alto
+
+
+                GL.glBegin(GL.GL_QUADS)
+
+
+                GL.glVertex2f(
+                    x,
+                    y
+                )
+
+                GL.glVertex2f(
+                    x+ancho,
+                    y
+                )
+
+                GL.glVertex2f(
+                    x+ancho,
+                    y+alto
+                )
+
+                GL.glVertex2f(
+                    x,
+                    y+alto
+                )
+
+
+                GL.glEnd()
+
 
         self.update()
 

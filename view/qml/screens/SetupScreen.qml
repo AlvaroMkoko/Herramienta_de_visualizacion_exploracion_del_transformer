@@ -33,7 +33,7 @@ PagePrincipal {
                 width: 250 * sx
                 height: 40 * sy
 
-                text: " ↶ Volever al inicio"
+                text: " ↶ Volver al inicio"
 
                 onClicked: {
                     stackView.pop()

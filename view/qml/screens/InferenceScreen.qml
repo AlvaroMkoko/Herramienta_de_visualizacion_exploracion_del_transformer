@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import "../styles" as Style
 import "../components"
+import QtQuick.Layouts
 
 PagePrincipal {
     id:root
@@ -23,8 +24,8 @@ PagePrincipal {
         }
     }
     
-
     BotonPrincipal{
+        
                 
                 anchors.left: parent.left
                 anchors.leftMargin: 10 * sx
@@ -32,7 +33,7 @@ PagePrincipal {
                 anchors.topMargin: 10 * sy
                 width: 250 * sx
                 height: 40 * sy
-                text: " ↶ Volever al inicio"
+                text: " ↶ Volver al inicio"
 
                 onClicked: {
                     stackView.pop()
@@ -96,16 +97,23 @@ PagePrincipal {
                 sx: root.sx
                 sy: root.sy
 
-                Column{
-                    spacing: 30
-                    width: parent.width-30
-                    height:rectangulo_blanco_1.heigth
+                ColumnLayout{
+                    // spacing: 30
+                    // width: parent.width-30
+                    // height:rectangulo_blanco_1.heigth
+                    // anchors.margins: 15 * sx
+                    // Layout.fillWidth: true
+                    // Layout.fillHeight:true
+                    anchors.fill: parent
                     anchors.margins: 15 * sx
-
+                    spacing: 8 * sy
                     SliderColumn {
-                        width: parent.width 
+                        Layout.fillWidth: true
+
+
+                        // width: parent.width 
                         // anchors.fill: parent
-                        anchors.margins: 30 * sx
+                        // anchors.margins: 30 * sx
                         sx: root.sx
                         sy: root.sy
                         text: "Temperatura"
@@ -122,8 +130,10 @@ PagePrincipal {
 
                     SliderColumn {
                     // anchors.fill: parent
-                    width: parent.width
-                    anchors.margins: 15 * sx
+                    // width: parent.width
+                    // anchors.margins: 15 * sx
+                    Layout.fillWidth: true
+
                     sx: root.sx
                     sy: root.sy
                     text: "Top-K"
@@ -139,8 +149,11 @@ PagePrincipal {
                 }
                 SliderColumn {
                     // anchors.fill: parent
-                    width: parent.width
-                    anchors.margins: 15 * sx
+                    // width: parent.width
+                    // anchors.margins: 15 * sx
+                    Layout.fillWidth: true
+
+
                     sx: root.sx
                     sy: root.sy
                     text: "Top-P"

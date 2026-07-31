@@ -8,6 +8,9 @@ os.environ["QSG_RHI_BACKEND"] = "opengl"
 
 import sys
 from PySide6.QtWidgets import QApplication
+
+#Se importan las clases que se van a linkear a Qt Quick
+
 # Modulos de View Model para la gestion de Datos
 # from viewmodel.main_viewmodel import MainViewModel
 # from viewmodel.setup_controller import SetupController
