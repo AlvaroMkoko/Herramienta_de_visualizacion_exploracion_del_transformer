@@ -2,39 +2,36 @@ import QtQuick
 import QtQuick.Controls
 import "../styles" as Style
 import "../components"
-
+import QtQuick.Layouts
 PagePrincipal {
     id:root
 
     property bool mostrarTarjeta: false
 
 
-    background: Rectangle {
-        gradient: Gradient {
-            GradientStop {
-                position: 0
-                color: Style.Theme.fondo
-            }
+    // background: Rectangle {
+    //     gradient: Gradient {
+    //         GradientStop {
+    //             position: 0
+    //             color: Style.Theme.fondo
+    //         }
 
-            GradientStop {
-                position: 1
-                color: Style.Theme.fondo_gradiente
-            }
-        }
-    }
+    //         GradientStop {
+    //             position: 1
+    //             color: Style.Theme.fondo_gradiente
+    //         }
+    //     }
+    // }
     
 
     BotonPrincipal {
-                
                 anchors.left: parent.left
                 anchors.leftMargin: 10 * sx
                 anchors.top: parent.top
                 anchors.topMargin: 10 * sy
                 width: 250 * sx
                 height: 40 * sy
-
                 text: " ↶ Volver al inicio"
-
                 onClicked: {
                     stackView.pop()
                 }
@@ -58,28 +55,32 @@ PagePrincipal {
 
         Column{
             anchors.centerIn: parent
-            width: parent.size_width *sx
+            width: parent.size_width * sx
 
-            spacing: 30
+            spacing: 30 * sy
             RectanglePrincipal {
                 
                 id: rectangulo_blanco_1
-                width: parent.width 
+                width: parent.width
                 sx: root.sx
                 sy: root.sy
 
-                
+                ColumnLayout{
+                    // spacing: 10
+                    // width: parent.width-30
+                    // anchors.margins: 15 * sx
+                    anchors.fill: parent
+                    anchors.margins: 10 * sx
 
-                Column{
-                    spacing: 10
-                    width: parent.width-30
-                    anchors.margins: 15 * sx
-
+                    spacing: 1 * sy 
 
                      SliderColumn {
-                        width: parent.width 
-                        // anchors.fill: parent
-                        anchors.margins: 30 * sx
+                        // width: parent.width 
+                        // // anchors.fill: parent
+                        // anchors.margins: 30 * sx
+                        Layout.fillWidth:true
+                        Layout.fillHeight:true
+
 
                         sx: root.sx
                         sy: root.sy
@@ -92,15 +93,19 @@ PagePrincipal {
                         stepSize: 1
                         value: 6
 
+                        //TODO Make thte function to reiceive this Value = value
+                        
                         onValueChanged: {
                             console.log("Nuevo valor:", value)
                         }
                     }
 
                     SliderColumn {
-                    // anchors.fill: parent
-                    width: parent.width
-                    anchors.margins: 15 * sx
+                    // // anchors.fill: parent
+                    // width: parent.width
+                    // anchors.margins: 15 * sx
+                    Layout.fillWidth:true
+                    Layout.fillHeight:true
 
                     sx: root.sx
                     sy: root.sy
@@ -118,9 +123,11 @@ PagePrincipal {
                     }
                 }
                  SliderColumn {
-                    // anchors.fill: parent
-                    width: parent.width
-                    anchors.margins: 15 * sx
+                    // // anchors.fill: parent
+                    // width: parent.width
+                    // anchors.margins: 15 * sx
+                    Layout.fillWidth:true
+                    Layout.fillHeight:true
 
                     sx: root.sx
                     sy: root.sy
@@ -139,9 +146,9 @@ PagePrincipal {
                 }
 
                  SliderColumn {
-                    width: parent.width
-                    anchors.margins: 15 * sx
-
+                    // width: parent.width
+                    // anchors.margins: 15 * sx
+                    Layout.fillWidth:true
                     sx: root.sx
                     sy: root.sy
 
@@ -295,24 +302,26 @@ PagePrincipal {
 
             width: parent.size_width * sx
             // width: 300 * sx
-            Column{
-                    spacing: 10
-                    width: parent.width-30
-                    anchors.margins: 15 * sx
+            ColumnLayout{
+                    // width: parent.width-30
+                    anchors.fill: parent 
+                    anchors.margins: 10 * sx
 
-
+                    spacing: 10 * sx
+                    
                      SliderColumn {
-                            width: parent.width 
+                            Layout.fillWidth:true
+                            
+                            // width: parent.width 
                             // anchors.fill: parent
-                            anchors.margins: 30 * sx
 
                             sx: root.sx
                             sy: root.sy
 
-                            text: "Capas Encoder (Nx)"
+                            text: "Numero de Cabezas (Heads)"
 
                             from: 1
-                            to: 24
+                            to: 12
 
                             stepSize: 1
                             value: 6
@@ -324,20 +333,21 @@ PagePrincipal {
 
                     SliderColumn {
                     // anchors.fill: parent
-                        width: parent.width
-                        anchors.margins: 15 * sx
+                        // width: parent.width
+                        // anchors.margins: 15 * sx
+                        Layout.fillWidth:true
 
                         sx: root.sx
                         sy: root.sy
 
-                        text: "Épocas"
+                        text: "Drop-out"
 
-                        from: 1
-                        to: 24
+                        from: 0
+                        to: 1
 
-                        stepSize: 1
-                        value: 6
-
+                        stepSize: 0.001
+                        value: 0.5
+                        tipo_dato:"decimal"
                         onValueChanged: {
                             console.log("Nuevo valor:", value)
                         }

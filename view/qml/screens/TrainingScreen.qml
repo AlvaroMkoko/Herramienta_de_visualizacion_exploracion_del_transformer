@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import "../styles" as Style
 import "../components"
+import QtQuick.Layouts
 
 PagePrincipal {
     id:root
@@ -43,8 +44,8 @@ PagePrincipal {
 
     Rectangle{
         
-        property real size_width: 350
-        property real size_height:800
+        property real size_width: 300
+        property real size_height:900
         width:size_width * sx
         height:size_height * sy
         // color: "transparent"
@@ -60,106 +61,113 @@ PagePrincipal {
             anchors.centerIn: parent
             width: parent.size_width *sx
 
-            spacing: 30
+            spacing: 30 * sy
+
+
+
             RectanglePrincipal {
-                
                 id: rectangulo_blanco_1
-                width: parent.width 
+
                 sx: root.sx
                 sy: root.sy
 
-                
+                width: parent.width
+                height: 500 * sy
 
-                Column{
-                    spacing: 10
-                    width: parent.width-30
-                    anchors.margins: 15 * sx
+                // Escala respecto al tamaño original (350x400)
+                property real scale: Math.min(width / 350, height / 500)
+                property var flowModel: [
+                    { title: "Input Emb + PE", state: "done" },
+                    { title: "Encoder L1-3", state: "done" },
+                    { title: "Multi-Head Attention", state: "running" },
+                    { title: "Encoder L4-6", state: "pending" },
+                    { title: "Decoder + Salida", state: "pending" },
+                    { title: "Loss", state: "pending" }
+                ]
 
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: 20 * rectangulo_blanco_1.scale
 
-                     SliderColumn {
-                        width: parent.width 
-                        // anchors.fill: parent
-                        anchors.margins: 30 * sx
+                    spacing: 18 * rectangulo_blanco_1.scale
 
-                        sx: root.sx
-                        sy: root.sy
+                    Text {
+                        Layout.fillWidth: true
 
-                        text: "Capas Encoder (Nx)"
+                        text: "Flujo de datos"
 
-                        from: 1
-                        to: 24
+                        horizontalAlignment: Text.AlignHCenter
 
-                        stepSize: 1
-                        value: 6
+                        color: "#4B4B8F"
 
-                        onValueChanged: {
-                            console.log("Nuevo valor:", value)
+                        font.bold: true
+                        font.pixelSize: 22 * rectangulo_blanco_1.scale
+                    }
+
+                    
+
+                Repeater {
+
+                    model: rectangulo_blanco_1.flowModel
+
+                    delegate: FlujoPaso {
+                        Layout.fillWidth: true
+
+                        scale: rectangulo_blanco_1.scale
+
+                        title: modelData.title
+
+                        state: modelData.state
+                    }
+                }
+
+                    // Item {
+                    //     Layout.fillHeight: true
+                    // }
+
+                    RowLayout {
+
+                        Layout.fillWidth: true
+
+                        spacing: 10 * rectangulo_blanco_1.scale
+
+                        BotonPrincipal {
+
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 45 * rectangulo_blanco_1.scale
+
+                            text: "⏮"
+
+                            onClicked: {
+
+                            }
+                        }
+
+                        BotonPrincipal {
+
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 45 * rectangulo_blanco_1.scale
+
+                            text: "▶"
+
+                            onClicked: {
+
+                            }
+                        }
+
+                        BotonPrincipal {
+
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 45 * rectangulo_blanco_1.scale
+
+                            text: "⏭"
+
+                            onClicked: {
+
+                            }
                         }
                     }
-
-                    SliderColumn {
-                    // anchors.fill: parent
-                    width: parent.width
-                    anchors.margins: 15 * sx
-
-                    sx: root.sx
-                    sy: root.sy
-
-                    text: "Épocas"
-
-                    from: 1
-                    to: 24
-
-                    stepSize: 1
-                    value: 6
-
-                    onValueChanged: {
-                        console.log("Nuevo valor:", value)
-                    }
                 }
-                 SliderColumn {
-                    // anchors.fill: parent
-                    width: parent.width
-                    anchors.margins: 15 * sx
-
-                    sx: root.sx
-                    sy: root.sy
-
-                    text: "Learning Rate"
-                    from: 0
-                    to: 0.01
-                    stepSize: 0.0001
-                    value: 0.25
-
-                    tipo_dato:"decimal"
-
-                    onValueChanged: {
-                        console.log("Nuevo valor:", value)
-                    }
-                }
-
-                 SliderColumn {
-                    width: parent.width
-                    anchors.margins: 15 * sx
-
-                    sx: root.sx
-                    sy: root.sy
-
-                    text: "Batch Size"
-
-                    from: 1
-                    to: 24
-
-                    stepSize: 1
-                    value: 6
-
-                    onValueChanged: {
-                        console.log("Nuevo valor:", value)
-                    }
-                }
-
-                }
-                
             }
 
 

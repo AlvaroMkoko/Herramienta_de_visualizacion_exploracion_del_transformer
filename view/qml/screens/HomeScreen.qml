@@ -29,7 +29,7 @@ PagePrincipal {
         anchors.margins: 15 * sx
         spacing: 10 * sy
 
-        // Estado
+        // Estado**
         Rectangle {
             Layout.alignment: Qt.AlignHCenter
             Layout.preferredWidth: 200 * sx
@@ -43,6 +43,7 @@ PagePrincipal {
                 spacing: 4 * sx
 
                 Rectangle {
+                    anchors.verticalCenter: parent.verticalCenter
                     width: 8 * sx
                     height: 8 * sy
                     radius: width / 2
@@ -109,149 +110,170 @@ PagePrincipal {
         }
     }
 }
-    
-    RowLayout {
+    Rectangle{
+        color:"blue"
         anchors.centerIn: parent
-        anchors.verticalCenterOffset: 45 * sy
-
-        width: parent.width * 0.9
-        spacing: 80 * sx
-
-        /*
-        ===== Tarjeta 1 =====
-        */
-        RectanglePrincipal {
-            id: rectangulo_blanco_1
-
-            sx: root.sx
-            sy: root.sy
-
-            Layout.fillWidth: true
-
-            ColumnLayout {
+        anchors.verticalCenterOffset:100 * sy
+        
+        width:1500 * sx
+        height:350 * sy
+        RowLayout {
+                // anchors.centerIn: parent
                 anchors.fill: parent
-                anchors.margins: 20 * sx
+                // anchors.margins: 10 * sx
 
-                spacing: 20 * sy
+                // anchors.verticalCenterOffset:100 * sy
 
-                Text {
+                
+                spacing: 210 * sx
+
+                /*
+                ===== Tarjeta 1 =====
+                */
+                RectanglePrincipal {
+                    Layout.fillWidth: true
+                    id: rectangulo_blanco_1
+
+                    sx: root.sx
+                    sy: root.sy
+
+                    // Layout.fillWidth: true
+                    Layout.preferredWidth: 350*sx
+                    Layout.preferredHeight: 350 * sy
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: 20 * sx
+
+                        spacing: 20 * sy
+
+                        Text {
+                            Layout.fillWidth: true
+
+                            horizontalAlignment: Text.AlignHCenter
+                            wrapMode: Text.WordWrap
+
+                            text: "Entorno de simulación para entrenamiento\n y exploración de modelos Transformer."
+
+                            color: "#777777"
+                            font.pixelSize: 12 * sy
+                        }
+
+                        Item {
+                            Layout.fillHeight: true
+                        }
+
+                        BotonPrincipal {
+                            id: botonInicio
+                            
+
+                            Layout.alignment: Qt.AlignHCenter
+
+
+                            // width: 300 * sx
+                            // height: 60 * sy
+                            Layout.preferredWidth: 300*sx
+                            Layout.preferredHeight: 60 * sy
+
+                            text: "Iniciar Entorno"
+
+                            onClicked: {
+                                stackView.push("SetupScreen.qml", {
+                                    "stackView": stackView
+                                })
+                            }
+                        }
+                    }
+                }
+
+                /*
+                ===== Tarjeta 2 =====
+                */
+                RectanglePrincipal {
+                    Layout.fillWidth: true
+                    id: rectangulo_blanco_2
+
+                    sx: root.sx
+                    sy: root.sy
+
+                    // Layout.fillWidth: true
+                    Layout.preferredWidth: 350*sx
+                    Layout.preferredHeight: 350 * sy
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: 20 * sx
+
+                        spacing: 20 * sy
+
+                        Item {
+                            Layout.fillHeight: true
+                        }
+
+                        BotonPrincipal {
+                            id: botonModelo
+
+                            Layout.alignment: Qt.AlignHCenter
+
+                            Layout.preferredWidth: 300*sx
+                            Layout.preferredHeight: 60 * sy
+
+                            text: "Abrir Modelo"
+
+                            onClicked: {
+                                stackView.push("SetupScreen.qml", {
+                                    "stackView": stackView
+                                })
+                            }
+                        }
+                    }
+                }
+
+                /*
+                ===== Tarjeta 3 =====
+                */
+                RectanglePrincipal {
+                    id: rectangulo_blanco_3
                     Layout.fillWidth: true
 
-                    horizontalAlignment: Text.AlignHCenter
-                    wrapMode: Text.WordWrap
+                    sx: root.sx
+                    sy: root.sy
 
-                    text: "Entorno de simulación para entrenamiento\n y exploración de modelos Transformer."
+                    // Layout.fillWidth: true
+                    Layout.preferredWidth: 350*sx
+                    Layout.preferredHeight: 350 * sy
 
-                    color: "#777777"
-                    font.pixelSize: 12 * sy
-                }
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: 20 * sx
 
-                Item {
-                    Layout.fillHeight: true
-                }
+                        spacing: 20 * sy
 
-                BotonPrincipal {
-                    id: botonInicio
-                    
+                        Item {
+                            Layout.fillHeight: true
+                        }
 
-                    Layout.alignment: Qt.AlignHCenter
+                        BotonPrincipal {
+                            id: botonComparacion
 
+                            Layout.alignment: Qt.AlignHCenter
 
-                    // width: 300 * sx
-                    // height: 60 * sy
-                    Layout.preferredWidth: 300*sx
-                    Layout.preferredHeight: 60 * sy
+                            Layout.preferredWidth: 300*sx
+                            Layout.preferredHeight: 60 * sy
 
-                    text: "Iniciar Entorno"
+                            text: "Abrir Comparación"
 
-                    onClicked: {
-                        stackView.push("SetupScreen.qml", {
-                            "stackView": stackView
-                        })
+                            onClicked: {
+                                stackView.push("ComparisonScreen.qml", {
+                                    "stackView": stackView
+                                })
+                            }
+                        }
                     }
                 }
             }
-        }
-
-        /*
-        ===== Tarjeta 2 =====
-        */
-        RectanglePrincipal {
-            id: rectangulo_blanco_2
-
-            sx: root.sx
-            sy: root.sy
-
-            Layout.fillWidth: true
-
-            ColumnLayout {
-                anchors.fill: parent
-                anchors.margins: 20 * sx
-
-                spacing: 20 * sy
-
-                Item {
-                    Layout.fillHeight: true
-                }
-
-                BotonPrincipal {
-                    id: botonModelo
-
-                    Layout.alignment: Qt.AlignHCenter
-
-                    Layout.preferredWidth: 300*sx
-                    Layout.preferredHeight: 60 * sy
-
-                    text: "Abrir Modelo"
-
-                    onClicked: {
-                        stackView.push("SetupScreen.qml", {
-                            "stackView": stackView
-                        })
-                    }
-                }
-            }
-        }
-
-        /*
-        ===== Tarjeta 3 =====
-        */
-        RectanglePrincipal {
-            id: rectangulo_blanco_3
-
-            sx: root.sx
-            sy: root.sy
-
-            Layout.fillWidth: true
-
-            ColumnLayout {
-                anchors.fill: parent
-                anchors.margins: 20 * sx
-
-                spacing: 20 * sy
-
-                Item {
-                    Layout.fillHeight: true
-                }
-
-                BotonPrincipal {
-                    id: botonComparacion
-
-                    Layout.alignment: Qt.AlignHCenter
-
-                    Layout.preferredWidth: 300*sx
-                    Layout.preferredHeight: 60 * sy
-
-                    text: "Abrir Comparación"
-
-                    onClicked: {
-                        stackView.push("ComparisonScreen.qml", {
-                            "stackView": stackView
-                        })
-                    }
-                }
-            }
-        }
+            
+        
     }
     
 
@@ -259,7 +281,7 @@ PagePrincipal {
 
     Rectangle{
         // width:1280
-        height:50
+        height:50 * sy
         anchors.bottom: parent.bottom
         anchors.right: parent.right
         anchors.left: parent.left
@@ -277,12 +299,14 @@ PagePrincipal {
             spacing: 10
 
             Rectangle {
-                width: 150
-                height: 50
+                width: 150 * sx
+                height: 50 * sy
                 color: "blue"
 
                 Text {
                     anchors.centerIn: parent
+                    anchors.verticalCenter: parent.verticalCenter
+
                     // TODO Se necesita poner funcion para saber el numero de proyectos 
                     text: "Proyectos" 
                     color: Style.Theme.texto_primario
