@@ -47,6 +47,7 @@ class Transformer(nn.Module):
     def __init__(self, config: ConfiguracionTransformer, compartir_pesos_salida: bool = True):
         super().__init__()
         self.config = config
+        self.compartir_pesos_salida = compartir_pesos_salida
 
         # --- Entradas: Input Embedding / Output Embedding + Positional Encoding ---
         self.embedding_entrada = TokenEmbedding(config.tamano_vocabulario, config.dimension_modelo)

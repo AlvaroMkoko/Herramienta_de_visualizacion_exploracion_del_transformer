@@ -1,3 +1,14 @@
 cuda.py
 
+*.pt
+
 *.pyc
+*.json
+*.jsonl
+*.csv
+*.pdf
+
+.pytest_cache/
+data/checkpoints/modelo.pt
+
+*.pt
