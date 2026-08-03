@@ -170,13 +170,24 @@ class SetupController(QObject):
         )
 
     def crear_modelo(self) -> None:
-        """Instancia el `Tokenizer` y el `Transformer` definitivos con la
-        configuración actual, y los expone vía `modelo_creado`. Si la
-        configuración es inválida, emite `error_configuracion` y NO
-        modifica `self.modelo`/`self.tokenizer`."""
+        """Instancia el `Tokenizer` y el `Transformer` definitivos, y los
+        expone vía `modelo_creado`. NOTA: para poder usarse con
+        `gestor_de_datos` (padding en batches), `id_token_relleno` debe
+        quedar seteado — se resuelve igual que en `entrenar.py`:
+        vocab_size, vocab_size+1, vocab_size+2 para relleno/inicio/fin."""
         try:
             tokenizer_nuevo = Tokenizer(self._tipo_encoding)
-            config = self._construir_configuracion(tokenizer_nuevo.vocab_size)
+            id_relleno = tokenizer_nuevo.vocab_size
+            config = ConfiguracionTransformer(
+                tamano_vocabulario=tokenizer_nuevo.vocab_size + 3,
+                dimension_modelo=self._dimension_modelo,
+                num_cabezas=self._num_cabezas,
+                num_capas=self._num_capas,
+                dimension_ff=self._dimension_ff,
+                longitud_maxima_secuencia=self._longitud_maxima_secuencia,
+                dropout=self._dropout,
+                id_token_relleno=id_relleno,
+            )
             modelo_nuevo = Transformer(config, compartir_pesos_salida=self._compartir_pesos_salida)
         except ValueError as e:
             self.error_configuracion.emit(str(e))
