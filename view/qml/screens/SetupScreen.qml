@@ -7,7 +7,9 @@ PagePrincipal {
     id:root
 
     property bool mostrarTarjeta: false
-
+    Component.onCompleted: {
+    console.log("setupController =", setupController)
+}
 
     // background: Rectangle {
     //     gradient: Gradient {
@@ -40,8 +42,8 @@ PagePrincipal {
 
     Rectangle{
         
-        property real size_width: 350
-        property real size_height:800
+        property real size_width: 300
+        property real size_height:1000
         width:size_width * sx
         height:size_height * sy
         // color: "transparent"
@@ -51,17 +53,25 @@ PagePrincipal {
         
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter   // opcional, si querés centrado vertical
-        anchors.rightMargin: 40
+        anchors.rightMargin: 30
 
         Column{
             anchors.centerIn: parent
             width: parent.size_width * sx
 
-            spacing: 30 * sy
+            spacing: 60 * sy
+
+
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.verticalCenterOffset: -50 * sy
             RectanglePrincipal {
                 
                 id: rectangulo_blanco_1
                 width: parent.width
+                height:500 * sy
+                // anchors.verticalCenterOffset: -500 * sy
+
                 sx: root.sx
                 sy: root.sy
 
@@ -88,7 +98,7 @@ PagePrincipal {
                         text: "Capas Encoder (Nx)"
 
                         from: 1
-                        to: 24
+                        to: 12
 
                         stepSize: 1
                         value: 6
@@ -96,9 +106,99 @@ PagePrincipal {
                         //TODO Make thte function to reiceive this Value = value
                         
                         onValueChanged: {
-                            console.log("Nuevo valor:", value)
+                            // console.log("Nuevo valor:", value)
+                            setupController.establecer_num_capas(value)
+                        
+
                         }
                     }
+                     SliderColumn {
+                        // width: parent.width 
+                        // // anchors.fill: parent
+                        // anchors.margins: 30 * sx
+                        Layout.fillWidth:true
+                        Layout.fillHeight:true
+
+
+
+                        sx: root.sx
+                        sy: root.sy
+
+                        text: "Dimension del Modelo"
+
+                        from: 32
+                        to: 512
+
+                        stepSize: 32
+                        value: 64
+
+                        //TODO Make thte function to reiceive this Value = value
+                        
+                        onValueChanged: {
+                            // console.log("Nuevo valor:", value)
+                            setupController.establecer_num_capas(value)
+                        
+
+                        }
+                    }
+                     SliderColumn {
+                        // width: parent.width 
+                        // // anchors.fill: parent
+                        // anchors.margins: 30 * sx
+                        Layout.fillWidth:true
+                        Layout.fillHeight:true
+
+
+                        sx: root.sx
+                        sy: root.sy
+
+                        text: "Dimension-Feed Forward"
+
+                        from: 128
+                        to: 2048
+
+                        stepSize: 128
+                        value: 256
+
+                        //TODO Make thte function to reiceive this Value = value
+                        
+                        onValueChanged: {
+                            // console.log("Nuevo valor:", value)
+                            setupController.establecer_num_capas(value)
+                        
+
+                        }
+                    }
+                     SliderColumn {
+                        // width: parent.width 
+                        // // anchors.fill: parent
+                        // anchors.margins: 30 * sx
+                        Layout.fillWidth:true
+                        Layout.fillHeight:true
+
+
+                        sx: root.sx
+                        sy: root.sy
+
+                        text: "Longitud Maxima de Secuencia"
+
+                        from: 16
+                        to: 512
+
+                        stepSize: 16
+                        value: 64
+
+                        //TODO Make thte function to reiceive this Value = value
+                        
+                        onValueChanged: {
+                            // console.log("Nuevo valor:", value)
+                            setupController.establecer_num_capas(value)
+                        
+
+                        }
+                    }
+                    
+                    
 
                     SliderColumn {
                     // // anchors.fill: parent
@@ -205,76 +305,72 @@ PagePrincipal {
     }
 
 
-    
-    Rectangle{
-        
-        width:300 * sx
-        height:700 * sy
-        // color: "transparent"
-        color:"blue"
+Rectangle {
+    id: rec_left
 
-        
+    width: 250 * sx
+    height: 700 * sy
+    color: "blue"
 
-        anchors.verticalCenter: parent.verticalCenter
-        anchors.verticalCenterOffset: 2 * sy
-        anchors.left: parent.left
-        anchors.leftMargin: 20 * sx
+    anchors.left: parent.left
+    anchors.leftMargin: 20 * sx
+    anchors.verticalCenter: parent.verticalCenter
 
-        Column{
-            width: parent.width
-            anchors.centerIn: parent.centerIn
-            anchors.top: parent.top
-            anchors.topMargin: 60 * sy
-            spacing: 30
+    ColumnLayout {
+        anchors.fill: parent
+        anchors.margins: 6 * sx
 
+        spacing: 30 * sy
 
-            RectanglePrincipal {
-                
-                id: rectangulo_blanco_3
-                anchors.left: parent.left
-                anchors.rightMargin: 400
-                sx: root.sx
-                sy: root.sy
+        RectanglePrincipal {
+            id: rectangulo_blanco_3
 
-                width: 300 * sx
+            Layout.fillWidth: true
+            Layout.preferredHeight: 400 * sy
 
-                Column{
-                    anchors.centerIn: parent
+            sx: root.sx
+            sy: root.sy
 
-                    BotonPrincipal {
-                        id: botonModelo
-                        // anchors.bottom: parent
-                        anchors.bottomMargin: 20
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: 15 * sx
 
-
-                        width: 200 * root.sx
-                        height: 60 * root.sy
-
-                        text: "Gestionar DataSet"
-
-                        // onClicked: {
-                        //     stackView.push("TrainingScreen.qml", {
-                        //         "stackView": stackView
-                        //     })
-                        // }
-                        onClicked: {
-                            root.mostrarTarjeta = !root.mostrarTarjeta
-                        }
-                    
-                    }
-
+                Item {
+                    Layout.fillHeight: true
                 }
 
+                BotonPrincipal {
+                    id: botonModelo
 
+                    Layout.alignment: Qt.AlignHCenter
+
+                    Layout.preferredWidth: 160 * sx
+                    Layout.preferredHeight: 50 * sy
+
+                    text: "Gestionar DataSet"
+
+                    onClicked: {
+                        // root.mostrarTarjeta = !root.mostrarTarjeta
+                        stackView.push("DataSetScreen.qml", {
+                                "stackView": stackView
+                            })
+                    }
+                }
+
+                Item {
+                    Layout.fillHeight: true
+                }
             }
-   
         }
 
-            
+        Item {
+            Layout.fillHeight: true
+        }
     }
+}
 
     Rectangle{
-        property real size_width: 300
+        property real size_width: 250
         width:size_width * sx
         height:700 * sy
         // color: "transparent"
@@ -327,7 +423,8 @@ PagePrincipal {
                             value: 6
 
                             onValueChanged: {
-                                console.log("Nuevo valor:", value)
+                                // console.log("Nuevo valor:", value)
+                                setupController.establecer_num_cabezas(value)
                             }
                         }
 
@@ -343,13 +440,14 @@ PagePrincipal {
                         text: "Drop-out"
 
                         from: 0
-                        to: 1
+                        to: 0.5
 
-                        stepSize: 0.001
-                        value: 0.5
+                        stepSize: 0.05
+                        value: 0.1
                         tipo_dato:"decimal"
                         onValueChanged: {
                             console.log("Nuevo valor:", value)
+                            setupController.establecer_dropout(value)
                         }
                     }
                  

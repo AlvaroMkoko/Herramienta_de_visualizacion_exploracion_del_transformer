@@ -65,7 +65,8 @@ import "../styles" as Style
         contentItem: Text {
             text: button.text
             color: Style.Theme.texto_primario
-            font.pixelSize: Math.min(button.width, button.height) * button.size_text
+            // font.pixelSize: Math.min(button.width, button.height) * button.size_text
+            font.pixelSize: button.height * button.size_text
             font.bold: true
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter

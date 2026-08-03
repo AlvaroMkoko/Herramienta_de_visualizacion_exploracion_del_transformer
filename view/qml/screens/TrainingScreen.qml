@@ -7,6 +7,9 @@ import QtQuick.Layouts
 PagePrincipal {
     id:root
 
+
+    //--- TODO PENDIENTE LA TARJETA SE MUESTRA CUANDO HACES "CLICK" EN EL ELEMENTO SELECCIONADO -----
+
     property bool mostrarTarjeta: false
 
 
@@ -106,20 +109,33 @@ PagePrincipal {
 
                     
 
-                Repeater {
+                // Repeater {
 
-                    model: rectangulo_blanco_1.flowModel
+                //     model: rectangulo_blanco_1.flowModel
 
-                    delegate: FlujoPaso {
-                        Layout.fillWidth: true
+                //     delegate: FlujoPaso {
+                //         width: parent.width
 
-                        scale: rectangulo_blanco_1.scale
+                //         scale: rectangulo_blanco_1.scale
 
-                        title: modelData.title
+                //         title: modelData.title
 
-                        state: modelData.state
+                //         state: modelData.state
+                //     }
+                // }
+                    FlujoPaso {
+                        width: parent.width
+                        sx: root.sx
+                        sy: root.sy
+                        model: [
+                            { title: "Tokens",   state: "done" },
+                            { title: "Embeds",   state: "done" },
+                            { title: "Atención", state: "running" },
+                            { title: "FFN",      state: "pending" },
+                            { title: "Norm",     state: "pending" },
+                            { title: "Softmax",  state: "pending" }
+                        ]
                     }
-                }
 
                     // Item {
                     //     Layout.fillHeight: true

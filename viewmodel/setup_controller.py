@@ -13,7 +13,7 @@ la aplicación vía la señal `modelo_creado`.
 los otros dos controladores con el modelo recién creado).
 """
 
-from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import QObject, Signal, Slot
 
 from model.motor_llm.config import ConfiguracionTransformer
 from model.motor_llm.tokenizer import ENCODINGS, Tokenizer
@@ -85,10 +85,12 @@ class SetupController(QObject):
         self._dimension_modelo = valor
         self._recalcular_resumen()
 
+    @Slot(int)
     def establecer_num_cabezas(self, valor: int) -> None:
         self._num_cabezas = valor
         self._recalcular_resumen()
 
+    @Slot(int)
     def establecer_num_capas(self, valor: int) -> None:
         self._num_capas = valor
         self._recalcular_resumen()
@@ -101,6 +103,7 @@ class SetupController(QObject):
         self._longitud_maxima_secuencia = valor
         self._recalcular_resumen()
 
+    @Slot(float)
     def establecer_dropout(self, valor: float) -> None:
         self._dropout = valor
 

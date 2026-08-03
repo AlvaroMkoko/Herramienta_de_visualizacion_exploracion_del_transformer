@@ -62,13 +62,78 @@ PagePrincipal {
                 width: (parent.width)
                 height: (rec1.size_height/2) * sy
                 anchors.margins: 5 * sx
+
+                RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: 10 * sx
+                            spacing: 12 * sx
+
+                            Text {
+                                text: "PROMPT COMPARTIDO"
+                                font.pixelSize: 14 * sx
+                                font.bold: true
+                                color: "#7a5cff"
+
+                                Layout.alignment: Qt.AlignVCenter
+                                Layout.preferredWidth: implicitWidth   // ancho fijo, no crece
+                            }
+
+                            Text {
+                                id: textoPrompt
+                                //TODO: Este es el texto que estara generando el Modelo Transformer
+                                text: "The cat sat ..."
+                                font.pixelSize: 16 * sx
+                                color: "black"
+
+                                Layout.fillWidth: true                 // este absorbe todo el espacio sobrante
+                                Layout.alignment: Qt.AlignVCenter
+                                elide: Text.ElideRight                  // por si el texto es muy largo
+                            }
+
+                            BotonPrincipal {
+                                id: botonGenerar
+                                width: 120 * root.sx
+                                height: 60 * root.sy
+
+                                text: "▶ Generar ambos"
+                                size_text: 0.20
+
+                                Layout.alignment: Qt.AlignVCenter
+                                Layout.preferredWidth: width             // ancho fijo, no crece
+                                Layout.preferredHeight: height
+
+                                // onClicked: {
+                                //     stackView.push("SetupScreen.qml", {
+                                //         "stackView": stackView
+                                //     })
+                                // }
+                            }
+                        }
             }
 
             RectanglePrincipal {
+                id:rec_timeline
                 sx: root.sx
                 sy: root.sy
                 width: (parent.width)
-                height: (rec1.size_height/3) * sy
+                height: (rec1.size_height/2.5) * sy
+                TimeLine {
+                    id: timeline
+                    anchors.fill: parent
+                    sx: root.sx
+                    sy: root.sy
+
+                    model: [
+                        { title: "Tokens",   state: "done" },
+                        { title: "Embeds",   state: "done" },
+                        { title: "Atención", state: "running" },
+                        { title: "FFN",      state: "pending" },
+                        { title: "Norm+Res", state: "pending" },
+                        { title: "Softmax",  state: "pending" }
+                    ]
+                }
+                
+        
             }
         }
     }

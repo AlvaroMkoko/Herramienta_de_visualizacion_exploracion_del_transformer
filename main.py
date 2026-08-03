@@ -13,7 +13,7 @@ from PySide6.QtWidgets import QApplication
 
 # Modulos de View Model para la gestion de Datos
 # from viewmodel.main_viewmodel import MainViewModel
-# from viewmodel.setup_controller import SetupController
+from viewmodel.setup_controller import SetupController
 # from viewmodel.training_controller import TrainingController
 # from viewmodel.inference_controller import InferenceController
 # from viewmodel.evaluation_controller import EvaluationController
@@ -21,7 +21,6 @@ from PySide6.QtWidgets import QApplication
 # from viewmodel.signal_manager import SignalManager
 # from viewmodel.concurrency_manager import ConcurrencyManager
 # from viewmodel.visual_adapter import VisualAdapter
-# from view.canvas.animation_engine import SetupControllerr
 
 
 from PySide6.QtQml import qmlRegisterType
@@ -51,7 +50,7 @@ def main():
 
 #   mainViewModel = MainViewModel()
 #   #controladores
-#   setupController = SetupController()
+  setupController = SetupController()
 #   trainingController = TrainingController()
 #   inferenceController = InferenceController()
 #   evaluationController = EvaluationController()
@@ -75,10 +74,10 @@ def main():
 #     mainViewModel
 # )
 
-#   engine.rootContext().setContextProperty(
-#       "/viewmodel/setupController",
-#       setupController
-#   )
+  engine.rootContext().setContextProperty(
+      "setupController",
+      setupController
+  )
 
 #   engine.rootContext().setContextProperty(
 #       "/viewmodel/trainingController",
@@ -114,10 +113,10 @@ def main():
 #       "/viewmodel/visualAdapter",
 #       visualAdapter
 #   )
-#   engine.rootContext().setContextProperty(
-#       "SetupControllerr",
-#       visualAnimation
-#   )
+  # engine.rootContext().setContextProperty(
+  #     "SetupControllerr",
+  #     visualAnimation
+  # )
 
   
   engine.load("view/qml/main.qml")
