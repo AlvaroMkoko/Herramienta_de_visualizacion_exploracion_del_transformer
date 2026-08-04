@@ -8,7 +8,12 @@ import QtQuick.Dialogs
 
 
 PagePrincipal{
-    id: root 
+    id: root
+
+    property var idsSeleccionados: []
+    property string mensajeError: ""
+    property string mensajeExito: ""
+
     ListModel {
         id: datasetModel
     }
@@ -25,6 +30,16 @@ PagePrincipal{
         for (var i = 0; i < datasets.length; ++i) {
             datasetModel.append(datasets[i])
         }
+
+        mainViewModel.errorDataset.connect(function(mensaje) {
+            root.mensajeError = mensaje
+            root.mensajeExito = ""
+        })
+        mainViewModel.datasetListoParaEntrenar.connect(function(cantidadPares) {
+            root.mensajeError = ""
+            root.mensajeExito = cantidadPares + " pares combinados listos para entrenar."
+            stackView.pop()
+        })
     }
 
     FileDialog {
@@ -39,38 +54,20 @@ PagePrincipal{
         ]
 
         onAccepted: {
+            var ruta = selectedFile.toString()
+            ruta = ruta.replace("file:///", "")
+            var dataset = mainViewModel.datasetController.agregarDataset(ruta)
 
-            // var ruta = selectedFile.toString()
-
-            // // Quita el prefijo file://
-            // ruta = ruta.replace("file:///", "")
-
-            // var dataset = datasetController.agregarDataset(ruta)
-
-            // datasetModel.append(dataset)
-            console.log(mainViewModel.datasetController)
-            console.log(typeof mainViewModel.datasetController.agregarDataset)
-
-            
-                console.log("holaaaa")
-                var ruta = selectedFile.toString()
-                ruta = ruta.replace("file:///", "")
-                console.log(ruta)
-                var dataset = mainViewModel.datasetController.agregarDataset(ruta)
-
-                var existe = false
-                // print("Abriendo:", ruta)
-                for (var i = 0; i < datasetModel.count; ++i) {
-
-                    if (datasetModel.get(i).id === dataset.id) {
-                        existe = true
-                        break
-                    }
+            var existe = false
+            for (var i = 0; i < datasetModel.count; ++i) {
+                if (datasetModel.get(i).id === dataset.id) {
+                    existe = true
+                    break
                 }
+            }
 
-                if (!existe)
-                    datasetModel.append(dataset)
-            
+            if (!existe)
+                datasetModel.append(dataset)
         }
     }
     
@@ -81,19 +78,12 @@ PagePrincipal{
                 anchors.topMargin: 10 * sy
                 width: 250 * sx
                 height: 40 * sy
-                text: " ↶ Volver al inicio"
+                text: " ↶ Volver"
                 onClicked: {
                     stackView.pop()
                 }
                 
     }
-
-    //TODO El Component.onCompleted se usa cuando quieres hacer algo justo cuando se abrio la ventana 
-    //TODO Para cargar los datos que cambian se usa el formato JSCON para que facilmente ponames acceder a los datos
-
-    // Component.onCompleted: { 
-    //     cargarDatasets()
-    // }
 
     Rectangle {
         anchors.top: parent.top
@@ -124,16 +114,8 @@ PagePrincipal{
                 Layout.preferredHeight: 40 * sy
                 text: "+ Agregar DataSet"
                 onClicked: {
-                    // datasetModel.append({})
-                        // agregarDataset()
-                    onClicked: {
-                        datasetDialog.open()
-                    }
-
-                    
+                    datasetDialog.open()
                 }
-
-                
             }
         }
     }
@@ -241,6 +223,18 @@ PagePrincipal{
             }
 
             contentItem: Item { }
+
+            onCheckedChanged: {
+                if (checked) {
+                    if (root.idsSeleccionados.indexOf(id) === -1) {
+                        root.idsSeleccionados = root.idsSeleccionados.concat([id])
+                    }
+                } else {
+                    root.idsSeleccionados = root.idsSeleccionados.filter(function(x) {
+                        return x !== id
+                    })
+                }
+            }
         }
 
         ColumnLayout {
@@ -345,12 +339,10 @@ PagePrincipal{
         property real size_height:700
         width:size_width * sx
         height:size_height * sy
-        // color: "transparent"
         color:"blue"
-        // clip: true          
         
         anchors.right: parent.right
-        anchors.verticalCenter: parent.verticalCenter   // opcional, si querés centrado vertical
+        anchors.verticalCenter: parent.verticalCenter
         anchors.rightMargin: 30
         Column{
             anchors.centerIn: parent
@@ -364,25 +356,40 @@ PagePrincipal{
                 id: rectangulo_blanco_1
                 width: parent.width
                 height:400 * sy
-                // anchors.verticalCenterOffset: -500 * sy
                 sx: root.sx
                 sy: root.sy
                 ColumnLayout{
-                    // spacing: 10
-                    // width: parent.width-30
-                    // anchors.margins: 15 * sx
                     anchors.fill: parent
                     anchors.margins: 10 * sx
-                    spacing: 1 * sy 
+                    spacing: 10 * sy
+
+                    Text {
+                        Layout.alignment: Qt.AlignHCenter
+                        text: root.idsSeleccionados.length + " dataset(s) seleccionado(s)"
+                        color: "white"
+                        font.pixelSize: 14 * sx
+                    }
+
                     BotonPrincipal {
                         Layout.alignment: Qt.AlignHCenter
                         Layout.preferredWidth: 250*sx
                         Layout.preferredHeight: 40 * sy
                         text: "Usar selección ->"
+                        enabled: root.idsSeleccionados.length > 0
                         onClicked: {
-                            datasetModel.append({})
-                                // agregarDataset()
-                        }   
+                            root.mensajeError = ""
+                            mainViewModel.cargarDatasetsParaEntrenar(root.idsSeleccionados)
+                        }
+                    }
+
+                    Text {
+                        Layout.alignment: Qt.AlignHCenter
+                        visible: root.mensajeError !== ""
+                        text: root.mensajeError
+                        color: "red"
+                        wrapMode: Text.WordWrap
+                        Layout.preferredWidth: parent.width
+                        horizontalAlignment: Text.AlignHCenter
                     }
                 }
                 
@@ -393,13 +400,9 @@ PagePrincipal{
             id: rectangulo_blanco_2
             width: parent.width
             height:300 * sy
-            // anchors.verticalCenterOffset: -500 * sy
             sx: root.sx
             sy: root.sy
             ColumnLayout{
-                // spacing: 10
-                // width: parent.width-30
-                // anchors.margins: 15 * sx
                 anchors.fill: parent
                 anchors.margins: 10 * sx
                 spacing: 1 * sy 

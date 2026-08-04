@@ -20,10 +20,6 @@ PagePrincipal {
     property int batchSize: 6
 
     Component.onCompleted: {
-<<<<<<< HEAD
-    console.log("mainViewModel =", mainViewModel)
-}
-=======
         mainViewModel.setupController.resumen_cambio.connect(function(resumen) {
             root.parametrosTotales = resumen.parametros_totales
             root.memoriaEstimadaMb = resumen.memoria_estimada_mb
@@ -32,7 +28,6 @@ PagePrincipal {
             root.mensajeError = mensaje
         })
     }
->>>>>>> 35bc3c3434751fd3080d56fecb216464bb0c504b
 
     // background: Rectangle {
     //     gradient: Gradient {
@@ -127,14 +122,7 @@ PagePrincipal {
                         value: 6
 
                         onValueChanged: {
-<<<<<<< HEAD
-                            // console.log("Nuevo valor:", value)
                             mainViewModel.setupController.establecer_num_capas(value)
-                        
-
-=======
-                            mainViewModel.setupController.establecer_num_capas(value)
->>>>>>> 35bc3c3434751fd3080d56fecb216464bb0c504b
                         }
                     }
                      SliderColumn {
@@ -158,14 +146,7 @@ PagePrincipal {
                         value: 64
 
                         onValueChanged: {
-<<<<<<< HEAD
-                            // console.log("Nuevo valor:", value)
-                            mainViewModel.setupController.establecer_num_capas(value)
-                        
-
-=======
                             mainViewModel.setupController.establecer_dimension_modelo(value)
->>>>>>> 35bc3c3434751fd3080d56fecb216464bb0c504b
                         }
                     }
                      SliderColumn {
@@ -188,14 +169,7 @@ PagePrincipal {
                         value: 256
 
                         onValueChanged: {
-<<<<<<< HEAD
-                            // console.log("Nuevo valor:", value)
-                            mainViewModel.setupController.establecer_num_capas(value)
-                        
-
-=======
                             mainViewModel.setupController.establecer_dimension_ff(value)
->>>>>>> 35bc3c3434751fd3080d56fecb216464bb0c504b
                         }
                     }
                      SliderColumn {
@@ -218,14 +192,7 @@ PagePrincipal {
                         value: 64
 
                         onValueChanged: {
-<<<<<<< HEAD
-                            // console.log("Nuevo valor:", value)
-                            mainViewModel.setupController.establecer_num_capas(value)
-                        
-
-=======
                             mainViewModel.setupController.establecer_longitud_maxima_secuencia(value)
->>>>>>> 35bc3c3434751fd3080d56fecb216464bb0c504b
                         }
                     }
                     
@@ -482,10 +449,6 @@ Rectangle {
                             value: 6
 
                             onValueChanged: {
-<<<<<<< HEAD
-                                // console.log("Nuevo valor:", value)
-=======
->>>>>>> 35bc3c3434751fd3080d56fecb216464bb0c504b
                                 mainViewModel.setupController.establecer_num_cabezas(value)
                             }
                         }
@@ -508,10 +471,6 @@ Rectangle {
                         value: 0.1
                         tipo_dato:"decimal"
                         onValueChanged: {
-<<<<<<< HEAD
-                            console.log("Nuevo valor:", value)
-=======
->>>>>>> 35bc3c3434751fd3080d56fecb216464bb0c504b
                             mainViewModel.setupController.establecer_dropout(value)
                         }
                     }
