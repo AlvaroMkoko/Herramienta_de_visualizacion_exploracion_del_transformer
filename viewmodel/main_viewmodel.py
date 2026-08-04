@@ -17,6 +17,7 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 from .dataset_controller import DatasetController
 from .inference_controller import InferenceController
 from .setup_controller import SetupController
+from .theory_controller import TheoryController
 from .training_controller import TrainingController
 
 
@@ -31,7 +32,8 @@ class MainViewModel(QObject):
         super().__init__(parent)
 
         self._setup_controller = SetupController(self)
-        self._dataset_controller = DatasetController()
+        self._dataset_controller = DatasetController(self)
+        self._theory_controller = TheoryController(self)
         self._training_controller: TrainingController | None = None
         self._inference_controller: InferenceController | None = None
 
@@ -43,6 +45,12 @@ class MainViewModel(QObject):
         depende de que exista un modelo (se puede armar el catálogo de
         datasets antes, durante o después de configurar la arquitectura)."""
         return self._dataset_controller
+
+    @Property(QObject, constant=True)
+    def theoryController(self) -> TheoryController:
+        """Disponible desde el arranque — no depende de que exista un
+        modelo, la teoría es la misma sin importar la configuración."""
+        return self._theory_controller
 
     # ------------------------------------------------------------------
     # Propiedades observables para QML
@@ -146,7 +154,7 @@ class MainViewModel(QObject):
 
         try:
             rutas_y_formatos = [(m["ruta"], m["formato"]) for m in metadatas]
-            pares = cargar_pares_combinados(rutas_y_formatos, clave_origen="instruction", clave_destino="response")
+            pares = cargar_pares_combinados(rutas_y_formatos)
         except (ValueError, FileNotFoundError) as e:
             self.errorDataset.emit(f"No se pudo cargar el dataset: {e}")
             return
