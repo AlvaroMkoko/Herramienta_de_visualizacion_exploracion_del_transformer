@@ -72,6 +72,7 @@ class SetupController(QObject):
         self._dropout = 0.1
         self._compartir_pesos_salida = True
 
+    @Slot(int)
     def establecer_tipo_encoding(self, tipo_encoding: int) -> None:
         if not 0 <= tipo_encoding < len(ENCODINGS):
             self.error_configuracion.emit(
@@ -81,6 +82,7 @@ class SetupController(QObject):
         self._tipo_encoding = tipo_encoding
         self._recalcular_resumen()
 
+    @Slot(int)
     def establecer_dimension_modelo(self, valor: int) -> None:
         self._dimension_modelo = valor
         self._recalcular_resumen()
@@ -95,10 +97,12 @@ class SetupController(QObject):
         self._num_capas = valor
         self._recalcular_resumen()
 
+    @Slot(int)
     def establecer_dimension_ff(self, valor: int) -> None:
         self._dimension_ff = valor
         self._recalcular_resumen()
 
+    @Slot(int)
     def establecer_longitud_maxima_secuencia(self, valor: int) -> None:
         self._longitud_maxima_secuencia = valor
         self._recalcular_resumen()
@@ -107,6 +111,7 @@ class SetupController(QObject):
     def establecer_dropout(self, valor: float) -> None:
         self._dropout = valor
 
+    @Slot(bool)
     def establecer_compartir_pesos_salida(self, valor: bool) -> None:
         self._compartir_pesos_salida = valor
         self._recalcular_resumen()
@@ -169,6 +174,7 @@ class SetupController(QObject):
             id_token_relleno=None,
         )
 
+    @Slot()
     def crear_modelo(self) -> None:
         """Instancia el `Tokenizer` y el `Transformer` definitivos, y los
         expone vía `modelo_creado`. NOTA: para poder usarse con

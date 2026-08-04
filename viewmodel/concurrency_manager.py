@@ -235,8 +235,8 @@ class GestorConcurrencia(QObject):
         self._trabajador.pausado.connect(self.pausado.emit)
         self._trabajador.reanudado.connect(self.reanudado.emit)
 
-        self.iniciado.emit()
         self._hilo.start()
+        self.iniciado.emit()
 
     def detener(self) -> None:
         """Solicita la cancelación cooperativa de la tarea en curso
@@ -271,13 +271,13 @@ class GestorConcurrencia(QObject):
         self._trabajador = None
 
     def _al_finalizar(self, resultado: Any) -> None:
-        self.finalizado.emit(resultado)
         self._limpiar_hilo()
+        self.finalizado.emit(resultado)
 
     def _al_fallar(self, mensaje: str) -> None:
-        self.error.emit(mensaje)
         self._limpiar_hilo()
+        self.error.emit(mensaje)
 
     def _al_cancelar(self) -> None:
-        self.cancelado.emit()
         self._limpiar_hilo()
+        self.cancelado.emit()

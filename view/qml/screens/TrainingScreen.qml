@@ -7,11 +7,20 @@ import QtQuick.Layouts
 PagePrincipal {
     id:root
 
-
     //--- TODO PENDIENTE LA TARJETA SE MUESTRA CUANDO HACES "CLICK" EN EL ELEMENTO SELECCIONADO -----
-
     property bool mostrarTarjeta: false
 
+    // Hiperparámetros recibidos desde SetupScreen.qml al navegar acá
+    property int epocasIniciales: 10
+    property real tasaAprendizajeInicial: 0.0003
+    property int batchSizeInicial: 16
+
+    // Estado de progreso, alimentado por las señales de trainingController
+    property int epocaActual: 0
+    property int pasoGlobalActual: 0
+    property real perdidaActual: 0
+    property string mensajeError: ""
+    property string mensajeCheckpoint: ""
 
     background: Rectangle {
         gradient: Gradient {
@@ -26,7 +35,27 @@ PagePrincipal {
             }
         }
     }
-    
+
+    Component.onCompleted: {
+        mainViewModel.trainingController.paso_entrenamiento.connect(function(paso) {
+            root.epocaActual = paso.epoca
+            root.pasoGlobalActual = paso.paso_global
+            root.perdidaActual = paso.perdida
+        })
+        mainViewModel.trainingController.entrenamiento_completo.connect(function(resultado) {
+            console.log("Entrenamiento completo. Perdida final:", resultado.perdida_final)
+        })
+        mainViewModel.trainingController.entrenamiento_cancelado.connect(function(resultado) {
+            console.log("Entrenamiento detenido por el usuario.")
+        })
+        mainViewModel.trainingController.error.connect(function(mensaje) {
+            root.mensajeError = mensaje
+        })
+        mainViewModel.trainingController.checkpoint_guardado.connect(function(ruta) {
+            root.mensajeCheckpoint = "Guardado: " + ruta
+            root.mensajeError = ""
+        })
+    }
 
     BotonPrincipal {
                 
@@ -152,10 +181,11 @@ PagePrincipal {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 45 * rectangulo_blanco_1.scale
 
-                            text: "⏮"
+                            text: "⏮ Detener"
+                            enabled: mainViewModel.trainingController.estaEntrenando
 
                             onClicked: {
-
+                                mainViewModel.trainingController.detener()
                             }
                         }
 
@@ -164,10 +194,24 @@ PagePrincipal {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 45 * rectangulo_blanco_1.scale
 
-                            text: "▶"
+                            text: !mainViewModel.trainingController.estaEntrenando
+                                    ? "▶ Iniciar"
+                                    : (mainViewModel.trainingController.estaPausado ? "▶ Reanudar" : "⏸ Pausar")
 
                             onClicked: {
-
+                                var tc = mainViewModel.trainingController
+                                if (!tc.estaEntrenando) {
+                                    root.mensajeError = ""
+                                    tc.iniciar_entrenamiento_ui(
+                                        root.epocasIniciales,
+                                        root.tasaAprendizajeInicial,
+                                        root.batchSizeInicial
+                                    )
+                                } else if (tc.estaPausado) {
+                                    tc.reanudar()
+                                } else {
+                                    tc.pausar()
+                                }
                             }
                         }
 
@@ -177,10 +221,14 @@ PagePrincipal {
                             Layout.preferredHeight: 45 * rectangulo_blanco_1.scale
 
                             text: "⏭"
+                            // TODO: sin mapeo claro todavia (no existe un
+                            // concepto de "avanzar manualmente" en el bucle
+                            // de entrenamiento actual). Deshabilitado por
+                            // ahora para no prometer algo que no hace nada.
+                            enabled: false
+                            opacity: 0.4
 
-                            onClicked: {
-
-                            }
+                            onClicked: {}
                         }
                     }
                 }
@@ -200,6 +248,40 @@ PagePrincipal {
                 // width: 300*sx
                 height: 200*sy
 
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: 15 * sx
+                    spacing: 6 * sy
+
+                    Text {
+                        Layout.alignment: Qt.AlignHCenter
+                        text: "Época " + root.epocaActual + " · Paso " + root.pasoGlobalActual
+                        color: Style.Theme.texto_primario
+                        font.pixelSize: 14 * root.sx
+                    }
+                    Text {
+                        Layout.alignment: Qt.AlignHCenter
+                        text: "Pérdida: " + root.perdidaActual.toFixed(4)
+                        color: Style.Theme.texto_primario
+                        font.pixelSize: 14 * root.sx
+                    }
+                    Text {
+                        Layout.alignment: Qt.AlignHCenter
+                        visible: root.mensajeError !== ""
+                        text: root.mensajeError
+                        color: "red"
+                        wrapMode: Text.WordWrap
+                        Layout.preferredWidth: parent.width
+                        horizontalAlignment: Text.AlignHCenter
+                    }
+                    Text {
+                        Layout.alignment: Qt.AlignHCenter
+                        visible: root.mensajeCheckpoint !== ""
+                        text: root.mensajeCheckpoint
+                        color: "green"
+                    }
+                }
+
             }
 
             BotonPrincipal {
@@ -212,9 +294,7 @@ PagePrincipal {
                         text: "Guardar Modelo"
 
                         onClicked: {
-                            stackView.push("TrainingScreen.qml", {
-                                "stackView": stackView
-                            })
+                            mainViewModel.trainingController.guardar_checkpoint("data/checkpoints/modelo.pt")
                         }
                     
             }
@@ -394,5 +474,3 @@ PagePrincipal {
     //     }
 
     }
-        
-    
