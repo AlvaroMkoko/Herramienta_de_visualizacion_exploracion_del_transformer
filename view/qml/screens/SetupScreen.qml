@@ -7,9 +7,27 @@ PagePrincipal {
     id:root
 
     property bool mostrarTarjeta: false
+
+    // Preview en vivo (parámetros/memoria estimada) y errores de configuración
+    property int parametrosTotales: 0
+    property real memoriaEstimadaMb: 0
+    property string mensajeError: ""
+
+    // Hiperparámetros de ENTRENAMIENTO (no van a SetupController — se
+    // guardan acá y se pasan a TrainingScreen cuando el modelo esté listo)
+    property int epocas: 6
+    property real tasaAprendizaje: 0.0003
+    property int batchSize: 6
+
     Component.onCompleted: {
-    console.log("setupController =", setupController)
-}
+        mainViewModel.setupController.resumen_cambio.connect(function(resumen) {
+            root.parametrosTotales = resumen.parametros_totales
+            root.memoriaEstimadaMb = resumen.memoria_estimada_mb
+        })
+        mainViewModel.setupController.error_configuracion.connect(function(mensaje) {
+            root.mensajeError = mensaje
+        })
+    }
 
     // background: Rectangle {
     //     gradient: Gradient {
@@ -103,13 +121,8 @@ PagePrincipal {
                         stepSize: 1
                         value: 6
 
-                        //TODO Make thte function to reiceive this Value = value
-                        
                         onValueChanged: {
-                            // console.log("Nuevo valor:", value)
-                            setupController.establecer_num_capas(value)
-                        
-
+                            mainViewModel.setupController.establecer_num_capas(value)
                         }
                     }
                      SliderColumn {
@@ -132,13 +145,8 @@ PagePrincipal {
                         stepSize: 32
                         value: 64
 
-                        //TODO Make thte function to reiceive this Value = value
-                        
                         onValueChanged: {
-                            // console.log("Nuevo valor:", value)
-                            setupController.establecer_num_capas(value)
-                        
-
+                            mainViewModel.setupController.establecer_dimension_modelo(value)
                         }
                     }
                      SliderColumn {
@@ -160,13 +168,8 @@ PagePrincipal {
                         stepSize: 128
                         value: 256
 
-                        //TODO Make thte function to reiceive this Value = value
-                        
                         onValueChanged: {
-                            // console.log("Nuevo valor:", value)
-                            setupController.establecer_num_capas(value)
-                        
-
+                            mainViewModel.setupController.establecer_dimension_ff(value)
                         }
                     }
                      SliderColumn {
@@ -188,13 +191,8 @@ PagePrincipal {
                         stepSize: 16
                         value: 64
 
-                        //TODO Make thte function to reiceive this Value = value
-                        
                         onValueChanged: {
-                            // console.log("Nuevo valor:", value)
-                            setupController.establecer_num_capas(value)
-                        
-
+                            mainViewModel.setupController.establecer_longitud_maxima_secuencia(value)
                         }
                     }
                     
@@ -219,7 +217,7 @@ PagePrincipal {
                     value: 6
 
                     onValueChanged: {
-                        console.log("Nuevo valor:", value)
+                        root.epocas = value
                     }
                 }
                  SliderColumn {
@@ -236,12 +234,12 @@ PagePrincipal {
                     from: 0
                     to: 0.01
                     stepSize: 0.0001
-                    value: 0.25
+                    value: 0.0003
 
                     tipo_dato:"decimal"
 
                     onValueChanged: {
-                        console.log("Nuevo valor:", value)
+                        root.tasaAprendizaje = value
                     }
                 }
 
@@ -261,17 +259,13 @@ PagePrincipal {
                     value: 6
 
                     onValueChanged: {
-                        console.log("Nuevo valor:", value)
+                        root.batchSize = value
                     }
                 }
 
                 }
                 
             }
-
-
-
-
 
             RectanglePrincipal{
 
@@ -282,6 +276,31 @@ PagePrincipal {
                 sy: root.sy
                 // width: 300*sx
                 height: 200*sy
+
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: 15 * sx
+                    spacing: 6 * sy
+
+                    Text {
+                        Layout.alignment: Qt.AlignHCenter
+                        text: "Parámetros: " + root.parametrosTotales.toLocaleString()
+                            + "  (~" + root.memoriaEstimadaMb + " MB)"
+                        color: Style.Theme.texto_primario
+                        font.pixelSize: 14 * root.sx
+                    }
+
+                    Text {
+                        Layout.alignment: Qt.AlignHCenter
+                        visible: root.mensajeError !== ""
+                        text: root.mensajeError
+                        color: "red"
+                        wrapMode: Text.WordWrap
+                        Layout.preferredWidth: parent.width
+                        horizontalAlignment: Text.AlignHCenter
+                        font.pixelSize: 12 * root.sx
+                    }
+                }
 
             }
 
@@ -295,9 +314,20 @@ PagePrincipal {
                         text: "Iniciar Entrenamiento"
 
                         onClicked: {
-                            stackView.push("TrainingScreen.qml", {
-                                "stackView": stackView
-                            })
+                            root.mensajeError = ""
+                            mainViewModel.setupController.crear_modelo()
+
+                            // Solo navega si crear_modelo() NO disparo error_configuracion
+                            // (la conexion de Component.onCompleted ya actualizo
+                            // root.mensajeError de forma sincronica antes de esta linea)
+                            if (root.mensajeError === "") {
+                                stackView.push("TrainingScreen.qml", {
+                                    "stackView": stackView,
+                                    "epocasIniciales": root.epocas,
+                                    "tasaAprendizajeInicial": root.tasaAprendizaje,
+                                    "batchSizeInicial": root.batchSize
+                                })
+                            }
                         }
                     
             }
@@ -373,22 +403,18 @@ Rectangle {
         property real size_width: 250
         width:size_width * sx
         height:700 * sy
-        // color: "transparent"
         color:"transparent"
-
-        
 
         anchors.verticalCenter: parent.verticalCenter
         anchors.centerIn: parent
 
-        visible: opacity > 0
-        opacity: root.mostrarTarjeta ? 1 : 0
+        // NOTA: antes esta tarjeta estaba condicionada a
+        // "root.mostrarTarjeta", pero nada en el archivo lo ponia en
+        // true — "Numero de Cabezas" y "Drop-out" quedaban invisibles
+        // sin ninguna forma de mostrarlos. Se deja siempre visible; si
+        // la idea era un toggle, hace falta un boton que cambie
+        // root.mostrarTarjeta explicitamente.
 
-        Behavior on opacity {
-            NumberAnimation {
-                duration: 300
-            }
-        }
         RectanglePrincipal{
             id: rectangulo_blanco_4
             anchors.left: parent.left
@@ -423,8 +449,7 @@ Rectangle {
                             value: 6
 
                             onValueChanged: {
-                                // console.log("Nuevo valor:", value)
-                                setupController.establecer_num_cabezas(value)
+                                mainViewModel.setupController.establecer_num_cabezas(value)
                             }
                         }
 
@@ -446,8 +471,7 @@ Rectangle {
                         value: 0.1
                         tipo_dato:"decimal"
                         onValueChanged: {
-                            console.log("Nuevo valor:", value)
-                            setupController.establecer_dropout(value)
+                            mainViewModel.setupController.establecer_dropout(value)
                         }
                     }
                  
@@ -459,5 +483,3 @@ Rectangle {
         }
 
     }
-        
-    
