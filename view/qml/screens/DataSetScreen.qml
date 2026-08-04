@@ -9,12 +9,54 @@ import QtQuick.Dialogs
 
 PagePrincipal{
     id: root 
+
+    property alias datasetModel: datasetModel
+    property alias markModel: markModel
+
+
+
+
+
+
+
+
     ListModel {
         id: datasetModel
     }
     
     ListModel {
         id: markModel
+    }
+
+    function indexOfDataset(datasetId) {
+        for (let i = 0; i < datasetModel.count; ++i) {
+            if (datasetModel.get(i).id === datasetId)
+                return i
+        }
+        return -1
+    }
+
+    function indexOfMark(datasetId) {
+        for (let i = 0; i < markModel.count; ++i) {
+            if (markModel.get(i).datasetId === datasetId)
+                return i
+        }
+        return -1
+    }
+
+    function eliminarDatasetCompleto(datasetId) {
+        // 1. Elimina en el backend
+        mainViewModel.datasetController.eliminarDataset(datasetId)
+
+        // 2. Si estaba seleccionado, lo saca del markModel (chip de arriba)
+        let markIdx = indexOfMark(datasetId)
+        if (markIdx !== -1)
+            markModel.remove(markIdx)
+
+        // 3. Lo saca de la lista principal
+        let dsIdx = indexOfDataset(datasetId)
+        if (dsIdx !== -1)
+            datasetModel.remove(dsIdx)
     }
 
     Component.onCompleted: {
@@ -39,29 +81,13 @@ PagePrincipal{
         ]
 
         onAccepted: {
-
-            // var ruta = selectedFile.toString()
-
-            // // Quita el prefijo file://
-            // ruta = ruta.replace("file:///", "")
-
-            // var dataset = datasetController.agregarDataset(ruta)
-
-            // datasetModel.append(dataset)
-            console.log(mainViewModel.datasetController)
-            console.log(typeof mainViewModel.datasetController.agregarDataset)
-
-            
-                console.log("holaaaa")
                 var ruta = selectedFile.toString()
                 ruta = ruta.replace("file:///", "")
                 console.log(ruta)
                 var dataset = mainViewModel.datasetController.agregarDataset(ruta)
-
                 var existe = false
-                // print("Abriendo:", ruta)
-                for (var i = 0; i < datasetModel.count; ++i) {
 
+                for (var i = 0; i < datasetModel.count; ++i) {
                     if (datasetModel.get(i).id === dataset.id) {
                         existe = true
                         break
@@ -73,6 +99,28 @@ PagePrincipal{
             
         }
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     
     BotonPrincipal {
                 anchors.left: parent.left
@@ -123,14 +171,8 @@ PagePrincipal{
                 Layout.preferredWidth: 250*sx
                 Layout.preferredHeight: 40 * sy
                 text: "+ Agregar DataSet"
-                onClicked: {
-                    // datasetModel.append({})
-                        // agregarDataset()
-                    onClicked: {
+                onClicked: {                    
                         datasetDialog.open()
-                    }
-
-                    
                 }
 
                 
@@ -160,8 +202,44 @@ PagePrincipal{
                     model: markModel
 
                     delegate: RectanglePrincipal {
+                        id:rec_padre
+                        property int rowIndex: index
+                        property int dsIndex: datasetIndex
                         width: 200
                         height: 50
+                        color:"white"
+
+
+                        RowLayout{
+                            Layout.fillWidth: true
+                            spacing: 20 * sx
+
+                            Text{
+                                text: markid    
+                                color: "black"
+                                font.pixelSize: 8 * sy
+                                font.bold: true
+                            }
+
+                            BotonPrincipal {
+                                Layout.alignment: Qt.AlignHCenter
+                                Layout.preferredWidth: 40 * sx
+                                Layout.preferredHeight: 40 * sy
+                                text: "X"
+                                property var mkModel: root.markModel
+                                property var dsModel: root.datasetModel
+
+                                onClicked: {
+                                    // datasetModel.append({})
+                                        // agregarDataset()
+                                    // dsModel.setProperty(rec_padre.dsIndex, "selected", false)
+                                    // mkModel.remove(rec_padre.rowIndex)    
+                                    let dsIdx = root.indexOfDataset(rec_padre.datasetId)
+                                    if (dsIdx !== -1)
+                                        root.datasetModel.setProperty(dsIdx, "selected", false)
+                                }   
+                            }
+                        }
                     }
                 }
             }
@@ -197,141 +275,189 @@ PagePrincipal{
 
                 Repeater {
                     model: datasetModel
-
                     delegate: RectanglePrincipal {
                         sx: root.sx
                         sy: root.sy
-
                         width: listaDatasets.width
                         height: 120 * sy
 
-                        ColumnLayout {
-    anchors.fill: parent
-    anchors.margins: 12 * sx
-    spacing: 8 * sy
 
-    //===========================
-    // Primera fila
-    //===========================
+                        property var dsModel: root.datasetModel
+                        property var mkModel: root.markModel
+                        property int rowIndex: index
 
-    RowLayout {
-        Layout.fillWidth: true
-        spacing: 15 * sx
+                       ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: 12 * sx
+                            spacing: 8 * sy
+                            //===========================
+                            // Primera fila
+                            //===========================
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 15 * sx
 
-        CheckBox {
-            id: check
+                                CheckBox {
+                                    id: check
+                                    checked: selected
+                                    //TODO Poner funcion para que se agregue a una lista todas las rutas en un Formato JSON
+                                    // onCheckedChanged: {
+                                    //     root.datasetModel.setProperty(index, "selected", checked)
 
-            indicator: Rectangle {
-                implicitWidth: 20 * sx
-                implicitHeight: 20 * sy
-                radius: 5
+                                    //     if (checked) {
+                                    //         root.markModel.append({
+                                    //             datasetIndex: index,
+                                    //             id: id,
+                                    //             ruta: ruta
+                                    //         })
+                                    //     } else {
+                                    //         for (let i = 0; i < root.markModel.count; ++i) {
+                                    //             if (root.markModel.get(i).id === id) {
+                                    //                 root.markModel.remove(i)
+                                    //                 break
+                                    //             }
+                                    //         }
+                                    //     }
+                                        
+                                    // }
+                                    onCheckedChanged: {
+                                        dsModel.setProperty(rowIndex, "selected", checked)
 
-                color: check.checked ? "#6A63E8" : "white"
-                border.width: 1.5
-                border.color: "#6A63E8"
+                                        if (checked) {
+                                            mkModel.append({
+                                                datasetIndex: rowIndex,
+                                                markid: id,
+                                                ruta: ruta
+                                            })
+                                        } else {
+                                            let i = root.indexOfMark(id)
+                                            if (i !== -1)
+                                                mkModel.remove(i)
+                                        }
+                                    }
 
-                Text {
-                    anchors.centerIn: parent
-                    text: "✓"
-                    visible: check.checked
-                    color: "white"
-                    font.pixelSize: 13 * sy
-                    font.bold: true
-                }
-            }
 
-            contentItem: Item { }
-        }
+                                    indicator: Rectangle {
+                                        implicitWidth: 20 * sx
+                                        implicitHeight: 20 * sy
+                                        radius: 5
 
-        ColumnLayout {
+                                        color: check.checked ? "#6A63E8" : "white"
+                                        border.width: 1.5
+                                        border.color: "#6A63E8"
 
-            Layout.fillWidth: true
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: "✓"
+                                            visible: check.checked
+                                            color: "white"
+                                            font.pixelSize: 13 * sy
+                                            font.bold: true
+                                        }
+                                    }
 
-            Text {
-                text: nombre
-                font.pixelSize: 18 * sy
-                font.bold: true
-                color: "#222222"
-            }
+                                    contentItem: Item { }
+                                }
 
-            Text {
-                text: id
-                font.pixelSize: 12 * sy
-                color: "#777777"
-            }
-        }
+                                ColumnLayout {
 
-        BotonPrincipal {
-            Layout.preferredWidth: 120 * sx
-            Layout.preferredHeight: 35 * sy
-            text: "Ver datos"
-        }
-    }
+                                    Layout.fillWidth: true
 
-    //===========================
-    // Segunda fila
-    //===========================
+                                    Text {
+                                        text: nombre
+                                        font.pixelSize: 18 * sy
+                                        font.bold: true
+                                        color: "#222222"
+                                    }
 
-    RowLayout {
+                                    Text {
+                                        text: id
+                                        font.pixelSize: 12 * sy
+                                        color: "#777777"
+                                    }
+                                }
 
-        Layout.fillWidth: true
-        spacing: 20 * sx
+                                BotonPrincipal {
+                                    Layout.preferredWidth: 120 * sx
+                                    Layout.preferredHeight: 35 * sy
+                                    text: "Ver datos"
+                                }
+                                BotonPrincipal {
+                                    Layout.preferredWidth: 120 * sx
+                                    Layout.preferredHeight: 35 * sy
+                                    text: "Eliminar DataSet"
 
-        Text {
-            text: "Registros: " + registros
-            font.pixelSize: 13 * sy
-        }
+                                    onClicked: {
+                                        root.eliminarDatasetCompleto(id)
+                                    }
+                                }
+                                
+                            }
 
-        Text {
-            text: "Tokens: " + tokens
-            font.pixelSize: 13 * sy
-        }
+                            //===========================
+                            // Segunda fila
+                            //===========================
 
-        Text {
-            text: "Vocabulario: " + vocabulario
-            font.pixelSize: 13 * sy
-        }
+                            RowLayout {
 
-        Text {
-            text: "Tamaño: " + tamano_mb + " MB"
-            font.pixelSize: 13 * sy
-        }
-    }
+                                Layout.fillWidth: true
+                                spacing: 20 * sx
 
-    //===========================
-    // Tercera fila
-    //===========================
+                                Text {
+                                    text: "Registros: " + registros
+                                    font.pixelSize: 13 * sy
+                                }
 
-    RowLayout {
+                                Text {
+                                    text: "Tokens: " + tokens
+                                    font.pixelSize: 13 * sy
+                                }
 
-        Layout.fillWidth: true
-        spacing: 20 * sx
+                                Text {
+                                    text: "Vocabulario: " + vocabulario
+                                    font.pixelSize: 13 * sy
+                                }
 
-        Text {
-            text: "Formato: " + formato
-            font.pixelSize: 13 * sy
-        }
+                                Text {
+                                    text: "Tamaño: " + tamano_mb + " MB"
+                                    font.pixelSize: 13 * sy
+                                }
+                            }
 
-        Text {
-            text: "Estado: " + estado
-            color: "#4CAF50"
-            font.bold: true
-            font.pixelSize: 13 * sy
-        }
+                            //===========================
+                            // Tercera fila
+                            //===========================
 
-        Text {
-            text: "Categorías: " + Object.keys(categorias).length
-            font.pixelSize: 13 * sy
-        }
+                            RowLayout {
 
-        Text {
-            text: "Campos: " + campos_texto
-            elide: Text.ElideRight
-            Layout.fillWidth: true
-            font.pixelSize: 13 * sy
-        }
-    }
-}
+                                Layout.fillWidth: true
+                                spacing: 20 * sx
+
+                                Text {
+                                    text: "Formato: " + formato
+                                    font.pixelSize: 13 * sy
+                                }
+
+                                Text {
+                                    text: "Estado: " + estado
+                                    color: "#4CAF50"
+                                    font.bold: true
+                                    font.pixelSize: 13 * sy
+                                }
+
+                                Text {
+                                    text: "Categorías: " + Object.keys(categorias).length
+                                    font.pixelSize: 13 * sy
+                                }
+
+                                Text {
+                                    text: "Campos: " + campos_texto
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
+                                    font.pixelSize: 13 * sy
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -380,7 +506,7 @@ PagePrincipal{
                         Layout.preferredHeight: 40 * sy
                         text: "Usar selección ->"
                         onClicked: {
-                            datasetModel.append({})
+                            // datasetModel.append({})
                                 // agregarDataset()
                         }   
                     }
@@ -409,3 +535,4 @@ PagePrincipal{
     }
             
 }
+

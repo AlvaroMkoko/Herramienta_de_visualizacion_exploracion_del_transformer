@@ -312,6 +312,8 @@ class DatasetController(QObject):
 
             "tokens_promedio": promedio,
 
+            "selected": False,
+
             "vocabulario": len(vocabulario),
 
             "campos": sorted(list(campos)),
@@ -325,6 +327,7 @@ class DatasetController(QObject):
             "longitud_minima": longitud_minima,
 
             "ejemplos_vacios": ejemplos_vacios,
+
 
             "checksum": self.calcular_hash(ruta),
 
