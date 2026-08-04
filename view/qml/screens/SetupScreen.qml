@@ -8,7 +8,7 @@ PagePrincipal {
 
     property bool mostrarTarjeta: false
     Component.onCompleted: {
-    console.log("setupController =", setupController)
+    console.log("mainViewModel =", mainViewModel)
 }
 
     // background: Rectangle {
@@ -107,7 +107,7 @@ PagePrincipal {
                         
                         onValueChanged: {
                             // console.log("Nuevo valor:", value)
-                            setupController.establecer_num_capas(value)
+                            mainViewModel.setupController.establecer_num_capas(value)
                         
 
                         }
@@ -136,7 +136,7 @@ PagePrincipal {
                         
                         onValueChanged: {
                             // console.log("Nuevo valor:", value)
-                            setupController.establecer_num_capas(value)
+                            mainViewModel.setupController.establecer_num_capas(value)
                         
 
                         }
@@ -164,7 +164,7 @@ PagePrincipal {
                         
                         onValueChanged: {
                             // console.log("Nuevo valor:", value)
-                            setupController.establecer_num_capas(value)
+                            mainViewModel.setupController.establecer_num_capas(value)
                         
 
                         }
@@ -192,7 +192,7 @@ PagePrincipal {
                         
                         onValueChanged: {
                             // console.log("Nuevo valor:", value)
-                            setupController.establecer_num_capas(value)
+                            mainViewModel.setupController.establecer_num_capas(value)
                         
 
                         }
@@ -424,7 +424,7 @@ Rectangle {
 
                             onValueChanged: {
                                 // console.log("Nuevo valor:", value)
-                                setupController.establecer_num_cabezas(value)
+                                mainViewModel.setupController.establecer_num_cabezas(value)
                             }
                         }
 
@@ -447,7 +447,7 @@ Rectangle {
                         tipo_dato:"decimal"
                         onValueChanged: {
                             console.log("Nuevo valor:", value)
-                            setupController.establecer_dropout(value)
+                            mainViewModel.setupController.establecer_dropout(value)
                         }
                     }
                  

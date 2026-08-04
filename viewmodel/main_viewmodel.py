@@ -17,7 +17,7 @@ from PySide6.QtCore import Property, QObject, Signal
 from .inference_controller import InferenceController
 from .setup_controller import SetupController
 from .training_controller import TrainingController
-
+from .dataset_controller import DatasetController
 
 class MainViewModel(QObject):
     trainingControllerCambio = Signal()
@@ -30,6 +30,7 @@ class MainViewModel(QObject):
         self._setup_controller = SetupController(self)
         self._training_controller: TrainingController | None = None
         self._inference_controller: InferenceController | None = None
+        self._dataset_controller = DatasetController()
 
         self._setup_controller.modelo_creado.connect(self._al_crear_modelo)
 
@@ -45,6 +46,12 @@ class MainViewModel(QObject):
         con éxito."""
         return self._training_controller
 
+    @Property(QObject, constant = True)
+    def datasetController(self) -> DatasetController | None:
+        """None hasta que `setupController.crear_modelo()` se complete
+        con éxito."""
+        return self._dataset_controller
+
     @Property(QObject, notify=inferenceControllerCambio)
     def inferenceController(self) -> InferenceController | None:
         return self._inference_controller
@@ -54,6 +61,9 @@ class MainViewModel(QObject):
         """La Vista usa esto para habilitar/deshabilitar las pantallas
         de Entrenamiento e Inferencia (ej. `enabled: mainViewModel.modeloListo`)."""
         return self._training_controller is not None
+
+
+    
 
     def _al_crear_modelo(self, modelo, tokenizer) -> None:
         """Se dispara cada vez que `SetupController` crea un modelo — la

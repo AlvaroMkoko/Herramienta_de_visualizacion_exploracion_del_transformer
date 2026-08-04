@@ -51,6 +51,7 @@ import torch
 from torch.utils.data import DataLoader, Dataset
 
 from model.motor_llm.tokenizer import Tokenizer
+from pypdf import PdfReader
 
 # ---------------------------------------------------------------------------
 # Resolución de los tokens especiales (ver docstring del módulo)
@@ -270,7 +271,6 @@ def cargar_texto_desde_pdf(ruta: str | Path) -> str:
     if not ruta.exists():
         raise FileNotFoundError(f"No se encontró el archivo: {ruta}")
 
-    from pypdf import PdfReader
 
     lector = PdfReader(ruta)
     texto = "\n".join(pagina.extract_text() or "" for pagina in lector.pages)
