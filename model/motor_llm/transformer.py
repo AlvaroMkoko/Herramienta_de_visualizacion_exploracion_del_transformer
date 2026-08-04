@@ -261,12 +261,20 @@ class Transformer(nn.Module):
 
                 logits_ultimo_paso = self.capa_salida(salida_decoder[:, -1, :])
 
+                # Los ids reservados (relleno, inicio) son válidos DENTRO
+                # del vocabulario del modelo, pero no tienen ningún
+                # significado como texto — nada les impide aparecer en el
+                # muestreo si no se excluyen explícitamente. id_token_fin
+                # SÍ se deja permitido: es la señal legítima de "terminar".
+                logits_ultimo_paso = logits_ultimo_paso.clone()
+                logits_ultimo_paso[:, id_token_inicio] = float("-inf")
+                if self.config.id_token_relleno is not None:
+                    logits_ultimo_paso[:, self.config.id_token_relleno] = float("-inf")
+
                 if muestreo_codicioso:
                     token_nuevo = muestrear_codicioso(logits_ultimo_paso)
                 else:
-                    token_nuevo = muestrear(
-                        logits_ultimo_paso, temperatura=temperatura, top_k=top_k, top_p=top_p
-                    )
+                    token_nuevo = muestrear(logits_ultimo_paso, temperatura=temperatura, top_k=top_k, top_p=top_p)
 
                 tokens_destino = torch.cat([tokens_destino, token_nuevo], dim=1)
 

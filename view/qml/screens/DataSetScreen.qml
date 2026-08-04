@@ -203,8 +203,10 @@ PagePrincipal{
 
                     delegate: RectanglePrincipal {
                         id:rec_padre
-                        property int rowIndex: index
-                        property int dsIndex: datasetIndex
+                        // property int rowIndex: index
+                        // property int dsIndex: datasetIndex
+                        property string dsId: datasetId   // ahora sí existe este rol
+
                         width: 200
                         height: 50
                         color:"white"
@@ -215,7 +217,7 @@ PagePrincipal{
                             spacing: 20 * sx
 
                             Text{
-                                text: markid    
+                                text: datasetId    
                                 color: "black"
                                 font.pixelSize: 8 * sy
                                 font.bold: true
@@ -234,7 +236,7 @@ PagePrincipal{
                                         // agregarDataset()
                                     // dsModel.setProperty(rec_padre.dsIndex, "selected", false)
                                     // mkModel.remove(rec_padre.rowIndex)    
-                                    let dsIdx = root.indexOfDataset(rec_padre.datasetId)
+                                    let dsIdx = root.indexOfDataset(rec_padre.dsId)
                                     if (dsIdx !== -1)
                                         root.datasetModel.setProperty(dsIdx, "selected", false)
                                 }   
@@ -300,33 +302,13 @@ PagePrincipal{
                                 CheckBox {
                                     id: check
                                     checked: selected
-                                    //TODO Poner funcion para que se agregue a una lista todas las rutas en un Formato JSON
-                                    // onCheckedChanged: {
-                                    //     root.datasetModel.setProperty(index, "selected", checked)
-
-                                    //     if (checked) {
-                                    //         root.markModel.append({
-                                    //             datasetIndex: index,
-                                    //             id: id,
-                                    //             ruta: ruta
-                                    //         })
-                                    //     } else {
-                                    //         for (let i = 0; i < root.markModel.count; ++i) {
-                                    //             if (root.markModel.get(i).id === id) {
-                                    //                 root.markModel.remove(i)
-                                    //                 break
-                                    //             }
-                                    //         }
-                                    //     }
-                                        
-                                    // }
+                                    
                                     onCheckedChanged: {
                                         dsModel.setProperty(rowIndex, "selected", checked)
 
                                         if (checked) {
                                             mkModel.append({
-                                                datasetIndex: rowIndex,
-                                                markid: id,
+                                                datasetId: id,   // <- unificado
                                                 ruta: ruta
                                             })
                                         } else {

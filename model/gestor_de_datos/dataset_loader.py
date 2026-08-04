@@ -241,6 +241,44 @@ def _pares_desde_objetos(
 # continuo (un libro, artículos, documentación).
 # ---------------------------------------------------------------------------
 
+def cargar_pares_combinados(
+        rutas_y_formatos: list[tuple[str | str]],
+        clave_origen: str = "instruction",
+        clave_destino: str = "response",
+        clave_contexto: str | None = None,
+) -> list[tuple[str, str]]:
+    """Combina los pares de VARIOS datasets (CSV, JSON, JSONL, TXT, PDF) en un solo listado de pares
+        pensando para cuando el usuario quiere entrenar con varios datasets a la vez.
+    
+    Args:
+        rutas_y_formatos: lista de tuplas (ruta, formato), donde `formato` es uno de:
+            "csv", "json", "jsonl", "txt", "pdf".
+        clave_origen, clave_destino, clave_contexto: claves para JSON/JSONL (ver `cargar_pares_desde_jsonl`).
+    Returns:
+        Lista de pares (texto_origen, texto_destino) combinados de todos los datasets.
+    """
+
+    pares_combinados: list[tuple[str, str]] = []
+    for ruta, formato in rutas_y_formatos:
+        if formato == "csv":
+            pares = cargar_pares_desde_csv(ruta, columna_origen=clave_origen, columna_destino=clave_destino)
+        elif formato == "json":
+            pares = cargar_pares_desde_json(ruta, clave_origen=clave_origen, clave_destino=clave_destino)
+        elif formato == "jsonl":
+            pares = cargar_pares_desde_jsonl(ruta, clave_origen=clave_origen, clave_destino=clave_destino, clave_contexto=clave_contexto)
+        elif formato == "txt":
+            texto = cargar_texto_desde_txt(ruta)
+            pares = crear_pares_por_ventana(texto, tokenizer=Tokenizer(), longitud_ventana=128)  # Ajusta longitud_ventana según tus necesidades
+        elif formato == "pdf":
+            texto = cargar_texto_desde_pdf(ruta)
+            pares = crear_pares_por_ventana(texto, tokenizer=Tokenizer(), longitud_ventana=128)  # Ajusta longitud_ventana según tus necesidades
+        else:
+            raise ValueError(f"Formato no soportado: {formato} (ruta: {ruta})")
+
+        pares_combinados.extend(pares)
+        
+    return pares_combinados
+
 
 def cargar_texto_desde_txt(ruta: str | Path, encoding: str = "utf-8") -> str:
     """Lee un archivo de texto plano completo.
