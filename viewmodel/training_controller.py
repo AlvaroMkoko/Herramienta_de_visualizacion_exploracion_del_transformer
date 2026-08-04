@@ -201,7 +201,7 @@ class TrainingController(QObject):
     def pausar(self) -> None: self._gestor.pausar()
     @Slot()
     def reanudar(self) -> None: self._gestor.reanudar()
-    @Slot()
+    @Slot(float)
     def establecer_velocidad(self, s: float) -> None: self._gestor.establecer_velocidad(s)
 
     @Slot(str)
