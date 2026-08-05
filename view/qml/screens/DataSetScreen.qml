@@ -14,11 +14,9 @@ PagePrincipal{
     property alias markModel: markModel
 
 
-
-
-
-
-
+    VerDatos {
+    id: verDatos
+}
 
     ListModel {
         id: datasetModel
@@ -363,6 +361,11 @@ PagePrincipal{
                                     Layout.preferredWidth: 120 * sx
                                     Layout.preferredHeight: 35 * sy
                                     text: "Ver datos"
+
+                                    onClicked: {
+                                        var registros = mainViewModel.datasetController.obtenerRegistros(id, 50)
+                                        verDatos.mostrar(nombre, registros)
+                                    }
                                 }
                                 BotonPrincipal {
                                     Layout.preferredWidth: 120 * sx
