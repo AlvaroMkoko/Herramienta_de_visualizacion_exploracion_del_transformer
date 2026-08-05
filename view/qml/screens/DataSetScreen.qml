@@ -307,7 +307,8 @@ PagePrincipal{
                                         if (checked) {
                                             mkModel.append({
                                                 datasetId: id,   // <- unificado
-                                                ruta: ruta
+                                                ruta: ruta,
+                                                nombre:nombre
                                             })
                                         } else {
                                             let i = root.indexOfMark(id)
@@ -431,7 +432,7 @@ PagePrincipal{
                                 }
 
                                 Text {
-                                    text: "Categorías: " + Object.keys(categorias).length
+                                    text: "Categorías: " + (categorias ? Object.keys(categorias).length : 0)
                                     font.pixelSize: 13 * sy
                                 }
 
@@ -491,8 +492,31 @@ PagePrincipal{
                         Layout.preferredHeight: 40 * sy
                         text: "Usar selección ->"
                         onClicked: {
-                            // datasetModel.append({})
-                                // agregarDataset()
+                            let idsSeleccionados = []
+                            let datosSeleccionados = []
+
+                            for (let i = 0; i < root.markModel.count; ++i) {
+                                let item = root.markModel.get(i)
+                                idsSeleccionados.push(item.datasetId)
+                                datosSeleccionados.push({ id: item.datasetId, nombre: item.nombre })
+                            }
+
+                            if (idsSeleccionados.length === 0) {
+                                console.log("No hay datasets seleccionados")
+                                return
+                            }
+
+                            mainViewModel.cargarDatasetsParaEntrenar(idsSeleccionados)
+
+                            // Le pasamos la selección a la pantalla anterior (SetupScreen),
+                            // que sigue viva debajo en el stackView
+                            let setupScreen = stackView.get(stackView.depth - 2)
+                            if (setupScreen && setupScreen.actualizarDatasetsSeleccionados)
+                                setupScreen.actualizarDatasetsSeleccionados(datosSeleccionados)
+
+                            stackView.pop()
+
+
                         }   
                     }
                 }

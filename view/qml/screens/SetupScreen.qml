@@ -6,6 +6,23 @@ import QtQuick.Layouts
 PagePrincipal {
     id:root
 
+
+    ListModel {
+        id: datasetsSeleccionadosModel
+    }
+
+    function actualizarDatasetsSeleccionados(lista) {
+        datasetsSeleccionadosModel.clear()
+        for (let i = 0; i < lista.length; ++i) {
+            datasetsSeleccionadosModel.append(lista[i])
+        }
+    }
+
+
+
+
+
+
     property bool mostrarTarjeta: false
 
     // Preview en vivo (parámetros/memoria estimada) y errores de configuración
@@ -387,8 +404,25 @@ Rectangle {
                     }
                 }
 
-                Item {
-                    Layout.fillHeight: true
+                 Repeater {
+                    model: datasetsSeleccionadosModel
+                    delegate: Rectangle {
+                        Layout.alignment: Qt.AlignHCenter
+                        Layout.preferredWidth: 180 * sx
+                        Layout.preferredHeight: 30 * sy
+                        radius: 6
+                        color: "#6A63E8"
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: nombre
+                            color: "white"
+                            font.pixelSize: 12 * sy
+                            elide: Text.ElideRight
+                            width: parent.width - 10
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                    }
                 }
             }
         }

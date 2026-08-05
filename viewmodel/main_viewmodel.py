@@ -125,6 +125,7 @@ class MainViewModel(QObject):
         creado todavía, dataset no encontrado, formato no soportado), o
         `datasetListoParaEntrenar(cantidad_de_pares)` si sale bien.
         """
+        print("Entro para Guardar los dataset")
         if self._training_controller is None:
             self.errorDataset.emit(
                 "Primero hay que crear un modelo (botón \"Iniciar Entrenamiento\" en Setup)."
