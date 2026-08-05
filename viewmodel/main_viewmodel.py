@@ -32,7 +32,7 @@ class MainViewModel(QObject):
         super().__init__(parent)
 
         self._setup_controller = SetupController(self)
-        self._dataset_controller = DatasetController(self)
+        self._dataset_controller = DatasetController()
         self._theory_controller = TheoryController(self)
         self._training_controller: TrainingController | None = None
         self._inference_controller: InferenceController | None = None
