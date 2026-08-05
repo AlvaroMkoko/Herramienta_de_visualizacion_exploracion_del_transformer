@@ -223,6 +223,20 @@ class TrainingController(QObject):
 
         self.checkpoint_guardado.emit(ruta)
 
+    @Slot(result=str)
+    def sugerirNombreCheckpoint(self) -> str:
+        from model.persistencia.model_storage import generar_nombre_checkpoint
+        return generar_nombre_checkpoint(self.modelo, paso_global=self._ultimo_paso_global)
+
+    @Slot(str)
+    def guardarCheckpointConNombre(self, nombre_archivo: str) -> None:
+        from core.config import DIR_CHECKPOINTS
+        from model.persistencia.model_storage import sanitizar_nombre_archivo
+
+        nombre_seguro = sanitizar_nombre_archivo(nombre_archivo)
+        ruta_completa = DIR_CHECKPOINTS / nombre_seguro
+        self.guardar_checkpoint(str(ruta_completa))
+
     def _al_recibir_paso(self, paso: dict) -> None:
         self._historial_perdidas.append(paso["perdida"])
         self._ultima_epoca = paso["epoca"]

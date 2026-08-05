@@ -5,6 +5,8 @@ Guardado y carga de checkpoints del modelo entrenado.
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
+import datetime
+import re
 
 import torch
 
@@ -86,3 +88,38 @@ def cargar_checkpoint(ruta: str | Path, dispositivo: str | torch.device | None =
         historial_perdidas=contenido.get("historial_perdidas", []),
         metadata_extra=contenido.get("metadata_extra", {}),
     )
+
+def generar_nombre_checkpoint(
+    modelo: Transformer,
+    paso_global: int | None = None,
+    dispositivo: str | None = None,
+) -> str:
+    """Formato: modelo_{dim}d_{capas}c_{cabezas}h[_step{n}]_{dispositivo}_{fecha}_{hora}.pt"""
+    config = modelo.config
+    if dispositivo is None:
+        dispositivo = next(modelo.parameters()).device.type
+
+    fecha_hora = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    partes = ["modelo", f"{config.dimension_modelo}d", f"{config.num_capas}c", f"{config.num_cabezas}h"]
+    if paso_global is not None:
+        partes.append(f"step{paso_global}")
+    partes.append(dispositivo)
+    partes.append(fecha_hora)
+
+    return "_".join(partes) + ".pt"
+
+
+def sanitizar_nombre_archivo(nombre: str) -> str:
+    """Limpia caracteres inválidos para nombres de archivo (usa el
+    conjunto más restrictivo, el de Windows, para que funcione en
+    cualquier sistema operativo) y agrega .pt si falta."""
+    nombre = nombre.strip()
+    nombre = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", nombre)
+    nombre = nombre.strip(" .")
+
+    if not nombre:
+        nombre = "modelo"
+    if not nombre.lower().endswith(".pt"):
+        nombre += ".pt"
+    return nombre
