@@ -25,6 +25,9 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from .concurrency_manager import GestorConcurrencia
 
+from core.config import DIR_CHECKPOINTS
+from model.persistencia.model_storage import sanitizar_nombre_archivo
+
 if TYPE_CHECKING:
     from torch.utils.data import Dataset
 
@@ -231,8 +234,6 @@ class TrainingController(QObject):
 
     @Slot(str)
     def guardarCheckpointConNombre(self, nombre_archivo: str) -> None:
-        from core.config import DIR_CHECKPOINTS
-        from model.persistencia.model_storage import sanitizar_nombre_archivo
 
         nombre_seguro = sanitizar_nombre_archivo(nombre_archivo)
         ruta_completa = DIR_CHECKPOINTS / nombre_seguro

@@ -52,6 +52,9 @@ PagePrincipal {
         mainViewModel.setupController.error_configuracion.connect(function(mensaje) {
             root.mensajeError = mensaje
         })
+        mainViewModel.errorDataset.connect(function(mensaje) {
+            root.mensajeError = mensaje
+        })
     }
 
     // background: Rectangle {
@@ -340,11 +343,19 @@ PagePrincipal {
 
                         onClicked: {
                             root.mensajeError = ""
+
+                            if (datasetsSeleccionadosModel.count === 0) {
+                                root.mensajeError = "Selecciona al menos un dataset para continuar."
+                                return
+                            }
                             mainViewModel.setupController.crear_modelo()
 
-                            // Solo navega si crear_modelo() NO disparo error_configuracion
-                            // (la conexion de Component.onCompleted ya actualizo
-                            // root.mensajeError de forma sincronica antes de esta linea)
+                            if (root.mensajeError !== "") return
+
+                            let idsSeleccionados = extraerdataId(datasetsSeleccionadosModel)
+                            mainViewModel.cargarDatasetsParaEntrenar(idsSeleccionados)
+                            if (root.mensajeError !== "") return
+
                             if (root.mensajeError === "") {
                                 stackView.push("TrainingScreen.qml", {
                                     "stackView": stackView,
@@ -353,10 +364,6 @@ PagePrincipal {
                                     "batchSizeInicial": root.batchSize
                                 })
                             }
-                            let idsSeleccionados = extraerdataId(datasetsSeleccionadosModel)
-                            console.log(idsSeleccionados)
-                            mainViewModel.cargarDatasetsParaEntrenar(idsSeleccionados)
-
                         }
                     
             }

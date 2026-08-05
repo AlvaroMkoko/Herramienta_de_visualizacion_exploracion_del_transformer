@@ -285,6 +285,11 @@ PagePrincipal {
 
             }
 
+            TextField {
+                id: campoNombre
+                Component.onCompleted: text = mainViewModel.trainingController.sugerirNombreCheckpoint()
+            }
+
             BotonPrincipal {
                         id: botonIniciarEntrenamiento
                         anchors.horizontalCenter: parent.horizontalCenter
@@ -295,7 +300,7 @@ PagePrincipal {
                         text: "Guardar Modelo"
 
                         onClicked: {
-                            mainViewModel.trainingController.guardar_checkpoint("data/checkpoints/modelo.pt")
+                            onClicked: mainViewModel.trainingController.guardarCheckpointConNombre(campoNombre.text)
                         }
                     
             }
