@@ -43,9 +43,7 @@ Ejemplos de uso:
         --clave-origen pregunta --clave-destino respuesta --epocas 20
 
     # Entrenar desde un JSONL (ej. Dolly), usando tambien el contexto
-    python entrenar.py --datos data/datasets/databricks-dolly-15k-es.jsonl \\
-        --clave-origen instruction --clave-destino response --clave-contexto context \\
-        --epocas 20 --dimension-modelo 128 --num-capas 4
+    python entrenar.py --datos data/datasets/databricks-dolly-15k-es.jsonl --clave-origen instruction --clave-destino response --clave-contexto context --epocas 20 --dimension-modelo 128 --num-capas 4
 
     # Entrenar con un corpus de texto plano
     python entrenar.py --datos data/datasets/mi_libro.txt \\
