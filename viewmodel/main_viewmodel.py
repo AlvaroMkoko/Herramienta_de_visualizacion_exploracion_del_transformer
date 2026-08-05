@@ -20,6 +20,14 @@ from .setup_controller import SetupController
 from .theory_controller import TheoryController
 from .training_controller import TrainingController
 
+from model.gestor_de_datos.dataset_loader import (
+    DatasetSecuencias,
+    cargar_pares_combinados,
+    obtener_id_token_fin,
+    obtener_id_token_inicio,
+    obtener_id_token_relleno,
+)
+
 
 class MainViewModel(QObject):
     trainingControllerCambio = Signal()
@@ -125,8 +133,9 @@ class MainViewModel(QObject):
         creado todavía, dataset no encontrado, formato no soportado), o
         `datasetListoParaEntrenar(cantidad_de_pares)` si sale bien.
         """
-        print("Entro para Guardar los dataset")
+        # print("MainViewModel.cargarDatasetsParaEntrenar", ids_datasets)
         if self._training_controller is None:
+            # print("No hay un modelo creado todavía, no se puede entrenar.")
             self.errorDataset.emit(
                 "Primero hay que crear un modelo (botón \"Iniciar Entrenamiento\" en Setup)."
             )
@@ -135,23 +144,17 @@ class MainViewModel(QObject):
         if not ids_datasets:
             self.errorDataset.emit("No seleccionaste ningún dataset.")
             return
-        
+
+        self._dataset_controller.cargar_datasets()  # refresca catálogo desde data/datasets/dataSets.json
         catalogo = {d["id"]: d for d in self._dataset_controller.datasets}
         metadatas = []
         for id_dataset in ids_datasets:
             metadata = catalogo.get(id_dataset)
             if metadata is None:
+                print(f"MainViewModel.cargarDatasetsParaEntrenar: No se encontró el dataset {id_dataset} en el catálogo.")
                 self.errorDataset.emit(f"No se encontró el dataset {id_dataset} en el catálogo.")
                 return
             metadatas.append(metadata)
-
-        from model.gestor_de_datos.dataset_loader import (
-            DatasetSecuencias,
-            cargar_pares_combinados,
-            obtener_id_token_fin,
-            obtener_id_token_inicio,
-            obtener_id_token_relleno,
-        )
 
         tokenizer = self._setup_controller.tokenizer
         modelo = self._setup_controller.modelo
