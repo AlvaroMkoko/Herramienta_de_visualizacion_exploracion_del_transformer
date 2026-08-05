@@ -492,21 +492,21 @@ PagePrincipal{
                         Layout.preferredHeight: 40 * sy
                         text: "Usar selección ->"
                         onClicked: {
-                            let idsSeleccionados = []
+                            // let idsSeleccionados = []
                             let datosSeleccionados = []
 
                             for (let i = 0; i < root.markModel.count; ++i) {
                                 let item = root.markModel.get(i)
-                                idsSeleccionados.push(item.datasetId)
+                                // idsSeleccionados.push(item.datasetId)
                                 datosSeleccionados.push({ id: item.datasetId, nombre: item.nombre })
                             }
 
-                            if (idsSeleccionados.length === 0) {
+                            if (datosSeleccionados.length === 0) {
                                 console.log("No hay datasets seleccionados")
                                 return
                             }
 
-                            mainViewModel.cargarDatasetsParaEntrenar(idsSeleccionados)
+                            // mainViewModel.cargarDatasetsParaEntrenar(idsSeleccionados)
 
                             // Le pasamos la selección a la pantalla anterior (SetupScreen),
                             // que sigue viva debajo en el stackView

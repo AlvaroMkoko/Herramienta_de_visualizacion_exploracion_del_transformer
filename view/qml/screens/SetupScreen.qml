@@ -18,6 +18,14 @@ PagePrincipal {
         }
     }
 
+    function extraerdataId(lista) {
+        let idsSeleccionados = []
+        for (let i = 0; i < lista.count; ++i) {
+            idsSeleccionados.push(lista.get(i).id)
+        }
+        return idsSeleccionados
+    }
+
 
 
 
@@ -345,6 +353,10 @@ PagePrincipal {
                                     "batchSizeInicial": root.batchSize
                                 })
                             }
+                            let idsSeleccionados = extraerdataId(datasetsSeleccionadosModel)
+                            console.log(idsSeleccionados)
+                            mainViewModel.cargarDatasetsParaEntrenar(idsSeleccionados)
+
                         }
                     
             }
