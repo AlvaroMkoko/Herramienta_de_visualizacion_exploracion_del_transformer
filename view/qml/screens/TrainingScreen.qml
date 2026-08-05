@@ -299,9 +299,7 @@ PagePrincipal {
 
                         text: "Guardar Modelo"
 
-                        onClicked: {
-                            onClicked: mainViewModel.trainingController.guardarCheckpointConNombre(campoNombre.text)
-                        }
+                        onClicked: mainViewModel.trainingController.guardarCheckpointConNombre(campoNombre.text)
                     
             }
 
