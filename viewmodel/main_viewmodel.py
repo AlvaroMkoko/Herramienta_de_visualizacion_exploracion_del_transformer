@@ -135,7 +135,7 @@ class MainViewModel(QObject):
         if not ids_datasets:
             self.errorDataset.emit("No seleccionaste ningún dataset.")
             return
-
+        
         catalogo = {d["id"]: d for d in self._dataset_controller.datasets}
         metadatas = []
         for id_dataset in ids_datasets:
