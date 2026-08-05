@@ -287,28 +287,27 @@ class DatasetController(QObject):
 
         if dataset is None:
             return []
-        
+
         ruta = Path(dataset["ruta"])
+
+        generadores_por_formato = {
+            ".jsonl": _registros_desde_jsonl,
+            ".json": _registros_desde_json,
+            ".csv": _registros_desde_csv,
+            ".txt": _registros_desde_texto_plano,
+            ".pdf": _registros_desde_pdf,
+        }
+        generador = generadores_por_formato.get(ruta.suffix)
+        if generador is None:
+            return []
+
         registros = []
-
         try:
-            with open(ruta, "r", encoding="utf8") as archivo:
-                for i, linea in enumerate(archivo):
-                    if i >= limite:
-                        break
-
-                    linea = linea.strip()
-                    if linea == "":
-                        continue
-
-                    try:
-                        registros.append(json.loads(linea))
-                    except json.JSONDecodeError:
-                        continue
-
-        except Exception:
-            import traceback
-            traceback.print_exc()
+            for objeto in generador(ruta):
+                if len(registros) >= limite:
+                    break
+                registros.append(objeto)
+        except (ValueError, FileNotFoundError):
             return []
 
         return registros

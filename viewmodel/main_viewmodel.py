@@ -159,8 +159,16 @@ class MainViewModel(QObject):
             self.errorDataset.emit(f"No se pudo cargar el dataset: {e}")
             return
 
-        tokenizer = self._setup_controller.tokenizer
+        tokenizer = self._setup_controller.tokenizer  # <- mover esto ARRIBA
         modelo = self._setup_controller.modelo
+
+        try:
+            rutas_y_formatos = [(m["ruta"], m["formato"]) for m in metadatas]
+            pares = cargar_pares_combinados(rutas_y_formatos, tokenizer=tokenizer)  # <- pasar tokenizer
+        except (ValueError, FileNotFoundError) as e:
+            self.errorDataset.emit(f"No se pudo cargar el dataset: {e}")
+            return
+
         id_relleno = obtener_id_token_relleno(tokenizer)
         id_inicio = obtener_id_token_inicio(tokenizer)
         id_fin = obtener_id_token_fin(tokenizer)

@@ -242,41 +242,61 @@ def _pares_desde_objetos(
 # ---------------------------------------------------------------------------
 
 def cargar_pares_combinados(
-        rutas_y_formatos: list[tuple[str | str]],
-        clave_origen: str = "instruction",
-        clave_destino: str = "response",
-        clave_contexto: str | None = None,
+    rutas_y_formatos: list[tuple[str, str]],
+    tokenizer: "Tokenizer | None" = None,
+    clave_origen: str = "instruction",
+    clave_destino: str = "response",
+    clave_contexto: str | None = "context",
+    longitud_ventana: int = 128,
+    solapamiento: int = 0,
 ) -> list[tuple[str, str]]:
-    """Combina los pares de VARIOS datasets (CSV, JSON, JSONL, TXT, PDF) en un solo listado de pares
-        pensando para cuando el usuario quiere entrenar con varios datasets a la vez.
-    
+    """Combina los pares de VARIOS archivos en una sola lista — pensado
+    para cuando el usuario selecciona más de un dataset del catálogo y
+    quiere entrenar con todos juntos.
+
     Args:
-        rutas_y_formatos: lista de tuplas (ruta, formato), donde `formato` es uno de:
-            "csv", "json", "jsonl", "txt", "pdf".
-        clave_origen, clave_destino, clave_contexto: claves para JSON/JSONL (ver `cargar_pares_desde_jsonl`).
-    Returns:
-        Lista de pares (texto_origen, texto_destino) combinados de todos los datasets.
+        rutas_y_formatos: lista de (ruta, formato), donde `formato` es
+            la extensión TAL CUAL la guarda `DatasetController`
+            (con el punto: ".jsonl", ".json", ".csv", ".txt", ".pdf" —
+            así es como viene de `Path(...).suffix`).
+        tokenizer: OBLIGATORIO si hay algún archivo .txt/.pdf en la
+            lista (hace falta para tokenizar el texto corrido en
+            ventanas) — debe ser el tokenizer del MODELO que se va a
+            entrenar, no uno nuevo desconectado.
+        clave_origen, clave_destino, clave_contexto: nombres de campo
+            para los formatos .jsonl/.json/.csv.
+        longitud_ventana, solapamiento: para .txt/.pdf, ver
+            `crear_pares_por_ventana`.
+
+    Raises:
+        ValueError: formato no soportado, o falta el tokenizer para
+            un archivo .txt/.pdf.
     """
-
     pares_combinados: list[tuple[str, str]] = []
-    for ruta, formato in rutas_y_formatos:
-        if formato == "csv":
-            pares = cargar_pares_desde_csv(ruta, columna_origen=clave_origen, columna_destino=clave_destino)
-        elif formato == "json":
-            pares = cargar_pares_desde_json(ruta, clave_origen=clave_origen, clave_destino=clave_destino)
-        elif formato == "jsonl":
-            pares = cargar_pares_desde_jsonl(ruta, clave_origen=clave_origen, clave_destino=clave_destino, clave_contexto=clave_contexto)
-        elif formato == "txt":
-            texto = cargar_texto_desde_txt(ruta)
-            pares = crear_pares_por_ventana(texto, tokenizer=Tokenizer(), longitud_ventana=128)  # Ajusta longitud_ventana según tus necesidades
-        elif formato == "pdf":
-            texto = cargar_texto_desde_pdf(ruta)
-            pares = crear_pares_por_ventana(texto, tokenizer=Tokenizer(), longitud_ventana=128)  # Ajusta longitud_ventana según tus necesidades
-        else:
-            raise ValueError(f"Formato no soportado: {formato} (ruta: {ruta})")
 
-        pares_combinados.extend(pares)
-        
+    for ruta, formato in rutas_y_formatos:
+        if formato == ".jsonl":
+            pares_combinados.extend(
+                cargar_pares_desde_jsonl(ruta, clave_origen, clave_destino, clave_contexto)
+            )
+        elif formato == ".json":
+            pares_combinados.extend(cargar_pares_desde_json(ruta, clave_origen, clave_destino))
+        elif formato == ".csv":
+            pares_combinados.extend(cargar_pares_desde_csv(ruta, clave_origen, clave_destino))
+        elif formato in (".txt", ".pdf"):
+            if tokenizer is None:
+                raise ValueError(
+                    f"Para combinar {ruta} ({formato}) hace falta pasar el tokenizer "
+                    f"del modelo — no se puede tokenizar texto corrido sin saber con "
+                    f"qué vocabulario."
+                )
+            texto = cargar_texto_desde_txt(ruta) if formato == ".txt" else cargar_texto_desde_pdf(ruta)
+            pares_combinados.extend(
+                crear_pares_por_ventana(texto, tokenizer, longitud_ventana, solapamiento=solapamiento)
+            )
+        else:
+            raise ValueError(f"Formato no soportado para combinar: {formato} (ruta: {ruta})")
+
     return pares_combinados
 
 
