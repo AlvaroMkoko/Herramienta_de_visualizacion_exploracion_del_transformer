@@ -194,6 +194,7 @@ class TrainingController(QObject):
         no es un tipo que QML pueda construir ni pasar)."""
         self._dataset = dataset
         self._id_token_relleno_dataset = id_token_relleno
+        print(f"TrainingController: dataset fijado con {len(dataset)} ejemplos, id_token_relleno={id_token_relleno}")
 
     @Slot()
     def detener(self) -> None: self._gestor.detener()

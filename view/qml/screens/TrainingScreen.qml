@@ -202,12 +202,12 @@ PagePrincipal {
                                 var tc = mainViewModel.trainingController
                                 if (!tc.estaEntrenando) {
                                     root.mensajeError = ""
-                                    // tc.iniciar_entrenamiento_ui(
-                                    //     root.epocasIniciales,
-                                    //     root.tasaAprendizajeInicial,
-                                    //     root.batchSizeInicial
-                                    // )
-                                    mainViewModel.trainingController.iniciar_entrenamiento_ui(root.epocasIniciales, root.tasaAprendizajeInicial,  root.batchSizeInicial)
+                                    tc.iniciar_entrenamiento_ui(
+                                        root.epocasIniciales,
+                                        root.tasaAprendizajeInicial,
+                                        root.batchSizeInicial
+                                    )
+                                    // mainViewModel.trainingController.iniciar_entrenamiento_ui(root.epocasIniciales, root.tasaAprendizajeInicial,  root.batchSizeInicial)
                                 } else if (tc.estaPausado) {
                                     tc.reanudar()
                                 } else {
