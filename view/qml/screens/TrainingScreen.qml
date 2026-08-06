@@ -238,56 +238,179 @@ PagePrincipal {
 
 
 
+            // RectanglePrincipal{
 
-            RectanglePrincipal{
+            //     id: rectangulo_blanco_2
+            //     width: parent.width 
+            //     // anchors.rightMargin: 400
+            //     sx: root.sx
+            //     sy: root.sy
+            //     // width: 300*sx
+            //     height: 200*sy
 
+            //     ColumnLayout {
+            //         anchors.fill: parent
+            //         anchors.margins: 15 * sx
+            //         spacing: 3 * sy
+
+            //         Text {
+            //             Layout.alignment: Qt.AlignHCenter
+            //             text: "Época " + root.epocaActual + " · Paso " + root.pasoGlobalActual
+            //             color: Style.Theme.texto_primario
+            //             font.pixelSize: 14 * root.sx
+            //         }
+            //         Text {
+            //             Layout.alignment: Qt.AlignHCenter
+            //             text: "Pérdida: " + root.perdidaActual.toFixed(4)
+            //             color: Style.Theme.texto_primario
+            //             font.pixelSize: 14 * root.sx
+            //         }
+            //         Text {
+            //             Layout.alignment: Qt.AlignHCenter
+            //             visible: root.mensajeError !== ""
+            //             text: root.mensajeError
+            //             color: "red"
+            //             wrapMode: Text.WordWrap
+            //             Layout.preferredWidth: parent.width
+            //             horizontalAlignment: Text.AlignHCenter
+            //         }
+            //         Text {
+            //             Layout.alignment: Qt.AlignHCenter
+            //             visible: root.mensajeCheckpoint !== ""
+            //             text: root.mensajeCheckpoint
+            //             color: "green"
+            //         }
+            //     }
+
+            // }
+
+            RectanglePrincipal {
                 id: rectangulo_blanco_2
-                width: parent.width 
-                // anchors.rightMargin: 400
+
+                width: parent.width
+                height: 200 * sy
+
                 sx: root.sx
                 sy: root.sy
-                // width: 300*sx
-                height: 200*sy
 
                 ColumnLayout {
                     anchors.fill: parent
-                    anchors.margins: 15 * sx
-                    spacing: 6 * sy
+                    anchors.margins: 18 * sx
+                    spacing: 12 * sy
 
                     Text {
-                        Layout.alignment: Qt.AlignHCenter
-                        text: "Época " + root.epocaActual + " · Paso " + root.pasoGlobalActual
-                        color: Style.Theme.texto_primario
-                        font.pixelSize: 14 * root.sx
-                    }
-                    Text {
-                        Layout.alignment: Qt.AlignHCenter
-                        text: "Pérdida: " + root.perdidaActual.toFixed(4)
-                        color: Style.Theme.texto_primario
-                        font.pixelSize: 14 * root.sx
-                    }
-                    Text {
-                        Layout.alignment: Qt.AlignHCenter
-                        visible: root.mensajeError !== ""
-                        text: root.mensajeError
-                        color: "red"
-                        wrapMode: Text.WordWrap
-                        Layout.preferredWidth: parent.width
+                        Layout.fillWidth: true
+
+                        text: "Estado del entrenamiento"
                         horizontalAlignment: Text.AlignHCenter
+
+                        color: Style.Theme.texto_primario
+                        font.bold: true
+                        font.pixelSize: 18 * Math.min(root.sx, root.sy)
                     }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 1
+                        color: "#DDDDDD"
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 20 * sx
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+
+                            Text {
+                                text: "ÉPOCA"
+                                color: "#7A7A7A"
+                                font.bold: true
+                                font.pixelSize: 11 * root.sx
+                            }
+
+                            Text {
+                                text: root.epocaActual
+                                color: Style.Theme.texto_primario
+                                font.bold: true
+                                font.pixelSize: 24 * root.sx
+                            }
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+
+                            Text {
+                                text: "PASO"
+                                color: "#7A7A7A"
+                                font.bold: true
+                                font.pixelSize: 11 * root.sx
+                            }
+
+                            Text {
+                                text: root.pasoGlobalActual
+                                color: Style.Theme.texto_primario
+                                font.bold: true
+                                font.pixelSize: 24 * root.sx
+                            }
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+
+                            Text {
+                                text: "LOSS"
+                                color: "#7A7A7A"
+                                font.bold: true
+                                font.pixelSize: 11 * root.sx
+                            }
+
+                            Text {
+                                text: root.perdidaActual.toFixed(4)
+                                color: "#2196F3"
+                                font.bold: true
+                                font.pixelSize: 24 * root.sx
+                            }
+                        }
+                    }
+
+                    Item {
+                        Layout.fillHeight: true
+                    }
+
                     Text {
-                        Layout.alignment: Qt.AlignHCenter
+                        Layout.fillWidth: true
+
+                        visible: root.mensajeError !== ""
+
+                        text: "⚠ " + root.mensajeError
+
+                        color: "#D32F2F"
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.WordWrap
+                        font.pixelSize: 12 * root.sx
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+
                         visible: root.mensajeCheckpoint !== ""
-                        text: root.mensajeCheckpoint
-                        color: "green"
+
+                        text: "✓ " + root.mensajeCheckpoint
+
+                        color: "#2E7D32"
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.WordWrap
+                        font.pixelSize: 12 * root.sx
                     }
                 }
-
             }
 
             TextField {
                 id: campoNombre
                 Component.onCompleted: text = mainViewModel.trainingController.sugerirNombreCheckpoint()
+                width: 300 * sx
+                height: 50 * sy
             }
 
             BotonPrincipal {

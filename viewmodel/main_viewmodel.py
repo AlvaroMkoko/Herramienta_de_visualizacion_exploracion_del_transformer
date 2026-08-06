@@ -20,6 +20,10 @@ from .setup_controller import SetupController
 from .theory_controller import TheoryController
 from .training_controller import TrainingController
 
+
+from .transformer_bridge import TransformerBridge
+from .transformer_model import COMPONENTS
+
 from model.gestor_de_datos.dataset_loader import (
     DatasetSecuencias,
     cargar_pares_combinados,
@@ -44,8 +48,18 @@ class MainViewModel(QObject):
         self._theory_controller = TheoryController(self)
         self._training_controller: TrainingController | None = None
         self._inference_controller: InferenceController | None = None
+        self._transformer_bridge = TransformerBridge()
 
         self._setup_controller.modelo_creado.connect(self._al_crear_modelo)
+    @Property(QObject, constant=True)
+    def transformerBridge(self)->TransformerBridge:
+        """
+            Llama a TransformerBridge para poder crear el Transformer dentro de la 
+            aplicacion y este llama a components de Transformer Model
+            
+        """
+        return self._transformer_bridge
+
 
     @Property(QObject, constant=True)
     def datasetController(self) -> DatasetController:
