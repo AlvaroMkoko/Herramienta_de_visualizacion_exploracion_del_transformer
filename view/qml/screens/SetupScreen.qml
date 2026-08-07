@@ -665,8 +665,8 @@ PagePrincipal {
                         model: datasetsSeleccionadosModel
                         delegate: Rectangle {
                             Layout.alignment: Qt.AlignHCenter
-                            Layout.preferredWidth: 180 * sx
-                            Layout.preferredHeight: 30 * sy
+                            Layout.preferredWidth: 200 * sx
+                            Layout.preferredHeight: 60 * sy
                             radius: 6
                             color: "#6A63E8"
 
@@ -674,7 +674,7 @@ PagePrincipal {
                                 anchors.centerIn: parent
                                 text: nombre
                                 color: "white"
-                                font.pixelSize: 12 * sy
+                                font.pixelSize: 15 * sy
                                 elide: Text.ElideRight
                                 width: parent.width - 10
                                 horizontalAlignment: Text.AlignHCenter
