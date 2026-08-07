@@ -11,6 +11,7 @@ import torch.nn as nn
 
 from .config import ConfiguracionTransformer
 
+_ACTIVACIONES = {"relu": nn.ReLU, "gelu": nn.GELU, "swish": nn.SiLU}
 
 class FeedForward(nn.Module):
     """Linear -> GELU -> Dropout -> Linear.
@@ -24,7 +25,7 @@ class FeedForward(nn.Module):
     def __init__(self, config: ConfiguracionTransformer):
         super().__init__()
         self.capa_expansion = nn.Linear(config.dimension_modelo, config.dimension_ff)
-        self.activacion = nn.GELU()
+        self.activacion = _ACTIVACIONES[config.activacion]()
         self.capa_proyeccion = nn.Linear(config.dimension_ff, config.dimension_modelo)
         self.dropout = nn.Dropout(config.dropout)
 

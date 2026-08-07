@@ -17,12 +17,23 @@ Mismo patrón que `training_controller.py`:
 
 from __future__ import annotations
 
+import math
 from collections.abc import Generator
 from typing import TYPE_CHECKING
 
 import torch
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
+from core.constants import (
+    MAX_TOKENS_NUEVOS_MAX,
+    MAX_TOKENS_NUEVOS_MIN,
+    TEMPERATURA_MAX,
+    TEMPERATURA_MIN,
+    TOP_K_MAX,
+    TOP_K_MIN,
+    TOP_P_MAX,
+    TOP_P_MIN,
+)
 from .concurrency_manager import GestorConcurrencia
 
 if TYPE_CHECKING:
@@ -47,7 +58,10 @@ def _tarea_generacion(
     ya lo hace antes de pedir el siguiente valor, así que
     detener/pausar/velocidad funcionan "gratis" para cualquier
     generador que se le pase."""
-    tokens_origen = torch.tensor([tokenizer.encode(prompt)], dtype=torch.long)
+    dispositivo = next(modelo.parameters()).device
+    tokens_origen = torch.tensor(
+        [tokenizer.encode(prompt)], dtype=torch.long, device=dispositivo
+    )
 
     ids_generados: list[int] = []
     for paso in modelo.generar(
@@ -138,6 +152,55 @@ class InferenceController(QObject):
         muestreo_codicioso: bool = False,
         velocidad_inicial: float = 0.0,
     ) -> None:
+        if self.esta_generando:
+            return
+        try:
+            tokens_prompt = self.tokenizer.encode(prompt)
+        except (TypeError, ValueError) as exc:
+            self.error.emit(f"No se pudo tokenizar el prompt: {exc}")
+            return
+        contexto = int(self.modelo.config.longitud_maxima_secuencia)
+        if not tokens_prompt:
+            self.error.emit("El prompt debe contener al menos un token.")
+            return
+        if len(tokens_prompt) > contexto:
+            self.error.emit(
+                f"El prompt ocupa {len(tokens_prompt)} tokens y el modelo admite {contexto}."
+            )
+            return
+        maximo_modelo = min(MAX_TOKENS_NUEVOS_MAX, contexto)
+        if not isinstance(max_tokens_nuevos, int) or isinstance(max_tokens_nuevos, bool) or not (
+            MAX_TOKENS_NUEVOS_MIN <= max_tokens_nuevos <= maximo_modelo
+        ):
+            self.error.emit(
+                f"Los tokens nuevos deben estar entre {MAX_TOKENS_NUEVOS_MIN} y {maximo_modelo}."
+            )
+            return
+        if (
+            isinstance(temperatura, bool)
+            or not isinstance(temperatura, (int, float))
+            or not math.isfinite(float(temperatura))
+            or not TEMPERATURA_MIN <= float(temperatura) <= TEMPERATURA_MAX
+        ):
+            self.error.emit(
+                f"La temperatura debe estar entre {TEMPERATURA_MIN} y {TEMPERATURA_MAX}."
+            )
+            return
+        if top_k is not None and (
+            not isinstance(top_k, int)
+            or isinstance(top_k, bool)
+            or not TOP_K_MIN <= top_k <= TOP_K_MAX
+        ):
+            self.error.emit(f"Top-K debe estar entre {TOP_K_MIN} y {TOP_K_MAX}.")
+            return
+        if top_p is not None and (
+            isinstance(top_p, bool)
+            or not isinstance(top_p, (int, float))
+            or not math.isfinite(float(top_p))
+            or not TOP_P_MIN < float(top_p) <= TOP_P_MAX
+        ):
+            self.error.emit("Top-P debe estar en el intervalo (0, 1].")
+            return
         self._texto_generado_hasta_ahora = ""
         self._gestor.ejecutar_en_segundo_plano(
             _tarea_generacion, self.modelo, self.tokenizer, prompt,
@@ -191,6 +254,12 @@ class InferenceController(QObject):
     @Slot(float)
     def establecer_velocidad(self, segundos_por_token: float) -> None:
         self._gestor.establecer_velocidad(segundos_por_token)
+
+    def cerrar(self) -> None:
+        """Detiene la generacion y libera el modelo de la sesion retirada."""
+        self._gestor.cerrar()
+        self.modelo = None
+        self.tokenizer = None
 
     # ------------------------------------------------------------------
     # Manejadores internos

@@ -1,9 +1,4 @@
 // Ventana principal / navegación raíz.
-//
-// TODO:
-// - ApplicationWindow con StackView o similar para navegar entre
-//   screens/ (Setup, Training, Inference, Comparison, Evaluation).
-// - Conectar al MainViewModel expuesto desde main.py.
 
 import QtQuick
 import QtQuick.Controls
@@ -15,12 +10,9 @@ ApplicationWindow {
     width: Style.Theme.baseWidth
     height: Style.Theme.baseHeight
 
-     StackView {
+    StackView {
         id: stack
         anchors.fill: parent
-
-        // initialItem: "screens/HomeScreen.qml"
-        initialItem: Qt.resolvedUrl("screens/HomeScreen.qml")
     }
 
     Component.onCompleted: {
@@ -28,8 +20,4 @@ ApplicationWindow {
             "stackView": stack
         })
     }
-
-    
-
-    
 }

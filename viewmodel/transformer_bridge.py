@@ -10,6 +10,7 @@ from .transformer_model import COMPONENTS
 class TransformerBridge(QObject):
     selectionChanged = Signal()
     activePageChanged = Signal()
+    modelConfigChanged = Signal()
     resetCameraRequested = Signal()
     componentActivated = Signal(str)
 
@@ -17,6 +18,7 @@ class TransformerBridge(QObject):
         super().__init__(parent)
         self._selected_id = ""
         self._active_page = "overview"
+        self._model_info: dict = {}
 
     def _spec_value(self, attribute: str, default=""):
         spec = COMPONENTS.get(self._selected_id)
@@ -42,7 +44,65 @@ class TransformerBridge(QObject):
 
     @Property("QVariantList", notify=selectionChanged)
     def selectedParameters(self) -> list[str]:
-        return list(self._spec_value("parameters", ()))
+        parametros = list(self._spec_value("parameters", ()))
+        if not self._model_info:
+            return parametros
+
+        valores = {
+            "Vocabulary size": self._model_info.get("tamano_vocabulario"),
+            "Embedding dimension (d_model)": self._model_info.get("dimension_modelo"),
+            "Padding index": self._model_info.get("id_token_relleno"),
+            "Maximum sequence length": self._model_info.get("longitud_maxima_secuencia"),
+            "Dropout": self._model_info.get("dropout"),
+            "Attention dropout": self._model_info.get("dropout"),
+            "Number of heads": self._model_info.get("num_cabezas"),
+            "Key/query dimension": self._model_info.get("dimension_cabeza"),
+            "Hidden dimension (d_ff)": self._model_info.get("dimension_ff"),
+            "Input dimension": self._model_info.get("dimension_modelo"),
+            "Weight tying": self._model_info.get("compartir_pesos_salida"),
+        }
+        return [
+            f"{nombre}: {valores[nombre]}"
+            if nombre in valores and valores[nombre] is not None
+            else nombre
+            for nombre in parametros
+        ]
+
+    @Property("QVariantMap", notify=modelConfigChanged)
+    def modelInfo(self) -> dict:
+        """Configuracion real del modelo activo, lista para QML."""
+        return dict(self._model_info)
+
+    @Property(int, notify=modelConfigChanged)
+    def numCapas(self) -> int:
+        return int(self._model_info.get("num_capas", 0))
+
+    @Property(int, notify=modelConfigChanged)
+    def numCabezas(self) -> int:
+        return int(self._model_info.get("num_cabezas", 0))
+
+    @Property(int, notify=modelConfigChanged)
+    def dimensionModelo(self) -> int:
+        return int(self._model_info.get("dimension_modelo", 0))
+
+    def establecer_modelo(self, modelo) -> None:
+        """Actualiza las capacidades mostradas por el diagrama/inspector."""
+        config = modelo.config
+        self._model_info = {
+            "tamano_vocabulario": config.tamano_vocabulario,
+            "dimension_modelo": config.dimension_modelo,
+            "num_cabezas": config.num_cabezas,
+            "num_capas": config.num_capas,
+            "dimension_ff": config.dimension_ff,
+            "longitud_maxima_secuencia": config.longitud_maxima_secuencia,
+            "dropout": config.dropout,
+            "id_token_relleno": config.id_token_relleno,
+            "dimension_cabeza": config.dimension_cabeza,
+            "compartir_pesos_salida": modelo.compartir_pesos_salida,
+            "parametros_totales": sum(p.numel() for p in modelo.parameters()),
+        }
+        self.modelConfigChanged.emit()
+        self.selectionChanged.emit()
 
     @Property(str, notify=selectionChanged)
     def selectedColor(self) -> str:

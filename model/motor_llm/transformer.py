@@ -31,6 +31,7 @@ from .mascara import combinar_mascaras, crear_mascara_causal, crear_mascara_rell
 from .positional_encoding import PositionalEncoding
 from .muestreo import muestrear, muestrear_codicioso
 
+ACTIVACIONES = ["relu", "gelu", "swish"]
 
 class Transformer(nn.Module):
     """Transformer Encoder-Decoder completo.
@@ -108,14 +109,20 @@ class Transformer(nn.Module):
         if self.config.id_token_relleno is not None:
             mascara_encoder = crear_mascara_relleno(tokens_origen, self.config.id_token_relleno)
 
-        mascara_causal = crear_mascara_causal(tokens_destino.size(1), dispositivo=tokens_destino.device)
+        if self.config.usar_mascara_causal:
+            mascara_destino = crear_mascara_causal(tokens_destino.size(1), dispositivo=tokens_destino.device)
+        else:
+            mascara_destino = None
+        
         if self.config.id_token_relleno is not None:
-            mascara_relleno_destino = crear_mascara_relleno(
-                tokens_destino, self.config.id_token_relleno
+            mascara_relleno_destino = crear_mascara_relleno(tokens_destino, self.config.id_token_relleno)
+            mascara_destino = (
+                combinar_mascaras(mascara_destino, mascara_relleno_destino)
+                if mascara_destino is not None
+                else mascara_relleno_destino
             )
-            mascara_causal = combinar_mascaras(mascara_causal, mascara_relleno_destino)
-
-        return mascara_encoder, mascara_causal
+        
+        return mascara_encoder, mascara_destino
 
     # ------------------------------------------------------------------
     # Forward

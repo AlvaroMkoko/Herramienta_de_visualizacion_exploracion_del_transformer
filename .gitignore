@@ -1,6 +1,8 @@
 cuda.py
 
 *.pt
+*.tvismodel
+*.tvischeckpoint
 
 *.pyc
 *.json

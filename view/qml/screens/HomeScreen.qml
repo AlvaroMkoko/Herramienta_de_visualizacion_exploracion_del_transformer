@@ -221,7 +221,7 @@ PagePrincipal {
                             text: "Abrir Modelo"
 
                             onClicked: {
-                                stackView.push("ModelSetScreen.qml", {
+                                stackView.push("ModelLibraryScreen.qml", {
                                     "stackView": stackView
                                 })
                             }
