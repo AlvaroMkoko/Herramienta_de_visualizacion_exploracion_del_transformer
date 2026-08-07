@@ -15,7 +15,6 @@ from model.motor_llm.transformer import Transformer
 
 VERSION_FORMATO_CHECKPOINT = 1
 
-
 def guardar_checkpoint(
     ruta: str | Path,
     modelo: Transformer,
@@ -94,14 +93,14 @@ def generar_nombre_checkpoint(
     paso_global: int | None = None,
     dispositivo: str | None = None,
 ) -> str:
-    """Formato: modelo_{dim}d_{capas}c_{cabezas}h[_step{n}]_{dispositivo}_{fecha}_{hora}.pt"""
+    """Formato: modelo_{dim}d_{capas}c_{cabezas}h_{activacion}_{usar_mascara_causal}mascara-c[_step{n}]_{dispositivo}_{fecha}_{hora}.pt"""
     config = modelo.config
     if dispositivo is None:
         dispositivo = next(modelo.parameters()).device.type
 
     fecha_hora = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    partes = ["modelo", f"{config.dimension_modelo}d", f"{config.num_capas}c", f"{config.num_cabezas}h"]
+    partes = ["modelo", f"{config.dimension_modelo}d", f"{config.num_capas}c", f"{config.num_cabezas}h", f"{config.activacion}", f"{config.usar_mascara_causal}mascara-c"]
     if paso_global is not None:
         partes.append(f"step{paso_global}")
     partes.append(dispositivo)
