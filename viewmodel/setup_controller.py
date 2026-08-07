@@ -35,6 +35,7 @@ TAMANOS_VOCABULARIO_CONOCIDOS = {
     2: 50_281,   # p50k_base
 }
 
+ACTIVACIONES = ["relu", "gelu", "swish"]
 
 class SetupController(QObject):
     """Controlador de configuración inicial del modelo.
@@ -71,6 +72,8 @@ class SetupController(QObject):
         self._longitud_maxima_secuencia = 256
         self._dropout = 0.1
         self._compartir_pesos_salida = True
+        self._activacion = "relu"
+        self._usar_mascara_causal = True
 
     @Slot(int)
     def establecer_tipo_encoding(self, tipo_encoding: int) -> None:
@@ -115,6 +118,21 @@ class SetupController(QObject):
     def establecer_compartir_pesos_salida(self, valor: bool) -> None:
         self._compartir_pesos_salida = valor
         self._recalcular_resumen()
+
+    @Slot(str)
+    def establecer_activacion(self, valor: str) -> None:
+        """"relu" | "gelu" | "swish". Un valor inválido no se aplica de
+        una — se valida al reconstruir la configuración en
+        `_recalcular_resumen()` (misma lógica que ya usan los demás
+        setters), y se avisa por `error_configuracion` si no es válido."""
+        self._activacion = valor
+        self._recalcular_resumen()
+
+    @Slot(bool)
+    def establecer_usar_mascara_causal(self, valor: bool) -> None:
+        """Ver `Transformer.crear_mascaras` para qué implica desactivarla
+        — pensado como herramienta educativa, no para uso normal."""
+        self._usar_mascara_causal = valor
 
     def _recalcular_resumen(self) -> None:
         """Estima la cantidad de parámetros sin instanciar el modelo
@@ -172,6 +190,8 @@ class SetupController(QObject):
             longitud_maxima_secuencia=self._longitud_maxima_secuencia,
             dropout=self._dropout,
             id_token_relleno=None,
+            activacion=self._activacion,
+            usar_mascara_causal=self._usar_mascara_causal,
         )
 
     @Slot()
@@ -193,6 +213,8 @@ class SetupController(QObject):
                 longitud_maxima_secuencia=self._longitud_maxima_secuencia,
                 dropout=self._dropout,
                 id_token_relleno=id_relleno,
+                activacion=self._activacion,
+                usar_mascara_causal=self._usar_mascara_causal,
             )
             modelo_nuevo = Transformer(config, compartir_pesos_salida=self._compartir_pesos_salida)
         except ValueError as e:

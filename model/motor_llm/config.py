@@ -17,6 +17,7 @@ bloques, y el ensamblaje final) reciben una instancia de
 
 from dataclasses import dataclass
 
+ACTIVACIONES = ["relu", "gelu", "swish"]
 
 @dataclass
 class ConfiguracionTransformer:
@@ -47,6 +48,8 @@ class ConfiguracionTransformer:
     longitud_maxima_secuencia: int = 256
     dropout: float = 0.1
     id_token_relleno: int | None = None
+    activacion: str = "relu"              # "relu" | "gelu" | "swish"
+    usar_mascara_causal: bool = True
 
     def __post_init__(self) -> None:
         if self.dimension_modelo % self.num_cabezas != 0:
@@ -56,6 +59,12 @@ class ConfiguracionTransformer:
             )
         if self.tamano_vocabulario <= 0:
             raise ValueError("tamano_vocabulario debe ser mayor a 0.")
+
+        if self.dimension_ff <= 0:
+            raise ValueError("dimension_ff debe ser mayor a 0.")
+
+        if self.activacion not in ACTIVACIONES:
+            raise ValueError(f"activacion debe ser una de {ACTIVACIONES}.")
 
     @property
     def dimension_cabeza(self) -> int:
@@ -74,4 +83,6 @@ CONFIG_PRUEBA = ConfiguracionTransformer(
     dimension_ff=4 * 64,
     longitud_maxima_secuencia=64,
     dropout=0.1,
+    activacion="relu",
+    usar_mascara_causal=True
 )
