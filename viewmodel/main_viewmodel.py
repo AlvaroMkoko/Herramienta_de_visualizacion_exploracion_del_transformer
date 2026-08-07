@@ -19,6 +19,7 @@ from model.gestor_de_datos.dataset_loader import (
 )
 
 from .dataset_controller import DatasetController
+from .comparison_controller import ComparisonController
 from .inference_controller import InferenceController
 from .model_library_controller import ModelLibraryController
 from .setup_controller import SetupController
@@ -42,6 +43,9 @@ class MainViewModel(QObject):
         self._dataset_controller = DatasetController()
         self._theory_controller = TheoryController(self)
         self._model_library_controller = ModelLibraryController(self)
+        self._comparison_controller = ComparisonController(
+            self._model_library_controller, self
+        )
         self._training_controller: TrainingController | None = None
         self._inference_controller: InferenceController | None = None
         self._transformer_bridge = TransformerBridge(self)
@@ -78,6 +82,10 @@ class MainViewModel(QObject):
     @Property(QObject, constant=True)
     def modelLibraryController(self) -> ModelLibraryController:
         return self._model_library_controller
+
+    @Property(QObject, constant=True)
+    def comparisonController(self) -> ComparisonController:
+        return self._comparison_controller
 
     @Property(QObject, notify=trainingControllerCambio)
     def trainingController(self) -> TrainingController | None:

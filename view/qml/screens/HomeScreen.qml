@@ -260,7 +260,7 @@ PagePrincipal {
 
                             Layout.preferredWidth: 300*sx
                             Layout.preferredHeight: 60 * sy
-
+                            
                             text: "Abrir Comparación"
 
                             onClicked: {
@@ -272,8 +272,6 @@ PagePrincipal {
                     }
                 }
             }
-            
-        
     }
     
 
