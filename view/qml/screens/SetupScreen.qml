@@ -548,6 +548,10 @@ import QtQuick.Layouts
 PagePrincipal {
     id: root
 
+    // La biblioteca usa esta pantalla solo para elegir datasets y
+    // parametros de la nueva sesion, conservando arquitectura y pesos.
+    property bool usarModeloActual: false
+
     ListModel {
         id: datasetsSeleccionadosModel
     }
@@ -576,13 +580,47 @@ PagePrincipal {
     property int epocas: 6
     property real tasaAprendizaje: 0.0003
     property int batchSize: 6
+    property bool inicioEntrenamientoPendiente: false
+    property var datasetsInicioPendientes: []
+
+    function completarInicioEntrenamiento() {
+        if (!root.inicioEntrenamientoPendiente || !mainViewModel.modeloListo)
+            return
+        root.inicioEntrenamientoPendiente = false
+        root.mensajeError = ""
+        mainViewModel.cargarDatasetsParaEntrenar(root.datasetsInicioPendientes)
+        if (root.mensajeError !== "")
+            return
+        root.stackView.push("TrainingScreen.qml", {
+            "stackView": root.stackView,
+            "epocasIniciales": root.epocas,
+            "tasaAprendizajeInicial": root.tasaAprendizaje,
+            "batchSizeInicial": root.batchSize
+        })
+    }
+
+    Connections {
+        target: mainViewModel
+        ignoreUnknownSignals: true
+
+        function onModeloListoCambio() {
+            root.completarInicioEntrenamiento()
+        }
+    }
 
     Component.onCompleted: {
+        if (root.usarModeloActual && mainViewModel.modeloListo) {
+            var infoActual = mainViewModel.modeloActualInfo
+            root.parametrosTotales = Number(infoActual.parametros_totales || 0)
+            root.memoriaEstimadaMb = Math.round(root.parametrosTotales * 4 / 1048576 * 10) / 10
+            localBridge.numCapas = Number(infoActual.num_capas || 0)
+        }
         mainViewModel.setupController.resumen_cambio.connect(function(resumen) {
             root.parametrosTotales = resumen.parametros_totales
             root.memoriaEstimadaMb = resumen.memoria_estimada_mb
         })
         mainViewModel.setupController.error_configuracion.connect(function(mensaje) {
+            root.inicioEntrenamientoPendiente = false
             root.mensajeError = mensaje
         })
         mainViewModel.errorDataset.connect(function(mensaje) {
@@ -595,6 +633,7 @@ PagePrincipal {
     QtObject {
         id: localBridge
         property string selectedId: ""
+        property int numCapas: 6
         function selectComponent(id) {
             // Si el usuario da clic al mismo componente, lo deseleccionamos
             if (selectedId === id) {
@@ -736,7 +775,9 @@ PagePrincipal {
                     spacing: 5 * sy
 
                     Text {
-                        text: localBridge.selectedId === "" ? "Configuración General" : "Parámetros del Componente"
+                        text: root.usarModeloActual
+                              ? "Modelo cargado · arquitectura bloqueada"
+                              : (localBridge.selectedId === "" ? "Configuración General" : "Parámetros del Componente")
                         color: Style.Theme.texto_primario
                         font.pixelSize: 16 * root.sx
                         font.bold: true
@@ -751,8 +792,17 @@ PagePrincipal {
                         sx: root.sx
                         sy: root.sy
                         text: "Capas Encoder (Nx)"
-                        from: 1; to: 12; stepSize: 1; value: 6
-                        onValueChanged: mainViewModel.setupController.establecer_num_capas(value)
+                        enabled: !root.usarModeloActual
+                        opacity: enabled ? 1.0 : 0.55
+                        from: 1
+                        to: Math.max(12, Number(mainViewModel.modeloActualInfo.num_capas || 0))
+                        stepSize: 1
+                        value: root.usarModeloActual ? Number(mainViewModel.modeloActualInfo.num_capas || 1) : 6
+                        onValueChanged: {
+                            localBridge.numCapas = value
+                            if (!root.usarModeloActual)
+                                mainViewModel.setupController.establecer_num_capas(value)
+                        }
                     }
                     SliderColumn {
                         Layout.fillWidth: true
@@ -760,8 +810,16 @@ PagePrincipal {
                         sx: root.sx
                         sy: root.sy
                         text: "Dimensión del Modelo"
-                        from: 32; to: 512; stepSize: 32; value: 64
-                        onValueChanged: mainViewModel.setupController.establecer_dimension_modelo(value)
+                        enabled: !root.usarModeloActual
+                        opacity: enabled ? 1.0 : 0.55
+                        from: 32
+                        to: Math.max(512, Number(mainViewModel.modeloActualInfo.dimension_modelo || 0))
+                        stepSize: 32
+                        value: root.usarModeloActual ? Number(mainViewModel.modeloActualInfo.dimension_modelo || 32) : 64
+                        onValueChanged: {
+                            if (!root.usarModeloActual)
+                                mainViewModel.setupController.establecer_dimension_modelo(value)
+                        }
                     }
 
                     // --- Sliders de Embedding ---
@@ -771,8 +829,16 @@ PagePrincipal {
                         sx: root.sx
                         sy: root.sy
                         text: "Longitud Máxima de Secuencia"
-                        from: 16; to: 512; stepSize: 16; value: 64
-                        onValueChanged: mainViewModel.setupController.establecer_longitud_maxima_secuencia(value)
+                        enabled: !root.usarModeloActual
+                        opacity: enabled ? 1.0 : 0.55
+                        from: 16
+                        to: Math.max(512, Number(mainViewModel.modeloActualInfo.longitud_maxima_secuencia || 0))
+                        stepSize: 16
+                        value: root.usarModeloActual ? Number(mainViewModel.modeloActualInfo.longitud_maxima_secuencia || 16) : 64
+                        onValueChanged: {
+                            if (!root.usarModeloActual)
+                                mainViewModel.setupController.establecer_longitud_maxima_secuencia(value)
+                        }
                     }
 
                     // --- Sliders de Feed Forward ---
@@ -782,8 +848,16 @@ PagePrincipal {
                         sx: root.sx
                         sy: root.sy
                         text: "Dimensión Feed-Forward"
-                        from: 128; to: 2048; stepSize: 128; value: 256
-                        onValueChanged: mainViewModel.setupController.establecer_dimension_ff(value)
+                        enabled: !root.usarModeloActual
+                        opacity: enabled ? 1.0 : 0.55
+                        from: 128
+                        to: Math.max(2048, Number(mainViewModel.modeloActualInfo.dimension_ff || 0))
+                        stepSize: 128
+                        value: root.usarModeloActual ? Number(mainViewModel.modeloActualInfo.dimension_ff || 128) : 256
+                        onValueChanged: {
+                            if (!root.usarModeloActual)
+                                mainViewModel.setupController.establecer_dimension_ff(value)
+                        }
                     }
 
                     // --- Sliders de Atención ---
@@ -794,8 +868,16 @@ PagePrincipal {
                         sx: root.sx
                         sy: root.sy
                         text: "Número de Cabezas (Heads)"
-                        from: 1; to: 12; stepSize: 1; value: 6
-                        onValueChanged: mainViewModel.setupController.establecer_num_cabezas(value)
+                        enabled: !root.usarModeloActual
+                        opacity: enabled ? 1.0 : 0.55
+                        from: 1
+                        to: Math.max(12, Number(mainViewModel.modeloActualInfo.num_cabezas || 0))
+                        stepSize: 1
+                        value: root.usarModeloActual ? Number(mainViewModel.modeloActualInfo.num_cabezas || 1) : 4
+                        onValueChanged: {
+                            if (!root.usarModeloActual)
+                                mainViewModel.setupController.establecer_num_cabezas(value)
+                        }
                     }
                     SliderColumn {
                         Layout.fillWidth: true
@@ -804,8 +886,17 @@ PagePrincipal {
                         sx: root.sx
                         sy: root.sy
                         text: "Drop-out"
-                        from: 0; to: 0.5; stepSize: 0.05; value: 0.1; tipo_dato: "decimal"
-                        onValueChanged: mainViewModel.setupController.establecer_dropout(value)
+                        enabled: !root.usarModeloActual
+                        opacity: enabled ? 1.0 : 0.55
+                        from: 0
+                        to: Math.max(0.5, Number(mainViewModel.modeloActualInfo.dropout || 0))
+                        stepSize: 0.05
+                        value: root.usarModeloActual ? Number(mainViewModel.modeloActualInfo.dropout || 0) : 0.1
+                        tipo_dato: "decimal"
+                        onValueChanged: {
+                            if (!root.usarModeloActual)
+                                mainViewModel.setupController.establecer_dropout(value)
+                        }
                     }
 
                     // --- Sliders de Hiperparámetros de Entrenamiento (General) ---
@@ -878,7 +969,7 @@ PagePrincipal {
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: 200 * root.sx
                 height: 50 * root.sy
-                text: "Iniciar Entrenamiento"
+                text: root.usarModeloActual ? "Continuar Entrenamiento" : "Iniciar Entrenamiento"
 
                 onClicked: {
                     root.mensajeError = ""
@@ -887,22 +978,23 @@ PagePrincipal {
                         root.mensajeError = "Selecciona al menos un dataset para continuar."
                         return
                     }
-                    mainViewModel.setupController.crear_modelo()
-
-                    if (root.mensajeError !== "") return
-
                     let idsSeleccionados = extraerdataId(datasetsSeleccionadosModel)
-                    mainViewModel.cargarDatasetsParaEntrenar(idsSeleccionados)
-                    if (root.mensajeError !== "") return
+                    root.datasetsInicioPendientes = idsSeleccionados
+                    root.inicioEntrenamientoPendiente = true
 
-                    if (root.mensajeError === "") {
-                        stackView.push("TrainingScreen.qml", {
-                            "stackView": stackView,
-                            "epocasIniciales": root.epocas,
-                            "tasaAprendizajeInicial": root.tasaAprendizaje,
-                            "batchSizeInicial": root.batchSize
-                        })
+                    if (!root.usarModeloActual) {
+                        mainViewModel.setupController.crear_modelo()
+                    } else if (!mainViewModel.modeloListo) {
+                        root.inicioEntrenamientoPendiente = false
+                        root.mensajeError = "El modelo cargado ya no esta disponible."
+                        return
                     }
+
+                    if (root.mensajeError !== "") {
+                        root.inicioEntrenamientoPendiente = false
+                        return
+                    }
+                    root.completarInicioEntrenamiento()
                 }
             }
         }

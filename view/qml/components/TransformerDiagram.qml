@@ -145,8 +145,16 @@ Item {
             }
         }
 
-        Text { x: 6; y: 465; text: "N×"; color: "#8b7b49"; font.pixelSize: 15 }
-        Text { x: 795; y: 420; text: "N×"; color: root.residualColor; font.pixelSize: 15 }
+        Text {
+            x: 6; y: 465
+            text: root.bridge && root.bridge.numCapas > 0 ? root.bridge.numCapas + "×" : "N×"
+            color: "#8b7b49"; font.pixelSize: 15
+        }
+        Text {
+            x: 795; y: 420
+            text: root.bridge && root.bridge.numCapas > 0 ? root.bridge.numCapas + "×" : "N×"
+            color: root.residualColor; font.pixelSize: 15
+        }
         Text { x: 368; y: 216; text: "encoder K, V"; color: root.attentionColor; font.pixelSize: 9 }
 
         Repeater {

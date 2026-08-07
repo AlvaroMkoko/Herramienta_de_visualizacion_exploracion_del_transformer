@@ -22,6 +22,36 @@ PagePrincipal {
     property string mensajeError: ""
     property string mensajeCheckpoint: ""
 
+    // Un snapshot solo es consistente cuando no hay un optimizer.step() en
+    // curso. El controlador también lo valida, pero reflejarlo aquí evita que
+    // el usuario inicie un guardado que necesariamente será rechazado.
+    readonly property bool guardadoDisponible: {
+        var tc = mainViewModel.trainingController
+        return tc !== null && tc !== undefined
+                && (!tc.estaEntrenando || tc.estaPausado)
+                && (tc.guardando === undefined || !tc.guardando)
+    }
+
+    function guardarModeloPortable(nombre) {
+        var tc = mainViewModel.trainingController
+        if (typeof tc.guardarModeloPortableConNombre === "function") {
+            tc.guardarModeloPortableConNombre(nombre)
+        } else {
+            // Compatibilidad temporal con controladores anteriores.
+            tc.guardarCheckpointConNombre(nombre)
+        }
+    }
+
+    function guardarCheckpointReanudable(nombre) {
+        var tc = mainViewModel.trainingController
+        if (typeof tc.guardarCheckpointReanudableConNombre === "function") {
+            tc.guardarCheckpointReanudableConNombre(nombre)
+        } else {
+            // Un controlador antiguo solo puede conservar pesos y metadatos.
+            tc.guardarCheckpointConNombre(nombre)
+        }
+    }
+
     background: Rectangle {
         gradient: Gradient {
             GradientStop {
@@ -413,17 +443,44 @@ PagePrincipal {
                 height: 50 * sy
             }
 
-            BotonPrincipal {
-                        id: botonIniciarEntrenamiento
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        width: 200 * root.sx
-                        height: 50 * root.sy
-                        anchors.margins: 20
+            RowLayout {
+                width: parent.width
+                height: 50 * root.sy
+                spacing: 8 * root.sx
 
-                        text: "Guardar Modelo"
+                BotonPrincipal {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 50 * root.sy
+                    size_text: 0.20
+                    enabled: root.guardadoDisponible
+                    opacity: enabled ? 1.0 : 0.45
 
-                        onClicked: mainViewModel.trainingController.guardarCheckpointConNombre(campoNombre.text)
-                    
+                    text: "Guardar portable"
+
+                    ToolTip.visible: hovered
+                    ToolTip.text: enabled
+                                  ? "Modelo autocontenido, listo para cargar y compartir"
+                                  : "Pausa el entrenamiento antes de guardar"
+
+                    onClicked: root.guardarModeloPortable(campoNombre.text)
+                }
+
+                BotonPrincipal {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 50 * root.sy
+                    size_text: 0.18
+                    enabled: root.guardadoDisponible
+                    opacity: enabled ? 1.0 : 0.45
+
+                    text: "Guardar reanudable"
+
+                    ToolTip.visible: hovered
+                    ToolTip.text: enabled
+                                  ? "Incluye el estado necesario para continuar entrenando"
+                                  : "Pausa el entrenamiento antes de guardar"
+
+                    onClicked: root.guardarCheckpointReanudable(campoNombre.text)
+                }
             }
 
             
@@ -436,6 +493,13 @@ PagePrincipal {
                         anchors.margins: 20
 
                         text: "Predicción"
+                        enabled: !mainViewModel.trainingController.estaEntrenando
+                        opacity: enabled ? 1.0 : 0.45
+
+                        ToolTip.visible: hovered
+                        ToolTip.text: enabled
+                                      ? "Usar el modelo activo para generar texto"
+                                      : "Detén el entrenamiento antes de abrir inferencia"
 
                         onClicked: {
                             stackView.push("InferenceScreen.qml", {

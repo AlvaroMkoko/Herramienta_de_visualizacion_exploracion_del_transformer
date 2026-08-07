@@ -25,6 +25,27 @@ pip install -r requirements.txt
 python main.py
 ```
 
+## Guardar, abrir y compartir modelos
+
+- En la pantalla de entrenamiento se puede guardar un **modelo portable** o
+  un **checkpoint reanudable**. Ambos usan la extensión `.tvismodel` y se
+  almacenan en `data/checkpoints/`.
+- **Abrir Modelo** muestra una biblioteca con arquitectura, capas de encoder y
+  decoder, cabezas, dimensiones, contexto, tokenizador, tamaño, progreso y las
+  capacidades reales de cada archivo.
+- Un modelo puede abrirse directamente en inferencia o cargarse para continuar
+  entrenando después de seleccionar nuevos datasets.
+- Desde la biblioteca se puede importar/exportar un archivo, copiarlo al
+  portapapeles, copiar únicamente su ficha JSON o generar un código `TVIS1`
+  para modelos de hasta 5 MiB.
+
+El formato portable contiene un manifiesto JSON inspeccionable y pesos de
+PyTorch cargados con `weights_only=True`, verificados mediante SHA-256. Los
+checkpoints `.pt` anteriores siguen siendo compatibles como formato legado.
+La variante reanudable conserva el estado de Adam, pero se etiqueta como
+reanudación no exacta porque todavía no almacena el orden del sampler ni todos
+los estados aleatorios.
+
 ## Estructura
 
 Ver `docs/architecture.md` para el detalle de la arquitectura MVVM y el

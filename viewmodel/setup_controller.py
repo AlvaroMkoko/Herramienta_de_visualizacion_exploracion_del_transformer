@@ -140,7 +140,8 @@ class SetupController(QObject):
         mostrar un preview en vivo mientras el usuario mueve los
         sliders, sin disparar una descarga de red en cada cambio."""
         try:
-            tamano_vocabulario = TAMANOS_VOCABULARIO_CONOCIDOS[self._tipo_encoding]
+            tamano_vocabulario_base = TAMANOS_VOCABULARIO_CONOCIDOS[self._tipo_encoding]
+            tamano_vocabulario = tamano_vocabulario_base + 3
             self._construir_configuracion(tamano_vocabulario)  # solo para validar
         except ValueError as e:
             self.error_configuracion.emit(str(e))
@@ -193,6 +194,49 @@ class SetupController(QObject):
             activacion=self._activacion,
             usar_mascara_causal=self._usar_mascara_causal,
         )
+
+    def adoptar_modelo(
+        self,
+        modelo: Transformer,
+        tokenizer: Tokenizer,
+        *,
+        emitir: bool = True,
+    ) -> None:
+        """Adopta un modelo ya construido, normalmente cargado de disco.
+
+        ``MainViewModel`` y la preparacion de datasets consultan el modelo y
+        el tokenizador activos a traves de este controlador.  Mantenerlos
+        sincronizados evita que, despues de abrir un modelo guardado, se
+        tokenice con la configuracion de una sesion anterior.
+
+        Args:
+            modelo: Transformer reconstruido con sus pesos.
+            tokenizer: tokenizador descrito por el archivo del modelo.
+            emitir: si es ``True`` reutiliza el flujo normal
+                ``modelo_creado``; el orquestador puede usar ``False`` cuando
+                necesita adjuntar ademas estado de entrenamiento restaurado.
+        """
+        config = modelo.config
+        self.modelo = modelo
+        self.tokenizer = tokenizer
+
+        self._tipo_encoding = int(getattr(tokenizer, "tipo_encoding", self._tipo_encoding))
+        self._dimension_modelo = config.dimension_modelo
+        self._num_cabezas = config.num_cabezas
+        self._num_capas = config.num_capas
+        self._dimension_ff = config.dimension_ff
+        self._longitud_maxima_secuencia = config.longitud_maxima_secuencia
+        self._dropout = config.dropout
+        self._compartir_pesos_salida = modelo.compartir_pesos_salida
+
+        self._recalcular_resumen()
+        if emitir:
+            self.modelo_creado.emit(modelo, tokenizer)
+
+    def liberar_modelo(self) -> None:
+        """Suelta las referencias pesadas mientras se reemplaza una sesion."""
+        self.modelo = None
+        self.tokenizer = None
 
     @Slot()
     def crear_modelo(self) -> None:

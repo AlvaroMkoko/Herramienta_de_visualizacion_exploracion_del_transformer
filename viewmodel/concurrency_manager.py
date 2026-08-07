@@ -263,6 +263,25 @@ class GestorConcurrencia(QObject):
         if self._trabajador is not None:
             self._trabajador.establecer_velocidad(segundos_por_paso)
 
+    def cerrar(self) -> None:
+        """Cancela y espera el worker para poder liberar su modelo con seguridad.
+
+        Cambiar de sesion mientras un QThread aun conserva argumentos de la
+        tarea mantendria vivos los pesos anteriores. ``quit`` es seguro desde
+        el hilo principal y deja que la operacion PyTorch en curso termine su
+        paso antes de aplicar la cancelacion cooperativa.
+        """
+        trabajador = self._trabajador
+        hilo = self._hilo
+        if trabajador is not None:
+            trabajador.solicitar_detener()
+        if hilo is not None:
+            hilo.quit()
+            if hilo.isRunning():
+                hilo.wait()
+        self._hilo = None
+        self._trabajador = None
+
     def _limpiar_hilo(self) -> None:
         if self._hilo is not None:
             self._hilo.quit()
