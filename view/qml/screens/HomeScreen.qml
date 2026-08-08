@@ -325,7 +325,7 @@ PagePrincipal {
                 text: "Cargar Dataset"
 
                 onClicked: {
-                    stackView.push("SetupScreen.qml", {
+                    stackView.push("LoadDataSetScreen.qml", {
                         "stackView": stackView
                     })
                 }
