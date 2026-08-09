@@ -320,6 +320,69 @@ PagePrincipal {
                         }
                     }
 
+                    // --- Selector de Activación (Feed Forward) ---
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        visible: localBridge.selectedId.indexOf("feed_forward") !== -1
+                        spacing: 4 * root.sy
+
+                        Text {
+                            text: "Función de Activación"
+                            color: Style.Theme.texto_primario
+                            font.pixelSize: 13 * root.sx
+                        }
+
+                        ComboBox {
+                            id: comboActivacion
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 35 * root.sy
+
+                            model: ["relu", "gelu", "swish"]
+                            currentIndex: 0   // relu es el default en ConfiguracionTransformer
+
+                            onActivated: {
+                                mainViewModel.setupController.establecer_activacion(currentValue)
+                            }
+                        }
+                    }
+
+                    // --- Toggle de Máscara Causal (Masked Multi-Head Attention) ---
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        visible: localBridge.selectedId.indexOf("masked") !== -1
+                        spacing: 4 * root.sy
+
+                        RowLayout {
+                            Layout.fillWidth: true
+
+                            Text {
+                                text: "Máscara Causal"
+                                color: Style.Theme.texto_primario
+                                font.pixelSize: 13 * root.sx
+                                Layout.fillWidth: true
+                            }
+
+                            Switch {
+                                id: switchMascaraCausal
+                                checked: true   // activada por default
+                                onToggled: {
+                                    mainViewModel.setupController.establecer_usar_mascara_causal(checked)
+                                }
+                            }
+                        }
+
+                        Text {
+                            visible: !switchMascaraCausal.checked
+                            Layout.fillWidth: true
+                            wrapMode: Text.WordWrap
+                            text: "Sin máscara causal el decoder puede ver tokens futuros. La pérdida "
+                                + "bajará más rápido de lo normal (está copiando la respuesta), pero el "
+                                + "texto generado será incoherente. Útil solo para experimentar."
+                            color: "#E8A33D"
+                            font.pixelSize: 11 * root.sx
+                        }
+                    }
+
                     // --- Sliders de Atención ---
                     SliderColumn {
                         Layout.fillWidth: true
