@@ -184,10 +184,19 @@ PagePrincipal {
         llamar(function() { controller.cargarModelo(rutaModelo) })
     }
 
+    function eliminarModelo(item){
+        var ruatModelo = ruta(item)
+        if (ruatModelo === "") {
+            mostrarEstado("No se encontró la ruta del modelo.", true)
+            return
+        }
+        llamar (function(){controller.eliminarModelo(ruatModelo,true)})
+    }
+
     function exportarComoCodigo(item) {
         var rutaModelo = ruta(item)
         if (rutaModelo === "") {
-            mostrarEstado("No se encontró la ruta del modelo.", true)
+            mostrarEstado("No se encontró la ruta del modelo.", bool(True))
             return
         }
         llamar(function() {
@@ -557,6 +566,16 @@ PagePrincipal {
                         ToolTip.visible: hovered
                         ToolTip.text: "Cargar y abrir en inferencia"
                         onClicked: root.cargarPara(tarjeta.info, "inferencia")
+                    }
+                    BotonPrincipal {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 39 * root.sy
+                        text: "Eliminar"
+                        size_text: 0.25
+                        enabled: tarjeta.compatible && root.controller && !root.controller.ocupado
+                        ToolTip.visible: hovered
+                        ToolTip.text: "Eliminar el modelo"
+                        onClicked: root.eliminarModelo(tarjeta.info)// root.cargarPara(tarjeta.info, "inferencia")
                     }
 
                     BotonPrincipal {

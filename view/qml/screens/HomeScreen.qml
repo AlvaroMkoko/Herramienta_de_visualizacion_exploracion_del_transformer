@@ -260,7 +260,7 @@ PagePrincipal {
 
                             Layout.preferredWidth: 300*sx
                             Layout.preferredHeight: 60 * sy
-
+                            
                             text: "Abrir Comparación"
 
                             onClicked: {
@@ -272,8 +272,6 @@ PagePrincipal {
                     }
                 }
             }
-            
-        
     }
     
 
@@ -327,7 +325,7 @@ PagePrincipal {
                 text: "Cargar Dataset"
 
                 onClicked: {
-                    stackView.push("SetupScreen.qml", {
+                    stackView.push("LoadDataSetScreen.qml", {
                         "stackView": stackView
                     })
                 }

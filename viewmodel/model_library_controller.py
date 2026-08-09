@@ -237,11 +237,32 @@ class ModelLibraryController(QObject):
 
         self._ejecutar_en_segundo_plano("exportar el modelo", tarea)
 
-    @Slot(str)
-    def eliminarModelo(self, ruta: str) -> None:
+    @Slot(str,bool)
+    def eliminarModelo(self, ruta: str,confirmacion:bool) -> None:
         """La eliminación deliberadamente no está habilitada por seguridad."""
-        del ruta
-        self.error.emit("La eliminación de modelos no está habilitada.")
+        if(confirmacion):
+            try:
+        # Usando pathlib para manejar rutas de forma más segura
+                archivo = Path(ruta)
+
+                # Verificar si existe y es un archivo
+                if not archivo.exists():
+                    print(f"El archivo '{archivo}' no existe.")
+                    return
+                if not archivo.is_file():
+                    print(f"'{archivo}' no es un archivo válido.")
+                    return
+
+                # Eliminar el archivo
+                archivo.unlink()  # Equivalente a os.remove()
+                print(f"Archivo '{archivo}' eliminado correctamente.")
+
+            except PermissionError:
+                print(f"No tienes permisos para eliminar '{ruta}'.")
+            except OSError as e:
+                print(f"Error al eliminar el archivo: {e}")
+
+            # self.error.emit("La eliminación de modelos no está habilitada.")
 
     @Slot(str)
     def copiarFicha(self, ruta: str) -> None:
