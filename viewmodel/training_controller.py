@@ -11,6 +11,7 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from core.config import DIR_CHECKPOINTS
 from .concurrency_manager import GestorConcurrencia
+from .visual_adapter import resumir_paso_entrenamiento
 
 if TYPE_CHECKING:
     from torch.utils.data import Dataset
@@ -48,6 +49,7 @@ def _crear_batches(dataset, id_token_relleno: int | None, batch_size: int):
 def _tarea_entrenamiento(
     trabajador,
     modelo: "Transformer",
+    tokenizer: "Tokenizer | None",
     dataset,
     id_token_relleno: int | None,
     num_epocas: int,
@@ -87,6 +89,7 @@ def _tarea_entrenamiento(
                 perdida = modelo.calcular_perdida(logits, objetivo)
                 perdida.backward()
                 norma_gradiente = _norma_gradiente_global(modelo)
+                perdida_anterior = historial[-1] if historial else None
                 optimizador.step()
 
                 paso_global += 1
@@ -108,6 +111,17 @@ def _tarea_entrenamiento(
                     "norma_gradiente_global": norma_gradiente,
                     "pesos_atencion_encoder_por_capa": modelo.encoder.pesos_atencion_por_capa(),
                     "pesos_atencion_cruzada_por_capa": modelo.decoder.pesos_atencion_cruzada_por_capa(),
+                    "visualizacion": resumir_paso_entrenamiento(
+                        modelo=modelo,
+                        logits=logits,
+                        tokens_origen=tokens_origen,
+                        tokens_destino=tokens_destino,
+                        objetivo=objetivo,
+                        perdida=perdida_valor,
+                        perdida_anterior=perdida_anterior,
+                        norma_gradiente_global=norma_gradiente,
+                        tokenizer=tokenizer,
+                    ),
                 }
 
             yield paso
@@ -262,6 +276,7 @@ class TrainingController(QObject):
         self._gestor.ejecutar_en_segundo_plano(
             _tarea_entrenamiento,
             self.modelo,
+            self.tokenizer,
             dataset,
             id_token_relleno,
             num_epocas,

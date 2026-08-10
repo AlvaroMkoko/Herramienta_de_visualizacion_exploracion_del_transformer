@@ -1,12 +1,12 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import QtQuick.Controls
-import "../styles" as Style
 
 Item {
     id: root
 
     property var bridge
+    property bool trainingMode: false
+    property string highlightedComponentId: ""
     property color flowColor: "#666577"
     property color attentionColor: "#9a641b"
     property color residualColor: "#6c5fc3"
@@ -185,8 +185,10 @@ Item {
                 blockHeight: modelData.h
                 componentId: modelData.id
                 title: modelData.title
-                subtitle: modelData.sub
+                subtitle: root.trainingMode ? "clic · explicación y datos reales" : modelData.sub
                 accentColor: modelData.color
+                emphasized: root.trainingMode
+                            && root.highlightedComponentId === prismDelegate.componentId
                 selected: root.bridge !== null && root.bridge !== undefined
                           && root.bridge.selectedId === prismDelegate.componentId
                 onClicked: function(componentId) {

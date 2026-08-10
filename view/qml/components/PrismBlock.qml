@@ -1,7 +1,5 @@
 import QtQuick
 import QtQuick.Shapes
-import QtQuick.Controls
-import "../styles" as Style
 
 Item {
     id: root
@@ -11,6 +9,7 @@ Item {
     property string subtitle: ""
     property color accentColor: "#6d5bd0"
     property bool selected: false
+    property bool emphasized: false
     property real blockWidth: 224
     property real blockHeight: 42
     property real depthX: 16
@@ -24,7 +23,9 @@ Item {
 
     readonly property color faceColor: selected
         ? Qt.alpha(accentColor, 0.28)
+        : (emphasized ? Qt.alpha(accentColor, 0.25)
         : Qt.alpha(accentColor, hovered ? 0.20 : 0.11)
+          )
     readonly property color sideColor: selected
         ? Qt.alpha(accentColor, 0.34)
         : Qt.alpha(accentColor, hovered ? 0.25 : 0.15)
@@ -37,7 +38,7 @@ Item {
         // closes every visible edge of the prism.
         ShapePath {
             strokeColor: root.accentColor
-            strokeWidth: root.selected ? 2.2 : (root.hovered ? 1.7 : 1.15)
+            strokeWidth: root.selected ? 2.2 : (root.emphasized ? 2.0 : (root.hovered ? 1.7 : 1.15))
             fillColor: root.sideColor
             joinStyle: ShapePath.MiterJoin
             startX: 1
@@ -51,7 +52,7 @@ Item {
         // Top face creates the depth illusion.
         ShapePath {
             strokeColor: root.accentColor
-            strokeWidth: root.selected ? 2.2 : (root.hovered ? 1.7 : 1.15)
+            strokeWidth: root.selected ? 2.2 : (root.emphasized ? 2.0 : (root.hovered ? 1.7 : 1.15))
             fillColor: root.sideColor
             joinStyle: ShapePath.MiterJoin
             startX: 1
@@ -65,7 +66,7 @@ Item {
         // Left face closes the rear-left vertical edge.
         ShapePath {
             strokeColor: root.accentColor
-            strokeWidth: root.selected ? 2.2 : (root.hovered ? 1.7 : 1.15)
+            strokeWidth: root.selected ? 2.2 : (root.emphasized ? 2.0 : (root.hovered ? 1.7 : 1.15))
             fillColor: root.sideColor
             joinStyle: ShapePath.MiterJoin
             startX: 1
@@ -79,7 +80,7 @@ Item {
         // Right face.
         ShapePath {
             strokeColor: root.accentColor
-            strokeWidth: root.selected ? 2.2 : (root.hovered ? 1.7 : 1.15)
+            strokeWidth: root.selected ? 2.2 : (root.emphasized ? 2.0 : (root.hovered ? 1.7 : 1.15))
             fillColor: root.sideColor
             joinStyle: ShapePath.MiterJoin
             startX: root.blockWidth
@@ -93,7 +94,7 @@ Item {
         // Front face is drawn last so all shared edges meet cleanly.
         ShapePath {
             strokeColor: root.accentColor
-            strokeWidth: root.selected ? 2.2 : (root.hovered ? 1.7 : 1.15)
+            strokeWidth: root.selected ? 2.2 : (root.emphasized ? 2.0 : (root.hovered ? 1.7 : 1.15))
             fillColor: root.faceColor
             joinStyle: ShapePath.MiterJoin
             startX: 1
@@ -139,6 +140,25 @@ Item {
         height: 6
         radius: 3
         color: root.accentColor
+    }
+
+    Rectangle {
+        visible: root.emphasized && !root.selected
+        x: root.blockWidth - 7
+        y: -7
+        width: 14
+        height: 14
+        radius: 7
+        color: root.accentColor
+        border.color: "white"
+        border.width: 2
+
+        SequentialAnimation on opacity {
+            running: root.emphasized
+            loops: Animation.Infinite
+            NumberAnimation { to: 0.35; duration: 650 }
+            NumberAnimation { to: 1.0; duration: 650 }
+        }
     }
 
     MouseArea {

@@ -1,29 +1,36 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
 import "../styles" as Style
 import "../components"
-import QtQuick.Layouts
 
 PagePrincipal {
-    id:root
+    id: root
 
-    //--- TODO PENDIENTE LA TARJETA SE MUESTRA CUANDO HACES "CLICK" EN EL ELEMENTO SELECCIONADO -----
-    property bool mostrarTarjeta: false
+    readonly property var viewModel: mainViewModel
+    readonly property var trainingController: root.viewModel.trainingController
 
-    // Hiperparámetros recibidos desde SetupScreen.qml al navegar acá
     property int epocasIniciales: 10
     property real tasaAprendizajeInicial: 0.0003
     property int batchSizeInicial: 16
 
-    // Estado de progreso, alimentado por las señales de trainingController
     property int epocaActual: 0
     property int pasoGlobalActual: 0
     property real perdidaActual: 0
+    property real deltaPerdida: 0
+    property real normaGradiente: 0
+    property string lecturaPerdida: "Inicia el entrenamiento para ver datos reales."
+    property string componenteRelevanteId: ""
+    property string componenteRelevante: "Esperando el primer batch"
+    property real intensidadRelevante: 0
+    property var componentesSnapshot: ({})
+    property var prediccionesTop: []
+    property var historialVisible: []
+
     property string mensajeError: ""
     property string mensajeCheckpoint: ""
-
-    // Resultado del entrenamiento, guardado al terminar para pasárselo a
-    // ResultsScreen cuando el usuario presione "Finalizar entrenamiento".
     property bool entrenamientoTerminado: false
     property bool fueCancelado: false
     property var historialFinal: []
@@ -31,49 +38,136 @@ PagePrincipal {
     property int epocasCompletadas: 0
     property int pasosFinales: 0
 
-
-    // Un snapshot solo es consistente cuando no hay un optimizer.step() en
-    // curso. El controlador también lo valida, pero reflejarlo aquí evita que
-    // el usuario inicie un guardado que necesariamente será rechazado.
-    readonly property bool guardadoDisponible: {
-        var tc = mainViewModel.trainingController
-        return tc !== null && tc !== undefined
-                && (!tc.estaEntrenando || tc.estaPausado)
-                && (tc.guardando === undefined || !tc.guardando)
+    readonly property var componenteActual: {
+        if (localBridge.selectedId === "")
+            return null
+        var datosReales = root.componentesSnapshot
+                          ? root.componentesSnapshot[localBridge.selectedId]
+                          : null
+        return datosReales || root.componenteBase(localBridge.selectedId)
     }
 
-    background: Rectangle {
-        gradient: Gradient {
-            GradientStop {
-                position: 0
-                color: Style.Theme.fondo
-            }
+    function numero(valor, decimales) {
+        var numeroReal = Number(valor)
+        return isFinite(numeroReal) ? numeroReal.toFixed(decimales) : "—"
+    }
 
-            GradientStop {
-                position: 1
-                color: Style.Theme.fondo_gradiente
-            }
+    function componenteBase(componentId) {
+        var titulo = "Componente del Transformer"
+        var explicacion = "Este bloque transforma la representación que recibe antes de entregarla al siguiente paso."
+        var efecto = "Su salida continúa por el flujo principal del Transformer."
+
+        if (componentId === "input_embedding") {
+            titulo = "Input Embedding"
+            explicacion = "Convierte cada token de entrada en un vector continuo que el modelo puede ajustar."
+            efecto = "Sus vectores, sumados a la posición, alimentan la autoatención del encoder."
+        } else if (componentId === "output_embedding") {
+            titulo = "Output Embedding"
+            explicacion = "Representa los tokens de salida desplazados para aprender a predecir el siguiente token."
+            efecto = "Al añadir posición, forma las consultas iniciales de la atención causal."
+        } else if (componentId.indexOf("positional_encoding") !== -1) {
+            titulo = "Positional Encoding"
+            explicacion = "Añade una señal fija de posición para que el modelo conozca el orden de los tokens."
+            efecto = "Permite que la atención distinga qué información aparece antes o después."
+        } else if (componentId === "encoder_self_attention") {
+            titulo = "Autoatención del Encoder"
+            explicacion = "Cada token combina información de todos los tokens de entrada mediante varias cabezas."
+            efecto = "La mezcla contextual pasa a la conexión residual y a la normalización."
+        } else if (componentId === "decoder_masked_attention") {
+            titulo = "Atención causal del Decoder"
+            explicacion = "Cada posición solo puede mirar su token y los anteriores; la máscara bloquea el futuro."
+            efecto = "Produce el contexto de salida que después consultará al encoder."
+        } else if (componentId === "decoder_cross_attention") {
+            titulo = "Atención cruzada"
+            explicacion = "El decoder elige qué partes de la salida del encoder son relevantes para cada predicción."
+            efecto = "Es el puente directo entre la comprensión de la entrada y la generación de salida."
+        } else if (componentId.indexOf("feed_forward") !== -1) {
+            titulo = componentId.indexOf("encoder") === 0
+                     ? "Feed Forward · Encoder" : "Feed Forward · Decoder"
+            explicacion = "Procesa cada posición con una expansión, una activación no lineal y una proyección."
+            efecto = "Refina las características antes de la siguiente conexión residual."
+        } else if (componentId.indexOf("add_norm") !== -1) {
+            titulo = "Conexión residual · Add & Norm"
+            explicacion = "Suma la entrada original con la salida de la subcapa y normaliza el resultado."
+            efecto = "Conserva información previa y entrega una escala estable al siguiente bloque."
+        } else if (componentId === "linear") {
+            titulo = "Proyección lineal"
+            explicacion = "Convierte cada vector final del decoder en un puntaje por token del vocabulario."
+            efecto = "Softmax convierte esos puntajes en probabilidades comparables."
+        } else if (componentId === "softmax") {
+            titulo = "Softmax y pérdida"
+            explicacion = "Convierte logits en probabilidades y compara la distribución con el token correcto."
+            efecto = "El error resultante viaja hacia atrás y modifica los componentes entrenables."
+        }
+
+        return {
+            "titulo": titulo,
+            "explicacion": explicacion,
+            "efecto_siguiente": efecto,
+            "metricas": [{
+                "etiqueta": "Datos reales",
+                "valor": "Esperando",
+                "detalle": "Inicia el entrenamiento; esta sección se actualizará al terminar el primer batch."
+            }],
+            "capas": []
+        }
+    }
+
+    function registrarPaso(paso) {
+        root.epocaActual = Number(paso.epoca || 0)
+        root.pasoGlobalActual = Number(paso.paso_global || 0)
+        root.perdidaActual = Number(paso.perdida || 0)
+
+        var visualizacion = paso.visualizacion || {}
+        var resumen = visualizacion.resumen || {}
+        root.deltaPerdida = Number(resumen.delta_perdida || 0)
+        root.normaGradiente = Number(resumen.norma_gradiente_global || 0)
+        root.lecturaPerdida = resumen.lectura_perdida || ""
+        root.componenteRelevanteId = resumen.componente_relevante_id || ""
+        root.componenteRelevante = resumen.componente_relevante || "Sin señal"
+        root.intensidadRelevante = Number(resumen.intensidad_relevante || 0)
+        root.prediccionesTop = resumen.predicciones_top || []
+        root.componentesSnapshot = visualizacion.componentes || ({})
+
+        var siguiente = root.historialVisible.slice(Math.max(0, root.historialVisible.length - 39))
+        siguiente.push(root.perdidaActual)
+        root.historialVisible = siguiente
+    }
+
+    QtObject {
+        id: localBridge
+        property string selectedId: ""
+        property int numCapas: 1
+
+        function selectComponent(componentId) {
+            selectedId = selectedId === componentId ? "" : componentId
         }
     }
 
     Component.onCompleted: {
-        mainViewModel.trainingController.paso_entrenamiento.connect(function(paso) {
-            root.epocaActual = paso.epoca
-            root.pasoGlobalActual = paso.paso_global
-            root.perdidaActual = paso.perdida
-        })
+        var info = root.viewModel.modeloActualInfo || {}
+        localBridge.numCapas = Number(info.num_capas || 1)
+    }
 
-        mainViewModel.trainingController.entrenamiento_completo.connect(function(resultado) {
+    Connections {
+        target: root.trainingController
+        ignoreUnknownSignals: true
+
+        function onPaso_entrenamiento(paso) {
+            root.registrarPaso(paso)
+        }
+
+        function onEntrenamiento_completo(resultado) {
             root.historialFinal = resultado.historial_perdidas || []
-            root.perdidaFinalObtenida = resultado.perdida_final || 0
-            root.epocasCompletadas = (resultado.epoca !== undefined && resultado.epoca !== null)
-                                     ? resultado.epoca + 1 : 0
-            root.pasosFinales = resultado.paso_global || 0
+            root.perdidaFinalObtenida = Number(resultado.perdida_final || 0)
+            root.epocasCompletadas = resultado.epoca !== undefined && resultado.epoca !== null
+                                     ? Number(resultado.epoca) + 1 : 0
+            root.pasosFinales = Number(resultado.paso_global || 0)
             root.fueCancelado = false
             root.entrenamientoTerminado = true
-        })
+        }
 
-        mainViewModel.trainingController.entrenamiento_cancelado.connect(function(resultado) {
+        function onEntrenamiento_cancelado(resultado) {
             var historial = resultado.historial_perdidas || []
             root.historialFinal = historial
             root.perdidaFinalObtenida = historial.length > 0 ? historial[historial.length - 1] : 0
@@ -81,608 +175,513 @@ PagePrincipal {
             root.pasosFinales = root.pasoGlobalActual
             root.fueCancelado = true
             root.entrenamientoTerminado = true
-        })
+        }
 
-        mainViewModel.trainingController.error.connect(function(mensaje) {
+        function onError(mensaje) {
             root.mensajeError = mensaje
-        })
+        }
 
-        mainViewModel.trainingController.checkpoint_guardado.connect(function(ruta) {
+        function onCheckpoint_guardado(ruta) {
             root.mensajeCheckpoint = "Guardado: " + ruta
             root.mensajeError = ""
-        })
+        }
     }
 
-    BotonPrincipal {
-                
-                anchors.left: parent.left
-                anchors.leftMargin: 10 * sx
-                anchors.top: parent.top
-                anchors.topMargin: 10 * sy
-                width: 250 * sx
-                height: 40 * sy
-
-                text: " ↶ Volver al inicio"
-
-                onClicked: {
-                    stackView.pop()
-                }
-                
+    background: Rectangle {
+        gradient: Gradient {
+            GradientStop { position: 0; color: Style.Theme.fondo }
+            GradientStop { position: 1; color: Style.Theme.fondo_gradiente }
+        }
     }
 
-    Rectangle{
-        
-        property real size_width: 300
-        property real size_height:900
-        width:size_width * sx
-        height:size_height * sy
-        // color: "transparent"
-        color:"blue"
-        // clip: true          
-
-        
+    Item {
+        id: header
+        anchors.left: parent.left
         anchors.right: parent.right
-        anchors.verticalCenter: parent.verticalCenter   // opcional, si querés centrado vertical
-        anchors.rightMargin: 40
+        anchors.top: parent.top
+        height: 78 * root.sy
 
-        Column{
+        BotonPrincipal {
+            anchors.left: parent.left
+            anchors.leftMargin: 22 * root.sx
+            anchors.verticalCenter: parent.verticalCenter
+            width: 220 * root.sx
+            height: 42 * root.sy
+            text: "← Volver"
+            onClicked: root.stackView.pop()
+        }
+
+        Column {
             anchors.centerIn: parent
-            width: parent.size_width *sx
+            spacing: 2 * root.sy
 
-            spacing: 30 * sy
+            Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: "Entrenamiento del Transformer"
+                color: Style.Theme.texto_primario
+                font.bold: true
+                font.pixelSize: 25 * Math.min(root.sx, root.sy)
+            }
+            Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: "Selecciona un bloque para seguir sus datos reales"
+                color: Style.Theme.texto_secundario
+                font.pixelSize: 13 * Math.min(root.sx, root.sy)
+            }
+        }
 
+        Rectangle {
+            anchors.right: parent.right
+            anchors.rightMargin: 26 * root.sx
+            anchors.verticalCenter: parent.verticalCenter
+            width: estadoTexto.implicitWidth + 28 * root.sx
+            height: 34 * root.sy
+            radius: height / 2
+            color: root.trainingController.estaEntrenando
+                   ? (root.trainingController.estaPausado ? "#FFF4D6" : "#E4F7EB")
+                   : "#EEF0F5"
 
+            Text {
+                id: estadoTexto
+                anchors.centerIn: parent
+                text: root.trainingController.estaEntrenando
+                      ? (root.trainingController.estaPausado ? "● Pausado" : "● Entrenando")
+                      : (root.entrenamientoTerminado ? "✓ Finalizado" : "○ Preparado")
+                color: root.trainingController.estaEntrenando
+                       ? (root.trainingController.estaPausado ? "#9A641B" : "#258F6F")
+                       : Style.Theme.texto_secundario
+                font.bold: true
+                font.pixelSize: 12 * root.sx
+            }
+        }
+    }
+
+    RowLayout {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: header.bottom
+        anchors.bottom: parent.bottom
+        anchors.leftMargin: 22 * root.sx
+        anchors.rightMargin: 22 * root.sx
+        anchors.bottomMargin: 22 * root.sy
+        spacing: 18 * root.sx
+
+        RectanglePrincipal {
+            id: mapaCard
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            Layout.minimumWidth: 850 * root.sx
+            sx: root.sx
+            sy: root.sy
+
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: 18 * root.sx
+                spacing: 10 * root.sy
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 78 * root.sy
+                    Layout.minimumHeight: 78 * root.sy
+                    Layout.maximumHeight: 78 * root.sy
+                    spacing: 10 * root.sx
+
+                    Repeater {
+                        model: [
+                            { label: "ÉPOCA", value: (root.epocaActual + 1) + " / " + root.epocasIniciales, color: "#6C5FC3" },
+                            { label: "PASO", value: String(root.pasoGlobalActual), color: "#3979B7" },
+                            { label: "PÉRDIDA", value: root.numero(root.perdidaActual, 4), color: "#258F6F" },
+                            { label: "Δ PÉRDIDA", value: (root.deltaPerdida > 0 ? "+" : "") + root.numero(root.deltaPerdida, 4), color: root.deltaPerdida <= 0 ? "#258F6F" : "#B25D35" },
+                            { label: "GRADIENTE", value: root.numero(root.normaGradiente, 3), color: "#9A641B" }
+                        ]
+
+                        delegate: Rectangle {
+                            id: summaryMetric
+                            required property var modelData
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            radius: 8 * root.sx
+                            color: Qt.alpha(summaryMetric.modelData.color, 0.08)
+                            border.color: Qt.alpha(summaryMetric.modelData.color, 0.28)
+
+                            Column {
+                                anchors.centerIn: parent
+                                spacing: 3 * root.sy
+                                Text {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: summaryMetric.modelData.label
+                                    color: Style.Theme.texto_secundario
+                                    font.bold: true
+                                    font.pixelSize: 10 * root.sx
+                                }
+                                Text {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: summaryMetric.modelData.value
+                                    color: summaryMetric.modelData.color
+                                    font.bold: true
+                                    font.pixelSize: 18 * root.sx
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 62 * root.sy
+                    Layout.minimumHeight: 62 * root.sy
+                    Layout.maximumHeight: 62 * root.sy
+                    radius: 9 * root.sx
+                    color: "#FFF9E8"
+                    border.color: "#E7CD78"
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 14 * root.sx
+                        anchors.rightMargin: 14 * root.sx
+                        spacing: 12 * root.sx
+
+                        Rectangle {
+                            Layout.preferredWidth: 34 * root.sx
+                            Layout.preferredHeight: 34 * root.sy
+                            radius: 17 * root.sx
+                            color: "#E7CD78"
+                            Text { anchors.centerIn: parent; text: "↗"; font.bold: true; color: "#594A1C" }
+                        }
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 1
+                            Text {
+                                text: "Cambio más relevante · " + root.componenteRelevante
+                                color: "#594A1C"
+                                font.bold: true
+                                font.pixelSize: 12 * root.sx
+                            }
+                            Text {
+                                Layout.fillWidth: true
+                                text: root.lecturaPerdida + " Intensidad RMS: " + root.numero(root.intensidadRelevante, 5)
+                                color: "#766529"
+                                elide: Text.ElideRight
+                                font.pixelSize: 10 * root.sx
+                            }
+                        }
+                    }
+                }
+
+                Item {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    Layout.minimumHeight: 560 * root.sy
+
+                    TransformerDiagram {
+                        anchors.fill: parent
+                        bridge: localBridge
+                        trainingMode: true
+                        highlightedComponentId: root.componenteRelevanteId
+                    }
+                }
+            }
+        }
+
+        ColumnLayout {
+            Layout.preferredWidth: 500 * root.sx
+            Layout.minimumWidth: 430 * root.sx
+            Layout.fillHeight: true
+            spacing: 12 * root.sy
 
             RectanglePrincipal {
-                id: rectangulo_blanco_1
-
+                Layout.fillWidth: true
+                Layout.fillHeight: true
                 sx: root.sx
                 sy: root.sy
 
-                width: parent.width
-                height: 500 * sy
-
-                // Escala respecto al tamaño original (350x400)
-                property real scale: Math.min(width / 350, height / 500)
-                property var flowModel: [
-                    { title: "Input Emb + PE", state: "done" },
-                    { title: "Encoder L1-3", state: "done" },
-                    { title: "Multi-Head Attention", state: "running" },
-                    { title: "Encoder L4-6", state: "pending" },
-                    { title: "Decoder + Salida", state: "pending" },
-                    { title: "Loss", state: "pending" }
-                ]
-
-                ColumnLayout {
+                ScrollView {
                     anchors.fill: parent
-                    anchors.margins: 20 * rectangulo_blanco_1.scale
+                    anchors.margins: 16 * root.sx
+                    clip: true
+                    contentWidth: availableWidth
 
-                    spacing: 18 * rectangulo_blanco_1.scale
-
-                    Text {
-                        Layout.fillWidth: true
-
-                        text: "Flujo de datos"
-
-                        horizontalAlignment: Text.AlignHCenter
-
-                        color: "#4B4B8F"
-
-                        font.bold: true
-                        font.pixelSize: 22 * rectangulo_blanco_1.scale
-                    }
-
-                    
-
-                // Repeater {
-
-                //     model: rectangulo_blanco_1.flowModel
-
-                //     delegate: FlujoPaso {
-                //         width: parent.width
-
-                //         scale: rectangulo_blanco_1.scale
-
-                //         title: modelData.title
-
-                //         state: modelData.state
-                //     }
-                // }
-                    FlujoPaso {
+                    Column {
                         width: parent.width
-                        sx: root.sx
-                        sy: root.sy
-                        model: [
-                            { title: "Tokens",   state: "done" },
-                            { title: "Embeds",   state: "done" },
-                            { title: "Atención", state: "running" },
-                            { title: "FFN",      state: "pending" },
-                            { title: "Norm",     state: "pending" },
-                            { title: "Softmax",  state: "pending" }
-                        ]
-                    }
+                        spacing: 12 * root.sy
 
-                    // Item {
-                    //     Layout.fillHeight: true
-                    // }
+                        Text {
+                            width: parent.width
+                            text: root.componenteActual ? root.componenteActual.titulo : "Explorador del entrenamiento"
+                            color: Style.Theme.texto_primario
+                            font.bold: true
+                            font.pixelSize: 20 * root.sx
+                            wrapMode: Text.WordWrap
+                        }
 
-                    RowLayout {
+                        Rectangle {
+                            visible: !root.componenteActual
+                            width: parent.width
+                            height: vacioLayout.implicitHeight + 30 * root.sy
+                            radius: 9 * root.sx
+                            color: "#F5F3FB"
 
-                        Layout.fillWidth: true
-
-                        spacing: 10 * rectangulo_blanco_1.scale
-
-                        BotonPrincipal {
-
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 45 * rectangulo_blanco_1.scale
-
-                            text: "⏮ Detener"
-                            enabled: mainViewModel.trainingController.estaEntrenando
-
-                            onClicked: {
-                                mainViewModel.trainingController.detener()
+                            Column {
+                                id: vacioLayout
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                anchors.margins: 16 * root.sx
+                                spacing: 8 * root.sy
+                                Text {
+                                    width: parent.width
+                                    text: "Haz clic en cualquier componente del mapa."
+                                    color: "#5B4FA3"
+                                    font.bold: true
+                                    font.pixelSize: 14 * root.sx
+                                    wrapMode: Text.WordWrap
+                                }
+                                Text {
+                                    width: parent.width
+                                    text: "Verás qué operación realiza, qué recibe, qué entrega y cómo están cambiando sus pesos durante el batch actual. El punto pulsante marca el bloque con mayor gradiente RMS."
+                                    color: Style.Theme.texto_secundario
+                                    font.pixelSize: 12 * root.sx
+                                    wrapMode: Text.WordWrap
+                                }
                             }
                         }
 
+                        Text {
+                            visible: root.componenteActual
+                            text: "CÓMO FUNCIONA"
+                            color: "#6C5FC3"
+                            font.bold: true
+                            font.pixelSize: 11 * root.sx
+                        }
+
+                        Rectangle {
+                            visible: root.componenteActual
+                            width: parent.width
+                            height: teoriaLayout.implicitHeight + 24 * root.sy
+                            radius: 9 * root.sx
+                            color: "#F7F5FC"
+                            border.color: "#DDD7F1"
+
+                            Column {
+                                id: teoriaLayout
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                anchors.margins: 12 * root.sx
+                                spacing: 9 * root.sy
+                                Text {
+                                    width: parent.width
+                                    text: root.componenteActual ? root.componenteActual.explicacion : ""
+                                    color: Style.Theme.texto_primario
+                                    font.pixelSize: 12 * root.sx
+                                    wrapMode: Text.WordWrap
+                                }
+                                Rectangle { width: parent.width; height: 1; color: "#DDD7F1" }
+                                Text {
+                                    width: parent.width
+                                    text: root.componenteActual ? "→ " + root.componenteActual.efecto_siguiente : ""
+                                    color: "#5B4FA3"
+                                    font.italic: true
+                                    font.pixelSize: 11 * root.sx
+                                    wrapMode: Text.WordWrap
+                                }
+                            }
+                        }
+
+                        Text {
+                            visible: root.componenteActual
+                            text: "DATOS REALES · BATCH ACTUAL"
+                            color: "#258F6F"
+                            font.bold: true
+                            font.pixelSize: 11 * root.sx
+                        }
+
+                        Repeater {
+                            model: root.componenteActual ? root.componenteActual.metricas : []
+                            delegate: Rectangle {
+                                id: metricDelegate
+                                required property var modelData
+                                width: parent.width
+                                height: metricaLayout.implicitHeight + 16 * root.sy
+                                radius: 7 * root.sx
+                                color: "#FAFBFC"
+                                border.color: "#E3E6EA"
+
+                                RowLayout {
+                                    id: metricaLayout
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    anchors.margins: 9 * root.sx
+                                    spacing: 8 * root.sx
+                                    ColumnLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 1
+                                        Text {
+                                            Layout.fillWidth: true
+                                            text: metricDelegate.modelData.etiqueta
+                                            color: Style.Theme.texto_secundario
+                                            font.pixelSize: 10 * root.sx
+                                            wrapMode: Text.WordWrap
+                                        }
+                                        Text {
+                                            visible: metricDelegate.modelData.detalle !== ""
+                                            Layout.fillWidth: true
+                                            text: metricDelegate.modelData.detalle
+                                            color: "#9297A1"
+                                            font.pixelSize: 9 * root.sx
+                                            wrapMode: Text.WordWrap
+                                        }
+                                    }
+                                    Text {
+                                        text: metricDelegate.modelData.valor
+                                        color: Style.Theme.texto_primario
+                                        font.bold: true
+                                        font.pixelSize: 13 * root.sx
+                                    }
+                                }
+                            }
+                        }
+
+                        Column {
+                            visible: root.componenteActual && root.componenteActual.capas.length > 0
+                            width: parent.width
+                            spacing: 6 * root.sy
+
+                            Text {
+                                text: "ATENCIÓN POR CAPA"
+                                color: "#9A641B"
+                                font.bold: true
+                                font.pixelSize: 11 * root.sx
+                            }
+                            Repeater {
+                                model: root.componenteActual ? root.componenteActual.capas : []
+                                delegate: RowLayout {
+                                    id: layerDelegate
+                                    required property var modelData
+                                    width: parent.width
+                                    height: 24 * root.sy
+                                    Text {
+                                        text: "Capa " + layerDelegate.modelData.capa
+                                        color: Style.Theme.texto_secundario
+                                        font.pixelSize: 10 * root.sx
+                                        Layout.preferredWidth: 55 * root.sx
+                                    }
+                                    ProgressBar {
+                                        Layout.fillWidth: true
+                                        from: 0
+                                        to: 1
+                                        value: Math.min(1, Number(layerDelegate.modelData.pico || 0))
+                                    }
+                                    Text {
+                                        text: "pico " + root.numero(layerDelegate.modelData.pico, 3)
+                                        color: "#7A5B28"
+                                        font.pixelSize: 9 * root.sx
+                                    }
+                                }
+                            }
+                        }
+
+                        Text {
+                            visible: root.prediccionesTop.length > 0 && localBridge.selectedId === "softmax"
+                            width: parent.width
+                            text: "Top actual: " + root.prediccionesTop.map(function(item) {
+                                return "“" + item.texto + "” " + Math.round(item.probabilidad * 100) + "%"
+                            }).join("  ·  ")
+                            color: "#3979B7"
+                            font.pixelSize: 10 * root.sx
+                            wrapMode: Text.WordWrap
+                        }
+                    }
+                }
+            }
+
+            RectanglePrincipal {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 184 * root.sy
+                sx: root.sx
+                sy: root.sy
+
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: 12 * root.sx
+                    spacing: 8 * root.sy
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8 * root.sx
+
                         BotonPrincipal {
-
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 45 * rectangulo_blanco_1.scale
-
-                            text: !mainViewModel.trainingController.estaEntrenando
-                                    ? "▶ Iniciar"
-                                    : (mainViewModel.trainingController.estaPausado ? "▶ Reanudar" : "⏸ Pausar")
-
+                            Layout.preferredHeight: 42 * root.sy
+                            text: !root.trainingController.estaEntrenando
+                                  ? "▶ Iniciar"
+                                  : (root.trainingController.estaPausado ? "▶ Reanudar" : "Ⅱ Pausar")
                             onClicked: {
-                                var tc = mainViewModel.trainingController
-                                if (!tc.estaEntrenando) {
+                                var controlador = root.trainingController
+                                if (!controlador.estaEntrenando) {
                                     root.mensajeError = ""
                                     root.entrenamientoTerminado = false
-                                    tc.iniciar_entrenamiento_ui(
+                                    controlador.iniciar_entrenamiento_ui(
                                         root.epocasIniciales,
                                         root.tasaAprendizajeInicial,
                                         root.batchSizeInicial
                                     )
-                                    // mainViewModel.trainingController.iniciar_entrenamiento_ui(root.epocasIniciales, root.tasaAprendizajeInicial,  root.batchSizeInicial)
-                                } else if (tc.estaPausado) {
-                                    tc.reanudar()
+                                } else if (controlador.estaPausado) {
+                                    controlador.reanudar()
                                 } else {
-                                    tc.pausar()
+                                    controlador.pausar()
                                 }
                             }
                         }
 
                         BotonPrincipal {
-
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 45 * rectangulo_blanco_1.scale
-
-                            text: "⏭"
-                            // TODO: sin mapeo claro todavia (no existe un
-                            // concepto de "avanzar manualmente" en el bucle
-                            // de entrenamiento actual). Deshabilitado por
-                            // ahora para no prometer algo que no hace nada.
-                            enabled: false
-                            opacity: 0.4
-
-                            onClicked: {}
+                            Layout.preferredHeight: 42 * root.sy
+                            text: "■ Detener"
+                            enabled: root.trainingController.estaEntrenando
+                            opacity: enabled ? 1 : 0.45
+                            onClicked: root.trainingController.detener()
                         }
                     }
-                }
-            }
-
-
-
-
-            // RectanglePrincipal{
-
-            //     id: rectangulo_blanco_2
-            //     width: parent.width 
-            //     // anchors.rightMargin: 400
-            //     sx: root.sx
-            //     sy: root.sy
-            //     // width: 300*sx
-            //     height: 200*sy
-
-            //     ColumnLayout {
-            //         anchors.fill: parent
-            //         anchors.margins: 15 * sx
-            //         spacing: 3 * sy
-
-            //         Text {
-            //             Layout.alignment: Qt.AlignHCenter
-            //             text: "Época " + root.epocaActual + " · Paso " + root.pasoGlobalActual
-            //             color: Style.Theme.texto_primario
-            //             font.pixelSize: 14 * root.sx
-            //         }
-            //         Text {
-            //             Layout.alignment: Qt.AlignHCenter
-            //             text: "Pérdida: " + root.perdidaActual.toFixed(4)
-            //             color: Style.Theme.texto_primario
-            //             font.pixelSize: 14 * root.sx
-            //         }
-            //         Text {
-            //             Layout.alignment: Qt.AlignHCenter
-            //             visible: root.mensajeError !== ""
-            //             text: root.mensajeError
-            //             color: "red"
-            //             wrapMode: Text.WordWrap
-            //             Layout.preferredWidth: parent.width
-            //             horizontalAlignment: Text.AlignHCenter
-            //         }
-            //         Text {
-            //             Layout.alignment: Qt.AlignHCenter
-            //             visible: root.mensajeCheckpoint !== ""
-            //             text: root.mensajeCheckpoint
-            //             color: "green"
-            //         }
-            //     }
-
-            // }
-
-            RectanglePrincipal {
-                id: rectangulo_blanco_2
-
-                width: parent.width
-                height: 200 * sy
-
-                sx: root.sx
-                sy: root.sy
-
-                ColumnLayout {
-                    anchors.fill: parent
-                    anchors.margins: 18 * sx
-                    spacing: 12 * sy
 
                     Text {
                         Layout.fillWidth: true
-
-                        text: "Estado del entrenamiento"
+                        text: "LR " + root.tasaAprendizajeInicial.toFixed(4)
+                              + "  ·  Batch " + root.batchSizeInicial
+                              + "  ·  " + root.epocasIniciales + " épocas"
+                        color: Style.Theme.texto_secundario
                         horizontalAlignment: Text.AlignHCenter
-
-                        color: Style.Theme.texto_primario
-                        font.bold: true
-                        font.pixelSize: 18 * Math.min(root.sx, root.sy)
-                    }
-
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 1
-                        color: "#DDDDDD"
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 20 * sx
-
-                        ColumnLayout {
-                            Layout.fillWidth: true
-
-                            Text {
-                                text: "ÉPOCA"
-                                color: "#7A7A7A"
-                                font.bold: true
-                                font.pixelSize: 11 * root.sx
-                            }
-
-                            Text {
-                                text: root.epocaActual
-                                color: Style.Theme.texto_primario
-                                font.bold: true
-                                font.pixelSize: 24 * root.sx
-                            }
-                        }
-
-                        ColumnLayout {
-                            Layout.fillWidth: true
-
-                            Text {
-                                text: "PASO"
-                                color: "#7A7A7A"
-                                font.bold: true
-                                font.pixelSize: 11 * root.sx
-                            }
-
-                            Text {
-                                text: root.pasoGlobalActual
-                                color: Style.Theme.texto_primario
-                                font.bold: true
-                                font.pixelSize: 24 * root.sx
-                            }
-                        }
-
-                        ColumnLayout {
-                            Layout.fillWidth: true
-
-                            Text {
-                                text: "LOSS"
-                                color: "#7A7A7A"
-                                font.bold: true
-                                font.pixelSize: 11 * root.sx
-                            }
-
-                            Text {
-                                text: root.perdidaActual.toFixed(4)
-                                color: "#2196F3"
-                                font.bold: true
-                                font.pixelSize: 24 * root.sx
-                            }
-                        }
-                    }
-
-                    Item {
-                        Layout.fillHeight: true
+                        font.pixelSize: 10 * root.sx
                     }
 
                     Text {
+                        visible: root.mensajeError !== "" || root.mensajeCheckpoint !== ""
                         Layout.fillWidth: true
-
-                        visible: root.mensajeError !== ""
-
-                        text: "⚠ " + root.mensajeError
-
-                        color: "#D32F2F"
+                        text: root.mensajeError !== "" ? "⚠ " + root.mensajeError : "✓ " + root.mensajeCheckpoint
+                        color: root.mensajeError !== "" ? "#D32F2F" : "#2E7D32"
                         horizontalAlignment: Text.AlignHCenter
                         wrapMode: Text.WordWrap
-                        font.pixelSize: 12 * root.sx
+                        font.pixelSize: 10 * root.sx
                     }
 
-                    Text {
+                    BotonPrincipal {
                         Layout.fillWidth: true
-
-                        visible: root.mensajeCheckpoint !== ""
-
-                        text: "✓ " + root.mensajeCheckpoint
-
-                        color: "#2E7D32"
-                        horizontalAlignment: Text.AlignHCenter
-                        wrapMode: Text.WordWrap
-                        font.pixelSize: 12 * root.sx
+                        Layout.preferredHeight: 42 * root.sy
+                        text: root.fueCancelado ? "Ver resumen parcial →" : "Finalizar entrenamiento →"
+                        enabled: root.entrenamientoTerminado && !root.trainingController.estaEntrenando
+                        opacity: enabled ? 1 : 0.45
+                        onClicked: root.stackView.push("ResultsScreen.qml", {
+                            "stackView": root.stackView,
+                            "historialPerdidas": root.historialFinal,
+                            "perdidaFinal": root.perdidaFinalObtenida,
+                            "epocasCompletadas": root.epocasCompletadas,
+                            "pasosTotales": root.pasosFinales,
+                            "fueCancelado": root.fueCancelado
+                        })
                     }
-                }
-            }
-
-            // TextField {
-            //     id: campoNombre
-            //     Component.onCompleted: text = mainViewModel.trainingController.sugerirNombreCheckpoint()
-            //     width: 300 * sx
-            //     height: 50 * sy
-            // }
-
-            // --- Aviso de entrenamiento finalizado ---
-            RectanglePrincipal {
-                id: panelFinalizado
-                visible: root.entrenamientoTerminado
-                width: parent.width
-                height: layoutFinalizado.implicitHeight + 24 * root.sy
-                sx: root.sx
-                sy: root.sy
-
-                ColumnLayout {
-                    id: layoutFinalizado
-                    anchors.fill: parent
-                    anchors.margins: 12 * root.sx
-                    spacing: 6 * root.sy
-
-                    Text {
-                        Layout.fillWidth: true
-                        text: root.fueCancelado
-                              ? "⏹ Entrenamiento detenido"
-                              : "✓ Entrenamiento completado"
-                        color: root.fueCancelado ? "#E8A33D" : "#2E7D32"
-                        font.bold: true
-                        font.pixelSize: 15 * root.sx
-                        horizontalAlignment: Text.AlignHCenter
-                    }
-
-                    Text {
-                        Layout.fillWidth: true
-                        wrapMode: Text.WordWrap
-                        horizontalAlignment: Text.AlignHCenter
-                        color: Style.Theme.texto_primario
-                        font.pixelSize: 11 * root.sx
-                        text: root.epocasCompletadas + " de " + root.epocasIniciales + " épocas · "
-                              + "LR " + root.tasaAprendizajeInicial.toFixed(4) + " · "
-                              + "Batch " + root.batchSizeInicial
-                    }
-
-                    Text {
-                        Layout.fillWidth: true
-                        horizontalAlignment: Text.AlignHCenter
-                        color: Style.Theme.texto_primario
-                        font.pixelSize: 11 * root.sx
-                        text: root.pasosFinales + " pasos · pérdida final "
-                              + root.perdidaFinalObtenida.toFixed(4)
-                    }
-                }
-            }
-
-            BotonPrincipal {
-                id: botonFinalizar
-                anchors.horizontalCenter: parent.horizontalCenter
-                width: 260 * root.sx
-                height: 50 * root.sy
-
-                text: "Finalizar entrenamiento →"
-
-                // Solo tiene sentido si ya hay un resultado que resumir, y
-                // no mientras el bucle sigue corriendo (los números seguirían
-                // cambiando después de capturarlos).
-                enabled: root.entrenamientoTerminado
-                         && !mainViewModel.trainingController.estaEntrenando
-                opacity: enabled ? 1.0 : 0.45
-
-                ToolTip.visible: hovered
-                ToolTip.text: enabled
-                              ? "Ver el resumen, guardar el modelo y probarlo"
-                              : "Disponible cuando termine el entrenamiento"
-
-                onClicked: {
-                    stackView.push("ResultsScreen.qml", {
-                        "stackView": stackView,
-                        "historialPerdidas": root.historialFinal,
-                        "perdidaFinal": root.perdidaFinalObtenida,
-                        "epocasCompletadas": root.epocasCompletadas,
-                        "pasosTotales": root.pasosFinales,
-                        "fueCancelado": root.fueCancelado
-                    })
                 }
             }
         }
     }
-
-
-    
-    // Rectangle{
-        
-    //     width:300 * sx
-    //     height:700 * sy
-    //     // color: "transparent"
-    //     color:"blue"
-
-        
-
-    //     anchors.verticalCenter: parent.verticalCenter
-    //     anchors.verticalCenterOffset: 2 * sy
-    //     anchors.left: parent.left
-    //     anchors.leftMargin: 20 * sx
-
-    //     Column{
-    //         width: parent.width
-    //         anchors.centerIn: parent.centerIn
-    //         anchors.top: parent.top
-    //         anchors.topMargin: 60 * sy
-    //         spacing: 30
-
-
-    //         RectanglePrincipal {
-                
-    //             id: rectangulo_blanco_4
-    //             anchors.left: parent.left
-    //             anchors.rightMargin: 400
-    //             sx: root.sx
-    //             sy: root.sy
-
-    //             width: 300 * sx
-
-    //             Column{
-    //                 anchors.centerIn: parent
-
-    //                 BotonPrincipal {
-    //                     id: botonModelo
-    //                     // anchors.bottom: parent
-    //                     anchors.bottomMargin: 20
-
-
-    //                     width: 200 * root.sx
-    //                     height: 60 * root.sy
-
-    //                     text: "Gestionar DataSet"
-
-    //                     // onClicked: {
-    //                     //     stackView.push("TrainingScreen.qml", {
-    //                     //         "stackView": stackView
-    //                     //     })
-    //                     // }
-    //                     onClicked: {
-    //                         root.mostrarTarjeta = !root.mostrarTarjeta
-    //                     }
-                    
-    //                 }
-
-    //             }
-
-
-    //         }
-   
-    //     }
-
-            
-    // }
-
-    // Rectangle{
-    //     property real size_width: 300
-    //     width:size_width * sx
-    //     height:700 * sy
-    //     // color: "transparent"
-    //     color:"transparent"
-
-        
-
-    //     anchors.verticalCenter: parent.verticalCenter
-    //     anchors.centerIn: parent
-
-    //     visible: opacity > 0
-    //     opacity: root.mostrarTarjeta ? 1 : 0
-
-    //     Behavior on opacity {
-    //         NumberAnimation {
-    //             duration: 300
-    //         }
-    //     }
-    //     RectanglePrincipal{
-    //         id: rectangulo_blanco_5
-    //         anchors.left: parent.left
-    //         // anchors.rightMargin: 400
-    //         sx: root.sx
-    //         sy: root.sy
-
-    //         width: parent.size_width * sx
-    //         // width: 300 * sx
-    //         Column{
-    //                 spacing: 10
-    //                 width: parent.width-30
-    //                 anchors.margins: 15 * sx
-
-
-    //                  SliderColumn {
-    //                         width: parent.width 
-    //                         // anchors.fill: parent
-    //                         anchors.margins: 30 * sx
-
-    //                         sx: root.sx
-    //                         sy: root.sy
-
-    //                         text: "Capas Encoder (Nx)"
-
-    //                         from: 1
-    //                         to: 24
-
-    //                         stepSize: 1
-    //                         value: 6
-
-    //                         onValueChanged: {
-    //                             console.log("Nuevo valor:", value)
-    //                         }
-    //                     }
-
-    //                 SliderColumn {
-    //                 // anchors.fill: parent
-    //                     width: parent.width
-    //                     anchors.margins: 15 * sx
-
-    //                     sx: root.sx
-    //                     sy: root.sy
-
-    //                     text: "Épocas"
-
-    //                     from: 1
-    //                     to: 24
-
-    //                     stepSize: 1
-    //                     value: 6
-
-    //                     onValueChanged: {
-    //                         console.log("Nuevo valor:", value)
-    //                     }
-    //                 }
-                 
-    //             }
-
-    //             }
-
-
-    //     }
-
-    }
+}

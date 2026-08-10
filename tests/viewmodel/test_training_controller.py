@@ -103,6 +103,17 @@ class TestEntrenamientoBasico:
             assert paso["paso_global"] == i + 1
             assert len(paso["pesos_atencion_encoder_por_capa"]) == config.num_capas
             assert len(paso["pesos_atencion_cruzada_por_capa"]) == config.num_capas
+            visualizacion = paso["visualizacion"]
+            assert visualizacion["resumen"]["norma_gradiente_global"] >= 0
+            assert visualizacion["resumen"]["componente_relevante_id"]
+            assert {
+                "input_embedding",
+                "encoder_self_attention",
+                "decoder_cross_attention",
+                "linear",
+                "softmax",
+            }.issubset(visualizacion["componentes"])
+            assert visualizacion["componentes"]["encoder_self_attention"]["capas"]
 
     def test_contadores_de_epoca_y_paso_global_a_traves_de_varias_epocas(self, qtbot, controlador, config):
         pasos_recibidos = []
