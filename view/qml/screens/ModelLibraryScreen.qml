@@ -514,6 +514,13 @@ PagePrincipal {
                     elide: Text.ElideRight
                 }
 
+                Text {
+                    visible: !modelData.usarMascaraCausal
+                    text: "⚠ Sin máscara causal — modelo experimental"
+                    color: "#E8A33D"
+                    font.pixelSize: 11 * sy
+                }
+
                 Flow {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 28 * root.sy

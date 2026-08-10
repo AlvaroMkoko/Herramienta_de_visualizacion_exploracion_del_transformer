@@ -336,12 +336,18 @@ PagePrincipal {
                             id: comboActivacion
                             Layout.fillWidth: true
                             Layout.preferredHeight: 35 * root.sy
+                            enabled: !root.usarModeloActual
+                            opacity: enabled ? 1.0 : 0.55
 
                             model: ["relu", "gelu", "swish"]
-                            currentIndex: 0   // relu es el default en ConfiguracionTransformer
+                            currentIndex: root.usarModeloActual
+                                ? Math.max(0, model.indexOf(String(mainViewModel.modeloActualInfo.activacion || "relu")))
+                                : 0
 
                             onActivated: {
-                                mainViewModel.setupController.establecer_activacion(currentValue)
+                                if (!root.usarModeloActual) {
+                                    mainViewModel.setupController.establecer_activacion(currentValue)
+                                }
                             }
                         }
                     }
@@ -364,9 +370,14 @@ PagePrincipal {
 
                             Switch {
                                 id: switchMascaraCausal
-                                checked: true   // activada por default
+                                enabled: !root.usarModeloActual
+                                opacity: enabled ? 1.0 : 0.55
+                                checked: root.usarModeloActual
+                                        ? (mainViewModel.modeloActualInfo.usar_mascara_causal !== false)
+                                        : true
                                 onToggled: {
-                                    mainViewModel.setupController.establecer_usar_mascara_causal(checked)
+                                    if (!root.usarModeloActual)
+                                        mainViewModel.setupController.establecer_usar_mascara_causal(checked)
                                 }
                             }
                         }

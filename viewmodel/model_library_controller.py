@@ -33,6 +33,7 @@ from model.persistencia.model_storage import (
     verificar_integridad_modelo,
 )
 
+from model.motor_llm.config import ACTIVACIONES
 
 def _como_dict(valor: Any) -> dict[str, Any]:
     """Convierte manifiestos/dataclasses a ``dict`` sin imponer su clase."""
@@ -71,6 +72,25 @@ def _decimal(valor: Any, default: float = 0.0) -> float:
     except (TypeError, ValueError):
         return default
 
+def _booleano(valor: Any, default: bool = False) -> bool:
+    """Interpreta booleanos que pueden venir como bool, número o texto.
+
+    Necesario porque `bool("false")` es `True` en Python: si un manifiesto
+    trae la bandera como cadena (JSON mal serializado, exportadores
+    externos), usar `bool()` directo invertiría silenciosamente el valor.
+    """
+    if isinstance(valor, bool):
+        return valor
+    if isinstance(valor, str):
+        texto = valor.strip().lower()
+        if texto in {"true", "1", "si", "sí", "yes"}:
+            return True
+        if texto in {"false", "0", "no"}:
+            return False
+        return default
+    if isinstance(valor, (int, float)):
+        return bool(valor)
+    return default
 
 def _ruta_local(valor: str | Path) -> Path:
     """Acepta rutas nativas y URLs ``file:`` provenientes de QFileDialog."""
@@ -442,6 +462,20 @@ class ModelLibraryController(QObject):
             config.get("tamano_vocabulario"), tokenizer.get("vocabulario_modelo"),
         ))
         dropout = _decimal(_primero(arquitectura.get("dropout"), config.get("dropout")))
+
+        activacion = str(_primero(
+            arquitectura.get("activacion"), arquitectura.get("activation"),
+            config.get("activacion"), default="relu",
+        )).strip().lower()
+        if activacion not in ACTIVACIONES:
+            activacion = "relu"
+
+        usar_mascara_causal = _booleano(_primero(
+            arquitectura.get("usar_mascara_causal"), arquitectura.get("mascara_causal"),
+            arquitectura.get("causal_mask"), config.get("usar_mascara_causal"),
+            default=True,
+        ), default=True)   
+
         encoding = str(_primero(
             tokenizer.get("encoding"), tokenizer.get("nombre_encoding"),
             tokenizer.get("encoding_name"), default="Desconocido",
@@ -554,6 +588,11 @@ class ModelLibraryController(QObject):
             "vocabulario": vocabulario,
             "tamano_vocabulario": vocabulario,
             "dropout": dropout,
+            "activacion": activacion,
+            "activation": activacion,
+            "usar_mascara_causal": usar_mascara_causal,
+            "usarMascaraCausal": usar_mascara_causal,
+            "causal_mask": usar_mascara_causal,
             "encoding": encoding,
             "parametros": parametros,
             "parametros_totales": parametros,
@@ -595,7 +634,9 @@ class ModelLibraryController(QObject):
             "num_cabezas": 0, "dimension": 0, "dimension_modelo": 0, "d_model": 0,
             "dimensionFF": 0, "dimension_ff": 0, "d_ff": 0, "contexto": 0,
             "longitud_maxima_secuencia": 0, "vocabulario": 0, "tamano_vocabulario": 0,
-            "dropout": 0.0, "encoding": "Desconocido", "parametros": 0,
+            "dropout": 0.0, "activacion": "relu", "activation": "relu",
+            "usar_mascara_causal": True, "usarMascaraCausal": True, "causal_mask": True,
+            "encoding": "Desconocido", "parametros": 0,
             "parametros_totales": 0,
             "tamanoBytes": ruta.stat().st_size if ruta.exists() else 0,
             "tamano": _tamano_legible(ruta.stat().st_size if ruta.exists() else 0),

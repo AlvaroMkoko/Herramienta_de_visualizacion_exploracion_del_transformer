@@ -228,6 +228,8 @@ class SetupController(QObject):
         self._longitud_maxima_secuencia = config.longitud_maxima_secuencia
         self._dropout = config.dropout
         self._compartir_pesos_salida = modelo.compartir_pesos_salida
+        self._activacion = config.activacion
+        self._usar_mascara_causal = config.usar_mascara_causal
 
         self._recalcular_resumen()
         if emitir:

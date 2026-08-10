@@ -96,6 +96,8 @@ class TransformerBridge(QObject):
             "dimension_ff": config.dimension_ff,
             "longitud_maxima_secuencia": config.longitud_maxima_secuencia,
             "dropout": config.dropout,
+            "activacion": config.activacion,
+            "usar_mascara_causal": config.usar_mascara_causal,
             "id_token_relleno": config.id_token_relleno,
             "dimension_cabeza": config.dimension_cabeza,
             "compartir_pesos_salida": modelo.compartir_pesos_salida,
