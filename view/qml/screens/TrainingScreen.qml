@@ -22,6 +22,16 @@ PagePrincipal {
     property string mensajeError: ""
     property string mensajeCheckpoint: ""
 
+    // Resultado del entrenamiento, guardado al terminar para pasárselo a
+    // ResultsScreen cuando el usuario presione "Finalizar entrenamiento".
+    property bool entrenamientoTerminado: false
+    property bool fueCancelado: false
+    property var historialFinal: []
+    property real perdidaFinalObtenida: 0
+    property int epocasCompletadas: 0
+    property int pasosFinales: 0
+
+
     // Un snapshot solo es consistente cuando no hay un optimizer.step() en
     // curso. El controlador también lo valida, pero reflejarlo aquí evita que
     // el usuario inicie un guardado que necesariamente será rechazado.
@@ -30,26 +40,6 @@ PagePrincipal {
         return tc !== null && tc !== undefined
                 && (!tc.estaEntrenando || tc.estaPausado)
                 && (tc.guardando === undefined || !tc.guardando)
-    }
-
-    function guardarModeloPortable(nombre) {
-        var tc = mainViewModel.trainingController
-        if (typeof tc.guardarModeloPortableConNombre === "function") {
-            tc.guardarModeloPortableConNombre(nombre)
-        } else {
-            // Compatibilidad temporal con controladores anteriores.
-            tc.guardarCheckpointConNombre(nombre)
-        }
-    }
-
-    function guardarCheckpointReanudable(nombre) {
-        var tc = mainViewModel.trainingController
-        if (typeof tc.guardarCheckpointReanudableConNombre === "function") {
-            tc.guardarCheckpointReanudableConNombre(nombre)
-        } else {
-            // Un controlador antiguo solo puede conservar pesos y metadatos.
-            tc.guardarCheckpointConNombre(nombre)
-        }
     }
 
     background: Rectangle {
@@ -72,15 +62,31 @@ PagePrincipal {
             root.pasoGlobalActual = paso.paso_global
             root.perdidaActual = paso.perdida
         })
+
         mainViewModel.trainingController.entrenamiento_completo.connect(function(resultado) {
-            console.log("Entrenamiento completo. Perdida final:", resultado.perdida_final)
+            root.historialFinal = resultado.historial_perdidas || []
+            root.perdidaFinalObtenida = resultado.perdida_final || 0
+            root.epocasCompletadas = (resultado.epoca !== undefined && resultado.epoca !== null)
+                                     ? resultado.epoca + 1 : 0
+            root.pasosFinales = resultado.paso_global || 0
+            root.fueCancelado = false
+            root.entrenamientoTerminado = true
         })
+
         mainViewModel.trainingController.entrenamiento_cancelado.connect(function(resultado) {
-            console.log("Entrenamiento detenido por el usuario.")
+            var historial = resultado.historial_perdidas || []
+            root.historialFinal = historial
+            root.perdidaFinalObtenida = historial.length > 0 ? historial[historial.length - 1] : 0
+            root.epocasCompletadas = root.epocaActual + 1
+            root.pasosFinales = root.pasoGlobalActual
+            root.fueCancelado = true
+            root.entrenamientoTerminado = true
         })
+
         mainViewModel.trainingController.error.connect(function(mensaje) {
             root.mensajeError = mensaje
         })
+
         mainViewModel.trainingController.checkpoint_guardado.connect(function(ruta) {
             root.mensajeCheckpoint = "Guardado: " + ruta
             root.mensajeError = ""
@@ -232,6 +238,7 @@ PagePrincipal {
                                 var tc = mainViewModel.trainingController
                                 if (!tc.estaEntrenando) {
                                     root.mensajeError = ""
+                                    root.entrenamientoTerminado = false
                                     tc.iniciar_entrenamiento_ui(
                                         root.epocasIniciales,
                                         root.tasaAprendizajeInicial,
@@ -436,77 +443,91 @@ PagePrincipal {
                 }
             }
 
-            TextField {
-                id: campoNombre
-                Component.onCompleted: text = mainViewModel.trainingController.sugerirNombreCheckpoint()
-                width: 300 * sx
-                height: 50 * sy
-            }
+            // TextField {
+            //     id: campoNombre
+            //     Component.onCompleted: text = mainViewModel.trainingController.sugerirNombreCheckpoint()
+            //     width: 300 * sx
+            //     height: 50 * sy
+            // }
 
-            RowLayout {
+            // --- Aviso de entrenamiento finalizado ---
+            RectanglePrincipal {
+                id: panelFinalizado
+                visible: root.entrenamientoTerminado
                 width: parent.width
-                height: 50 * root.sy
-                spacing: 8 * root.sx
+                height: layoutFinalizado.implicitHeight + 24 * root.sy
+                sx: root.sx
+                sy: root.sy
 
-                BotonPrincipal {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 50 * root.sy
-                    size_text: 0.20
-                    enabled: root.guardadoDisponible
-                    opacity: enabled ? 1.0 : 0.45
+                ColumnLayout {
+                    id: layoutFinalizado
+                    anchors.fill: parent
+                    anchors.margins: 12 * root.sx
+                    spacing: 6 * root.sy
 
-                    text: "Guardar portable"
+                    Text {
+                        Layout.fillWidth: true
+                        text: root.fueCancelado
+                              ? "⏹ Entrenamiento detenido"
+                              : "✓ Entrenamiento completado"
+                        color: root.fueCancelado ? "#E8A33D" : "#2E7D32"
+                        font.bold: true
+                        font.pixelSize: 15 * root.sx
+                        horizontalAlignment: Text.AlignHCenter
+                    }
 
-                    ToolTip.visible: hovered
-                    ToolTip.text: enabled
-                                  ? "Modelo autocontenido, listo para cargar y compartir"
-                                  : "Pausa el entrenamiento antes de guardar"
+                    Text {
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        horizontalAlignment: Text.AlignHCenter
+                        color: Style.Theme.texto_primario
+                        font.pixelSize: 11 * root.sx
+                        text: root.epocasCompletadas + " de " + root.epocasIniciales + " épocas · "
+                              + "LR " + root.tasaAprendizajeInicial.toFixed(4) + " · "
+                              + "Batch " + root.batchSizeInicial
+                    }
 
-                    onClicked: root.guardarModeloPortable(campoNombre.text)
-                }
-
-                BotonPrincipal {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 50 * root.sy
-                    size_text: 0.18
-                    enabled: root.guardadoDisponible
-                    opacity: enabled ? 1.0 : 0.45
-
-                    text: "Guardar reanudable"
-
-                    ToolTip.visible: hovered
-                    ToolTip.text: enabled
-                                  ? "Incluye el estado necesario para continuar entrenando"
-                                  : "Pausa el entrenamiento antes de guardar"
-
-                    onClicked: root.guardarCheckpointReanudable(campoNombre.text)
+                    Text {
+                        Layout.fillWidth: true
+                        horizontalAlignment: Text.AlignHCenter
+                        color: Style.Theme.texto_primario
+                        font.pixelSize: 11 * root.sx
+                        text: root.pasosFinales + " pasos · pérdida final "
+                              + root.perdidaFinalObtenida.toFixed(4)
+                    }
                 }
             }
-
-            
 
             BotonPrincipal {
-                        id: botonPrediccion
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        width: 200 * root.sx
-                        height: 50 * root.sy
-                        anchors.margins: 20
+                id: botonFinalizar
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: 260 * root.sx
+                height: 50 * root.sy
 
-                        text: "Predicción"
-                        enabled: !mainViewModel.trainingController.estaEntrenando
-                        opacity: enabled ? 1.0 : 0.45
+                text: "Finalizar entrenamiento →"
 
-                        ToolTip.visible: hovered
-                        ToolTip.text: enabled
-                                      ? "Usar el modelo activo para generar texto"
-                                      : "Detén el entrenamiento antes de abrir inferencia"
+                // Solo tiene sentido si ya hay un resultado que resumir, y
+                // no mientras el bucle sigue corriendo (los números seguirían
+                // cambiando después de capturarlos).
+                enabled: root.entrenamientoTerminado
+                         && !mainViewModel.trainingController.estaEntrenando
+                opacity: enabled ? 1.0 : 0.45
 
-                        onClicked: {
-                            stackView.push("InferenceScreen.qml", {
-                                "stackView": stackView
-                            })
-                        }
-                    
+                ToolTip.visible: hovered
+                ToolTip.text: enabled
+                              ? "Ver el resumen, guardar el modelo y probarlo"
+                              : "Disponible cuando termine el entrenamiento"
+
+                onClicked: {
+                    stackView.push("ResultsScreen.qml", {
+                        "stackView": stackView,
+                        "historialPerdidas": root.historialFinal,
+                        "perdidaFinal": root.perdidaFinalObtenida,
+                        "epocasCompletadas": root.epocasCompletadas,
+                        "pasosTotales": root.pasosFinales,
+                        "fueCancelado": root.fueCancelado
+                    })
+                }
             }
         }
     }
