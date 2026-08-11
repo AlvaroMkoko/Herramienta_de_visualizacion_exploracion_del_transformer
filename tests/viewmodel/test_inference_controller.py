@@ -91,9 +91,22 @@ class TestGeneracionBasica:
             assert "token_id" in paso
             assert "texto_parcial" in paso
             assert "logits" in paso
+            assert "visualizacion" in paso
             assert paso["logits"].shape == (1, config.tamano_vocabulario)
             assert len(paso["pesos_atencion_cruzada_por_capa"]) == config.num_capas
             assert len(paso["texto_parcial"].split(",")) == i + 1
+
+            visualizacion = paso["visualizacion"]
+            assert visualizacion["paso"] == i + 1
+            assert len(visualizacion["etapas"]) == 6
+            assert visualizacion["tokens_entrada_total"] == 4
+            assert visualizacion["tokens_salida_total"] == i + 1
+            assert visualizacion["token_elegido"]["token_id"] == paso["token_id"]
+            assert visualizacion["cantidad_candidatos"] == 1
+            assert visualizacion["predicciones_top"]
+            assert any(p["elegido"] for p in visualizacion["predicciones_top"])
+            assert visualizacion["foco_entrada"]
+            assert visualizacion["foco_decoder"]
 
         assert pasos_recibidos[-1]["texto_parcial"] == controlador._texto_generado_hasta_ahora
 
@@ -219,5 +232,7 @@ class TestParadaTemprana:
             controlador.iniciar_generacion("hola", max_tokens_nuevos=6, temperatura=1.0)
 
         texto_final = blocker.args[0]
-        cantidad_generada = len(texto_final.split(","))
-        assert cantidad_generada == 3
+        cantidad_generada = len(texto_final.split(",")) if texto_final else 0
+        # El marcador EOS detiene la generación, pero no forma parte del
+        # texto decodificado (ver `_tarea_generacion`).
+        assert cantidad_generada == ids_referencia.index(id_fin_forzado)

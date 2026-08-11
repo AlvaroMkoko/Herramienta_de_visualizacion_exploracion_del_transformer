@@ -15,6 +15,8 @@ PagePrincipal {
     property string mensajeEstado: "Listo para generar"
     property bool mensajeEsError: false
     property int tokensGenerados: 0
+    property var pasosVisualizacion: []
+    property int indicePasoVisualizado: -1
 
     readonly property int maxTokensPermitidos: Math.max(
         1,
@@ -88,6 +90,9 @@ PagePrincipal {
 
         root.textoGenerado = ""
         root.tokensGenerados = 0
+        root.pasosVisualizacion = []
+        root.indicePasoVisualizado = -1
+        flujoInferencia.close()
         root.mensajeEstado = "Generando…"
         root.mensajeEsError = false
         root.controller.iniciar_generacion_ui(
@@ -107,6 +112,10 @@ PagePrincipal {
         function onToken_generado(paso) {
             if (paso && paso.texto_parcial !== undefined)
                 root.textoGenerado = String(paso.texto_parcial)
+            if (paso && paso.visualizacion !== undefined) {
+                root.pasosVisualizacion = root.pasosVisualizacion.concat([paso.visualizacion])
+                root.indicePasoVisualizado = root.pasosVisualizacion.length - 1
+            }
             root.tokensGenerados += 1
             root.mensajeEstado = "Generando token " + root.tokensGenerados + "…"
             root.mensajeEsError = false
@@ -289,11 +298,21 @@ PagePrincipal {
                         Layout.fillWidth: true
 
                         Text {
-                            Layout.fillWidth: true
                             text: "Texto generado"
                             color: Style.Theme.texto_primario
                             font.bold: true
                             font.pixelSize: 18 * Math.min(root.sx, root.sy)
+                        }
+
+                        Item { Layout.fillWidth: true }
+
+                        BotonPrincipal {
+                            visible: root.pasosVisualizacion.length > 0
+                            Layout.preferredWidth: 190 * root.sx
+                            Layout.preferredHeight: 34 * root.sy
+                            text: "◎ Explorar proceso"
+                            size_text: 0.22
+                            onClicked: flujoInferencia.open()
                         }
 
                         Text {
@@ -628,6 +647,38 @@ PagePrincipal {
                         font.pixelSize: 10 * root.sx
                     }
                 }
+            }
+        }
+    }
+
+    Popup {
+        id: flujoInferencia
+        x: (root.width - width) / 2
+        y: (root.height - height) / 2
+        width: root.width - 50 * root.sx
+        height: root.height - 48 * root.sy
+        padding: 0
+        modal: true
+        dim: true
+        focus: true
+        closePolicy: Popup.CloseOnEscape
+
+        Overlay.modal: Rectangle {
+            color: "#990F172A"
+        }
+
+        background: Rectangle {
+            color: "transparent"
+        }
+
+        contentItem: InferenceFlowPanel {
+            snapshots: root.pasosVisualizacion
+            selectedIndex: root.indicePasoVisualizado
+            sx: root.sx
+            sy: root.sy
+            onCloseRequested: flujoInferencia.close()
+            onStepSelected: function(index) {
+                root.indicePasoVisualizado = index
             }
         }
     }

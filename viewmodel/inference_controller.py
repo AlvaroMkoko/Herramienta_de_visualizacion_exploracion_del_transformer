@@ -35,6 +35,7 @@ from core.constants import (
     TOP_P_MIN,
 )
 from .concurrency_manager import GestorConcurrencia
+from .visual_adapter import resumir_paso_inferencia
 
 if TYPE_CHECKING:
     from model.motor_llm.tokenizer import Tokenizer
@@ -75,6 +76,18 @@ def _tarea_generacion(
             break
         ids_generados.append(paso["token_id"])
         paso["texto_parcial"] = tokenizer.decode(ids_generados)
+        paso["visualizacion"] = resumir_paso_inferencia(
+            modelo=modelo,
+            tokenizer=tokenizer,
+            tokens_origen=tokens_origen,
+            paso=paso,
+            ids_generados=list(ids_generados),
+            id_token_inicio=id_token_inicio,
+            temperatura=temperatura,
+            top_k=top_k,
+            top_p=top_p,
+            muestreo_codicioso=muestreo_codicioso,
+        )
         yield paso
 
     return tokenizer.decode(ids_generados)

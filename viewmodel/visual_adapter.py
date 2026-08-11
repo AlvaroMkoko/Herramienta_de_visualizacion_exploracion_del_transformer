@@ -23,6 +23,11 @@ import math
 import torch
 
 from model.simulacion_numerica import tensor_to_array
+from model.motor_llm.muestreo import (
+    aplicar_temperatura,
+    filtrar_top_k,
+    filtrar_top_p,
+)
 
 
 def extraer_mapa_atencion(
@@ -91,6 +96,279 @@ def extraer_top_predicciones(
             }
         )
     return resultado
+
+
+def _texto_token(tokenizer, token_id: int, especial: str = "") -> str:
+    """Decodifica un token aislado y hace visibles espacios/saltos en QML."""
+    if especial:
+        return especial
+    try:
+        texto = tokenizer.decode([int(token_id)])
+    except (KeyError, RuntimeError, TypeError, ValueError):
+        texto = ""
+    if texto == "":
+        return "∅"
+    return (
+        texto.replace(" ", "␠")
+        .replace("\n", "↵")
+        .replace("\t", "⇥")
+        .replace("\r", "")
+    )
+
+
+def _tokens_visibles(tokenizer, ids: list[int], limite: int = 32) -> list[dict]:
+    """Tokens compactos con posición; conserva el final si la secuencia es larga."""
+    inicio = max(0, len(ids) - limite)
+    return [
+        {
+            "posicion": indice,
+            "token_id": int(token_id),
+            "texto": _texto_token(tokenizer, int(token_id)),
+        }
+        for indice, token_id in enumerate(ids[inicio:], start=inicio)
+    ]
+
+
+def _atencion_ultima_consulta(
+    pesos_por_capa: list[torch.Tensor | None],
+    etiquetas: list[dict],
+    limite: int = 32,
+) -> list[dict]:
+    """Promedia cabezas de la última consulta en la última capa disponible."""
+    pesos = next((p for p in reversed(pesos_por_capa) if p is not None), None)
+    if pesos is None or pesos.numel() == 0:
+        return []
+    vector = pesos.detach().float()[0].mean(dim=0)[-1]
+    cantidad = min(int(vector.numel()), len(etiquetas))
+    inicio = max(0, cantidad - limite)
+    return [
+        {
+            **etiquetas[indice],
+            "peso": round(float(vector[indice].item()), 5),
+        }
+        for indice in range(inicio, cantidad)
+    ]
+
+
+def _resumen_atencion_ultima_consulta(
+    pesos_por_capa: list[torch.Tensor | None],
+) -> dict:
+    """Resume solo la fila que produjo el token actual.
+
+    En inferencia autoregresiva las matrices causales crecen en cada vuelta.
+    Limitar el resumen a la última consulta evita copiar matrices cuadradas
+    completas a CPU sin perder la lectura relevante para la decisión actual.
+    """
+    capas = []
+    for indice, pesos in enumerate(pesos_por_capa):
+        if pesos is None or pesos.numel() == 0:
+            continue
+        por_cabeza = pesos.detach().float()[0, :, -1, :]
+        promedio = por_cabeza.mean(dim=0)
+        entropia = float(
+            (-(por_cabeza * torch.log(por_cabeza + 1e-12)).sum(dim=-1))
+            .mean()
+            .item()
+        )
+        capas.append(
+            {
+                "capa": indice + 1,
+                "entropia": entropia,
+                "pico": float(promedio.max().item()),
+            }
+        )
+    return {"capas": capas}
+
+
+def resumir_paso_inferencia(
+    modelo,
+    tokenizer,
+    tokens_origen: torch.Tensor,
+    paso: dict,
+    ids_generados: list[int],
+    id_token_inicio: int,
+    temperatura: float,
+    top_k: int | None,
+    top_p: float | None,
+    muestreo_codicioso: bool,
+) -> dict:
+    """Construye una explicación QML-safe del cálculo real de un token.
+
+    El snapshot usa los logits y pesos de atención capturados por el motor en
+    ese mismo paso. Solo se mandan resúmenes y vectores pequeños a la vista;
+    los tensores completos permanecen en la capa Python.
+    """
+    config = modelo.config
+    ids_entrada = [int(valor) for valor in tokens_origen[0].detach().cpu().tolist()]
+    tokens_entrada = _tokens_visibles(tokenizer, ids_entrada)
+    tokens_salida = _tokens_visibles(tokenizer, ids_generados)
+
+    logits = paso["logits"].detach().float()
+    if muestreo_codicioso:
+        logits_finales = logits
+    else:
+        logits_finales = aplicar_temperatura(logits, float(temperatura))
+        if top_k is not None:
+            logits_finales = filtrar_top_k(logits_finales, int(top_k))
+        if top_p is not None:
+            logits_finales = filtrar_top_p(logits_finales, float(top_p))
+
+    probabilidades = torch.softmax(logits_finales, dim=-1)[0]
+    cantidad_candidatos = (
+        1
+        if muestreo_codicioso
+        else int(torch.isfinite(logits_finales[0]).sum().item())
+    )
+    cantidad_top = min(8, max(1, cantidad_candidatos), int(probabilidades.numel()))
+    probs_top, ids_top = torch.topk(probabilidades, cantidad_top)
+    token_elegido_id = int(paso["token_id"])
+    orden = torch.argsort(probabilidades, descending=True)
+    posicion_elegida = (orden == token_elegido_id).nonzero(as_tuple=False)
+    rango_elegido = (
+        int(posicion_elegida[0].item()) + 1 if posicion_elegida.numel() else 0
+    )
+    predicciones_top = [
+        {
+            "token_id": int(token_id),
+            "texto": _texto_token(tokenizer, int(token_id)),
+            "probabilidad": round(float(probabilidad), 6),
+            "elegido": int(token_id) == token_elegido_id,
+        }
+        for probabilidad, token_id in zip(probs_top.tolist(), ids_top.tolist())
+    ]
+    if not any(prediccion["elegido"] for prediccion in predicciones_top):
+        predicciones_top.append(
+            {
+                "token_id": token_elegido_id,
+                "texto": _texto_token(tokenizer, token_elegido_id),
+                "probabilidad": round(
+                    float(probabilidades[token_elegido_id].item()), 6
+                ),
+                "elegido": True,
+            }
+        )
+
+    entropia_salida = float(
+        -(probabilidades * torch.log(probabilidades + 1e-12)).sum().item()
+    )
+    atencion_encoder = _resumen_atencion_ultima_consulta(
+        paso["pesos_atencion_encoder_por_capa"]
+    )
+    atencion_masked = _resumen_atencion_ultima_consulta(
+        paso["pesos_autoatencion_por_capa"]
+    )
+    atencion_cruzada = _resumen_atencion_ultima_consulta(
+        paso["pesos_atencion_cruzada_por_capa"]
+    )
+
+    etiquetas_entrada = [
+        {
+            "posicion": indice,
+            "token_id": token_id,
+            "texto": _texto_token(tokenizer, token_id),
+        }
+        for indice, token_id in enumerate(ids_entrada)
+    ]
+    ids_contexto_decoder = [int(id_token_inicio), *ids_generados[:-1]]
+    etiquetas_decoder = [
+        {
+            "posicion": indice,
+            "token_id": token_id,
+            "texto": (
+                "<inicio>"
+                if indice == 0
+                else _texto_token(tokenizer, token_id)
+            ),
+        }
+        for indice, token_id in enumerate(ids_contexto_decoder)
+    ]
+    foco_entrada = _atencion_ultima_consulta(
+        paso["pesos_atencion_cruzada_por_capa"], etiquetas_entrada
+    )
+    foco_decoder = _atencion_ultima_consulta(
+        paso["pesos_autoatencion_por_capa"], etiquetas_decoder
+    )
+
+    modo_muestreo = "Codicioso" if muestreo_codicioso else "Muestreo"
+    filtros = []
+    if not muestreo_codicioso:
+        filtros.append(f"T={float(temperatura):.2f}")
+        if top_k is not None:
+            filtros.append(f"Top-K {int(top_k)}")
+        if top_p is not None:
+            filtros.append(f"Top-P {float(top_p):.2f}")
+
+    etapas = [
+        {
+            "numero": "01",
+            "titulo": "Tokenización",
+            "dato": f"{len(ids_entrada)} tokens",
+            "explicacion": "El texto se separa en ids discretos que entiende el vocabulario.",
+            "color": "#7C3AED",
+        },
+        {
+            "numero": "02",
+            "titulo": "Vectores + posición",
+            "dato": f"{len(ids_entrada)} × {config.dimension_modelo}",
+            "explicacion": "Cada id se vuelve un vector y recibe información de su orden.",
+            "color": "#DB2777",
+        },
+        {
+            "numero": "03",
+            "titulo": "Encoder",
+            "dato": f"{config.num_capas} capas × {config.num_cabezas} cabezas",
+            "explicacion": "La autoatención construye una representación contextual del prompt.",
+            "color": "#D97706",
+        },
+        {
+            "numero": "04",
+            "titulo": "Decoder",
+            "dato": f"{len(ids_contexto_decoder)} posiciones",
+            "explicacion": "Mira solo lo ya generado y consulta la representación del encoder.",
+            "color": "#2563EB",
+        },
+        {
+            "numero": "05",
+            "titulo": "Linear + Softmax",
+            "dato": f"{config.tamano_vocabulario} → {cantidad_candidatos}",
+            "explicacion": "Asigna un puntaje a todo el vocabulario y lo convierte en probabilidades.",
+            "color": "#059669",
+        },
+        {
+            "numero": "06",
+            "titulo": "Selección",
+            "dato": _texto_token(tokenizer, token_elegido_id),
+            "explicacion": "El token elegido se añade a la salida y vuelve a entrar al decoder.",
+            "color": "#DC2626",
+        },
+    ]
+
+    return {
+        "paso": int(paso.get("paso", 0)) + 1,
+        "token_elegido": {
+            "token_id": token_elegido_id,
+            "texto": _texto_token(tokenizer, token_elegido_id),
+            "probabilidad": round(float(probabilidades[token_elegido_id].item()), 6),
+            "rango": rango_elegido,
+        },
+        "tokens_entrada": tokens_entrada,
+        "tokens_entrada_total": len(ids_entrada),
+        "tokens_salida": tokens_salida,
+        "tokens_salida_total": len(ids_generados),
+        "foco_entrada": foco_entrada,
+        "foco_decoder": foco_decoder,
+        "predicciones_top": predicciones_top,
+        "cantidad_candidatos": cantidad_candidatos,
+        "entropia_salida": round(entropia_salida, 5),
+        "modo_muestreo": modo_muestreo,
+        "filtros": " · ".join(filtros) if filtros else "Sin filtros aleatorios",
+        "atencion_por_bloque": {
+            "encoder": atencion_encoder["capas"],
+            "decoder": atencion_masked["capas"],
+            "cruzada": atencion_cruzada["capas"],
+        },
+        "etapas": etapas,
+    }
 
 
 def _formatear_numero(valor: float) -> str:
