@@ -47,6 +47,34 @@ PagePrincipal {
         return datosReales || root.componenteBase(localBridge.selectedId)
     }
 
+    // Velocidad de entrenamiento: retardo en segundos entre pasos.
+    // Ralentizar no mejora el modelo — sirve para poder observar cómo
+    // cambian las métricas y los mapas de atención paso a paso.
+    readonly property var velocidadesDisponibles: [
+        { segundos: 0.0,  etiqueta: "Máxima" },
+        { segundos: 0.05, etiqueta: "Rápida" },
+        { segundos: 0.15, etiqueta: "Media" },
+        { segundos: 0.4,  etiqueta: "Lenta" },
+        { segundos: 1.0,  etiqueta: "Paso a paso" }
+    ]
+    property int indiceVelocidad: 0
+    readonly property real velocidadActual: root.velocidadesDisponibles[root.indiceVelocidad].segundos
+    readonly property string etiquetaVelocidad: root.velocidadesDisponibles[root.indiceVelocidad].etiqueta
+
+    function cambiarVelocidad(delta) {
+        var nuevo = Math.max(0, Math.min(root.velocidadesDisponibles.length - 1,
+                                         root.indiceVelocidad + delta))
+        if (nuevo === root.indiceVelocidad)
+            return
+        root.indiceVelocidad = nuevo
+
+        // establecer_velocidad solo alcanza a un trabajador ya corriendo.
+        // Si no hay entrenamiento activo, el valor se aplica al iniciar,
+        // vía el cuarto argumento de iniciar_entrenamiento_ui.
+        if (root.trainingController.estaEntrenando)
+            root.trainingController.establecer_velocidad(root.velocidadActual)
+    }
+
     function numero(valor, decimales) {
         var numeroReal = Number(valor)
         return isFinite(numeroReal) ? numeroReal.toFixed(decimales) : "—"
@@ -625,7 +653,8 @@ PagePrincipal {
                                     controlador.iniciar_entrenamiento_ui(
                                         root.epocasIniciales,
                                         root.tasaAprendizajeInicial,
-                                        root.batchSizeInicial
+                                        root.batchSizeInicial,
+                                        root.velocidadActual
                                     )
                                 } else if (controlador.estaPausado) {
                                     controlador.reanudar()
@@ -643,6 +672,42 @@ PagePrincipal {
                             opacity: enabled ? 1 : 0.45
                             onClicked: root.trainingController.detener()
                         }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8 * root.sx
+
+                        BotonPrincipal {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 36 * root.sy
+                            size_text: 0.18
+                            text: "🐇 Más rápido"
+                            enabled: root.indiceVelocidad > 0
+                            opacity: enabled ? 1 : 0.45
+                            onClicked: root.cambiarVelocidad(-1)
+                        }
+
+                        BotonPrincipal {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 36 * root.sy
+                            size_text: 0.18
+                            text: "🐢 Más lento"
+                            enabled: root.indiceVelocidad < root.velocidadesDisponibles.length - 1
+                            opacity: enabled ? 1 : 0.45
+                            onClicked: root.cambiarVelocidad(1)
+                        }
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: "Velocidad: " + root.etiquetaVelocidad
+                              + (root.velocidadActual > 0
+                                 ? "  ·  " + Math.round(root.velocidadActual * 1000) + " ms/paso"
+                                 : "")
+                        color: Style.Theme.texto_secundario
+                        horizontalAlignment: Text.AlignHCenter
+                        font.pixelSize: 10 * root.sx
                     }
 
                     Text {

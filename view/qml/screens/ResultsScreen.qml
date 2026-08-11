@@ -74,15 +74,20 @@ PagePrincipal {
 
     Component.onCompleted: {
         campoNombre.text = mainViewModel.trainingController.sugerirNombreCheckpoint()
+    }
 
-        mainViewModel.trainingController.checkpoint_guardado.connect(function(ruta) {
+    Connections {
+        target: mainViewModel.trainingController
+
+        function onCheckpoint_guardado(ruta) {
             root.mensajeError = ""
             root.mensajeGuardado = "Guardado: " + ruta
-        })
-        mainViewModel.trainingController.error.connect(function(mensaje) {
+        }
+
+        function onError(mensaje) {
             root.mensajeGuardado = ""
             root.mensajeError = mensaje
-        })
+        }
     }
 
     BotonPrincipal {

@@ -287,9 +287,13 @@ class TrainingController(QObject):
             velocidad_inicial=velocidad_inicial,
         )
 
-    @Slot(int, float, int)
+    @Slot(int, float, int, float)
     def iniciar_entrenamiento_ui(
-        self, num_epocas: int, tasa_aprendizaje: float, batch_size: int
+        self,
+        num_epocas: int,
+        tasa_aprendizaje: float, 
+        batch_size: int,
+        velocidad_inicial: float = 0.0
     ) -> None:
         if self._dataset is None:
             self.error.emit(
@@ -302,6 +306,7 @@ class TrainingController(QObject):
             num_epocas=num_epocas,
             tasa_aprendizaje=tasa_aprendizaje,
             batch_size=batch_size,
+            velocidad_inicial=velocidad_inicial
         )
 
     def establecer_dataset(self, dataset: "Dataset", id_token_relleno: int) -> None:
