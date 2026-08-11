@@ -15,6 +15,7 @@ PagePrincipal {
     property string mensajeEstado: "Listo para generar"
     property bool mensajeEsError: false
     property int tokensGenerados: 0
+
     readonly property int maxTokensPermitidos: Math.max(
         1,
         Math.min(
@@ -22,6 +23,33 @@ PagePrincipal {
             Number(mainViewModel.modeloActualInfo.longitud_maxima_secuencia || 512)
         )
     )
+
+    // Retardo en segundos entre tokens. Ralentizar no cambia el
+    // resultado — permite ver aparecer cada token y seguir los mapas
+    // de atención mientras se generan.
+    readonly property var velocidadesDisponibles: [
+        { segundos: 0.0,  etiqueta: "Máxima" },
+        { segundos: 0.08, etiqueta: "Rápida" },
+        { segundos: 0.25, etiqueta: "Media" },
+        { segundos: 0.6,  etiqueta: "Lenta" },
+        { segundos: 1.2,  etiqueta: "Token a token" }
+    ]
+    property int indiceVelocidad: 0
+    readonly property real velocidadActual: root.velocidadesDisponibles[root.indiceVelocidad].segundos
+    readonly property string etiquetaVelocidad: root.velocidadesDisponibles[root.indiceVelocidad].etiqueta
+
+    function cambiarVelocidad(delta) {
+        var nuevo = Math.max(0, Math.min(root.velocidadesDisponibles.length - 1,
+                                         root.indiceVelocidad + delta))
+        if (nuevo === root.indiceVelocidad)
+            return
+        root.indiceVelocidad = nuevo
+
+        // Solo alcanza a un trabajador ya corriendo; si no hay generación
+        // activa, el valor se aplica al iniciar (séptimo argumento).
+        if (root.controller && root.controller.estaGenerando)
+            root.controller.establecer_velocidad(root.velocidadActual)
+    }
 
     function ajustarMaxTokens() {
         if (maxTokens.value > root.maxTokensPermitidos)
@@ -68,7 +96,8 @@ PagePrincipal {
                     temperatura.value,
                     usarTopK.checked ? topK.value : 0,
                     usarTopP.checked ? topP.value : 1.0,
-                    muestreoCodicioso.checked)
+                    muestreoCodicioso.checked,
+                    root.velocidadActual)
     }
 
     Connections {
@@ -475,7 +504,7 @@ PagePrincipal {
                             id: topK
                             Layout.preferredWidth: 116 * root.sx
                             from: 1
-                            to: 500
+                            to: 100
                             value: 50
                             editable: true
                             enabled: usarTopK.checked && usarTopK.enabled
@@ -561,6 +590,42 @@ PagePrincipal {
                             opacity: enabled ? 1.0 : 0.45
                             onClicked: root.controller.detener()
                         }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 9 * root.sx
+
+                        BotonPrincipal {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 38 * root.sy
+                            text: "🐇 Más rápido"
+                            size_text: 0.20
+                            enabled: root.indiceVelocidad > 0
+                            opacity: enabled ? 1.0 : 0.48
+                            onClicked: root.cambiarVelocidad(-1)
+                        }
+
+                        BotonPrincipal {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 38 * root.sy
+                            text: "🐢 Más lento"
+                            size_text: 0.20
+                            enabled: root.indiceVelocidad < root.velocidadesDisponibles.length - 1
+                            opacity: enabled ? 1.0 : 0.48
+                            onClicked: root.cambiarVelocidad(1)
+                        }
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: "Velocidad: " + root.etiquetaVelocidad
+                              + (root.velocidadActual > 0
+                                 ? "  ·  " + Math.round(root.velocidadActual * 1000) + " ms/token"
+                                 : "")
+                        color: Style.Theme.texto_secundario
+                        horizontalAlignment: Text.AlignHCenter
+                        font.pixelSize: 10 * root.sx
                     }
                 }
             }

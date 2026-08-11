@@ -214,6 +214,7 @@ class InferenceController(QObject):
     # ------------------------------------------------------------------
 
     @Slot(str, int, float, int, float, bool)
+    @Slot(str, int, float, int, float, bool, float)
     def iniciar_generacion_ui(
         self,
         prompt: str,
@@ -222,6 +223,7 @@ class InferenceController(QObject):
         top_k: int,
         top_p: float,
         muestreo_codicioso: bool,
+        velocidad_inicial: float = 0.0,
     ) -> None:
         """Versión invocable desde QML. `@Slot` no admite un parámetro
         "int o None", así que se usan valores centinela:
@@ -237,6 +239,7 @@ class InferenceController(QObject):
             top_k=top_k_real,
             top_p=top_p_real,
             muestreo_codicioso=muestreo_codicioso,
+            velocidad_inicial=velocidad_inicial
         )
 
     @Slot()
