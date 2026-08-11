@@ -11,7 +11,7 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from core.config import DIR_CHECKPOINTS
 from .concurrency_manager import GestorConcurrencia
-from .visual_adapter import resumir_paso_entrenamiento
+from .visual_adapter import resumir_paso_entrenamiento, extraer_nube_segun_modo
 
 if TYPE_CHECKING:
     from torch.utils.data import Dataset
@@ -57,6 +57,7 @@ def _tarea_entrenamiento(
     optimizador: torch.optim.Optimizer,
     estado: dict[str, Any],
     bloqueo_estado: threading.RLock,
+    config_nube: dict[str, Any],
 ) -> Generator[dict, None, dict]:
     """Entrena en segundo plano y actualiza un estado snapshotable.
 
@@ -69,7 +70,8 @@ def _tarea_entrenamiento(
     epoca_inicial = int(estado.get("siguiente_epoca", 0))
     paso_global = int(estado.get("paso_global", 0))
     historial = estado.setdefault("historial_perdidas", [])
-
+    ejes_pca_previos = None
+    
     for epoca in range(epoca_inicial, epoca_inicial + num_epocas):
         with bloqueo_estado:
             # Si se cancela a mitad de la epoca, la continuacion repite esa
@@ -91,6 +93,8 @@ def _tarea_entrenamiento(
                 norma_gradiente = _norma_gradiente_global(modelo)
                 perdida_anterior = historial[-1] if historial else None
                 optimizador.step()
+
+                nube_cfg = dict(config_nube)
 
                 paso_global += 1
                 perdida_valor = float(perdida.item())
@@ -123,6 +127,45 @@ def _tarea_entrenamiento(
                         tokenizer=tokenizer,
                     ),
                 }
+
+            if nube_cfg.get("activa") and paso_global % nube_cfg.get("intervalo", 10) == 0:
+                # La visualizacion nunca debe tumbar el entrenamiento: si algo
+                # falla aqui (secuencia demasiado corta, dimension invalida
+                # elegida en la UI), se omite la nube de ESTE paso y se sigue.
+                try:
+                    primera_secuencia = tokens_origen[0]
+
+                    # El batch viene rellenado: sin filtrar, la mayoria de los
+                    # puntos serian padding apilados en un mismo lugar, y la
+                    # varianza reportada quedaria inflada por esa separacion
+                    # artificial (medido: 46 de 50 puntos y 92.5% "conservado").
+                    if id_token_relleno is not None:
+                        mascara_real = primera_secuencia != id_token_relleno
+                    else:
+                        mascara_real = torch.ones_like(primera_secuencia, dtype=torch.bool)
+
+                    ids_reales = primera_secuencia[mascara_real].tolist()
+
+                    # PCA necesita al menos 3 puntos para 3 componentes.
+                    if len(ids_reales) >= 3:
+                        with torch.no_grad():
+                            embeddings_batch = modelo.embedding_entrada(
+                                primera_secuencia[mascara_real].unsqueeze(0)
+                            )
+                        nube = extraer_nube_segun_modo(
+                            embeddings_batch,
+                            nube_cfg,
+                            tokens_ids=ids_reales,
+                            tokenizer=tokenizer,
+                            ejes_previos=ejes_pca_previos,
+                        )
+                        # `ejes` es un ndarray: se guarda del lado de Python
+                        # para el frame siguiente y se quita del payload, que
+                        # tiene que ser 100% serializable a QML.
+                        ejes_pca_previos = nube.pop("ejes", None)
+                        paso["nube_embeddings"] = nube
+                except (ValueError, IndexError, RuntimeError):
+                    pass
 
             yield paso
 
@@ -172,6 +215,14 @@ class TrainingController(QObject):
         self._id_token_relleno_dataset: int | None = None
         self._origen_datasets: list[dict] = []
         self._bloqueo_estado = threading.RLock()
+        # Config de la nube 3D. La escribe la UI, la lee el worker —
+        self._config_nube = {
+            "activa": False,
+            "modo": "pca",
+            "dimensiones": [0, 1, 2],
+            "intervalo": 10,
+        }
+
         self._optimizador: torch.optim.Optimizer | None = None
         self._optimizer_state_pendiente = getattr(
             resultado_carga, "optimizer_state_dict", None
@@ -284,6 +335,7 @@ class TrainingController(QObject):
             self._optimizador,
             self._estado_entrenamiento,
             self._bloqueo_estado,
+            self._config_nube,
             velocidad_inicial=velocidad_inicial,
         )
 
@@ -387,6 +439,30 @@ class TrainingController(QObject):
         return generar_nombre_modelo(
             self.modelo, paso_global=self._estado_entrenamiento.get("paso_global")
         )
+
+    @Slot(bool)
+    def activarNubeEmbeddings(self, activa: bool) -> None:
+        """Encender/apagar el cálculo. Apagada no cuesta nada: el worker
+        ni siquiera lee los embeddings."""
+        with self._bloqueo_estado:
+            self._config_nube["activa"] = bool(activa)
+
+    @Slot(str, "QVariantList", int)
+    def configurarNubeEmbeddings(self, modo: str, dimensiones: list, intervalo: int) -> None:
+        """Cambia el modo de proyección en caliente, sin detener el
+        entrenamiento. Se escribe bajo lock para que el worker nunca lea
+        un modo nuevo con las dimensiones viejas.
+
+        Args:
+            modo: "pca" o "ejes".
+            dimensiones: 1-3 índices; solo se usan si modo == "ejes".
+            intervalo: cada cuántos pasos recalcular (>= 1).
+        """
+        dims = [int(d) for d in dimensiones][:3] or [0, 1, 2]
+        with self._bloqueo_estado:
+            self._config_nube["modo"] = "pca" if modo == "pca" else "ejes"
+            self._config_nube["dimensiones"] = dims
+            self._config_nube["intervalo"] = max(1, int(intervalo))
 
     def _ruta_sin_sobrescribir(self, nombre: str):
         from model.persistencia.model_storage import sanitizar_nombre_modelo

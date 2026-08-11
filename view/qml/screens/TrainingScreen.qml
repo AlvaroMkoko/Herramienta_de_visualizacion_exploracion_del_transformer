@@ -141,6 +141,8 @@ PagePrincipal {
         }
     }
 
+    property var nubeEmbeddings: ({})
+
     function registrarPaso(paso) {
         root.epocaActual = Number(paso.epoca || 0)
         root.pasoGlobalActual = Number(paso.paso_global || 0)
@@ -160,6 +162,9 @@ PagePrincipal {
         var siguiente = root.historialVisible.slice(Math.max(0, root.historialVisible.length - 39))
         siguiente.push(root.perdidaActual)
         root.historialVisible = siguiente
+
+        if (paso.nube_embeddings !== undefined)
+            root.nubeEmbeddings = paso.nube_embeddings
     }
 
     QtObject {
@@ -175,6 +180,9 @@ PagePrincipal {
     Component.onCompleted: {
         var info = root.viewModel.modeloActualInfo || {}
         localBridge.numCapas = Number(info.num_capas || 1)
+
+        root.trainingController.activarNubeEmbeddings(false)
+        root.trainingController.configurarNubeEmbeddings("pca", [0,1,2], 10)
     }
 
     Connections {
@@ -401,11 +409,45 @@ PagePrincipal {
                     Layout.fillHeight: true
                     Layout.minimumHeight: 560 * root.sy
 
-                    TransformerDiagram {
+                    ColumnLayout {
                         anchors.fill: parent
-                        bridge: localBridge
-                        trainingMode: true
-                        highlightedComponentId: root.componenteRelevanteId
+                        spacing: 8 * root.sy
+
+                        TabBar {
+                            id: barraPestanas
+                            Layout.fillWidth: true
+
+                            onCurrentIndexChanged: {
+                                root.trainingController.activarNubeEmbeddings(barraPestanas.currentIndex === 1)
+                            }
+
+                            TabButton { text: "Arquitectura" }
+                            TabButton { text: "Embeddings 3D" }
+                        }
+
+                        StackLayout {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            currentIndex: barraPestanas.currentIndex
+
+                            TransformerDiagram {
+                                bridge: localBridge
+                                trainingMode: true
+                                highlightedComponentId: root.componenteRelevanteId
+                            }
+
+                            NubeEmbeddings3D {
+                                puntos: root.nubeEmbeddings.puntos || []
+                                etiquetas: root.nubeEmbeddings.etiquetas || []
+                                varianzaConservada: Number(root.nubeEmbeddings.varianza_conservada || 0)
+                                varianzaPorComponente: root.nubeEmbeddings.varianza_por_componente || []
+                                modo: root.nubeEmbeddings.modo || "pca"
+                                dimensiones: root.nubeEmbeddings.dimensiones || []
+                                // Solo rota sola cuando la pestaña esta visible,
+                                // para no repintar un Canvas que nadie ve.
+                                rotacionAutomatica: barraPestanas.currentIndex === 1
+                            }
+                        }
                     }
                 }
             }

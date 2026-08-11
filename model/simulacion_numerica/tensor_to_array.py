@@ -142,3 +142,198 @@ def probabilidades_top_n(
     probabilidades = torch.softmax(logits[indice_batch], dim=-1)
     valores, indices = torch.topk(probabilidades, min(n, probabilidades.size(-1)))
     return indices.cpu().numpy(), valores.cpu().numpy()
+
+def proyeccion_dimensiones(
+    embeddings: torch.Tensor,
+    dimensiones: list[int],
+    indice_batch: int = 0,
+) -> np.ndarray:
+    """Proyecta embeddings de dimensión `d` sobre las 1-3 dimensiones
+    elegidas — la "sombra" del vector sobre ese subespacio coordenado.
+
+    Matemáticamente es una proyección ortogonal: la matriz de proyección
+    tiene como filas los vectores base `e_i` de las dimensiones pedidas,
+    que son ortonormales entre sí. Por eso no distorsiona escalas: los
+    ejes del gráfico están en las mismas unidades que el embedding
+    original.
+
+    Consecuencia importante para interpretar la vista: una proyección es
+    CONTRACTIVA (nunca agranda distancias). Dos tokens que se ven
+    separados en la sombra están realmente separados en el espacio
+    completo; pero dos que se ven juntos pueden estar lejísimos en las
+    dimensiones que no se están mostrando. Ver `varianza_por_dimension`
+    para cuantificar cuánta información queda fuera.
+
+    Args:
+        embeddings: tensor de forma (B, T, d) o (T, d).
+        dimensiones: 1 a 3 índices de dimensión, en el orden en que se
+            quieren mapear a los ejes X, Y, Z. Se admiten repetidos
+            (proyectar la misma dimensión en dos ejes es válido, aunque
+            colapsa los puntos sobre una diagonal).
+        indice_batch: cuál elemento del batch usar, si el tensor es 3D.
+
+    Returns:
+        `numpy.ndarray` de forma (T, len(dimensiones)).
+
+    Raises:
+        ValueError: si `dimensiones` está vacío o tiene más de 3 índices.
+        IndexError: si algún índice está fuera del rango del embedding.
+    """
+    if not 1 <= len(dimensiones) <= 3:
+        raise ValueError(
+            f"Se pueden elegir entre 1 y 3 dimensiones, recibidas: {len(dimensiones)}"
+        )
+
+    matriz = embeddings[indice_batch] if embeddings.dim() == 3 else embeddings
+    dimension_total = matriz.size(-1)
+
+    for dim in dimensiones:
+        if not 0 <= dim < dimension_total:
+            raise IndexError(
+                f"La dimensión {dim} está fuera de rango "
+                f"(el embedding tiene {dimension_total} dimensiones: 0 a {dimension_total - 1})"
+            )
+
+    return tensor_a_numpy(matriz[:, dimensiones])
+
+
+def varianza_por_dimension(
+    embeddings: torch.Tensor,
+    indice_batch: int = 0,
+) -> np.ndarray:
+    """Varianza de cada dimensión a lo largo de los tokens.
+
+    Sirve para dos cosas en la Vista: ordenar las dimensiones por cuánta
+    información aportan (las de varianza casi nula son ejes "muertos",
+    donde todos los tokens caen en el mismo punto), y calcular qué
+    fracción del total conserva una selección de 3 — ver
+    `fraccion_varianza_conservada`.
+
+    Returns:
+        `numpy.ndarray` de forma (d,), no negativo.
+    """
+    matriz = embeddings[indice_batch] if embeddings.dim() == 3 else embeddings
+    return tensor_a_numpy(matriz.var(dim=0, unbiased=False))
+
+
+def fraccion_varianza_conservada(
+    embeddings: torch.Tensor,
+    dimensiones: list[int],
+    indice_batch: int = 0,
+) -> float:
+    """Qué fracción de la varianza total conservan las dimensiones
+    elegidas — es decir, cuánta de la "forma" real de la nube de puntos
+    sobrevive en la sombra 3D.
+
+    Con embeddings poco estructurados, elegir 3 de 32 dimensiones ronda
+    3/32 ≈ 9%: la vista es honesta pero parcial. Valores mucho más altos
+    indican que esas dimensiones concentran buena parte de la señal.
+
+    Returns:
+        Float en [0, 1]. Devuelve 0.0 si la varianza total es cero (todos
+        los tokens tienen exactamente el mismo embedding), en vez de
+        dividir por cero.
+    """
+    varianzas = varianza_por_dimension(embeddings, indice_batch=indice_batch)
+    total = float(varianzas.sum())
+    if total <= 0.0:
+        return 0.0
+    return float(varianzas[list(dimensiones)].sum() / total)
+
+
+def dimensiones_por_cabeza(dimension_modelo: int, num_cabezas: int, indice_cabeza: int) -> list[int]:
+    """Índices de dimensión que ocupa una cabeza de atención concreta.
+
+    `AtencionMultiCabeza` reparte el vector con
+    `x.view(b, t, num_cabezas, dimension_cabeza)`, así que cada cabeza
+    usa un bloque CONTIGUO: con dimension_modelo=32 y num_cabezas=4, la
+    cabeza 0 son las dims 0-7, la 1 las 8-15, etc.
+
+    Proyectar sobre dimensiones de una misma cabeza no es una elección
+    arbitraria: es mirar el subespacio donde esa cabeza opera realmente.
+
+    Raises:
+        IndexError: si `indice_cabeza` está fuera de rango.
+    """
+    if not 0 <= indice_cabeza < num_cabezas:
+        raise IndexError(
+            f"indice_cabeza={indice_cabeza} fuera de rango (hay {num_cabezas} cabezas)"
+        )
+    dimension_cabeza = dimension_modelo // num_cabezas
+    inicio = indice_cabeza * dimension_cabeza
+    return list(range(inicio, inicio + dimension_cabeza))
+
+
+def proyeccion_pca(
+    embeddings: torch.Tensor,
+    num_componentes: int = 3,
+    ejes_previos: np.ndarray | None = None,
+    indice_batch: int = 0,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Proyecta sobre las direcciones de máxima varianza (PCA).
+
+    A diferencia de `proyeccion_dimensiones`, los ejes NO son
+    dimensiones originales sino combinaciones de todas — se pierde el
+    "esta es la dimensión 4" a cambio de conservar mucha más varianza
+    (en datos con estructura real, la diferencia puede ser de 4-7x).
+
+    ## Estabilización de signo (importante para vistas en vivo)
+
+    El signo de cada eje que devuelve SVD es arbitrario: recalcular PCA
+    en cada paso de entrenamiento produce inversiones constantes (medido:
+    ~216 inversiones en 200 pasos), y la nube "salta" reflejada en
+    pantalla aunque los embeddings apenas cambien. Pasando `ejes_previos`
+    (los del frame anterior) se alinea el signo de cada eje nuevo con el
+    anterior, y la animación queda continua.
+
+    Args:
+        embeddings: (B, T, d) o (T, d).
+        num_componentes: cuántas componentes principales (típicamente 3).
+        ejes_previos: matriz `(num_componentes, d)` devuelta por la
+            llamada anterior. None en el primer frame.
+        indice_batch: cuál elemento del batch usar.
+
+    Returns:
+        Tupla `(puntos, ejes, varianza_explicada)`:
+        - puntos: `(T, num_componentes)`, las coordenadas a graficar.
+        - ejes: `(num_componentes, d)`, para pasar como `ejes_previos`
+          en la siguiente llamada.
+        - varianza_explicada: `(num_componentes,)`, fracción por componente.
+
+    Raises:
+        ValueError: si se piden más componentes que dimensiones disponibles.
+    """
+    matriz = embeddings[indice_batch] if embeddings.dim() == 3 else embeddings
+    datos = tensor_a_numpy(matriz).astype(np.float64)
+
+    num_tokens, dimension = datos.shape
+    maximo_componentes = min(num_tokens, dimension)
+    if num_componentes > maximo_componentes:
+        raise ValueError(
+            f"No se pueden extraer {num_componentes} componentes de una matriz "
+            f"{num_tokens}x{dimension} (máximo: {maximo_componentes})"
+        )
+
+    centrado = datos - datos.mean(axis=0)
+    _, valores_singulares, vt = np.linalg.svd(centrado, full_matrices=False)
+
+    ejes = vt[:num_componentes]
+
+    if ejes_previos is not None:
+        # Alinear el signo con el frame anterior: si el eje nuevo apunta
+        # en sentido contrario al viejo, se invierte. No cambia la
+        # geometria (un eje y su opuesto generan la misma recta), solo
+        # evita el salto visual.
+        for i in range(min(len(ejes), len(ejes_previos))):
+            if float(ejes[i] @ ejes_previos[i]) < 0:
+                ejes[i] = -ejes[i]
+
+    puntos = centrado @ ejes.T
+
+    varianzas = valores_singulares**2
+    total = varianzas.sum()
+    varianza_explicada = (
+        varianzas[:num_componentes] / total if total > 0 else np.zeros(num_componentes)
+    )
+
+    return puntos, ejes, varianza_explicada

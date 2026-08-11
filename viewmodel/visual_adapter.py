@@ -1131,3 +1131,163 @@ def resumir_paso_entrenamiento(
         },
         "componentes": componentes,
     }
+
+def extraer_nube_embeddings(
+    embeddings: torch.Tensor,
+    dimensiones: list[int],
+    tokens_ids: list[int] | None = None,
+    tokenizer=None,
+    indice_batch: int = 0,
+) -> dict:
+    """Arma la nube de puntos 3D lista para el Lienzo Científico: la
+    "sombra" de los embeddings sobre las 1-3 dimensiones elegidas, más
+    el texto de cada token y cuánta información conserva esa vista.
+
+    Args:
+        embeddings: (B, T, d) o (T, d).
+        dimensiones: 1 a 3 índices, mapeados a los ejes X, Y, Z.
+        tokens_ids: ids de los tokens, para etiquetar cada punto. Si es
+            None, los puntos van sin etiqueta.
+        tokenizer: necesario solo si se pasan `tokens_ids`.
+        indice_batch: cuál elemento del batch usar.
+
+    Returns:
+        Diccionario con:
+        - "puntos": lista de [x, y, z] (o menos ejes si se eligieron
+          menos dimensiones).
+        - "etiquetas": texto de cada token, alineado con "puntos".
+        - "dimensiones": los índices elegidos, para rotular los ejes.
+        - "varianza_conservada": fracción en [0, 1] — la Vista debería
+          mostrarla para que el usuario sepa qué tan parcial es la vista.
+        - "limites": {"min": [...], "max": [...]} por eje, para encuadrar
+          la cámara sin recalcularlo en QML.
+    """
+    puntos = tensor_to_array.proyeccion_dimensiones(
+        embeddings, dimensiones, indice_batch=indice_batch
+    )
+
+    etiquetas: list[str] = []
+    if tokens_ids is not None and tokenizer is not None:
+        etiquetas = [tokenizer.decode([id_token]) for id_token in tokens_ids]
+
+    return {
+        "puntos": puntos.tolist(),
+        "etiquetas": etiquetas,
+        "dimensiones": list(dimensiones),
+        "varianza_conservada": round(
+            tensor_to_array.fraccion_varianza_conservada(
+                embeddings, dimensiones, indice_batch=indice_batch
+            ),
+            4,
+        ),
+        "limites": {
+            "min": puntos.min(axis=0).tolist(),
+            "max": puntos.max(axis=0).tolist(),
+        },
+    }
+
+
+def extraer_nube_pca(
+    embeddings: torch.Tensor,
+    tokens_ids: list[int] | None = None,
+    tokenizer=None,
+    ejes_previos=None,
+    indice_batch: int = 0,
+) -> dict:
+    """Igual que `extraer_nube_embeddings` pero proyectando con PCA en
+    vez de sobre dimensiones elegidas a mano.
+
+    Para una vista EN VIVO durante el entrenamiento hay que reenviar
+    `ejes` (que viene en el resultado) como `ejes_previos` en la llamada
+    siguiente; si no, la nube parpadea reflejándose (ver
+    `tensor_to_array.proyeccion_pca`).
+
+    Returns:
+        Los mismos campos que `extraer_nube_embeddings`, más:
+        - "varianza_por_componente": fracción de cada eje.
+        - "ejes": matriz de ejes, para encadenar el frame siguiente. NO
+          es QML-safe (es un ndarray): se usa solo del lado de Python.
+    """
+    puntos, ejes, varianza = tensor_to_array.proyeccion_pca(
+        embeddings, num_componentes=3, ejes_previos=ejes_previos, indice_batch=indice_batch
+    )
+
+    etiquetas: list[str] = []
+    if tokens_ids is not None and tokenizer is not None:
+        etiquetas = [tokenizer.decode([id_token]) for id_token in tokens_ids]
+
+    return {
+        "puntos": puntos.tolist(),
+        "etiquetas": etiquetas,
+        "modo": "pca",
+        "varianza_conservada": round(float(varianza.sum()), 4),
+        "varianza_por_componente": [round(float(v), 4) for v in varianza],
+        "limites": {"min": puntos.min(axis=0).tolist(), "max": puntos.max(axis=0).tolist()},
+        "ejes": ejes,
+    }
+
+
+def extraer_grupos_por_cabeza(dimension_modelo: int, num_cabezas: int) -> list[dict]:
+    """Lista de cabezas con sus dimensiones, para que el selector de la
+    Vista pueda ofrecer "Cabeza 0 (dims 0-7)" en vez de 32 números
+    sueltos sin agrupar.
+
+    Returns:
+        Lista de `{"cabeza": int, "dimensiones": [...], "etiqueta": str}`.
+    """
+    grupos = []
+    for indice in range(num_cabezas):
+        dims = tensor_to_array.dimensiones_por_cabeza(dimension_modelo, num_cabezas, indice)
+        grupos.append({
+            "cabeza": indice,
+            "dimensiones": dims,
+            "etiqueta": f"Cabeza {indice} (dims {dims[0]}-{dims[-1]})",
+        })
+    return grupos
+
+
+def extraer_ranking_dimensiones(
+    embeddings: torch.Tensor,
+    n: int = 10,
+    indice_batch: int = 0,
+) -> list[dict]:
+    """Dimensiones ordenadas por varianza, de mayor a menor — para que
+    el selector de la Vista pueda sugerir cuáles vale la pena mirar en
+    vez de dejar al usuario probando a ciegas entre, por ejemplo, las
+    4960 combinaciones posibles de 3 dimensiones sobre 32.
+
+    Returns:
+        Lista de `{"dimension": int, "varianza": float}`, de mayor a menor.
+    """
+    varianzas = tensor_to_array.varianza_por_dimension(embeddings, indice_batch=indice_batch)
+    indices_ordenados = varianzas.argsort()[::-1][:n]
+    return [
+        {"dimension": int(indice), "varianza": round(float(varianzas[indice]), 6)}
+        for indice in indices_ordenados
+    ]
+
+def extraer_nube_segun_modo(
+    embeddings: torch.Tensor,
+    config: dict,
+    tokens_ids: list[int] | None = None,
+    tokenizer=None,
+    ejes_previos=None,
+) -> dict:
+    """Despacha al modo de proyección pedido por la Vista.
+
+    `config` es el snapshot que el hilo trabajador tomó bajo lock:
+    `{"modo": "pca"|"ejes", "dimensiones": [...]}`. El modo "cabeza" no
+    necesita rama propia: la Vista ya resuelve qué dimensiones ocupa la
+    cabeza (`extraer_grupos_por_cabeza`) y las manda como "ejes".
+    """
+    if config.get("modo") == "pca":
+        return extraer_nube_pca(
+            embeddings, tokens_ids=tokens_ids, tokenizer=tokenizer, ejes_previos=ejes_previos
+        )
+
+    dimensiones = config.get("dimensiones") or [0, 1, 2]
+    resultado = extraer_nube_embeddings(
+        embeddings, dimensiones, tokens_ids=tokens_ids, tokenizer=tokenizer
+    )
+    resultado["modo"] = "ejes"
+    return resultado
