@@ -242,10 +242,14 @@ class Transformer(nn.Module):
                     tokens_origen, self.config.id_token_relleno
                 )
 
-            x_encoder = self.embedding_entrada(tokens_origen) * math.sqrt(
+            embedding_encoder = self.embedding_entrada(tokens_origen)
+            embedding_encoder_escalado = embedding_encoder * math.sqrt(
                 self.config.dimension_modelo
             )
-            x_encoder = self.codificacion_posicional(x_encoder)
+            posicion_encoder = self.codificacion_posicional.pe[
+                :, : tokens_origen.size(1)
+            ]
+            x_encoder = self.codificacion_posicional(embedding_encoder_escalado)
             salida_encoder = self.encoder(x_encoder, mascara=mascara_encoder)
 
             tokens_destino = torch.tensor(
@@ -257,10 +261,14 @@ class Transformer(nn.Module):
                     tokens_destino.size(1), dispositivo=tokens_destino.device
                 )
 
-                x_decoder = self.embedding_salida(tokens_destino) * math.sqrt(
+                embedding_decoder = self.embedding_salida(tokens_destino)
+                embedding_decoder_escalado = embedding_decoder * math.sqrt(
                     self.config.dimension_modelo
                 )
-                x_decoder = self.codificacion_posicional(x_decoder)
+                posicion_decoder = self.codificacion_posicional.pe[
+                    :, : tokens_destino.size(1)
+                ]
+                x_decoder = self.codificacion_posicional(embedding_decoder_escalado)
                 salida_decoder = self.decoder(
                     x_decoder, salida_encoder,
                     mascara_causal=mascara_causal, mascara_encoder=mascara_encoder,
@@ -292,6 +300,19 @@ class Transformer(nn.Module):
                     "pesos_atencion_cruzada_por_capa": self.decoder.pesos_atencion_cruzada_por_capa(),
                     "pesos_autoatencion_por_capa": self.decoder.pesos_autoatencion_por_capa(),
                     "pesos_atencion_encoder_por_capa": self.encoder.pesos_atencion_por_capa(),
+                    "traza_global": {
+                        "embedding_encoder": embedding_encoder.detach(),
+                        "embedding_encoder_escalado": embedding_encoder_escalado.detach(),
+                        "posicion_encoder": posicion_encoder.detach(),
+                        "entrada_encoder": x_encoder.detach(),
+                        "salida_encoder": salida_encoder.detach(),
+                        "embedding_decoder": embedding_decoder.detach(),
+                        "embedding_decoder_escalado": embedding_decoder_escalado.detach(),
+                        "posicion_decoder": posicion_decoder.detach(),
+                        "entrada_decoder": x_decoder.detach(),
+                        "salida_decoder": salida_decoder.detach(),
+                        "mascara_causal": mascara_causal.detach(),
+                    },
                 }
 
                 if id_token_fin is not None and token_nuevo.item() == id_token_fin:

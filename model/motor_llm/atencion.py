@@ -25,7 +25,8 @@ def atencion_escalada(
     v: torch.Tensor,
     mascara: torch.Tensor | None = None,
     dropout: nn.Dropout | None = None,
-) -> tuple[torch.Tensor, torch.Tensor]:
+    devolver_traza: bool = False,
+) -> tuple[torch.Tensor, torch.Tensor] | tuple[torch.Tensor, torch.Tensor, dict]:
     """Scaled Dot-Product Attention.
 
     Attention(Q, K, V) = softmax(Q·K^T / sqrt(d_k)) · V
@@ -54,7 +55,8 @@ def atencion_escalada(
     dimension_cabeza = q.size(-1)
 
     # (B, num_cabezas, T_q, T_k)
-    scores = (q @ k.transpose(-2, -1)) / math.sqrt(dimension_cabeza)
+    scores_crudos = (q @ k.transpose(-2, -1)) / math.sqrt(dimension_cabeza)
+    scores = scores_crudos
 
     if mascara is not None:
         scores = scores.masked_fill(mascara == False, float("-inf"))  # noqa: E712
@@ -65,6 +67,12 @@ def atencion_escalada(
         pesos_atencion = dropout(pesos_atencion)
 
     salida = pesos_atencion @ v
+    if devolver_traza:
+        return salida, pesos_atencion, {
+            "scores_crudos": scores_crudos.detach(),
+            "scores_enmascarados": scores.detach(),
+            "mascara": mascara.detach() if mascara is not None else None,
+        }
     return salida, pesos_atencion
 
 
@@ -98,6 +106,7 @@ class AtencionMultiCabeza(nn.Module):
         # ViewModel pueda leerlos después del forward sin tener que
         # modificar la firma de retorno de todo el modelo.
         self.ultimos_pesos_atencion: torch.Tensor | None = None
+        self.ultima_traza: dict | None = None
 
     def _separar_cabezas(self, x: torch.Tensor) -> torch.Tensor:
         """(B, T, dimension_modelo) -> (B, num_cabezas, T, dimension_cabeza)."""
@@ -134,11 +143,75 @@ class AtencionMultiCabeza(nn.Module):
         k = self._separar_cabezas(self.proyeccion_k(x_clave_valor))
         v = self._separar_cabezas(self.proyeccion_v(x_clave_valor))
 
-        salida, pesos_atencion = atencion_escalada(
-            q, k, v, mascara=mascara, dropout=self.dropout_atencion
+        salida, pesos_atencion, traza = atencion_escalada(
+            q,
+            k,
+            v,
+            mascara=mascara,
+            dropout=self.dropout_atencion,
+            devolver_traza=True,
         )
         self.ultimos_pesos_atencion = pesos_atencion.detach()
 
-        salida = self._combinar_cabezas(salida)
-        salida = self.proyeccion_salida(salida)
-        return self.dropout_salida(salida)
+        salida_cabezas = salida
+        salida_concatenada = self._combinar_cabezas(salida_cabezas)
+        salida_proyectada = self.proyeccion_salida(salida_concatenada)
+
+        # Instrumentación compacta del forward real. Se conserva la última
+        # query y una ventana de keys para la pantalla de inferencia; no se
+        # crean valores sintéticos ni se retienen activaciones completas.
+        max_keys = 64
+        max_dim = 32
+        inicio_keys = max(0, k.size(-2) - max_keys)
+        pesos_ultima = pesos_atencion[:, :, -1, :]
+        indice_key = int(pesos_ultima[0].mean(dim=0).argmax().item())
+        contribuciones = (
+            pesos_ultima.unsqueeze(-1) * v
+        ).norm(dim=-1)
+        mascara_real = traza["mascara"]
+        if mascara_real is not None:
+            mascara_expandida = torch.broadcast_to(
+                mascara_real, traza["scores_crudos"].shape
+            )
+            mascara_ultima = mascara_expandida[:, :, -1, inicio_keys:]
+            posiciones_bloqueadas = ~mascara_expandida
+            maximo_enmascarado = (
+                float(pesos_atencion.masked_select(posiciones_bloqueadas).abs().max().item())
+                if posiciones_bloqueadas.any()
+                else 0.0
+            )
+            porcentaje_bloqueado = float(
+                posiciones_bloqueadas.float().mean().item() * 100
+            )
+        else:
+            mascara_ultima = None
+            maximo_enmascarado = 0.0
+            porcentaje_bloqueado = 0.0
+
+        self.ultima_traza = {
+            "q_ultima": q[:, :, -1, :max_dim].detach(),
+            "k_destacada": k[:, :, indice_key, :max_dim].detach(),
+            "v_destacada": v[:, :, indice_key, :max_dim].detach(),
+            "key_destacada": indice_key,
+            "scores_crudos_ultima": traza["scores_crudos"][
+                :, :, -1, inicio_keys:
+            ].detach(),
+            "scores_enmascarados_ultima": traza["scores_enmascarados"][
+                :, :, -1, inicio_keys:
+            ].detach(),
+            "mascara_ultima": mascara_ultima.detach() if mascara_ultima is not None else None,
+            "pesos_ultima": pesos_ultima[:, :, inicio_keys:].detach(),
+            "contribuciones_ultima": contribuciones[:, :, inicio_keys:].detach(),
+            "salida_cabezas_ultima": salida_cabezas[:, :, -1, :max_dim].detach(),
+            "salida_concatenada_ultima": salida_concatenada[:, -1, :max_dim].detach(),
+            "salida_proyectada_ultima": salida_proyectada[:, -1, :max_dim].detach(),
+            "shape_q": tuple(q.shape),
+            "shape_k": tuple(k.shape),
+            "shape_v": tuple(v.shape),
+            "shape_scores": tuple(traza["scores_crudos"].shape),
+            "inicio_keys": inicio_keys,
+            "dimension_mostrada": min(max_dim, q.size(-1)),
+            "maximo_peso_enmascarado": maximo_enmascarado,
+            "porcentaje_bloqueado": porcentaje_bloqueado,
+        }
+        return self.dropout_salida(salida_proyectada)

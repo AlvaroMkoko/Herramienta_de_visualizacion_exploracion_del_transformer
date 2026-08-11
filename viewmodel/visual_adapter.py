@@ -116,17 +116,33 @@ def _texto_token(tokenizer, token_id: int, especial: str = "") -> str:
     )
 
 
+def _offsets_tokens(tokenizer, ids: list[int]) -> list[tuple[int, int]] | None:
+    encoding = getattr(tokenizer, "encoding", None)
+    if encoding is None or not hasattr(encoding, "decode_with_offsets"):
+        return None
+    try:
+        texto, inicios = encoding.decode_with_offsets(ids)
+    except (KeyError, RuntimeError, TypeError, ValueError, UnicodeError):
+        return None
+    finales = list(inicios[1:]) + [len(texto)]
+    return [(int(inicio), int(fin)) for inicio, fin in zip(inicios, finales)]
+
+
 def _tokens_visibles(tokenizer, ids: list[int], limite: int = 32) -> list[dict]:
     """Tokens compactos con posición; conserva el final si la secuencia es larga."""
     inicio = max(0, len(ids) - limite)
-    return [
-        {
+    offsets = _offsets_tokens(tokenizer, ids)
+    resultado = []
+    for indice, token_id in enumerate(ids[inicio:], start=inicio):
+        token = {
             "posicion": indice,
             "token_id": int(token_id),
             "texto": _texto_token(tokenizer, int(token_id)),
+            "offset_inicio": offsets[indice][0] if offsets else -1,
+            "offset_fin": offsets[indice][1] if offsets else -1,
         }
-        for indice, token_id in enumerate(ids[inicio:], start=inicio)
-    ]
+        resultado.append(token)
+    return resultado
 
 
 def _atencion_ultima_consulta(
@@ -180,6 +196,359 @@ def _resumen_atencion_ultima_consulta(
     return {"capas": capas}
 
 
+def _forma(tensor: torch.Tensor) -> str:
+    return " × ".join(str(int(valor)) for valor in tensor.shape)
+
+
+def _estadisticas_tensor(tensor: torch.Tensor) -> dict:
+    valores = tensor.detach().float().reshape(-1)
+    finitos = valores[torch.isfinite(valores)]
+    if finitos.numel() == 0:
+        return {
+            "minimo": "—", "maximo": "—", "media": "—",
+            "desviacion": "—", "norma_l2": "—", "finitos": 0,
+        }
+    return {
+        "minimo": _formatear_numero(float(finitos.min().item())),
+        "maximo": _formatear_numero(float(finitos.max().item())),
+        "media": _formatear_numero(float(finitos.mean().item())),
+        "desviacion": _formatear_numero(
+            float(finitos.std(unbiased=False).item())
+        ),
+        "norma_l2": _formatear_numero(float(finitos.norm().item())),
+        "finitos": int(finitos.numel()),
+    }
+
+
+def _histograma(tensor: torch.Tensor, bins: int = 16) -> dict:
+    valores = tensor.detach().float().reshape(-1)
+    valores = valores[torch.isfinite(valores)]
+    if valores.numel() == 0:
+        return {"conteos": [], "bordes": [], "total": 0}
+    minimo = float(valores.min().item())
+    maximo = float(valores.max().item())
+    if math.isclose(minimo, maximo):
+        return {
+            "conteos": [int(valores.numel())],
+            "bordes": [minimo, maximo],
+            "total": int(valores.numel()),
+        }
+    conteos = torch.histc(valores, bins=bins, min=minimo, max=maximo)
+    bordes = torch.linspace(minimo, maximo, bins + 1)
+    return {
+        "conteos": [int(round(valor)) for valor in conteos.tolist()],
+        "bordes": [round(float(valor), 6) for valor in bordes.tolist()],
+        "total": int(valores.numel()),
+    }
+
+
+def _matriz_muestra(
+    tensor: torch.Tensor,
+    max_filas: int = 32,
+    max_columnas: int = 32,
+) -> dict:
+    datos = tensor.detach().float()
+    while datos.dim() > 2:
+        datos = datos[0]
+    if datos.dim() == 1:
+        datos = datos.unsqueeze(0)
+    filas_originales, columnas_originales = datos.shape
+    inicio_fila = max(0, filas_originales - max_filas)
+    muestra = datos[inicio_fila:, :max_columnas].cpu()
+    completa = muestra.shape == datos.shape
+    return {
+        "valores": [
+            [round(float(valor), 6) for valor in fila]
+            for fila in muestra.tolist()
+        ],
+        "original_shape": f"{filas_originales} × {columnas_originales}",
+        "displayed_shape": f"{muestra.size(0)} × {muestra.size(1)}",
+        "aggregation_method": "ninguna",
+        "level_of_detail": (
+            "completo exacto"
+            if completa
+            else f"ventana exacta: últimas {muestra.size(0)} filas × primeras {muestra.size(1)} dimensiones"
+        ),
+        "rango": _estadisticas_tensor(datos),
+    }
+
+
+def _resumen_residual(conexion) -> dict:
+    traza = getattr(conexion, "ultima_traza", None)
+    if not traza:
+        return {}
+    entrada = traza["entrada"].detach().float()[0]
+    actualizacion = traza["actualizacion"].detach().float()[0]
+    antes = traza["antes_norma"].detach().float()[0]
+    salida = traza["salida"].detach().float()[0]
+    norma_entrada = float(entrada.norm().item())
+    norma_delta = float(actualizacion.norm().item())
+    coseno = float(
+        torch.nn.functional.cosine_similarity(
+            entrada.unsqueeze(0), actualizacion.unsqueeze(0), dim=-1
+        ).item()
+    )
+    return {
+        "shape": " × ".join(str(v) for v in traza["shape"]),
+        "epsilon": traza["epsilon"],
+        "norma_entrada": round(norma_entrada, 6),
+        "norma_actualizacion": round(norma_delta, 6),
+        "norma_resultado": round(float(salida.norm().item()), 6),
+        "ratio_actualizacion": round(norma_delta / max(norma_entrada, 1e-12), 6),
+        "coseno": round(coseno, 6),
+        "media_antes": round(float(antes.mean().item()), 6),
+        "desviacion_antes": round(float(antes.std(unbiased=False).item()), 6),
+        "media_despues": round(float(salida.mean().item()), 6),
+        "desviacion_despues": round(float(salida.std(unbiased=False).item()), 6),
+        "histograma_antes": _histograma(antes),
+        "histograma_despues": _histograma(salida),
+        "vectores": {
+            "entrada": [round(float(v), 5) for v in entrada[:32].tolist()],
+            "actualizacion": [round(float(v), 5) for v in actualizacion[:32].tolist()],
+            "resultado": [round(float(v), 5) for v in salida[:32].tolist()],
+        },
+        "dimension_mostrada": min(32, int(entrada.numel())),
+    }
+
+
+def _resumen_ffn(feed_forward) -> dict:
+    traza = getattr(feed_forward, "ultima_traza", None)
+    if not traza:
+        return {}
+    activacion = traza["activacion"].detach().float()[0]
+    cantidad_top = min(8, int(activacion.numel()))
+    valores_top, indices_top = torch.topk(activacion.abs(), cantidad_top)
+    return {
+        "shape_entrada": " × ".join(str(v) for v in traza["shape_entrada"]),
+        "shape_oculta": " × ".join(str(v) for v in traza["shape_oculta"]),
+        "shape_salida": " × ".join(str(v) for v in traza["shape_salida"]),
+        "activacion": traza["activacion_nombre"],
+        "histograma_preactivacion": _histograma(traza["preactivacion"]),
+        "histograma_activacion": _histograma(activacion),
+        "estadisticas": _estadisticas_tensor(activacion),
+        "unidades_top": [
+            {
+                "unidad": int(indice),
+                "magnitud": round(float(magnitud), 6),
+                "valor": round(float(activacion[int(indice)].item()), 6),
+            }
+            for magnitud, indice in zip(valores_top.tolist(), indices_top.tolist())
+        ],
+    }
+
+
+def _resumen_traza_atencion(atencion) -> dict:
+    traza = getattr(atencion, "ultima_traza", None)
+    pesos_completos = getattr(atencion, "ultimos_pesos_atencion", None)
+    if not traza or pesos_completos is None:
+        return {}
+
+    def matriz_3d(tensor: torch.Tensor) -> list[list[float]]:
+        return [
+            [round(float(valor), 6) for valor in fila]
+            for fila in tensor.detach().float()[0].cpu().tolist()
+        ]
+
+    pesos = traza["pesos_ultima"].detach().float()[0]
+    scores = traza["scores_crudos_ultima"].detach().float()[0]
+    scores_mask = traza["scores_enmascarados_ultima"].detach().float()[0]
+    contribuciones = traza["contribuciones_ultima"].detach().float()[0]
+    mascara = traza["mascara_ultima"]
+    if mascara is None:
+        mascara_lista = [[1 for _ in range(pesos.size(1))] for _ in range(pesos.size(0))]
+    else:
+        mascara_lista = [
+            [1 if valor else 0 for valor in fila]
+            for fila in mascara[0].cpu().tolist()
+        ]
+
+    cabezas = []
+    sumas = pesos_completos.detach().float().sum(dim=-1)
+    for indice in range(pesos.size(0)):
+        fila = pesos_completos.detach().float()[0, indice, -1, :]
+        entropia = float((-(fila * torch.log(fila + 1e-12))).sum().item())
+        cabezas.append(
+            {
+                "id": f"H{indice + 1:02d}",
+                "indice": indice,
+                "entropia": round(entropia, 6),
+                "maximo": round(float(fila.max().item()), 6),
+                "masa_top3": round(
+                    float(torch.topk(fila, min(3, fila.numel())).values.sum().item()), 6
+                ),
+                "soporte_efectivo": round(math.exp(entropia), 4),
+                "suma_fila": round(float(sumas[0, indice, -1].item()), 6),
+            }
+        )
+
+    original = traza["shape_scores"]
+    displayed = (pesos.size(0), pesos.size(1))
+    return {
+        "q": matriz_3d(traza["q_ultima"]),
+        "k": matriz_3d(traza["k_destacada"]),
+        "v": matriz_3d(traza["v_destacada"]),
+        "scores": matriz_3d(scores.unsqueeze(0)),
+        "scores_enmascarados": matriz_3d(scores_mask.unsqueeze(0)),
+        "mascara": mascara_lista,
+        "atencion": matriz_3d(pesos.unsqueeze(0)),
+        "contribuciones": matriz_3d(contribuciones.unsqueeze(0)),
+        "salida_cabezas": matriz_3d(traza["salida_cabezas_ultima"]),
+        "salida_concatenada": [
+            round(float(v), 6)
+            for v in traza["salida_concatenada_ultima"][0].cpu().tolist()
+        ],
+        "salida_proyectada": [
+            round(float(v), 6)
+            for v in traza["salida_proyectada_ultima"][0].cpu().tolist()
+        ],
+        "key_destacada": traza["key_destacada"],
+        "cabezas": cabezas,
+        "shape_q": " × ".join(str(v) for v in traza["shape_q"]),
+        "shape_k": " × ".join(str(v) for v in traza["shape_k"]),
+        "shape_v": " × ".join(str(v) for v in traza["shape_v"]),
+        "original_shape": " × ".join(str(v) for v in original),
+        "displayed_shape": f"{displayed[0]} × 1 × {displayed[1]}",
+        "aggregation_method": "ninguna; query actual y ventana exacta de keys",
+        "level_of_detail": (
+            "completo para la query actual"
+            if traza["inicio_keys"] == 0
+            else f"últimas {displayed[1]} keys; original conserva {original[-1]}"
+        ),
+        "inicio_keys": traza["inicio_keys"],
+        "dimension_mostrada": traza["dimension_mostrada"],
+        "validacion": {
+            "filas_suman_uno": bool(torch.allclose(
+                sumas, torch.ones_like(sumas), atol=1e-5, rtol=1e-5
+            )),
+            "error_max_suma": round(float((sumas - 1).abs().max().item()), 8),
+            "sin_nan": not bool(torch.isnan(pesos_completos).any().item()),
+            "enmascarados_cero": traza["maximo_peso_enmascarado"] <= 1e-6,
+            "maximo_peso_enmascarado": round(
+                float(traza["maximo_peso_enmascarado"]), 8
+            ),
+            "porcentaje_bloqueado": round(
+                float(traza["porcentaje_bloqueado"]), 3
+            ),
+        },
+    }
+
+
+def _detalle_forward(modelo, paso: dict) -> dict:
+    traza_global = paso.get("traza_global") or {}
+    config = modelo.config
+
+    encoder = []
+    for indice, bloque in enumerate(modelo.encoder.bloques):
+        encoder.append(
+            {
+                "capa": indice + 1,
+                "atencion": _resumen_traza_atencion(bloque.atencion),
+                "residual_atencion": _resumen_residual(bloque.conexion_atencion),
+                "ffn": _resumen_ffn(bloque.feed_forward),
+                "residual_ffn": _resumen_residual(bloque.conexion_feed_forward),
+            }
+        )
+
+    decoder = []
+    for indice, bloque in enumerate(modelo.decoder.bloques):
+        decoder.append(
+            {
+                "capa": indice + 1,
+                "autoatencion": _resumen_traza_atencion(bloque.autoatencion),
+                "residual_autoatencion": _resumen_residual(
+                    bloque.conexion_autoatencion
+                ),
+                "atencion_cruzada": _resumen_traza_atencion(
+                    bloque.atencion_cruzada
+                ),
+                "residual_cruzada": _resumen_residual(
+                    bloque.conexion_atencion_cruzada
+                ),
+                "ffn": _resumen_ffn(bloque.feed_forward),
+                "residual_ffn": _resumen_residual(bloque.conexion_feed_forward),
+            }
+        )
+
+    globales = {}
+    for nombre in (
+        "embedding_encoder",
+        "embedding_encoder_escalado",
+        "posicion_encoder",
+        "entrada_encoder",
+        "salida_encoder",
+        "embedding_decoder",
+        "embedding_decoder_escalado",
+        "posicion_decoder",
+        "entrada_decoder",
+        "salida_decoder",
+    ):
+        tensor = traza_global.get(nombre)
+        if tensor is None:
+            continue
+        globales[nombre] = {
+            "shape": _forma(tensor),
+            "dtype": str(tensor.dtype).replace("torch.", ""),
+            "device": str(tensor.device),
+            "matriz": _matriz_muestra(tensor),
+            "histograma": _histograma(tensor),
+            "estadisticas": _estadisticas_tensor(tensor),
+            "normas_tokens": [
+                round(float(valor), 6)
+                for valor in tensor.detach().float()[0].norm(dim=-1).cpu().tolist()[-32:]
+            ],
+        }
+
+    mascara_causal = traza_global.get("mascara_causal")
+    if mascara_causal is not None:
+        mascara = mascara_causal.detach().bool()
+        while mascara.dim() > 2:
+            mascara = mascara[0]
+        inicio = max(0, mascara.size(0) - 64)
+        muestra = mascara[inicio:, inicio:]
+        globales["mascara_causal"] = {
+            "valores": [[1 if v else 0 for v in fila] for fila in muestra.cpu().tolist()],
+            "original_shape": f"{mascara.size(0)} × {mascara.size(1)}",
+            "displayed_shape": f"{muestra.size(0)} × {muestra.size(1)}",
+            "aggregation_method": "ninguna",
+            "level_of_detail": "completo exacto" if inicio == 0 else "ventana causal final exacta",
+            "porcentaje_bloqueado": round(
+                float((~mascara).float().mean().item() * 100), 3
+            ),
+        }
+
+    logits = paso["logits"].detach().float()
+    return {
+        "metadata": {
+            "architecture": "encoder_decoder",
+            "num_layers": config.num_capas,
+            "num_heads": config.num_cabezas,
+            "d_model": config.dimension_modelo,
+            "d_head": config.dimension_cabeza,
+            "d_ff": config.dimension_ff,
+            "norm_order": "post-norm",
+            "norm_epsilon": float(
+                modelo.encoder.bloques[0].conexion_atencion.norma.eps
+            ),
+            "position_encoding_type": "sinusoidal aditivo",
+            "mask_type": "causal decoder + padding cuando aplica",
+            "dtype": str(next(modelo.parameters()).dtype).replace("torch.", ""),
+            "device": str(next(modelo.parameters()).device),
+            "framework": f"PyTorch {torch.__version__}",
+            "capture_precision": "float32 para métricas visuales",
+        },
+        "global": globales,
+        "encoder": encoder,
+        "decoder": decoder,
+        "logits": {
+            "shape": _forma(logits),
+            "dtype": str(paso["logits"].dtype).replace("torch.", ""),
+            "histograma": _histograma(logits),
+            "estadisticas": _estadisticas_tensor(logits),
+            "sin_nan": not bool(torch.isnan(logits).any().item()),
+        },
+    }
+
+
 def resumir_paso_inferencia(
     modelo,
     tokenizer,
@@ -219,7 +588,11 @@ def resumir_paso_inferencia(
         if muestreo_codicioso
         else int(torch.isfinite(logits_finales[0]).sum().item())
     )
-    cantidad_top = min(8, max(1, cantidad_candidatos), int(probabilidades.numel()))
+    cantidad_top = (
+        min(8, int(probabilidades.numel()))
+        if muestreo_codicioso
+        else min(8, max(1, cantidad_candidatos), int(probabilidades.numel()))
+    )
     probs_top, ids_top = torch.topk(probabilidades, cantidad_top)
     token_elegido_id = int(paso["token_id"])
     orden = torch.argsort(probabilidades, descending=True)
@@ -227,25 +600,39 @@ def resumir_paso_inferencia(
     rango_elegido = (
         int(posicion_elegida[0].item()) + 1 if posicion_elegida.numel() else 0
     )
-    predicciones_top = [
-        {
-            "token_id": int(token_id),
-            "texto": _texto_token(tokenizer, int(token_id)),
-            "probabilidad": round(float(probabilidad), 6),
-            "elegido": int(token_id) == token_elegido_id,
-        }
-        for probabilidad, token_id in zip(probs_top.tolist(), ids_top.tolist())
-    ]
+    predicciones_top = []
+    acumulada = 0.0
+    for rango, (probabilidad, token_id) in enumerate(
+        zip(probs_top.tolist(), ids_top.tolist()), start=1
+    ):
+        acumulada += float(probabilidad)
+        predicciones_top.append(
+            {
+                "token_id": int(token_id),
+                "texto": _texto_token(tokenizer, int(token_id)),
+                "logit": round(float(logits[0, int(token_id)].item()), 6),
+                "rango": rango,
+                "probabilidad": round(float(probabilidad), 6),
+                "probabilidad_acumulada": round(acumulada, 6),
+                "elegido": int(token_id) == token_elegido_id,
+            }
+        )
     if not any(prediccion["elegido"] for prediccion in predicciones_top):
         predicciones_top.append(
             {
                 "token_id": token_elegido_id,
                 "texto": _texto_token(tokenizer, token_elegido_id),
+                "logit": round(float(logits[0, token_elegido_id].item()), 6),
+                "rango": rango_elegido,
                 "probabilidad": round(
                     float(probabilidades[token_elegido_id].item()), 6
                 ),
+                "probabilidad_acumulada": 0.0,
                 "elegido": True,
             }
+        )
+        predicciones_top[-1]["probabilidad_acumulada"] = round(
+            float(probabilidades[orden[:rango_elegido]].sum().item()), 6
         )
 
     entropia_salida = float(
@@ -360,6 +747,11 @@ def resumir_paso_inferencia(
         "predicciones_top": predicciones_top,
         "cantidad_candidatos": cantidad_candidatos,
         "entropia_salida": round(entropia_salida, 5),
+        "margen_top1_top2": round(
+            float(probs_top[0].item() - probs_top[1].item())
+            if probs_top.numel() > 1 else float(probs_top[0].item()),
+            6,
+        ),
         "modo_muestreo": modo_muestreo,
         "filtros": " · ".join(filtros) if filtros else "Sin filtros aleatorios",
         "atencion_por_bloque": {
@@ -368,6 +760,14 @@ def resumir_paso_inferencia(
             "cruzada": atencion_cruzada["capas"],
         },
         "etapas": etapas,
+        "validacion": {
+            "probabilidades_suman_uno": math.isclose(
+                float(probabilidades.sum().item()), 1.0, abs_tol=1e-5
+            ),
+            "suma_probabilidades": round(float(probabilidades.sum().item()), 8),
+            "logits_sin_nan": not bool(torch.isnan(logits).any().item()),
+        },
+        "detalle_forward": _detalle_forward(modelo, paso),
     }
 
 

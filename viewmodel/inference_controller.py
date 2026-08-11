@@ -88,6 +88,9 @@ def _tarea_generacion(
             top_p=top_p,
             muestreo_codicioso=muestreo_codicioso,
         )
+        # La traza contiene tensores PyTorch reales usados únicamente por el
+        # adaptador. QML recibe el snapshot reducido y serializable.
+        paso.pop("traza_global", None)
         yield paso
 
     return tokenizer.decode(ids_generados)

@@ -28,6 +28,7 @@ class FeedForward(nn.Module):
         self.activacion = _ACTIVACIONES[config.activacion]()
         self.capa_proyeccion = nn.Linear(config.dimension_ff, config.dimension_modelo)
         self.dropout = nn.Dropout(config.dropout)
+        self.ultima_traza: dict | None = None
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -37,7 +38,19 @@ class FeedForward(nn.Module):
         Returns:
             Tensor de forma (B, T, dimension_modelo).
         """
-        x = self.capa_expansion(x)
-        x = self.activacion(x)
-        x = self.capa_proyeccion(x)
-        return self.dropout(x)
+        entrada = x
+        preactivacion = self.capa_expansion(entrada)
+        activacion = self.activacion(preactivacion)
+        proyeccion = self.capa_proyeccion(activacion)
+        salida = self.dropout(proyeccion)
+        self.ultima_traza = {
+            "entrada": entrada[:, -1, :].detach(),
+            "preactivacion": preactivacion[:, -1, :].detach(),
+            "activacion": activacion[:, -1, :].detach(),
+            "salida": salida[:, -1, :].detach(),
+            "shape_entrada": tuple(entrada.shape),
+            "shape_oculta": tuple(activacion.shape),
+            "shape_salida": tuple(salida.shape),
+            "activacion_nombre": self.activacion.__class__.__name__,
+        }
+        return salida

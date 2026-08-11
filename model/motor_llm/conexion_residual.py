@@ -20,6 +20,7 @@ class ConexionResidual(nn.Module):
         super().__init__()
         self.norma = nn.LayerNorm(dimension_modelo)
         self.dropout = nn.Dropout(dropout)
+        self.ultima_traza: dict | None = None
 
     def forward(self, x: torch.Tensor, subcapa) -> torch.Tensor:
         """
@@ -28,4 +29,15 @@ class ConexionResidual(nn.Module):
             subcapa: función/módulo que recibe `x` (SIN normalizar) y
                 retorna un tensor de la misma forma.
         """
-        return self.norma(x + self.dropout(subcapa(x)))
+        actualizacion = self.dropout(subcapa(x))
+        suma = x + actualizacion
+        salida = self.norma(suma)
+        self.ultima_traza = {
+            "entrada": x[:, -1, :].detach(),
+            "actualizacion": actualizacion[:, -1, :].detach(),
+            "antes_norma": suma[:, -1, :].detach(),
+            "salida": salida[:, -1, :].detach(),
+            "shape": tuple(salida.shape),
+            "epsilon": float(self.norma.eps),
+        }
+        return salida

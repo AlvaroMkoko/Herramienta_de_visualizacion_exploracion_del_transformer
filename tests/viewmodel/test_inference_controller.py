@@ -107,6 +107,32 @@ class TestGeneracionBasica:
             assert any(p["elegido"] for p in visualizacion["predicciones_top"])
             assert visualizacion["foco_entrada"]
             assert visualizacion["foco_decoder"]
+            assert visualizacion["validacion"]["probabilidades_suman_uno"] is True
+
+            detalle = visualizacion["detalle_forward"]
+            assert detalle["metadata"]["architecture"] == "encoder_decoder"
+            assert detalle["metadata"]["norm_order"] == "post-norm"
+            assert detalle["metadata"]["position_encoding_type"] == "sinusoidal aditivo"
+            assert detalle["global"]["embedding_encoder"]["shape"] == "1 × 4 × 32"
+            assert detalle["global"]["embedding_encoder"]["matriz"]["valores"]
+            assert detalle["global"]["mascara_causal"]["porcentaje_bloqueado"] >= 0
+            assert len(detalle["encoder"]) == config.num_capas
+            assert len(detalle["decoder"]) == config.num_capas
+
+            traza_atencion = detalle["decoder"][-1]["autoatencion"]
+            assert traza_atencion["q"]
+            assert traza_atencion["k"]
+            assert traza_atencion["v"]
+            assert traza_atencion["scores"]
+            assert traza_atencion["atencion"]
+            assert traza_atencion["contribuciones"]
+            assert traza_atencion["validacion"]["filas_suman_uno"] is True
+            assert traza_atencion["validacion"]["sin_nan"] is True
+
+            bloque = detalle["decoder"][-1]
+            assert bloque["residual_autoatencion"]["ratio_actualizacion"] >= 0
+            assert bloque["ffn"]["histograma_activacion"]["total"] == config.dimension_ff
+            assert bloque["ffn"]["unidades_top"]
 
         assert pasos_recibidos[-1]["texto_parcial"] == controlador._texto_generado_hasta_ahora
 

@@ -16,6 +16,7 @@ PagePrincipal {
     property bool mensajeEsError: false
     property int tokensGenerados: 0
     property var pasosVisualizacion: []
+    property var detalleForwardActual: ({})
     property int indicePasoVisualizado: -1
 
     readonly property int maxTokensPermitidos: Math.max(
@@ -91,6 +92,7 @@ PagePrincipal {
         root.textoGenerado = ""
         root.tokensGenerados = 0
         root.pasosVisualizacion = []
+        root.detalleForwardActual = ({})
         root.indicePasoVisualizado = -1
         flujoInferencia.close()
         root.mensajeEstado = "Generando…"
@@ -113,7 +115,16 @@ PagePrincipal {
             if (paso && paso.texto_parcial !== undefined)
                 root.textoGenerado = String(paso.texto_parcial)
             if (paso && paso.visualizacion !== undefined) {
-                root.pasosVisualizacion = root.pasosVisualizacion.concat([paso.visualizacion])
+                var snapshot = paso.visualizacion
+                root.detalleForwardActual = snapshot.detalle_forward || ({})
+                // El detalle tensorial solo se conserva para el token más
+                // reciente; el historial mantiene snapshots ligeros.
+                var resumen = ({})
+                for (var clave in snapshot) {
+                    if (clave !== "detalle_forward")
+                        resumen[clave] = snapshot[clave]
+                }
+                root.pasosVisualizacion = root.pasosVisualizacion.concat([resumen])
                 root.indicePasoVisualizado = root.pasosVisualizacion.length - 1
             }
             root.tokensGenerados += 1
@@ -673,6 +684,7 @@ PagePrincipal {
 
         contentItem: InferenceFlowPanel {
             snapshots: root.pasosVisualizacion
+            detailForward: root.detalleForwardActual
             selectedIndex: root.indicePasoVisualizado
             sx: root.sx
             sy: root.sy
