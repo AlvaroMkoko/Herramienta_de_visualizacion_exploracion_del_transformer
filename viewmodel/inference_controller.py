@@ -65,17 +65,18 @@ def _tarea_generacion(
     )
 
     ids_generados: list[int] = []
-    for paso in modelo.generar(
+    for numero_paso, paso in enumerate(modelo.generar(
         tokens_origen, id_token_inicio=id_token_inicio, id_token_fin=id_token_fin,
         max_tokens_nuevos=max_tokens_nuevos, temperatura=temperatura,
         top_k=top_k, top_p=top_p, muestreo_codicioso=muestreo_codicioso,
-    ):
+    ), start=1):
         # El token de fin (EOS) marca la parada, pero no es parte del
         # texto — se excluye del historial decodificado.
         if paso["token_id"] == id_token_fin:
             break
         ids_generados.append(paso["token_id"])
         paso["texto_parcial"] = tokenizer.decode(ids_generados)
+        paso["es_ultimo_token"] = numero_paso >= max_tokens_nuevos
         paso["visualizacion"] = resumir_paso_inferencia(
             modelo=modelo,
             tokenizer=tokenizer,
@@ -124,7 +125,7 @@ class InferenceController(QObject):
         self._gestor.progreso.connect(self._al_recibir_token)
         self._gestor.finalizado.connect(self._al_completar)
         self._gestor.cancelado.connect(self._al_cancelar)
-        self._gestor.error.connect(self.error.emit)
+        self._gestor.error.connect(self._al_error)
         self._gestor.pausado.connect(self.estaPausadoCambio.emit)
         self._gestor.reanudado.connect(self.estaPausadoCambio.emit)
 
@@ -167,6 +168,7 @@ class InferenceController(QObject):
         top_p: float | None = None,
         muestreo_codicioso: bool = False,
         velocidad_inicial: float = 0.0,
+        modo_paso_a_paso: bool = False,
     ) -> None:
         if self.esta_generando:
             return
@@ -223,6 +225,8 @@ class InferenceController(QObject):
             self.id_token_inicio, self.id_token_fin, max_tokens_nuevos,
             temperatura, top_k, top_p, muestreo_codicioso,
             velocidad_inicial=velocidad_inicial,
+            modo_paso_a_paso=modo_paso_a_paso,
+            pasos_iniciales=1 if modo_paso_a_paso else 0,
         )
 
     # ------------------------------------------------------------------
@@ -258,6 +262,35 @@ class InferenceController(QObject):
             velocidad_inicial=velocidad_inicial
         )
 
+    @Slot(str, int, float, int, float, bool)
+    def iniciar_generacion_paso_a_paso_ui(
+        self,
+        prompt: str,
+        max_tokens_nuevos: int,
+        temperatura: float,
+        top_k: int,
+        top_p: float,
+        muestreo_codicioso: bool,
+    ) -> None:
+        """Inicia una sesion manual y autoriza solamente el primer token."""
+        top_k_real = top_k if top_k > 0 else None
+        top_p_real = top_p if top_p < 1.0 else None
+        self.iniciar_generacion(
+            prompt,
+            max_tokens_nuevos=max_tokens_nuevos,
+            temperatura=temperatura,
+            top_k=top_k_real,
+            top_p=top_p_real,
+            muestreo_codicioso=muestreo_codicioso,
+            modo_paso_a_paso=True,
+        )
+
+    @Slot()
+    def generar_siguiente_token(self) -> None:
+        """Autoriza exactamente un token mas de la sesion manual activa."""
+        if self.esta_generando:
+            self._gestor.avanzar_un_paso()
+
     @Slot()
     def detener(self) -> None:
         self._gestor.detener()
@@ -287,6 +320,10 @@ class InferenceController(QObject):
     def _al_recibir_token(self, paso: dict) -> None:
         self._texto_generado_hasta_ahora = paso["texto_parcial"]
         self.token_generado.emit(paso)
+        # Tras el ultimo token visible queda una llamada pendiente para que
+        # el generador pueda devolver su texto final y cerrar el QThread.
+        if paso.get("es_ultimo_token"):
+            self._gestor.avanzar_un_paso()
 
     def _al_completar(self, texto_final: str) -> None:
         self.estaGenerandoCambio.emit()
@@ -295,3 +332,7 @@ class InferenceController(QObject):
     def _al_cancelar(self) -> None:
         self.estaGenerandoCambio.emit()
         self.generacion_cancelada.emit(self._texto_generado_hasta_ahora)
+
+    def _al_error(self, mensaje: str) -> None:
+        self.estaGenerandoCambio.emit()
+        self.error.emit(mensaje)

@@ -157,6 +157,37 @@ class TestGeneracionBasica:
 
         assert segundas_llamadas["contador"] == 5
 
+    def test_modo_paso_a_paso_genera_exactamente_un_token_por_avance(
+        self, qtbot, controlador
+    ):
+        pasos_recibidos = []
+        controlador.token_generado.connect(pasos_recibidos.append)
+
+        with qtbot.waitSignal(controlador.token_generado, timeout=5000):
+            controlador.iniciar_generacion(
+                "hola",
+                max_tokens_nuevos=3,
+                muestreo_codicioso=True,
+                modo_paso_a_paso=True,
+            )
+
+        qtbot.wait(150)
+        assert len(pasos_recibidos) == 1
+        assert controlador.esta_generando is True
+
+        with qtbot.waitSignal(controlador.token_generado, timeout=5000):
+            controlador.generar_siguiente_token()
+
+        qtbot.wait(150)
+        assert len(pasos_recibidos) == 2
+
+        with qtbot.waitSignal(controlador.generacion_completa, timeout=5000):
+            controlador.generar_siguiente_token()
+
+        assert len(pasos_recibidos) == 3
+        assert pasos_recibidos[-1]["es_ultimo_token"] is True
+        assert controlador.esta_generando is False
+
 
 # ---------------------------------------------------------------------------
 # Detener

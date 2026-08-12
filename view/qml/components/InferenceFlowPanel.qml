@@ -12,6 +12,8 @@ Item {
     property int selectedIndex: snapshots.length > 0 ? snapshots.length - 1 : -1
     property real sx: 1
     property real sy: 1
+    property bool canGenerateNext: false
+    property bool tokenProcessing: false
 
     property int densityMode: 0 // Student, Developer, Researcher
     property int sceneIndex: 0
@@ -109,6 +111,7 @@ Item {
 
     signal closeRequested()
     signal stepSelected(int index)
+    signal nextTokenRequested()
 
     function attentionFromLayer(layer) {
         if (!layer)
@@ -296,6 +299,14 @@ Item {
                     }
                 }
 
+                Button {
+                    text: root.tokenProcessing ? "Generando token…" : "▶ Siguiente token"
+                    enabled: root.canGenerateNext && !root.tokenProcessing
+                    onClicked: root.nextTokenRequested()
+                    Accessible.name: "Generar el siguiente token"
+                    ToolTip.visible: hovered
+                    ToolTip.text: "Ejecuta un nuevo paso autoregresivo y carga su forward pass"
+                }
                 Button { text: "↺ Reset"; onClicked: root.resetView() }
                 Button { text: "⇩ Exportar"; onClicked: root.exportView() }
                 Button {

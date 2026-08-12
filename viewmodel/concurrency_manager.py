@@ -51,7 +51,14 @@ class TrabajadorSegundoPlano(QObject):
     pausado = Signal()
     reanudado = Signal()
 
-    def __init__(self, funcion_generadora: Callable[..., Generator], *args, **kwargs):
+    def __init__(
+        self,
+        funcion_generadora: Callable[..., Generator],
+        *args,
+        modo_paso_a_paso: bool = False,
+        pasos_iniciales: int = 0,
+        **kwargs,
+    ):
         super().__init__()
         self._funcion_generadora = funcion_generadora
         self._args = args
@@ -66,6 +73,12 @@ class TrabajadorSegundoPlano(QObject):
         self._evento_continuar = threading.Event()
         self._evento_continuar.set()
 
+        # En modo paso a paso cada permiso representa exactamente una
+        # llamada a ``next(generador)``. Un semaforo conserva los clics que
+        # lleguen mientras el hilo todavia esta calculando el token actual.
+        self._modo_paso_a_paso = modo_paso_a_paso
+        self._semaforo_pasos = threading.Semaphore(pasos_iniciales)
+
         self._retardo_segundos = 0.0  # 0 = sin retardo, velocidad maxima
 
     # --- Controles (se llaman desde el hilo principal / UI) ---
@@ -76,6 +89,12 @@ class TrabajadorSegundoPlano(QObject):
         bloqueada esperando un `reanudar()` que nunca llega)."""
         self._evento_detener.set()
         self._evento_continuar.set()
+        self._semaforo_pasos.release()
+
+    def avanzar_un_paso(self) -> None:
+        """Autoriza un unico avance cuando la tarea usa modo manual."""
+        if self._modo_paso_a_paso and not self.debe_detenerse:
+            self._semaforo_pasos.release()
 
     def pausar(self) -> None:
         self._evento_continuar.clear()
@@ -116,6 +135,12 @@ class TrabajadorSegundoPlano(QObject):
                     if self.debe_detenerse:
                         self.cancelado.emit()
                         return
+
+                    if self._modo_paso_a_paso:
+                        self._semaforo_pasos.acquire()
+                        if self.debe_detenerse:
+                            self.cancelado.emit()
+                            return
 
                     # Bloquea aqui (sin gastar CPU) si esta en pausa. Si
                     # `solicitar_detener()` se llama mientras esta pausado,
@@ -196,6 +221,8 @@ class GestorConcurrencia(QObject):
         funcion_generadora: Callable[..., Generator],
         *args,
         velocidad_inicial: float = 0.0,
+        modo_paso_a_paso: bool = False,
+        pasos_iniciales: int = 0,
         **kwargs,
     ) -> None:
         """Lanza `funcion_generadora` en un QThread nuevo.
@@ -222,7 +249,13 @@ class GestorConcurrencia(QObject):
             return
 
         self._hilo = QThread()
-        self._trabajador = TrabajadorSegundoPlano(funcion_generadora, *args, **kwargs)
+        self._trabajador = TrabajadorSegundoPlano(
+            funcion_generadora,
+            *args,
+            modo_paso_a_paso=modo_paso_a_paso,
+            pasos_iniciales=pasos_iniciales,
+            **kwargs,
+        )
         self._trabajador.establecer_velocidad(velocidad_inicial)
         self._trabajador.moveToThread(self._hilo)
 
@@ -255,6 +288,11 @@ class GestorConcurrencia(QObject):
         """Reanuda una tarea previamente pausada."""
         if self._trabajador is not None:
             self._trabajador.reanudar()
+
+    def avanzar_un_paso(self) -> None:
+        """Libera un solo paso de una tarea iniciada en modo manual."""
+        if self._trabajador is not None:
+            self._trabajador.avanzar_un_paso()
 
     def establecer_velocidad(self, segundos_por_paso: float) -> None:
         """Ajusta el retardo entre pasos de la tarea en curso (o de la

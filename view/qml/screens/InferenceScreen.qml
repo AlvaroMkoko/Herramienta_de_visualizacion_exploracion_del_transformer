@@ -14,6 +14,7 @@ PagePrincipal {
     property string textoGenerado: ""
     property string mensajeEstado: "Listo para generar"
     property bool mensajeEsError: false
+    property bool tokenEnProceso: false
     property int tokensGenerados: 0
     property var pasosVisualizacion: []
     property var detalleForwardActual: ({})
@@ -26,33 +27,6 @@ PagePrincipal {
             Number(mainViewModel.modeloActualInfo.longitud_maxima_secuencia || 512)
         )
     )
-
-    // Retardo en segundos entre tokens. Ralentizar no cambia el
-    // resultado — permite ver aparecer cada token y seguir los mapas
-    // de atención mientras se generan.
-    readonly property var velocidadesDisponibles: [
-        { segundos: 0.0,  etiqueta: "Máxima" },
-        { segundos: 0.08, etiqueta: "Rápida" },
-        { segundos: 0.25, etiqueta: "Media" },
-        { segundos: 0.6,  etiqueta: "Lenta" },
-        { segundos: 1.2,  etiqueta: "Token a token" }
-    ]
-    property int indiceVelocidad: 0
-    readonly property real velocidadActual: root.velocidadesDisponibles[root.indiceVelocidad].segundos
-    readonly property string etiquetaVelocidad: root.velocidadesDisponibles[root.indiceVelocidad].etiqueta
-
-    function cambiarVelocidad(delta) {
-        var nuevo = Math.max(0, Math.min(root.velocidadesDisponibles.length - 1,
-                                         root.indiceVelocidad + delta))
-        if (nuevo === root.indiceVelocidad)
-            return
-        root.indiceVelocidad = nuevo
-
-        // Solo alcanza a un trabajador ya corriendo; si no hay generación
-        // activa, el valor se aplica al iniciar (séptimo argumento).
-        if (root.controller && root.controller.estaGenerando)
-            root.controller.establecer_velocidad(root.velocidadActual)
-    }
 
     function ajustarMaxTokens() {
         if (maxTokens.value > root.maxTokensPermitidos)
@@ -75,7 +49,7 @@ PagePrincipal {
         return alternativo
     }
 
-    function iniciarGeneracion() {
+    function generarSiguienteToken() {
         var prompt = campoPrompt.text.trim()
         if (!root.controller) {
             root.mensajeEstado = "No hay un modelo activo para generar texto."
@@ -89,22 +63,29 @@ PagePrincipal {
             return
         }
 
+        root.tokenEnProceso = true
+        root.mensajeEsError = false
+
+        if (root.controller.estaGenerando) {
+            root.mensajeEstado = "Generando token " + (root.tokensGenerados + 1) + "…"
+            root.controller.generar_siguiente_token()
+            return
+        }
+
         root.textoGenerado = ""
         root.tokensGenerados = 0
         root.pasosVisualizacion = []
         root.detalleForwardActual = ({})
         root.indicePasoVisualizado = -1
         flujoInferencia.close()
-        root.mensajeEstado = "Generando…"
-        root.mensajeEsError = false
-        root.controller.iniciar_generacion_ui(
+        root.mensajeEstado = "Generando token 1…"
+        root.controller.iniciar_generacion_paso_a_paso_ui(
                     prompt,
                     maxTokens.value,
                     temperatura.value,
                     usarTopK.checked ? topK.value : 0,
                     usarTopP.checked ? topP.value : 1.0,
-                    muestreoCodicioso.checked,
-                    root.velocidadActual)
+                    muestreoCodicioso.checked)
     }
 
     Connections {
@@ -128,13 +109,17 @@ PagePrincipal {
                 root.indicePasoVisualizado = root.pasosVisualizacion.length - 1
             }
             root.tokensGenerados += 1
-            root.mensajeEstado = "Generando token " + root.tokensGenerados + "…"
+            root.tokenEnProceso = Boolean(paso && paso.es_ultimo_token)
+            root.mensajeEstado = root.tokenEnProceso
+                    ? "Límite alcanzado · finalizando…"
+                    : "Token " + root.tokensGenerados + " generado · pulsa para continuar"
             root.mensajeEsError = false
         }
 
         function onGeneracion_completa(texto) {
             root.textoGenerado = texto === undefined || texto === null
                     ? root.textoGenerado : String(texto)
+            root.tokenEnProceso = false
             root.mensajeEstado = "Generación completa · "
                     + root.tokensGenerados + " tokens"
             root.mensajeEsError = false
@@ -143,11 +128,13 @@ PagePrincipal {
         function onGeneracion_cancelada(texto) {
             root.textoGenerado = texto === undefined || texto === null
                     ? root.textoGenerado : String(texto)
+            root.tokenEnProceso = false
             root.mensajeEstado = "Generación detenida · se conservó el resultado parcial"
             root.mensajeEsError = false
         }
 
         function onError(mensaje) {
+            root.tokenEnProceso = false
             root.mensajeEstado = "No se pudo generar: " + String(mensaje)
             root.mensajeEsError = true
         }
@@ -583,33 +570,23 @@ PagePrincipal {
                     BotonPrincipal {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 52 * root.sy
-                        text: "▶ Generar texto"
+                        text: root.tokenEnProceso
+                              ? "Generando token…"
+                              : (root.controller && root.controller.estaGenerando
+                                 ? "▶ Generar siguiente token"
+                                 : (root.tokensGenerados > 0
+                                    ? "↻ Iniciar nueva generación"
+                                    : "▶ Generar primer token"))
                         size_text: 0.25
-                        enabled: root.controller && !root.controller.estaGenerando
+                        enabled: root.controller && !root.tokenEnProceso
                                  && campoPrompt.text.trim().length > 0
                         opacity: enabled ? 1.0 : 0.48
-                        onClicked: root.iniciarGeneracion()
+                        onClicked: root.generarSiguienteToken()
                     }
 
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 9 * root.sx
-
-                        BotonPrincipal {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 46 * root.sy
-                            text: root.controller && root.controller.estaPausado
-                                  ? "▶ Reanudar" : "⏸ Pausar"
-                            size_text: 0.24
-                            enabled: root.controller && root.controller.estaGenerando
-                            opacity: enabled ? 1.0 : 0.45
-                            onClicked: {
-                                if (root.controller.estaPausado)
-                                    root.controller.reanudar()
-                                else
-                                    root.controller.pausar()
-                            }
-                        }
 
                         BotonPrincipal {
                             Layout.fillWidth: true
@@ -622,39 +599,12 @@ PagePrincipal {
                         }
                     }
 
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 9 * root.sx
-
-                        BotonPrincipal {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 38 * root.sy
-                            text: "🐇 Más rápido"
-                            size_text: 0.20
-                            enabled: root.indiceVelocidad > 0
-                            opacity: enabled ? 1.0 : 0.48
-                            onClicked: root.cambiarVelocidad(-1)
-                        }
-
-                        BotonPrincipal {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 38 * root.sy
-                            text: "🐢 Más lento"
-                            size_text: 0.20
-                            enabled: root.indiceVelocidad < root.velocidadesDisponibles.length - 1
-                            opacity: enabled ? 1.0 : 0.48
-                            onClicked: root.cambiarVelocidad(1)
-                        }
-                    }
-
                     Text {
                         Layout.fillWidth: true
-                        text: "Velocidad: " + root.etiquetaVelocidad
-                              + (root.velocidadActual > 0
-                                 ? "  ·  " + Math.round(root.velocidadActual * 1000) + " ms/token"
-                                 : "")
+                        text: "Cada clic ejecuta un paso autoregresivo y actualiza las visualizaciones del token elegido."
                         color: Style.Theme.texto_secundario
                         horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.WordWrap
                         font.pixelSize: 10 * root.sx
                     }
                 }
@@ -686,9 +636,12 @@ PagePrincipal {
             snapshots: root.pasosVisualizacion
             detailForward: root.detalleForwardActual
             selectedIndex: root.indicePasoVisualizado
+            canGenerateNext: Boolean(root.controller && root.controller.estaGenerando)
+            tokenProcessing: root.tokenEnProceso
             sx: root.sx
             sy: root.sy
             onCloseRequested: flujoInferencia.close()
+            onNextTokenRequested: root.generarSiguienteToken()
             onStepSelected: function(index) {
                 root.indicePasoVisualizado = index
             }
