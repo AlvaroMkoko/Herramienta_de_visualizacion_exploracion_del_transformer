@@ -1,11 +1,11 @@
 # Transformer Visualizer
 
-Herramienta de escritorio para exploración e interpretación de modelos tipo
-Transformer, construida bajo el patrón arquitectónico **MVVM**:
+Herramienta de escritorio para explorar, entrenar e interpretar modelos tipo
+Transformer, construida bajo el patrón **MVVM**:
 
-- **Model** (`model/`): PyTorch — lógica de negocio, motor LLM, datos, evaluación.
+- **Model** (`model/`): PyTorch — motor LLM, datos, persistencia, cálculo numérico.
 - **ViewModel** (`viewmodel/`): PySide6 — orquestación, señales, concurrencia.
-- **View** (`view/`): QML + VisPy/OpenGL — interfaz gráfica y renderizado científico.
+- **View** (`view/`): QML — interfaz gráfica y visualizaciones.
 
 ## Instalación
 
@@ -25,11 +25,64 @@ pip install -r requirements.txt
 python main.py
 ```
 
+## Flujo de trabajo
+
+1. **Configuración** — se define la arquitectura (capas, cabezas, dimensión del
+   modelo, feed-forward, dropout, activación, máscara causal) con una
+   estimación de parámetros y memoria que se actualiza en vivo.
+2. **Catálogo de datasets** — se agregan archivos `.jsonl`, `.json`, `.csv`,
+   `.txt` o `.pdf`. La herramienta analiza registros, tokens, vocabulario y
+   categorías. Se pueden seleccionar varios y se combinan en un solo corpus.
+3. **Entrenamiento** — métricas en vivo, controles de pausa/reanudación y de
+   velocidad, y dos pestañas: el diagrama del Transformer y la nube 3D de
+   embeddings.
+4. **Resultados** — resumen del entrenamiento, curva de pérdida y opciones de
+   guardado.
+5. **Inferencia** — generación token a token con temperatura, top-k, top-p,
+   muestreo codicioso y control de velocidad.
+
+## Configuración de la arquitectura
+
+- **Activación del Feed-Forward**: `relu` (por defecto, la del paper original),
+  `gelu` (GPT-2/BERT) o `swish`.
+- **Máscara causal**: se puede desactivar como experimento. Sin ella el decoder
+  ve tokens futuros durante el entrenamiento; la pérdida baja mucho más rápido
+  de lo normal porque el modelo *copia* la respuesta en vez de predecirla, y el
+  fallo real solo se nota al generar texto. Los checkpoints guardados así se
+  marcan con `_nomask` en el nombre.
+- El **tamaño de vocabulario no se configura a mano**: se deriva del
+  tokenizador elegido, más 3 ids reservados (relleno, inicio, fin).
+
+## Visualización de embeddings 3D
+
+Durante el entrenamiento, la pestaña *Embeddings 3D* muestra la nube de
+embeddings de los tokens del batch actual, proyectada a tres dimensiones. Se
+puede rotar arrastrando y hacer zoom con la rueda.
+
+Dos modos de proyección:
+
+- **PCA** — las tres direcciones de máxima varianza. Conserva mucha más
+  información (en pruebas, 5× más que tres dimensiones elegidas al azar), pero
+  los ejes son combinaciones de todas las dimensiones.
+- **Dimensiones elegidas** — proyección ortogonal sobre 1–3 dimensiones
+  concretas ("sombras"). Los ejes conservan su identidad; se pueden agrupar por
+  cabeza de atención, ya que cada cabeza ocupa un bloque contiguo de dimensiones.
+
+La vista informa qué **fracción de la varianza** conserva. Es importante para
+leerla bien: la proyección es contractiva, así que dos tokens separados en
+pantalla están realmente separados, pero dos que se ven juntos pueden estar
+lejos en las dimensiones no mostradas.
+
+El cálculo corre en el hilo de entrenamiento cada N pasos (10 por defecto) y
+solo mientras la pestaña está visible.
+
 ## Guardar, abrir y compartir modelos
 
-- En la pantalla de entrenamiento se puede guardar un **modelo portable** o
-  un **checkpoint reanudable**. Ambos usan la extensión `.tvismodel` y se
-  almacenan en `data/checkpoints/`.
+- En la pantalla de resultados se puede guardar un **modelo portable** o un
+  **checkpoint reanudable**. Ambos usan la extensión `.tvismodel` y se
+  almacenan en `data/checkpoints/`. El nombre se sugiere automáticamente a
+  partir de la arquitectura, la activación, el dispositivo y la fecha, y puede
+  reemplazarse por uno propio.
 - **Abrir Modelo** separa la inspección de la activación. La biblioteca permite
   buscar y ordenar checkpoints; **Ver detalles** abre arquitectura, procedencia,
   historial, tokenizador, prueba de salud, versiones e integridad sin cambiar el
@@ -58,7 +111,40 @@ La variante reanudable conserva el estado de Adam, pero se etiqueta como
 reanudación no exacta porque todavía no almacena el orden del sampler ni todos
 los estados aleatorios.
 
+## Uso desde línea de comandos
+
+Entrenar sin abrir la interfaz:
+
+```bash
+python entrenar.py --datos data/datasets/mis_datos.jsonl \
+    --clave-origen instruction --clave-destino response --clave-contexto context \
+    --epocas 20 --dimension-modelo 128 --num-capas 4
+```
+
+Generar texto desde un checkpoint:
+
+```bash
+python generar.py --checkpoint data/checkpoints/modelo.pt --prompt "hola"
+python generar.py --checkpoint data/checkpoints/modelo.pt   # modo interactivo
+```
+
+Ambos aceptan `--help` con el listado completo de opciones.
+
+## Estado de las áreas funcionales
+
+| Área | Estado |
+|---|---|
+| Configuración de arquitectura | Implementada |
+| Catálogo de datasets | Implementada |
+| Entrenamiento y métricas | Implementada |
+| Persistencia y biblioteca de modelos | Implementada |
+| Inferencia | Implementada |
+| Teoría contextual (CU17) | Implementada |
+| Visualización de embeddings 3D | Implementada |
+| Comparación de modelos (CU07) | Pendiente |
+| Evaluación de utilidad (RF22–RF25) | Pendiente |
+
 ## Estructura
 
-Ver `docs/architecture.md` para el detalle de la arquitectura MVVM y el
-mapeo de componentes descrito en el documento de diseño (TT1).
+Ver `docs/architecture.md` para el detalle de la arquitectura MVVM, el mapeo de
+componentes y las convenciones obligatorias de cada capa.

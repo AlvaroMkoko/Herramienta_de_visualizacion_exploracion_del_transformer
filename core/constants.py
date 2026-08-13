@@ -65,5 +65,5 @@ MAX_PREGUNTAS_POR_EVALUACION = 20
 # Persistencia
 # ---------------------------------------------------------------------------
 
-EXTENSION_CHECKPOINT = ".pt"
+EXTENSION_CHECKPOINT = ".tvismodel"
 NOMBRE_CHECKPOINT_DEFECTO = "modelo_transformer"
