@@ -160,7 +160,9 @@ class TestCrearModelo:
             controlador.crear_modelo()
 
         modelo, _ = blocker.args
-        assert modelo.config.tamano_vocabulario == 100
+        # El vocabulario del modelo incluye PAD, BOS y EOS reservados encima
+        # de los 100 tokens que entiende el encoding.
+        assert modelo.config.tamano_vocabulario == 103
 
     def test_configuracion_invalida_no_crea_modelo(self, qtbot, controlador):
         controlador.establecer_dimension_modelo(97)  # invalido: 97 % 4 != 0

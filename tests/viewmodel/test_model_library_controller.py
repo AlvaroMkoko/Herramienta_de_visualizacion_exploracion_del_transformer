@@ -41,7 +41,7 @@ except ModuleNotFoundError:
 
 from model.motor_llm.config import ConfiguracionTransformer
 from model.motor_llm.transformer import Transformer
-from model.persistencia.model_storage import guardar_modelo_portable
+from model.persistencia.model_storage import guardar_modelo_portable, inspeccionar_modelo
 from viewmodel import model_library_controller as modulo_biblioteca
 from viewmodel.model_library_controller import ModelLibraryController, _ruta_local
 
@@ -227,3 +227,89 @@ def test_helpers_aceptan_file_url_y_generan_destino_sin_sobrescribir(
     primero.touch()
     segundo = controlador._destino_disponible("nombre inseguro?.tvismodel")
     assert segundo.name == "nombre inseguro__2.tvismodel"
+
+
+def test_detalle_historial_y_ficha_local_no_inventan_metricas(
+    controlador: ModelLibraryController,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    ruta = tmp_path / "detalle.tvismodel"
+    guardar_modelo_portable(
+        ruta,
+        _crear_modelo(),
+        TokenizerFalso(),
+        epoca=2,
+        paso_global=7,
+        historial_perdidas=[2.2, 1.4],
+        hiperparametros_entrenamiento={
+            "tasa_aprendizaje": 0.001,
+            "batch_size": 4,
+        },
+        metadata_extra={
+            "datasets": [{"nombre": "demo"}],
+            "tarea": "pregunta -> respuesta",
+        },
+    )
+
+    manifiesto = inspeccionar_modelo(ruta)
+    descriptor = controlador._crear_descriptor(ruta, manifiesto)
+    historial = controlador._inspeccionar_historial(ruta, manifiesto)
+    detalle = controlador._crear_detalle(ruta, manifiesto, descriptor, historial)
+
+    assert detalle["historial"]["perdidas"] == [2.2, 1.4]
+    assert "validacion" not in detalle["historial"]
+    assert "perplexity" not in detalle["historial"]
+    assert "precision" not in detalle["historial"]
+    assert detalle["procedencia"]["datasets"] == [{"nombre": "demo"}]
+    assert detalle["integridad"]["checksum_pesos"]
+
+    controlador.actualizarMetadataModelo(
+        str(ruta), "Nombre visible", "nota", ["estable"], "experimento", "v2"
+    )
+    metadata = controlador._leer_metadata_sidecar(ruta, ignorar_errores=False)
+    assert metadata["nombre"] == "Nombre visible"
+    assert metadata["tags"] == ["estable"]
+    assert metadata["grupo"] == "experimento"
+    assert metadata["version"] == "v2"
+
+    monkeypatch.setattr(
+        controlador,
+        "_ejecutar_en_segundo_plano",
+        lambda _descripcion, tarea: tarea(),
+    )
+    controlador.duplicarModelo(str(ruta), "detalle copia")
+    copia = tmp_path / "detalle copia.tvismodel"
+    assert copia.is_file()
+    inspeccionar_modelo(copia)
+    metadata_copia = controlador._leer_metadata_sidecar(
+        copia, ignorar_errores=False
+    )
+    assert metadata_copia["nombre"] == "detalle copia"
+    assert metadata_copia["duplicado_de"] == str(ruta.resolve())
+
+
+def test_tokenizacion_y_salud_exponen_evidencia_revisable(
+    controlador: ModelLibraryController,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    ruta = tmp_path / "salud.tvismodel"
+    modelo = _crear_modelo()
+    guardar_modelo_portable(ruta, modelo, TokenizerFalso())
+    manifiesto = inspeccionar_modelo(ruta)
+    descriptor = controlador._crear_descriptor(ruta, manifiesto)
+
+    tokenizer = controlador._crear_tokenizer_ligero(manifiesto, descriptor)
+    ids = tokenizer.encode("abc")
+    assert ids == [6, 7, 8]
+    assert controlador._tokens_especiales(manifiesto, tokenizer) == [
+        {"nombre": "PAD", "id": 13},
+        {"nombre": "BOS", "id": 14},
+        {"nombre": "EOS", "id": 15},
+    ]
+
+    resultado = controlador._probar_salud(ruta, modelo, tokenizer)
+    assert resultado["resumen"]["muestras"] == 3
+    assert resultado["coherencia"]["estado"] == "requiere_revision_humana"
+    assert all("hayNaN" in muestra for muestra in resultado["muestras"])

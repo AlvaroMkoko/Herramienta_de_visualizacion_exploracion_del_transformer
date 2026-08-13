@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import threading
+import time
 from collections.abc import Generator
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
 
 import torch
@@ -81,6 +83,7 @@ def _tarea_entrenamiento(
         batches = _crear_batches(dataset, id_token_relleno, batch_size)
 
         for paso_epoca, (tokens_origen, tokens_destino, objetivo) in enumerate(batches):
+            inicio_paso = time.perf_counter()
             tokens_origen = tokens_origen.to(dispositivo)
             tokens_destino = tokens_destino.to(dispositivo)
             objetivo = objetivo.to(dispositivo)
@@ -99,11 +102,39 @@ def _tarea_entrenamiento(
                 paso_global += 1
                 perdida_valor = float(perdida.item())
                 historial.append(perdida_valor)
+
+                cantidad_ejemplos = int(tokens_origen.shape[0])
+                if id_token_relleno is None:
+                    tokens_origen_reales = int(tokens_origen.numel())
+                    tokens_objetivo_reales = int(objetivo.numel())
+                else:
+                    tokens_origen_reales = int(
+                        (tokens_origen != id_token_relleno).sum().item()
+                    )
+                    tokens_objetivo_reales = int(
+                        (objetivo != id_token_relleno).sum().item()
+                    )
+
                 estado.update(
                     {
                         "epoca": epoca,
                         "paso_epoca": paso_epoca,
                         "paso_global": paso_global,
+                        "ejemplos_vistos": int(estado.get("ejemplos_vistos", 0))
+                        + cantidad_ejemplos,
+                        "tokens_origen_vistos": int(
+                            estado.get("tokens_origen_vistos", 0)
+                        )
+                        + tokens_origen_reales,
+                        "tokens_objetivo_vistos": int(
+                            estado.get("tokens_objetivo_vistos", 0)
+                        )
+                        + tokens_objetivo_reales,
+                        "duracion_entrenamiento_segundos": float(
+                            estado.get("duracion_entrenamiento_segundos", 0.0)
+                        )
+                        + (time.perf_counter() - inicio_paso),
+                        "telemetria_procedencia_disponible": True,
                     }
                 )
 
@@ -177,6 +208,12 @@ def _tarea_entrenamiento(
         "perdida_final": historial[-1] if historial else None,
         "epoca": estado.get("epoca"),
         "paso_global": paso_global,
+        "ejemplos_vistos": estado.get("ejemplos_vistos", 0),
+        "tokens_origen_vistos": estado.get("tokens_origen_vistos", 0),
+        "tokens_objetivo_vistos": estado.get("tokens_objetivo_vistos", 0),
+        "duracion_entrenamiento_segundos": estado.get(
+            "duracion_entrenamiento_segundos", 0.0
+        ),
     }
 
 
@@ -213,7 +250,14 @@ class TrainingController(QObject):
 
         self._dataset: "Dataset | None" = None
         self._id_token_relleno_dataset: int | None = None
-        self._origen_datasets: list[dict] = []
+        metadata_previa = dict(
+            getattr(resultado_carga, "metadata_extra", {}) or {}
+        )
+        self._origen_datasets: list[dict] = [
+            dict(item)
+            for item in metadata_previa.get("datasets", [])
+            if isinstance(item, dict)
+        ]
         self._bloqueo_estado = threading.RLock()
         # Config de la nube 3D. La escribe la UI, la lee el worker —
         self._config_nube = {
@@ -247,6 +291,53 @@ class TrainingController(QObject):
             "paso_global": int(ultimo_paso or 0),
             "siguiente_epoca": int(siguiente_epoca),
             "historial_perdidas": historial,
+            "ejemplos_vistos": int(metadata_previa.get("ejemplos_vistos", 0) or 0),
+            "tokens_origen_vistos": int(
+                metadata_previa.get("tokens_origen_vistos", 0) or 0
+            ),
+            "tokens_objetivo_vistos": int(
+                metadata_previa.get("tokens_objetivo_vistos", 0) or 0
+            ),
+            "duracion_entrenamiento_segundos": float(
+                metadata_previa.get("duracion_entrenamiento_segundos", 0.0) or 0.0
+            ),
+            "telemetria_procedencia_disponible": any(
+                clave in metadata_previa
+                for clave in (
+                    "ejemplos_vistos",
+                    "tokens_origen_vistos",
+                    "tokens_objetivo_vistos",
+                    "duracion_entrenamiento_segundos",
+                )
+            ),
+            "telemetria_procedencia_completa": bool(
+                metadata_previa.get(
+                    "telemetria_procedencia_completa",
+                    any(
+                        clave in metadata_previa
+                        for clave in (
+                            "ejemplos_vistos",
+                            "tokens_origen_vistos",
+                            "tokens_objetivo_vistos",
+                            "duracion_entrenamiento_segundos",
+                        )
+                    )
+                    or int(ultimo_paso or 0) == 0,
+                )
+            ),
+            "telemetria_desde_paso": int(
+                metadata_previa.get(
+                    "telemetria_desde_paso",
+                    0 if int(ultimo_paso or 0) == 0 else int(ultimo_paso or 0) + 1,
+                )
+            ),
+            "primera_sesion_inicio_utc": metadata_previa.get(
+                "primera_sesion_inicio_utc"
+            ),
+            "ultima_sesion_inicio_utc": metadata_previa.get(
+                "ultima_sesion_inicio_utc"
+            ),
+            "ultima_sesion_fin_utc": metadata_previa.get("ultima_sesion_fin_utc"),
         }
         self._ultima_epoca = ultima_epoca
         self._ultimo_paso_global = int(ultimo_paso or 0)
@@ -254,6 +345,10 @@ class TrainingController(QObject):
         self._hiperparametros_entrenamiento = dict(
             getattr(resultado_carga, "hiperparametros_entrenamiento", {}) or {}
         )
+        if not self._hiperparametros_entrenamiento:
+            self._hiperparametros_entrenamiento = dict(
+                metadata_previa.get("hiperparametros_entrenamiento", {}) or {}
+            )
 
     # ------------------------------------------------------------------
     # Estado observable
@@ -323,7 +418,19 @@ class TrainingController(QObject):
             "tasa_aprendizaje": tasa_aprendizaje,
             "batch_size": batch_size,
             "datasets": list(self._origen_datasets),
+            "tarea": self._describir_tarea(),
         }
+        inicio_utc = datetime.now(timezone.utc).isoformat()
+        with self._bloqueo_estado:
+            if int(self._estado_entrenamiento.get("paso_global", 0)) == 0:
+                self._estado_entrenamiento[
+                    "telemetria_procedencia_completa"
+                ] = True
+                self._estado_entrenamiento["telemetria_desde_paso"] = 0
+            if not self._estado_entrenamiento.get("primera_sesion_inicio_utc"):
+                self._estado_entrenamiento["primera_sesion_inicio_utc"] = inicio_utc
+            self._estado_entrenamiento["ultima_sesion_inicio_utc"] = inicio_utc
+            self._estado_entrenamiento["ultima_sesion_fin_utc"] = None
         self._gestor.ejecutar_en_segundo_plano(
             _tarea_entrenamiento,
             self.modelo,
@@ -368,6 +475,63 @@ class TrainingController(QObject):
     def establecer_origen_datasets(self, datasets: list[dict]) -> None:
         """Guarda solo metadatos no sensibles, nunca rutas absolutas."""
         self._origen_datasets = [dict(item) for item in datasets]
+
+    def _describir_tarea(self) -> str:
+        tareas = {
+            str(item.get("tarea", "")).strip()
+            for item in self._origen_datasets
+            if str(item.get("tarea", "")).strip()
+        }
+        if not tareas:
+            return "secuencia de origen -> secuencia de destino"
+        return " + ".join(sorted(tareas))
+
+    def _metadata_de_procedencia(self) -> dict[str, Any]:
+        """Datos medidos durante el entrenamiento, sin inferir campos ausentes."""
+        metadata: dict[str, Any] = {
+            "datasets": list(self._origen_datasets),
+            "tarea": self._describir_tarea(),
+        }
+        for clave in (
+            "primera_sesion_inicio_utc",
+            "ultima_sesion_inicio_utc",
+            "ultima_sesion_fin_utc",
+        ):
+            valor = self._estado_entrenamiento.get(clave)
+            if valor:
+                metadata[clave] = valor
+        if not self._estado_entrenamiento.get(
+            "telemetria_procedencia_disponible", False
+        ):
+            return metadata
+
+        metadata.update(
+            {
+                "ejemplos_vistos": int(
+                    self._estado_entrenamiento.get("ejemplos_vistos", 0)
+                ),
+                "tokens_origen_vistos": int(
+                    self._estado_entrenamiento.get("tokens_origen_vistos", 0)
+                ),
+                "tokens_objetivo_vistos": int(
+                    self._estado_entrenamiento.get("tokens_objetivo_vistos", 0)
+                ),
+                "duracion_entrenamiento_segundos": float(
+                    self._estado_entrenamiento.get(
+                        "duracion_entrenamiento_segundos", 0.0
+                    )
+                ),
+                "telemetria_procedencia_completa": bool(
+                    self._estado_entrenamiento.get(
+                        "telemetria_procedencia_completa", False
+                    )
+                ),
+                "telemetria_desde_paso": int(
+                    self._estado_entrenamiento.get("telemetria_desde_paso", 0)
+                ),
+            }
+        )
+        return metadata
 
     @Slot()
     def detener(self) -> None:
@@ -425,6 +589,7 @@ class TrainingController(QObject):
                     metadata_extra={
                         "tipo_encoding": getattr(self.tokenizer, "tipo_encoding", None),
                         "hiperparametros_entrenamiento": self._hiperparametros_entrenamiento,
+                        **self._metadata_de_procedencia(),
                     },
                 )
         except Exception as exc:  # se presenta al usuario en QML
@@ -516,7 +681,7 @@ class TrainingController(QObject):
                         hiperparametros_entrenamiento=dict(
                             self._hiperparametros_entrenamiento
                         ),
-                        metadata_extra={"datasets": list(self._origen_datasets)},
+                        metadata_extra=self._metadata_de_procedencia(),
                         reanudable=reanudable,
                     )
             except Exception as exc:  # noqa: BLE001 - se muestra en la UI
@@ -574,11 +739,25 @@ class TrainingController(QObject):
         self.paso_entrenamiento.emit(paso)
 
     def _al_completar(self, resultado: dict) -> None:
+        with self._bloqueo_estado:
+            self._estado_entrenamiento["ultima_sesion_fin_utc"] = datetime.now(
+                timezone.utc
+            ).isoformat()
         self._sincronizar_estado_publico()
         self.estaEntrenandoCambio.emit()
         self.entrenamiento_completo.emit(resultado)
 
     def _al_cancelar(self) -> None:
+        with self._bloqueo_estado:
+            self._estado_entrenamiento["ultima_sesion_fin_utc"] = datetime.now(
+                timezone.utc
+            ).isoformat()
+            # El siguiente intento repite la epoca actual; sin conservar el
+            # orden del sampler, los contadores dejan de representar un
+            # recorrido exacto del historial completo.
+            self._estado_entrenamiento[
+                "telemetria_procedencia_completa"
+            ] = False
         self._sincronizar_estado_publico()
         self.estaEntrenandoCambio.emit()
         self.entrenamiento_cancelado.emit(
@@ -586,5 +765,9 @@ class TrainingController(QObject):
         )
 
     def _al_error(self, mensaje: str) -> None:
+        with self._bloqueo_estado:
+            self._estado_entrenamiento["ultima_sesion_fin_utc"] = datetime.now(
+                timezone.utc
+            ).isoformat()
         self.estaEntrenandoCambio.emit()
         self.error.emit(mensaje)

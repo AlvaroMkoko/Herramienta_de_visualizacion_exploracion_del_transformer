@@ -10,12 +10,18 @@ ejecutan fuera del hilo de la interfaz.
 from __future__ import annotations
 
 from dataclasses import asdict, is_dataclass
+import datetime
 import json
+import math
+import os
 from pathlib import Path
 import shutil
+import tempfile
 import threading
+import time
 from typing import Any, Callable, Mapping
 
+import torch
 from PySide6.QtCore import Property, QMimeData, QObject, QUrl, Signal, Slot
 from PySide6.QtGui import QGuiApplication
 
@@ -34,6 +40,13 @@ from model.persistencia.model_storage import (
 )
 
 from model.motor_llm.config import ACTIVACIONES
+from model.persistencia import model_storage as _model_storage
+
+
+_SCHEMA_METADATA_BIBLIOTECA = "tvis-library-metadata"
+_VERSION_METADATA_BIBLIOTECA = 1
+_MAX_BYTES_METADATA_BIBLIOTECA = 256 * 1024
+_MAX_CARACTERES_TOKENIZACION = 200_000
 
 def _como_dict(valor: Any) -> dict[str, Any]:
     """Convierte manifiestos/dataclasses a ``dict`` sin imponer su clase."""
@@ -129,15 +142,20 @@ class ModelLibraryController(QObject):
 
     modelosCambio = Signal()
     modelo_cargado = Signal(object, object, object)
+    detalle_modelo_listo = Signal(dict)
+    tokenizacion_lista = Signal(dict)
+    prueba_salud_lista = Signal(dict)
     operacion_exitosa = Signal(str)
     error = Signal(str)
     ocupadoCambio = Signal()
+    modeloActivoRutaCambio = Signal()
     _archivo_validado_para_copiar = Signal(str)
 
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self._modelos: list[dict[str, Any]] = []
         self._ocupado = False
+        self._modelo_activo_ruta = ""
         self._bloqueo = threading.Lock()
         self._hilos: set[threading.Thread] = set()
         self._archivo_validado_para_copiar.connect(
@@ -155,6 +173,38 @@ class ModelLibraryController(QObject):
         """Indica que una importación, exportación o carga está en curso."""
         with self._bloqueo:
             return self._ocupado
+
+    @Property(str, notify=modeloActivoRutaCambio)
+    def modeloActivoRuta(self) -> str:
+        """Ruta absoluta del modelo abierto en la sesión de inferencia.
+
+        Una cadena vacía significa que todavía no se ha abierto ningún
+        modelo desde la biblioteca. La comparación usa sesiones separadas y
+        por ello no cambia esta propiedad.
+        """
+        return self._modelo_activo_ruta
+
+    @Slot(str)
+    def _establecer_modelo_activo(self, ruta: str) -> None:
+        nueva_ruta = str(_ruta_local(ruta).resolve()) if ruta else ""
+        if os.path.normcase(nueva_ruta) == os.path.normcase(
+            self._modelo_activo_ruta
+        ):
+            return
+        self._modelo_activo_ruta = nueva_ruta
+        self.modeloActivoRutaCambio.emit()
+        # Actualiza la insignia "Activo" de las tarjetas sin volver a leer
+        # pesos o manifiestos desde disco.
+        for modelo in self._modelos:
+            activo = bool(
+                nueva_ruta
+                and os.path.normcase(str(modelo.get("ruta", "")))
+                == os.path.normcase(nueva_ruta)
+            )
+            modelo["activo"] = activo
+            modelo["esActivo"] = activo
+            modelo["es_activo"] = activo
+        self.modelosCambio.emit()
 
     @Slot()
     def refrescar(self) -> None:
@@ -259,30 +309,23 @@ class ModelLibraryController(QObject):
 
     @Slot(str,bool)
     def eliminarModelo(self, ruta: str,confirmacion:bool) -> None:
-        """La eliminación deliberadamente no está habilitada por seguridad."""
-        if(confirmacion):
-            try:
-        # Usando pathlib para manejar rutas de forma más segura
-                archivo = Path(ruta)
-
-                # Verificar si existe y es un archivo
-                if not archivo.exists():
-                    print(f"El archivo '{archivo}' no existe.")
-                    return
-                if not archivo.is_file():
-                    print(f"'{archivo}' no es un archivo válido.")
-                    return
-
-                # Eliminar el archivo
-                archivo.unlink()  # Equivalente a os.remove()
-                print(f"Archivo '{archivo}' eliminado correctamente.")
-
-            except PermissionError:
-                print(f"No tienes permisos para eliminar '{ruta}'.")
-            except OSError as e:
-                print(f"Error al eliminar el archivo: {e}")
-
-            # self.error.emit("La eliminación de modelos no está habilitada.")
+        """Elimina un modelo confirmado y su ficha local dentro de la biblioteca."""
+        if not confirmacion:
+            self.error.emit("Confirma la eliminación del modelo.")
+            return
+        try:
+            archivo = self._validar_modelo_de_biblioteca(ruta)
+            era_activo = os.path.normcase(str(archivo.resolve())) == os.path.normcase(
+                self._modelo_activo_ruta
+            )
+            archivo.unlink()
+            self._ruta_sidecar(archivo).unlink(missing_ok=True)
+            if era_activo:
+                self._establecer_modelo_activo("")
+            self.refrescar()
+            self.operacion_exitosa.emit(f"Modelo eliminado: {archivo.name}")
+        except (OSError, ValueError, TypeError) as exc:
+            self.error.emit(f"No se pudo eliminar el modelo: {exc}")
 
     @Slot(str)
     def copiarFicha(self, ruta: str) -> None:
@@ -402,6 +445,228 @@ class ModelLibraryController(QObject):
         self._ejecutar_en_segundo_plano("importar el código", tarea)
 
     # ------------------------------------------------------------------
+    # Ficha detallada, diagnósticos y organización local
+    # ------------------------------------------------------------------
+
+    @Slot(str)
+    def solicitarDetalleModelo(self, ruta: str) -> None:
+        """Construye la ficha educativa completa sin bloquear el hilo QML."""
+        origen = _ruta_local(ruta)
+
+        def tarea() -> None:
+            if not origen.is_file():
+                raise FileNotFoundError(f"No se encontró el modelo: {origen}")
+            # La ficha de integridad afirma "verificado", por lo que esta
+            # ruta recorre y contrasta los hashes sin construir el Transformer.
+            manifiesto = _como_dict(verificar_integridad_modelo(origen))
+            descriptor = self._crear_descriptor(origen, manifiesto)
+            historial = self._inspeccionar_historial(origen, manifiesto)
+            detalle = self._crear_detalle(
+                origen,
+                manifiesto,
+                descriptor,
+                historial,
+                integridad_verificada=True,
+            )
+            self.detalle_modelo_listo.emit(detalle)
+
+        self._ejecutar_en_segundo_plano("inspeccionar el modelo", tarea)
+
+    @Slot(str, str)
+    def analizarTokenizacion(self, ruta: str, texto: str) -> None:
+        """Tokeniza texto con el encoding exacto declarado por el modelo."""
+        origen = _ruta_local(ruta)
+        texto = str(texto)
+        if len(texto) > _MAX_CARACTERES_TOKENIZACION:
+            self.error.emit(
+                "El texto excede el límite de 200 000 caracteres para la prueba."
+            )
+            return
+
+        def tarea() -> None:
+            if not origen.is_file():
+                raise FileNotFoundError(f"No se encontró el modelo: {origen}")
+            manifiesto = _como_dict(inspeccionar_modelo(origen))
+            descriptor = self._crear_descriptor(origen, manifiesto)
+            tokenizer = self._crear_tokenizer_ligero(manifiesto, descriptor)
+            ids = [int(item) for item in tokenizer.encode(texto)]
+            contexto = int(descriptor.get("contexto") or 0)
+            especiales = self._tokens_especiales(manifiesto, tokenizer)
+            por_id = {
+                int(info["id"]): str(info["nombre"])
+                for info in especiales
+                if info.get("id") is not None
+            }
+            piezas: list[dict[str, Any]] = []
+            for indice, token_id in enumerate(ids):
+                es_especial = token_id in por_id
+                pieza = f"<{por_id[token_id]}>" if es_especial else self._decodificar_token(
+                    tokenizer, token_id
+                )
+                piezas.append({
+                    "indice": indice,
+                    "id": token_id,
+                    "texto": pieza,
+                    "token": pieza,
+                    "caracteres": len(pieza),
+                    "esEspecial": es_especial,
+                    "es_especial": es_especial,
+                    "nombreEspecial": por_id.get(token_id, ""),
+                })
+            porcentaje = (len(ids) / contexto * 100.0) if contexto > 0 else None
+            self.tokenizacion_lista.emit({
+                "ruta": str(origen.resolve()),
+                "texto": texto,
+                "encoding": descriptor.get("encoding", "Desconocido"),
+                "tokens": piezas,
+                "ids": ids,
+                "especiales": especiales,
+                "conteoTokens": len(ids),
+                "conteo_tokens": len(ids),
+                "contexto": contexto,
+                "porcentajeContexto": porcentaje,
+                "porcentaje_contexto": porcentaje,
+                "excedeContexto": bool(contexto and len(ids) > contexto),
+                "excede_contexto": bool(contexto and len(ids) > contexto),
+                "mensaje": (
+                    "El texto excede el contexto del modelo."
+                    if contexto and len(ids) > contexto
+                    else "Tokenización completada con el encoding del modelo."
+                ),
+            })
+
+        self._ejecutar_en_segundo_plano("analizar la tokenización", tarea)
+
+    @Slot(str)
+    def ejecutarPruebaSalud(self, ruta: str) -> None:
+        """Ejecuta prompts cortos en modo greedy y reporta evidencia numérica.
+
+        La prueba es deliberadamente determinista y no asigna una puntuación
+        semántica: la coherencia de las respuestas requiere revisión humana.
+        """
+        origen = _ruta_local(ruta)
+
+        def tarea() -> None:
+            if not origen.is_file():
+                raise FileNotFoundError(f"No se encontró el modelo: {origen}")
+            manifiesto = _como_dict(inspeccionar_modelo(origen))
+            resultado = (
+                cargar_checkpoint(origen, "cpu")
+                if origen.suffix.lower() == ".pt"
+                else cargar_modelo_portable(origen, "cpu")
+            )
+            modelo = getattr(resultado, "modelo", resultado)
+            tokenizer = self._crear_tokenizer(resultado, manifiesto, modelo)
+            payload = self._probar_salud(origen, modelo, tokenizer)
+            self.prueba_salud_lista.emit(payload)
+
+        self._ejecutar_en_segundo_plano("ejecutar la prueba de salud", tarea)
+
+    @Slot(str, str, str, "QVariantList", str)
+    @Slot(str, str, str, "QVariantList", str, str)
+    def actualizarMetadataModelo(
+        self,
+        ruta: str,
+        nombre: str,
+        notas: str,
+        tags: list,
+        grupo: str,
+        version: str = "",
+    ) -> None:
+        """Actualiza nombre visible, notas, etiquetas y agrupación en sidecar.
+
+        Nunca reescribe el manifiesto ni los pesos. El overload de cinco
+        argumentos acepta ``grupo/version`` en una sola cadena.
+        """
+        try:
+            origen = self._validar_modelo_de_biblioteca(ruta)
+            grupo_limpio, version_limpia = self._separar_grupo_version(grupo, version)
+            nombre_limpio = self._limpiar_texto_metadata(nombre, 240)
+            if not nombre_limpio:
+                raise ValueError("El nombre visible no puede quedar vacio.")
+            metadata = self._leer_metadata_sidecar(origen, ignorar_errores=False)
+            metadata.update({
+                "schema": _SCHEMA_METADATA_BIBLIOTECA,
+                "version_schema": _VERSION_METADATA_BIBLIOTECA,
+                "nombre": nombre_limpio,
+                "notas": self._limpiar_texto_metadata(notas, 20_000),
+                "tags": self._limpiar_tags(tags),
+                "grupo": grupo_limpio,
+                "version": version_limpia,
+                "actualizado_en": datetime.datetime.now(
+                    tz=datetime.timezone.utc
+                ).isoformat(),
+            })
+            self._escribir_metadata_sidecar(origen, metadata)
+            self.refrescar()
+            self.operacion_exitosa.emit("Ficha local del modelo actualizada.")
+        except (OSError, ValueError, TypeError, RuntimeError) as exc:
+            self.error.emit(f"No se pudo actualizar la ficha del modelo: {exc}")
+
+    @Slot(str, str)
+    def renombrarModelo(self, ruta: str, nombre: str) -> None:
+        """Cambia solamente el nombre visible; el archivo permanece intacto."""
+        try:
+            origen = self._validar_modelo_de_biblioteca(ruta)
+            nombre_limpio = self._limpiar_texto_metadata(nombre, 240)
+            if not nombre_limpio:
+                raise ValueError("El nombre visible no puede quedar vacio.")
+            metadata = self._leer_metadata_sidecar(origen, ignorar_errores=False)
+            metadata.update({
+                "schema": _SCHEMA_METADATA_BIBLIOTECA,
+                "version_schema": _VERSION_METADATA_BIBLIOTECA,
+                "nombre": nombre_limpio,
+                "actualizado_en": datetime.datetime.now(
+                    tz=datetime.timezone.utc
+                ).isoformat(),
+            })
+            self._escribir_metadata_sidecar(origen, metadata)
+            self.refrescar()
+            self.operacion_exitosa.emit(
+                "Nombre visible actualizado; el archivo de pesos no se modificó."
+            )
+        except (OSError, ValueError, TypeError, RuntimeError) as exc:
+            self.error.emit(f"No se pudo renombrar el modelo: {exc}")
+
+    @Slot(str, str)
+    def duplicarModelo(self, ruta: str, nombre: str) -> None:
+        """Crea una copia verificada sin sobrescribir la versión original."""
+        try:
+            origen = self._validar_modelo_de_biblioteca(ruta)
+        except (OSError, ValueError, TypeError) as exc:
+            self.error.emit(f"No se pudo duplicar el modelo: {exc}")
+            return
+
+        def tarea() -> None:
+            verificar_integridad_modelo(origen)
+            extension = origen.suffix.lower()
+            nombre_base = self._limpiar_texto_metadata(nombre, 240) or f"{origen.stem} copia"
+            destino = self._destino_disponible(f"{nombre_base}{extension}")
+            temporal = destino.with_name(f".{destino.name}.duplicando")
+            try:
+                shutil.copy2(origen, temporal)
+                verificar_integridad_modelo(temporal)
+                temporal.replace(destino)
+            finally:
+                temporal.unlink(missing_ok=True)
+
+            metadata = self._leer_metadata_sidecar(origen, ignorar_errores=True)
+            metadata.update({
+                "schema": _SCHEMA_METADATA_BIBLIOTECA,
+                "version_schema": _VERSION_METADATA_BIBLIOTECA,
+                "nombre": nombre_base,
+                "duplicado_de": str(origen.resolve()),
+                "actualizado_en": datetime.datetime.now(
+                    tz=datetime.timezone.utc
+                ).isoformat(),
+            })
+            self._escribir_metadata_sidecar(destino, metadata)
+            self.refrescar()
+            self.operacion_exitosa.emit(f"Modelo duplicado: {destino.name}")
+
+        self._ejecutar_en_segundo_plano("duplicar el modelo", tarea)
+
+    # ------------------------------------------------------------------
     # Implementación interna
     # ------------------------------------------------------------------
 
@@ -430,6 +695,10 @@ class ModelLibraryController(QObject):
         pesos = _como_dict(manifiesto.get("pesos"))
         entrenamiento = _como_dict(manifiesto.get("entrenamiento"))
         capabilities = _como_dict(manifiesto.get("capabilities"))
+        metadata_extra = _como_dict(manifiesto.get("metadata_extra"))
+        metadata_biblioteca = self._leer_metadata_sidecar(
+            ruta, manifiesto, ignorar_errores=True
+        )
 
         capas = _entero(_primero(
             arquitectura.get("num_capas"), arquitectura.get("capas"),
@@ -535,7 +804,10 @@ class ModelLibraryController(QObject):
         if tokenizador_incluido:
             capacidades.append("Tokenizador incluido")
 
-        nombre = str(_primero(manifiesto.get("nombre"), manifiesto.get("name"), ruta.stem))
+        nombre_original = str(
+            _primero(manifiesto.get("nombre"), manifiesto.get("name"), ruta.stem)
+        )
+        nombre = str(_primero(metadata_biblioteca.get("nombre"), nombre_original))
         formato_predeterminado = (
             "TVIS" if ruta.suffix.lower() == EXTENSION_MODELO.lower() else "Legacy PT"
         )
@@ -550,6 +822,20 @@ class ModelLibraryController(QObject):
         )
 
         ruta_resuelta = str(ruta.resolve())
+        grupo = str(_primero(
+            metadata_biblioteca.get("grupo"), metadata_extra.get("grupo"),
+            metadata_extra.get("experimento_id"), default="",
+        ))
+        version = str(_primero(
+            metadata_biblioteca.get("version"), metadata_extra.get("version"), default="",
+        ))
+        tags = list(metadata_biblioteca.get("tags", []))
+        notas = str(metadata_biblioteca.get("notas", ""))
+        activo = bool(
+            self._modelo_activo_ruta
+            and os.path.normcase(ruta_resuelta)
+            == os.path.normcase(self._modelo_activo_ruta)
+        )
         compatible_declarado = bool(manifiesto.get("compatible", True))
         utilizable = inferencia or entrenable
         compatible = compatible_declarado and utilizable
@@ -558,6 +844,8 @@ class ModelLibraryController(QObject):
             "ruta": ruta_resuelta,
             "path": ruta_resuelta,
             "nombre": nombre,
+            "nombreOriginal": nombre_original,
+            "nombre_original": nombre_original,
             "archivo": ruta.name,
             "formato": formato,
             "legado": legado,
@@ -617,6 +905,16 @@ class ModelLibraryController(QObject):
             "resumen": resumen,
             "capacidades": capacidades,
             "capabilities": capabilities,
+            "metadataBiblioteca": metadata_biblioteca,
+            "metadata_biblioteca": metadata_biblioteca,
+            "notas": notas,
+            "tags": tags,
+            "grupo": grupo,
+            "grupoVersion": grupo,
+            "version": version,
+            "activo": activo,
+            "esActivo": activo,
+            "es_activo": activo,
         }
         return descriptor
 
@@ -650,7 +948,10 @@ class ModelLibraryController(QObject):
             "entrenable": False, "tokenizadorIncluido": False,
             "tokenizador_incluido": False,
             "resumen": "Modelo incompatible", "capacidades": ["Formato incompatible"],
-            "capabilities": {},
+            "capabilities": {}, "metadataBiblioteca": {}, "metadata_biblioteca": {},
+            "nombreOriginal": ruta.stem, "nombre_original": ruta.stem,
+            "notas": "", "tags": [], "grupo": "", "grupoVersion": "",
+            "version": "", "activo": False, "esActivo": False, "es_activo": False,
         }
 
     def _crear_tokenizer(self, resultado: Any, manifiesto_original: Any, modelo: Any) -> Tokenizer:
@@ -734,6 +1035,574 @@ class ModelLibraryController(QObject):
                 )
 
         return tokenizer
+
+    @staticmethod
+    def _ruta_sidecar(ruta: Path) -> Path:
+        return ruta.with_name(f"{ruta.name}.library.json")
+
+    @staticmethod
+    def _limpiar_texto_metadata(valor: Any, limite: int) -> str:
+        texto = str(valor or "").strip()
+        if len(texto) > limite:
+            raise ValueError(f"El texto excede el limite de {limite} caracteres.")
+        return texto
+
+    def _limpiar_tags(self, tags: Any) -> list[str]:
+        if tags is None:
+            return []
+        if not isinstance(tags, (list, tuple)):
+            raise TypeError("Las etiquetas deben enviarse como una lista.")
+        resultado: list[str] = []
+        for tag in tags:
+            limpio = self._limpiar_texto_metadata(tag, 80)
+            if limpio and limpio not in resultado:
+                resultado.append(limpio)
+            if len(resultado) > 100:
+                raise ValueError("No se permiten mas de 100 etiquetas.")
+        return resultado
+
+    @staticmethod
+    def _separar_grupo_version(grupo: Any, version: Any) -> tuple[str, str]:
+        grupo_limpio = str(grupo or "").strip()
+        version_limpia = str(version or "").strip()
+        if len(grupo_limpio) > 240 or len(version_limpia) > 120:
+            raise ValueError("Grupo o version exceden la longitud permitida.")
+        return grupo_limpio, version_limpia
+
+    def _leer_metadata_sidecar(
+        self,
+        ruta: Path,
+        manifiesto: Mapping[str, Any] | None = None,
+        *,
+        ignorar_errores: bool,
+    ) -> dict[str, Any]:
+        sidecar = self._ruta_sidecar(ruta)
+        if not sidecar.is_file():
+            return {}
+        try:
+            if sidecar.stat().st_size > _MAX_BYTES_METADATA_BIBLIOTECA:
+                raise ValueError("La ficha local excede el tamano permitido.")
+            valor = json.loads(sidecar.read_text(encoding="utf-8"))
+            if not isinstance(valor, dict):
+                raise ValueError("La ficha local debe ser un objeto JSON.")
+            if valor.get("schema") != _SCHEMA_METADATA_BIBLIOTECA:
+                raise ValueError("La ficha local usa un esquema no compatible.")
+            if valor.get("version_schema") != _VERSION_METADATA_BIBLIOTECA:
+                raise ValueError("La ficha local usa una version no compatible.")
+            tags = valor.get("tags", [])
+            if not isinstance(tags, list):
+                raise ValueError("Las etiquetas de la ficha no son validas.")
+            return dict(valor)
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError, TypeError):
+            if ignorar_errores:
+                return {}
+            raise
+
+    def _escribir_metadata_sidecar(self, ruta: Path, metadata: Mapping[str, Any]) -> None:
+        sidecar = self._ruta_sidecar(ruta)
+        datos = json.dumps(
+            dict(metadata), ensure_ascii=False, sort_keys=True, indent=2, allow_nan=False
+        ).encode("utf-8")
+        if len(datos) > _MAX_BYTES_METADATA_BIBLIOTECA:
+            raise ValueError("La ficha local excede el tamano permitido.")
+        sidecar.parent.mkdir(parents=True, exist_ok=True)
+        descriptor, temporal_nombre = tempfile.mkstemp(
+            prefix=f".{sidecar.name}.", suffix=".tmp", dir=str(sidecar.parent)
+        )
+        temporal = Path(temporal_nombre)
+        try:
+            with os.fdopen(descriptor, "wb") as archivo:
+                archivo.write(datos)
+                archivo.flush()
+                os.fsync(archivo.fileno())
+            os.replace(temporal, sidecar)
+        except Exception:
+            temporal.unlink(missing_ok=True)
+            raise
+
+    @staticmethod
+    def _validar_modelo_de_biblioteca(ruta: str | Path) -> Path:
+        origen = _ruta_local(ruta).resolve()
+        directorio = DIR_CHECKPOINTS.resolve()
+        try:
+            origen.relative_to(directorio)
+        except ValueError as exc:
+            raise ValueError("El modelo no pertenece a la biblioteca local.") from exc
+        if not origen.is_file() or origen.suffix.lower() not in {
+            EXTENSION_MODELO.lower(), ".pt"
+        }:
+            raise FileNotFoundError(f"No se encontro el modelo: {origen}")
+        return origen
+
+    @staticmethod
+    def _inspeccionar_historial(
+        ruta: Path, manifiesto: Mapping[str, Any]
+    ) -> dict[str, Any]:
+        inspector = getattr(
+            _model_storage, "inspeccionar_historial_entrenamiento", None
+        )
+        if callable(inspector):
+            # Una excepción del inspector significa corrupción real y no debe
+            # convertirse silenciosamente en "sin datos".
+            return dict(inspector(ruta))
+
+        # Compatibilidad con instalaciones cuyo model_storage todavía no
+        # ofrece inspección ligera. Este camino materializa el modelo, pero
+        # conserva el mismo contrato y sigue ejecutándose fuera del hilo QML.
+        resultado = (
+            cargar_checkpoint(ruta, "cpu")
+            if ruta.suffix.lower() == ".pt"
+            else cargar_modelo_portable(ruta, "cpu")
+        )
+        historial = [
+            float(valor)
+            for valor in (getattr(resultado, "historial_perdidas", []) or [])
+        ]
+        entrenamiento = _como_dict(manifiesto.get("entrenamiento"))
+        metadata = _como_dict(
+            _primero(
+                getattr(resultado, "metadata_extra", None),
+                manifiesto.get("metadata_extra"),
+                default={},
+            )
+        )
+        hiperparametros = _como_dict(
+            _primero(
+                getattr(resultado, "hiperparametros_entrenamiento", None),
+                manifiesto.get("hiperparametros_entrenamiento"),
+                default={},
+            )
+        )
+        estado_optimizador = getattr(resultado, "optimizer_state_dict", None) is not None
+        epoca = _primero(getattr(resultado, "epoca", None), entrenamiento.get("epoca"))
+        paso_global = _primero(
+            getattr(resultado, "paso_global", None), entrenamiento.get("paso_global")
+        )
+        return {
+            "historial_perdidas": historial,
+            "epoca": epoca,
+            "siguiente_epoca": _primero(
+                getattr(resultado, "siguiente_epoca", None),
+                entrenamiento.get("siguiente_epoca"),
+            ),
+            "paso_epoca": _primero(
+                getattr(resultado, "paso_epoca", None),
+                entrenamiento.get("paso_epoca"),
+            ),
+            "paso_global": paso_global,
+            "perdida_final": historial[-1] if historial else None,
+            "num_registros_perdida": len(historial),
+            "hiperparametros_entrenamiento": hiperparametros,
+            "metadata_extra": metadata,
+            "resume_available": bool(
+                entrenamiento.get("resume_available", estado_optimizador)
+            ),
+            "estado_optimizador_disponible": estado_optimizador,
+            "formato": "pt_legacy" if ruta.suffix.lower() == ".pt" else "tvismodel",
+            "es_legacy": ruta.suffix.lower() == ".pt",
+        }
+
+    def _versiones_del_grupo(self, grupo: str, ruta_actual: Path) -> list[dict[str, Any]]:
+        if not grupo:
+            return []
+        versiones: list[dict[str, Any]] = []
+        for item in self._modelos:
+            if str(item.get("grupo", "")) == grupo:
+                versiones.append({
+                    "nombre": item.get("nombre"),
+                    "ruta": item.get("ruta"),
+                    "version": item.get("version", ""),
+                    "epoca": item.get("epoca"),
+                    "perdida": item.get("perdida_final"),
+                    "actual": os.path.normcase(str(item.get("ruta", "")))
+                    == os.path.normcase(str(ruta_actual.resolve())),
+                })
+        return versiones
+
+    def _crear_detalle(
+        self,
+        ruta: Path,
+        manifiesto: Mapping[str, Any],
+        descriptor: Mapping[str, Any],
+        historial: Mapping[str, Any],
+        *,
+        integridad_verificada: bool = False,
+    ) -> dict[str, Any]:
+        arquitectura = _como_dict(manifiesto.get("arquitectura"))
+        pesos = _como_dict(manifiesto.get("pesos"))
+        tokenizer = _como_dict(manifiesto.get("tokenizer"))
+        capacidades = _como_dict(manifiesto.get("capabilities"))
+        entrenamiento = _como_dict(manifiesto.get("entrenamiento"))
+        metadata = _como_dict(historial.get("metadata_extra"))
+        if not metadata:
+            metadata = _como_dict(manifiesto.get("metadata_extra"))
+        hiperparametros = _como_dict(historial.get("hiperparametros_entrenamiento"))
+        if not hiperparametros:
+            hiperparametros = _como_dict(
+                manifiesto.get("hiperparametros_entrenamiento")
+            )
+        local = self._leer_metadata_sidecar(ruta, manifiesto, ignorar_errores=True)
+
+        parametros_componentes = _como_dict(
+            arquitectura.get("parametros_por_componente")
+        )
+        parametros_bloque = _como_dict(arquitectura.get("parametros_por_bloque"))
+        bloques = [
+            {
+                "nombre": "Bloque encoder",
+                "shapeEntrada": "[B, T_src, d_model]",
+                "shapeSalida": "[B, T_src, d_model]",
+                "repeticiones": arquitectura.get("encoder_layers"),
+                "parametros": parametros_bloque.get("encoder"),
+            },
+            {
+                "nombre": "Bloque decoder",
+                "shapeEntrada": "[B, T_tgt, d_model]",
+                "shapeSalida": "[B, T_tgt, d_model]",
+                "repeticiones": arquitectura.get("decoder_layers"),
+                "parametros": parametros_bloque.get("decoder"),
+            },
+        ]
+        for nombre, valor in parametros_componentes.items():
+            bloques.append({"nombre": nombre, "parametros": valor})
+        tensores = [
+            {
+                "nombre": nombre,
+                "shape": forma,
+                "dtype": (
+                    "int64" if nombre.startswith("tokens_") else pesos.get("dtype")
+                ),
+            }
+            for nombre, forma in _como_dict(
+                arquitectura.get("dimensiones_tensores")
+            ).items()
+        ]
+        arquitectura_ui = dict(arquitectura)
+        arquitectura_ui.update({"bloques": bloques, "tensores": tensores})
+
+        datasets = metadata.get("datasets", hiperparametros.get("datasets", []))
+        if isinstance(datasets, Mapping):
+            datasets = [dict(datasets)]
+        elif isinstance(datasets, (tuple, list)):
+            datasets = list(datasets)
+        elif datasets:
+            datasets = [{"nombre": str(datasets)}]
+        else:
+            datasets = []
+        if not datasets and metadata.get("origen_datos"):
+            origen_datos = str(metadata["origen_datos"])
+            datasets = [{
+                "nombre": Path(origen_datos).name or origen_datos,
+                "ruta": origen_datos,
+            }]
+
+        procedencia = dict(metadata)
+        procedencia.update({
+            "datasets": datasets,
+            "tarea": _primero(metadata.get("tarea"), hiperparametros.get("tarea")),
+            "learning_rate": _primero(
+                hiperparametros.get("learning_rate"),
+                hiperparametros.get("tasa_aprendizaje"),
+            ),
+            "batch_size": hiperparametros.get("batch_size"),
+            "semilla": _primero(hiperparametros.get("semilla"), metadata.get("semilla")),
+            "creado_en": _primero(
+                manifiesto.get("fecha_creacion"), manifiesto.get("fecha")
+            ),
+        })
+
+        perdidas = list(historial.get("historial_perdidas", []) or [])
+        historial_ui: dict[str, Any] = {
+            "perdidas": perdidas,
+            "epoca": historial.get("epoca"),
+            "paso_global": historial.get("paso_global"),
+            "perdida_final": historial.get("perdida_final"),
+            "checkpoints": self._versiones_del_grupo(
+                str(descriptor.get("grupo", "")), ruta
+            ),
+            "mensaje": (
+                "No hay una serie de perdida persistida en este checkpoint."
+                if not perdidas else ""
+            ),
+        }
+        for destino, claves in (
+            ("validacion", ("historial_validacion", "validation_history")),
+            ("perplexity", ("historial_perplexity", "perplexity_history")),
+            ("precision", ("historial_precision", "accuracy_history")),
+        ):
+            for fuente in (metadata, hiperparametros):
+                for clave in claves:
+                    if isinstance(fuente.get(clave), list):
+                        historial_ui[destino] = list(fuente[clave])
+                        break
+                if destino in historial_ui:
+                    break
+
+        checksum_pesos = _primero(
+            manifiesto.get("checksum_pesos"), pesos.get("sha256")
+        )
+        checksum_estado = manifiesto.get("checksum_estado_entrenamiento")
+        checksum_archivo = manifiesto.get("checksum_archivo")
+        integridad = {
+            "valida": True if integridad_verificada else None,
+            "checksum": checksum_archivo or checksum_pesos,
+            "checksum_pesos": checksum_pesos,
+            "checksum_estado_entrenamiento": checksum_estado,
+            "checksum_archivo": checksum_archivo,
+            "algoritmo_checksum": "sha256",
+            "dtype": manifiesto.get("dtype", pesos.get("dtype")),
+            "dtypes": manifiesto.get("dtypes", pesos.get("dtypes", [])),
+            "num_tensores": manifiesto.get("num_tensores", pesos.get("num_tensores")),
+            "version_formato": manifiesto.get(
+                "version_formato", manifiesto.get("schema_version")
+            ),
+            "tamano": descriptor.get("tamano"),
+        }
+        compatibilidad = {
+            "compatible": descriptor.get("compatible", False),
+            "mensaje": descriptor.get("error", ""),
+            "reanudacionExacta": bool(
+                _primero(
+                    capacidades.get("reanudacion_exacta"),
+                    capacidades.get("exact_resume"),
+                    default=False,
+                )
+            ),
+            "continuarConAdam": bool(
+                historial.get("estado_optimizador_disponible", False)
+            ),
+            "entrenarDesdePesos": bool(descriptor.get("entrenable", False)),
+        }
+        grupo = str(descriptor.get("grupo", ""))
+        gestion = {
+            "nombre": descriptor.get("nombre"),
+            "notas": local.get("notas", ""),
+            "tags": local.get("tags", []),
+            "grupo": grupo,
+            "version": descriptor.get("version", ""),
+            "versiones": self._versiones_del_grupo(grupo, ruta),
+        }
+        return {
+            "ruta": str(ruta.resolve()),
+            "nombre": descriptor.get("nombre"),
+            "descriptor": dict(descriptor),
+            "arquitectura": arquitectura_ui,
+            "procedencia": procedencia,
+            "historial": historial_ui,
+            "tokenizador": tokenizer,
+            "integridad": integridad,
+            "compatibilidad": compatibilidad,
+            "gestion": gestion,
+        }
+
+    def _crear_tokenizer_ligero(
+        self, manifiesto: Mapping[str, Any], descriptor: Mapping[str, Any]
+    ) -> Tokenizer:
+        info = _como_dict(manifiesto.get("tokenizer"))
+        candidato = _primero(
+            info.get("tipo_encoding"), info.get("encoding"), descriptor.get("encoding")
+        )
+        if isinstance(candidato, str):
+            if candidato not in ENCODINGS:
+                raise ValueError(f"El encoding '{candidato}' no es compatible.")
+            candidato = ENCODINGS.index(candidato)
+        tokenizer = Tokenizer(_entero(candidato, -1))
+        vocab = _entero(info.get("vocab_size"))
+        if vocab and vocab != tokenizer.vocab_size:
+            raise ValueError("El vocabulario declarado no coincide con el tokenizador.")
+        return tokenizer
+
+    @staticmethod
+    def _tokens_especiales(
+        manifiesto: Mapping[str, Any], tokenizer: Tokenizer
+    ) -> list[dict[str, Any]]:
+        info = _como_dict(manifiesto.get("tokenizer"))
+        valores = (
+            ("PAD", _primero(info.get("pad"), info.get("id_token_relleno"), tokenizer.vocab_size)),
+            ("BOS", _primero(info.get("bos"), info.get("id_token_inicio"), tokenizer.vocab_size + 1)),
+            ("EOS", _primero(info.get("eos"), info.get("id_token_fin"), tokenizer.vocab_size + 2)),
+        )
+        return [{"nombre": nombre, "id": int(token_id)} for nombre, token_id in valores]
+
+    @staticmethod
+    def _decodificar_token(tokenizer: Tokenizer, token_id: int) -> str:
+        try:
+            return tokenizer.decode([token_id])
+        except (KeyError, ValueError, UnicodeDecodeError):
+            try:
+                return tokenizer.encoding.decode_single_token_bytes(token_id).decode(
+                    "utf-8", errors="replace"
+                )
+            except (KeyError, ValueError):
+                return "�"
+
+    def _probar_salud(
+        self, ruta: Path, modelo: Any, tokenizer: Tokenizer
+    ) -> dict[str, Any]:
+        modelo.eval()
+        dispositivo = next(modelo.parameters()).device
+        especiales = self._tokens_especiales(
+            {"tokenizer": {"vocab_size": tokenizer.vocab_size}}, tokenizer
+        )
+        ids_especiales = {item["nombre"]: item["id"] for item in especiales}
+        contexto = int(getattr(modelo.config, "longitud_maxima_secuencia", 32))
+        prompts = ["Hola", "Explica brevemente qué es atención.", "1, 2, 3,"]
+        muestras: list[dict[str, Any]] = []
+        for prompt in prompts:
+            inicio = time.perf_counter()
+            salida_ids: list[int] = []
+            ids_generados: list[int] = []
+            confianzas: list[float] = []
+            entropias: list[float] = []
+            sumas_probabilidad: list[float] = []
+            hay_nan = False
+            hay_infinito = False
+            eos = False
+            error = ""
+            salida = ""
+            try:
+                ids_origen = tokenizer.encode(prompt)[: max(1, contexto - 1)]
+                if not ids_origen:
+                    ids_origen = [0]
+                tokens_origen = torch.tensor(
+                    [ids_origen], dtype=torch.long, device=dispositivo
+                )
+                for paso in modelo.generar(
+                    tokens_origen,
+                    ids_especiales["BOS"],
+                    ids_especiales["EOS"],
+                    max_tokens_nuevos=min(16, max(1, contexto - 1)),
+                    muestreo_codicioso=True,
+                ):
+                    token_id = int(paso["token_id"])
+                    ids_generados.append(token_id)
+                    logits = paso["logits"].detach().float()
+                    hay_nan = hay_nan or bool(torch.isnan(logits).any().item())
+
+                    # ``generar`` enmascara PAD y BOS con -Inf a propósito;
+                    # se excluyen al buscar infinitos inesperados.
+                    logits_diagnostico = logits.clone()
+                    for nombre in ("PAD", "BOS"):
+                        especial = ids_especiales[nombre]
+                        if 0 <= especial < logits_diagnostico.size(-1):
+                            logits_diagnostico[..., especial] = 0.0
+                    hay_infinito = hay_infinito or bool(
+                        torch.isinf(logits_diagnostico).any().item()
+                    )
+
+                    probabilidades = torch.softmax(logits, dim=-1)
+                    if not bool(torch.isfinite(probabilidades).all().item()):
+                        hay_nan = True
+                    else:
+                        suma = float(probabilidades.sum(dim=-1).mean().item())
+                        sumas_probabilidad.append(suma)
+                        confianza = float(probabilidades[0, token_id].item())
+                        if math.isfinite(confianza):
+                            confianzas.append(confianza)
+                        entropia = float(
+                            -(
+                                probabilidades
+                                * probabilidades.clamp_min(1e-12).log()
+                            ).sum(dim=-1).mean().item()
+                        )
+                        if math.isfinite(entropia):
+                            entropias.append(entropia)
+                    if token_id == ids_especiales["EOS"]:
+                        eos = True
+                        break
+                    if token_id < tokenizer.vocab_size:
+                        salida_ids.append(token_id)
+                salida = tokenizer.decode(salida_ids) if salida_ids else ""
+            except (RuntimeError, ValueError, IndexError, TypeError) as exc:
+                error = str(exc)
+            duracion_ms = (time.perf_counter() - inicio) * 1000.0
+            repeticiones = 0.0
+            if len(salida_ids) > 1:
+                repeticiones = 1.0 - len(set(salida_ids)) / len(salida_ids)
+            total_generados = len(ids_generados)
+            desviaciones_suma = [abs(valor - 1.0) for valor in sumas_probabilidad]
+            muestras.append({
+                "prompt": prompt,
+                "salida": salida,
+                "ids": ids_generados,
+                "idsTexto": salida_ids,
+                "tokens": total_generados,
+                "latenciaMs": duracion_ms,
+                "msPorToken": duracion_ms / max(total_generados, 1),
+                "tokensPorSegundo": (
+                    total_generados / (duracion_ms / 1000.0)
+                    if duracion_ms > 0 else None
+                ),
+                "eos": eos,
+                "confianzaMedia": (
+                    sum(confianzas) / len(confianzas) if confianzas else None
+                ),
+                "entropiaMedia": (
+                    sum(entropias) / len(entropias) if entropias else None
+                ),
+                "sumaProbabilidadesMedia": (
+                    sum(sumas_probabilidad) / len(sumas_probabilidad)
+                    if sumas_probabilidad else None
+                ),
+                "errorSumaProbabilidadesMax": (
+                    max(desviaciones_suma) if desviaciones_suma else None
+                ),
+                "tasaRepeticion": repeticiones,
+                "hayNaN": hay_nan,
+                "hayInfinito": hay_infinito,
+                "error": error,
+            })
+        validas = [m for m in muestras if not m.get("error")]
+        def promedio(clave: str) -> float | None:
+            valores = [float(m[clave]) for m in validas if m.get(clave) is not None]
+            return sum(valores) / len(valores) if valores else None
+
+        resumen = {
+            "muestras": len(muestras),
+            "hayNaN": any(bool(m.get("hayNaN")) for m in muestras),
+            "hayInfinito": any(bool(m.get("hayInfinito")) for m in muestras),
+            "errores": sum(1 for m in muestras if m.get("error")),
+            "tasaEOS": (
+                sum(1 for m in validas if m.get("eos")) / len(validas)
+                if validas else None
+            ),
+            "latenciaMediaMs": promedio("latenciaMs"),
+            "tokensPorSegundoMedio": promedio("tokensPorSegundo"),
+            "confianzaMedia": promedio("confianzaMedia"),
+            "entropiaMedia": promedio("entropiaMedia"),
+            "sumaProbabilidadesMedia": promedio("sumaProbabilidadesMedia"),
+            "errorSumaProbabilidadesMax": max(
+                (
+                    float(m["errorSumaProbabilidadesMax"])
+                    for m in validas
+                    if m.get("errorSumaProbabilidadesMax") is not None
+                ),
+                default=None,
+            ),
+            "tasaRepeticionMedia": promedio("tasaRepeticion"),
+        }
+        advertencias: list[str] = []
+        if resumen["errores"]:
+            advertencias.append("Una o mas muestras no pudieron completarse.")
+        if resumen["hayNaN"] or resumen["hayInfinito"]:
+            advertencias.append("Se detectaron logits o probabilidades no finitos.")
+        if validas and any(not muestra.get("eos") for muestra in validas):
+            advertencias.append("EOS no aparecio dentro del limite en alguna muestra.")
+        if any(float(m.get("tasaRepeticion", 0.0)) >= 0.5 for m in validas):
+            advertencias.append("Se observo repeticion alta en alguna muestra.")
+        return {
+            "ruta": str(ruta.resolve()),
+            "determinista": True,
+            "modo": "greedy",
+            "muestras": muestras,
+            "resumen": resumen,
+            "advertencias": advertencias,
+            "coherencia": {
+                "automatico": False,
+                "estado": "requiere_revision_humana",
+                "mensaje": "No evaluada automáticamente: requiere revisión humana de las salidas.",
+            },
+        }
 
     def _destino_disponible(self, nombre: str) -> Path:
         """Genera un nombre seguro sin sobrescribir modelos existentes."""

@@ -71,6 +71,10 @@ class TestEntrenamientoBasico:
         resultado = blocker.args[0]
         assert len(resultado["historial_perdidas"]) == 5
         assert resultado["perdida_final"] == resultado["historial_perdidas"][-1]
+        assert resultado["ejemplos_vistos"] == 10
+        assert resultado["tokens_origen_vistos"] == 60
+        assert resultado["tokens_objetivo_vistos"] == 60
+        assert resultado["duracion_entrenamiento_segundos"] > 0
 
     def test_recorre_el_proveedor_una_vez_por_epoca(self, qtbot, controlador, config):
         contador_llamadas = {"veces": 0}

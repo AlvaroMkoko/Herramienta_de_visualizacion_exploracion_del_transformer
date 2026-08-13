@@ -222,6 +222,17 @@ class MainViewModel(QObject):
             "reanudable": bool(entrenamiento.get("resume_available", False)),
         }
 
+        # La insignia de la biblioteca debe cambiar solamente despues de que
+        # el modelo haya podido instalarse en el dispositivo. Si se crea un
+        # modelo nuevo (todavia sin archivo), ninguna ruta guardada sigue
+        # representando la sesion activa.
+        ruta_modelo_activo = (
+            str((manifest or {}).get("ruta", "")) if resultado_carga is not None else ""
+        )
+        self._model_library_controller._establecer_modelo_activo(
+            ruta_modelo_activo
+        )
+
         self.trainingControllerCambio.emit()
         self.inferenceControllerCambio.emit()
         self.modeloListoCambio.emit()
@@ -292,6 +303,18 @@ class MainViewModel(QObject):
                     "id": m.get("id"),
                     "nombre": m.get("nombre", m.get("id", "dataset")),
                     "formato": m.get("formato"),
+                    "registros_catalogo": m.get("registros"),
+                    # El catalogo historico cuenta palabras con split(), no
+                    # tokens del tokenizer. El nombre explicito evita mostrar
+                    # esa estimacion como si fuera tokenizacion real.
+                    "palabras_catalogo_aprox": m.get("tokens"),
+                    "campos": m.get("campos", []),
+                    "checksum": m.get("checksum"),
+                    "tarea": (
+                        "ventana de texto -> siguiente ventana"
+                        if m.get("formato") in (".txt", ".pdf")
+                        else "instruction [ + context ] -> response"
+                    ),
                 }
                 for m in metadatas
             ]

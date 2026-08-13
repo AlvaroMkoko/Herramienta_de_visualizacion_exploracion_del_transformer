@@ -403,8 +403,75 @@ def _tipos_pesos(state_dict: Mapping[str, torch.Tensor]) -> list[str]:
     return sorted({str(tensor.dtype).removeprefix("torch.") for tensor in state_dict.values()})
 
 
-def _arquitectura(config: ConfiguracionTransformer, parametros_totales: int) -> dict[str, Any]:
+def _parametros_por_componente(
+    config: ConfiguracionTransformer, compartir_pesos_salida: bool
+) -> dict[str, int]:
+    """Desglosa la formula de parametros sin construir el ``Transformer``.
+
+    El sesgo de la proyeccion final se cuenta por separado cuando existe
+    *weight tying*, porque la matriz se comparte con el embedding de salida.
+    Se incluyen tanto totales por pila como cifras por bloque/submodulo para
+    una inspeccion educativa; estas ultimas son desgloses y no deben volver a
+    sumarse a los totales.
+    """
+    vocabulario = config.tamano_vocabulario
+    dimension = config.dimension_modelo
+    dimension_ff = config.dimension_ff
+
+    embedding = vocabulario * dimension
+    atencion = 4 * (dimension * dimension + dimension)
+    feed_forward = 2 * dimension * dimension_ff + dimension_ff + dimension
+    layer_norm = 2 * dimension
+    bloque_encoder = atencion + feed_forward + 2 * layer_norm
+    bloque_decoder = 2 * atencion + feed_forward + 3 * layer_norm
+    proyeccion_salida = (
+        vocabulario
+        if compartir_pesos_salida
+        else dimension * vocabulario + vocabulario
+    )
     return {
+        "embedding_entrada": embedding,
+        "embedding_salida": embedding,
+        "atencion_por_modulo": atencion,
+        "feed_forward_por_modulo": feed_forward,
+        "layer_norm_por_modulo": layer_norm,
+        "bloque_encoder": bloque_encoder,
+        "encoder_total": config.num_capas * bloque_encoder,
+        "bloque_decoder": bloque_decoder,
+        "decoder_total": config.num_capas * bloque_decoder,
+        # Con weight tying solo queda por contar el sesgo; sin compartir se
+        # incluyen matriz y sesgo completos.
+        "proyeccion_salida_adicional": proyeccion_salida,
+    }
+
+
+def _arquitectura(
+    config: ConfiguracionTransformer,
+    parametros_totales: int,
+    compartir_pesos_salida: bool | None = None,
+) -> dict[str, Any]:
+    dimensiones_tensores = {
+        "tokens_origen": ["B", "T_src"],
+        "tokens_destino": ["B", "T_tgt"],
+        "embedding_encoder": ["B", "T_src", config.dimension_modelo],
+        "embedding_decoder": ["B", "T_tgt", config.dimension_modelo],
+        "qkv_por_cabeza": [
+            "B",
+            config.num_cabezas,
+            "T",
+            config.dimension_cabeza,
+        ],
+        "scores_atencion": [
+            "B",
+            config.num_cabezas,
+            "T_query",
+            "T_key",
+        ],
+        "salida_encoder": ["B", "T_src", config.dimension_modelo],
+        "salida_decoder": ["B", "T_tgt", config.dimension_modelo],
+        "logits": ["B", "T_tgt", config.tamano_vocabulario],
+    }
+    resultado = {
         "tipo": "Transformer encoder-decoder",
         "encoder_layers": config.num_capas,
         "decoder_layers": config.num_capas,
@@ -420,8 +487,45 @@ def _arquitectura(config: ConfiguracionTransformer, parametros_totales: int) -> 
         "vocab_size": config.tamano_vocabulario,
         "vocab": config.tamano_vocabulario,
         "dropout": config.dropout,
+        "dimension_cabeza": config.dimension_cabeza,
+        "head_dimension": config.dimension_cabeza,
+        "activacion": config.activacion,
+        "activation": config.activacion,
+        "usar_mascara_causal": config.usar_mascara_causal,
+        "mascara_causal": config.usar_mascara_causal,
+        "causal_mask": config.usar_mascara_causal,
+        # La implementacion actual aplica LayerNorm despues de sumar la
+        # conexion residual (Transformer original, post-norm).
+        "tipo_normalizacion": "LayerNorm",
+        "normalization_type": "LayerNorm",
+        "orden_normalizacion": "post_norm",
+        "normalization_order": "post_norm",
+        "layer_norm_epsilon": 1e-5,
+        "mascaras": {
+            "padding_encoder": config.id_token_relleno is not None,
+            "padding_decoder": config.id_token_relleno is not None,
+            "causal_decoder": config.usar_mascara_causal,
+            "padding_atencion_cruzada": config.id_token_relleno is not None,
+        },
+        "dimensiones_tensores": dimensiones_tensores,
         "parametros_totales": parametros_totales,
     }
+    if compartir_pesos_salida is not None:
+        parametros_por_componente = _parametros_por_componente(
+            config, compartir_pesos_salida
+        )
+        resultado.update(
+            {
+                "compartir_pesos_salida": compartir_pesos_salida,
+                "weight_tying": compartir_pesos_salida,
+                "parametros_por_componente": parametros_por_componente,
+                "parametros_por_bloque": {
+                    "encoder": parametros_por_componente["bloque_encoder"],
+                    "decoder": parametros_por_componente["bloque_decoder"],
+                },
+            }
+        )
+    return resultado
 
 
 def _calcular_parametros_esperados(
@@ -542,6 +646,56 @@ def _descriptor(manifest: dict[str, Any], ruta: Path, *, legacy: bool = False) -
     resultado["tamano_archivo"] = ruta.stat().st_size
     resultado["formato"] = "pt_legacy" if legacy else SCHEMA_MODELO
     resultado["es_legacy"] = legacy
+    arquitectura = resultado.get("arquitectura", {})
+    config = _config_desde_dict(resultado.get("config", {}))
+    arquitectura_derivada = _arquitectura(
+        config,
+        arquitectura.get("parametros_totales", 0),
+        resultado.get("compartir_pesos_salida"),
+    )
+    for clave, valor in arquitectura_derivada.items():
+        arquitectura.setdefault(clave, valor)
+    resultado["arquitectura"] = arquitectura
+    pesos = resultado.get("pesos", {})
+    entrenamiento = resultado.get("entrenamiento", {})
+    version = resultado.get("schema_version", resultado.get("version"))
+    dtypes = list(pesos.get("dtypes", []))
+    dtype = pesos.get("dtype")
+    if dtype is None and dtypes:
+        dtype = dtypes[0] if len(dtypes) == 1 else "mixed"
+    checksum_estado = None
+    if isinstance(entrenamiento.get("estado"), Mapping):
+        checksum_estado = entrenamiento["estado"].get("sha256")
+
+    # Aliases planos para consumidores que no necesitan conocer la estructura
+    # completa del manifiesto. Son solamente derivados: no sustituyen ni
+    # modifican los campos canonicos de la version 1.
+    resultado["version_formato"] = version
+    resultado["dtype"] = dtype
+    resultado["dtypes"] = dtypes
+    resultado["num_tensores"] = pesos.get("num_tensores")
+    resultado["checksum_pesos"] = pesos.get("sha256")
+    resultado["checksum_estado_entrenamiento"] = checksum_estado
+    resultado["checksum_archivo"] = pesos.get("sha256") if legacy else None
+    resultado["weight_tying"] = resultado.get(
+        "compartir_pesos_salida", arquitectura.get("weight_tying")
+    )
+    resultado["activacion"] = arquitectura.get("activacion")
+    resultado["usar_mascara_causal"] = arquitectura.get(
+        "usar_mascara_causal"
+    )
+    resultado["tipo_normalizacion"] = arquitectura.get("tipo_normalizacion")
+    resultado["orden_normalizacion"] = arquitectura.get("orden_normalizacion")
+    resultado["integridad"] = {
+        "algoritmo_checksum": "sha256",
+        "checksum_pesos": pesos.get("sha256"),
+        "checksum_estado_entrenamiento": checksum_estado,
+        "checksum_archivo": pesos.get("sha256") if legacy else None,
+        "dtype": dtype,
+        "dtypes": dtypes,
+        "num_tensores": pesos.get("num_tensores"),
+        "version_formato": version,
+    }
     return resultado
 
 
@@ -635,10 +789,26 @@ def _tipo_encoding_legacy(metadata: Mapping[str, Any]) -> int | None:
     return tipo
 
 
+def _hiperparametros_legacy(metadata: Mapping[str, Any]) -> dict[str, Any]:
+    """Recupera el bloque opcional usado por checkpoints historicos.
+
+    Algunas versiones lo guardaron dentro de ``metadata_extra``. Un valor de
+    otro tipo se conserva como metadata, pero no se presenta falsamente como
+    hiperparametros estructurados.
+    """
+    valor = metadata.get("hiperparametros_entrenamiento", {})
+    if not isinstance(valor, Mapping):
+        return {}
+    return _a_json_seguro(
+        dict(valor), ruta="metadata_extra.hiperparametros_entrenamiento"
+    )
+
+
 def _manifest_legacy(ruta: Path, contenido: dict[str, Any]) -> dict[str, Any]:
     config: ConfiguracionTransformer = contenido["_config_validada"]
     state_dict = contenido["_state_dict_validado"]
     metadata = contenido["metadata_extra"]
+    hiperparametros = _hiperparametros_legacy(metadata)
     tipo_encoding = _tipo_encoding_legacy(metadata)
     parametros = _validar_tamano_arquitectura(
         config, contenido["compartir_pesos_salida"]
@@ -679,15 +849,19 @@ def _manifest_legacy(ruta: Path, contenido: dict[str, Any]) -> dict[str, Any]:
         "fecha_creacion": fecha,
         "config": asdict(config),
         "compartir_pesos_salida": contenido["compartir_pesos_salida"],
-        "arquitectura": _arquitectura(config, parametros),
+        "arquitectura": _arquitectura(
+            config, parametros, contenido["compartir_pesos_salida"]
+        ),
         "tokenizer": tokenizer_info,
         "pesos": {
             "archivo": ruta.name,
             "sha256": digest,
             "tamano_bytes": ruta.stat().st_size,
             "num_parametros": parametros,
+            "num_tensores": len(state_dict),
             "dtypes": _tipos_pesos(state_dict),
             "dtype": _tipos_pesos(state_dict)[0] if len(_tipos_pesos(state_dict)) == 1 else "mixed",
+            "checksum_sha256": digest,
         },
         "entrenamiento": {
             "epoca": contenido["epoca"],
@@ -696,7 +870,7 @@ def _manifest_legacy(ruta: Path, contenido: dict[str, Any]) -> dict[str, Any]:
             "num_registros_perdida": len(historial),
             "resume_available": reanudable,
         },
-        "hiperparametros_entrenamiento": {},
+        "hiperparametros_entrenamiento": hiperparametros,
         "metadata_extra": metadata,
         "capabilities": _capacidades(
             reanudable=reanudable,
@@ -731,7 +905,9 @@ def _cargar_checkpoint_legacy(
         historial_perdidas=contenido["historial_perdidas"],
         metadata_extra=contenido["metadata_extra"],
         manifest=manifest,
-        hiperparametros_entrenamiento={},
+        hiperparametros_entrenamiento=_hiperparametros_legacy(
+            contenido["metadata_extra"]
+        ),
         tipo_encoding=tipo_encoding,
     )
 
@@ -876,9 +1052,11 @@ def guardar_modelo_portable(
                 raise ValueError(
                     "El estado de entrenamiento excede el tamano maximo permitido."
                 )
+            checksum_estado = _sha256_archivo(entrenamiento_temporal)
             estado_entrenamiento_info = {
                 "archivo": _ARCHIVO_ENTRENAMIENTO,
-                "sha256": _sha256_archivo(entrenamiento_temporal),
+                "sha256": checksum_estado,
+                "checksum_sha256": checksum_estado,
                 "tamano_bytes": tamano_estado,
             }
 
@@ -887,6 +1065,7 @@ def guardar_modelo_portable(
             sanitizar_nombre_modelo(nombre or ruta_final.stem)
         ).stem[:240]
         tipos = _tipos_pesos(pesos_origen)
+        checksum_pesos = _sha256_archivo(pesos_temporal)
         entrenamiento = {
             "epoca": epoca,
             "siguiente_epoca": siguiente_epoca,
@@ -909,11 +1088,14 @@ def guardar_modelo_portable(
             "fecha_creacion": fecha,
             "config": asdict(config),
             "compartir_pesos_salida": bool(modelo.compartir_pesos_salida),
-            "arquitectura": _arquitectura(config, parametros_totales),
+            "arquitectura": _arquitectura(
+                config, parametros_totales, bool(modelo.compartir_pesos_salida)
+            ),
             "tokenizer": tokenizer_info,
             "pesos": {
                 "archivo": _ARCHIVO_PESOS,
-                "sha256": _sha256_archivo(pesos_temporal),
+                "sha256": checksum_pesos,
+                "checksum_sha256": checksum_pesos,
                 "tamano_bytes": tamano_pesos,
                 "num_parametros": parametros_totales,
                 "num_tensores": len(pesos_origen),
@@ -1007,7 +1189,11 @@ def _validar_manifest(manifest: Any) -> dict[str, Any]:
         raise ValueError("Falta la descripcion de arquitectura.")
     if arquitectura.get("tipo") != "Transformer encoder-decoder":
         raise ValueError("arquitectura.tipo no es compatible.")
-    esperados = _arquitectura(config, arquitectura.get("parametros_totales", -1))
+    esperados = _arquitectura(
+        config,
+        arquitectura.get("parametros_totales", -1),
+        manifest["compartir_pesos_salida"],
+    )
     for clave in (
         "encoder_layers",
         "decoder_layers",
@@ -1025,6 +1211,31 @@ def _validar_manifest(manifest: Any) -> dict[str, Any]:
         "dropout",
     ):
         if arquitectura.get(clave) != esperados[clave]:
+            raise ValueError(f"arquitectura.{clave} no coincide con config.")
+    # Campos agregados de manera retrocompatible a la version 1. Se validan
+    # cuando existen, pero su ausencia no invalida paquetes creados antes de
+    # incorporarlos.
+    for clave in (
+        "dimension_cabeza",
+        "head_dimension",
+        "activacion",
+        "activation",
+        "usar_mascara_causal",
+        "mascara_causal",
+        "causal_mask",
+        "tipo_normalizacion",
+        "normalization_type",
+        "orden_normalizacion",
+        "normalization_order",
+        "layer_norm_epsilon",
+        "mascaras",
+        "dimensiones_tensores",
+        "compartir_pesos_salida",
+        "weight_tying",
+        "parametros_por_componente",
+        "parametros_por_bloque",
+    ):
+        if clave in arquitectura and arquitectura[clave] != esperados[clave]:
             raise ValueError(f"arquitectura.{clave} no coincide con config.")
     parametros = arquitectura.get("parametros_totales")
     if not _es_entero(parametros) or not 0 < parametros <= _MAX_MODEL_PARAMETERS:
@@ -1077,6 +1288,11 @@ def _validar_manifest(manifest: Any) -> dict[str, Any]:
         raise ValueError("La seccion de pesos del manifiesto no es valida.")
     if not re.fullmatch(r"[0-9a-f]{64}", str(pesos.get("sha256", ""))):
         raise ValueError("El hash de los pesos no es valido.")
+    if (
+        "checksum_sha256" in pesos
+        and pesos["checksum_sha256"] != pesos["sha256"]
+    ):
+        raise ValueError("pesos.checksum_sha256 no coincide con pesos.sha256.")
     tamano_pesos = pesos.get("tamano_bytes")
     if not _es_entero(tamano_pesos) or not 0 < tamano_pesos <= _MAX_WEIGHTS_BYTES:
         raise ValueError("El tamano declarado de los pesos no es valido.")
@@ -1092,6 +1308,9 @@ def _validar_manifest(manifest: Any) -> dict[str, Any]:
         or any(not isinstance(dtype, str) or not dtype for dtype in dtypes)
     ):
         raise ValueError("pesos.dtypes no es valido.")
+    dtype_esperado = dtypes[0] if len(dtypes) == 1 else "mixed"
+    if "dtype" in pesos and pesos["dtype"] != dtype_esperado:
+        raise ValueError("pesos.dtype no coincide con pesos.dtypes.")
 
     entrenamiento = manifest.get("entrenamiento")
     if not isinstance(entrenamiento, dict):
@@ -1124,6 +1343,13 @@ def _validar_manifest(manifest: Any) -> dict[str, Any]:
             raise ValueError("La referencia al estado de entrenamiento no es valida.")
         if not re.fullmatch(r"[0-9a-f]{64}", str(estado_info.get("sha256", ""))):
             raise ValueError("El hash del estado de entrenamiento no es valido.")
+        if (
+            "checksum_sha256" in estado_info
+            and estado_info["checksum_sha256"] != estado_info["sha256"]
+        ):
+            raise ValueError(
+                "entrenamiento.estado.checksum_sha256 no coincide con sha256."
+            )
         tamano_estado = estado_info.get("tamano_bytes")
         if not _es_entero(tamano_estado) or not 0 < tamano_estado <= _MAX_TRAINING_STATE_BYTES:
             raise ValueError("El tamano del estado de entrenamiento no es valido.")
@@ -1495,6 +1721,233 @@ def _validar_estado_entrenamiento(valor: Any) -> dict[str, Any]:
         hiperparametros, ruta="hiperparametros_entrenamiento"
     )
     return valor
+
+
+def _leer_estado_entrenamiento_portable(
+    ruta: Path, manifest: Mapping[str, Any]
+) -> dict[str, Any] | None:
+    """Lee solamente ``training_state.pt`` y comprueba su SHA-256.
+
+    Esta ruta evita extraer o deserializar ``weights.pt``. El temporal impide
+    duplicar en RAM estados de Adam potencialmente grandes y ``weights_only``
+    mantiene la misma frontera de seguridad que la carga completa.
+    """
+    estado_info = manifest["entrenamiento"].get("estado")
+    if estado_info is None:
+        return None
+
+    with tempfile.TemporaryDirectory(prefix="tvismodel-history-") as temporal:
+        ruta_estado = Path(temporal) / _ARCHIVO_ENTRENAMIENTO
+        try:
+            with zipfile.ZipFile(ruta, mode="r") as archivo_zip:
+                nombres = archivo_zip.namelist()
+                if len(nombres) != len(set(nombres)):
+                    raise ValueError("El modelo contiene entradas ZIP duplicadas.")
+                esperados = {
+                    _ARCHIVO_MANIFEST,
+                    _ARCHIVO_PESOS,
+                    _ARCHIVO_ENTRENAMIENTO,
+                }
+                if set(nombres) != esperados:
+                    raise ValueError(
+                        "El modelo portable no contiene exactamente las entradas "
+                        "declaradas."
+                    )
+                info = _validar_info_entrada(
+                    archivo_zip,
+                    _ARCHIVO_ENTRENAMIENTO,
+                    _MAX_TRAINING_STATE_BYTES,
+                )
+                if info.file_size != estado_info["tamano_bytes"]:
+                    raise ValueError(
+                        "El tamano de training_state.pt no coincide con el manifiesto."
+                    )
+                digest = _extraer_entrada_temporal(
+                    archivo_zip,
+                    _ARCHIVO_ENTRENAMIENTO,
+                    _MAX_TRAINING_STATE_BYTES,
+                    ruta_estado,
+                )
+        except zipfile.BadZipFile as exc:
+            raise ValueError("El archivo no es un .tvismodel valido.") from exc
+        if digest != estado_info["sha256"]:
+            raise ValueError(
+                "El hash de training_state.pt no coincide; el modelo esta corrupto."
+            )
+        return _validar_estado_entrenamiento(
+            _torch_load_seguro(ruta_estado, map_location="cpu")
+        )
+
+
+def _resultado_inspeccion_historial(
+    *,
+    historial: list[float],
+    epoca: int | None,
+    siguiente_epoca: int | None,
+    paso_epoca: int | None,
+    paso_global: int | None,
+    hiperparametros: Mapping[str, Any],
+    metadata: Mapping[str, Any],
+    resume_available: bool,
+    estado_optimizador_disponible: bool,
+    formato: str,
+    es_legacy: bool,
+) -> dict[str, Any]:
+    perdida_final = historial[-1] if historial else None
+    resultado: dict[str, Any] = {
+        "historial_perdidas": list(historial),
+        "epoca": epoca,
+        "siguiente_epoca": siguiente_epoca,
+        "paso_epoca": paso_epoca,
+        "paso_global": paso_global,
+        "perdida_final": perdida_final,
+        "num_registros_perdida": len(historial),
+        "hiperparametros_entrenamiento": copy.deepcopy(dict(hiperparametros)),
+        "metadata_extra": copy.deepcopy(dict(metadata)),
+        "resume_available": resume_available,
+        "estado_optimizador_disponible": estado_optimizador_disponible,
+        "formato": formato,
+        "es_legacy": es_legacy,
+    }
+    # Lista explicita para que los consumidores distingan un dato persistido
+    # de una metrica que el formato nunca registro. En particular no se crean
+    # campos de validacion, precision o perplexity a partir de la perdida.
+    campos = [
+        "historial_perdidas",
+        "num_registros_perdida",
+        "hiperparametros_entrenamiento",
+        "metadata_extra",
+        "resume_available",
+        "estado_optimizador_disponible",
+        "formato",
+        "es_legacy",
+    ]
+    for nombre in (
+        "epoca",
+        "siguiente_epoca",
+        "paso_epoca",
+        "paso_global",
+        "perdida_final",
+    ):
+        if resultado[nombre] is not None:
+            campos.append(nombre)
+    resultado["campos_disponibles"] = campos
+    return resultado
+
+
+def inspeccionar_historial_entrenamiento(ruta: str | Path) -> dict[str, Any]:
+    """Inspecciona el historial sin instanciar ni cargar los pesos al modelo.
+
+    Para ``.tvismodel`` se valida el manifiesto, se verifica el checksum del
+    estado de entrenamiento y se deserializa exclusivamente ese componente
+    con ``weights_only=True``. Los ``.pt`` historicos son monoliticos, por lo
+    que se leen completos con la misma carga segura y sus validaciones
+    existentes, pero tampoco se construye un :class:`Transformer`.
+
+    El resultado contiene solamente datos realmente persistidos. La perdida
+    de entrenamiento no se convierte en validacion, precision ni perplexity.
+    """
+    ruta_modelo = Path(ruta)
+    if not ruta_modelo.is_file():
+        raise FileNotFoundError(f"No se encontro el modelo: {ruta_modelo}")
+
+    if _parece_modelo_portable(ruta_modelo):
+        manifest, _, _ = _leer_portable(
+            ruta_modelo, cargar_pesos=False, verificar_hash=False
+        )
+        estado = _leer_estado_entrenamiento_portable(ruta_modelo, manifest)
+        entrenamiento = manifest["entrenamiento"]
+        hiperparametros_manifest = manifest.get(
+            "hiperparametros_entrenamiento", {}
+        )
+
+        if estado is None:
+            if entrenamiento["num_registros_perdida"] != 0:
+                raise ValueError(
+                    "El manifiesto declara un historial, pero no incluye "
+                    "training_state.pt."
+                )
+            if entrenamiento.get("perdida_final") is not None:
+                raise ValueError(
+                    "El manifiesto declara una perdida final sin historial."
+                )
+            historial: list[float] = []
+            epoca = entrenamiento.get("epoca")
+            siguiente_epoca = entrenamiento.get("siguiente_epoca")
+            paso_epoca = entrenamiento.get("paso_epoca")
+            paso_global = entrenamiento.get("paso_global")
+            hiperparametros = hiperparametros_manifest
+            tiene_optimizador = False
+        else:
+            tiene_optimizador = estado.get("optimizer_state_dict") is not None
+            if entrenamiento["resume_available"] != tiene_optimizador:
+                raise ValueError(
+                    "La capacidad de reanudacion no coincide con el estado guardado."
+                )
+            for campo, etiqueta in (
+                ("epoca", "epoca"),
+                ("siguiente_epoca", "siguiente epoca"),
+                ("paso_epoca", "paso de epoca"),
+                ("paso_global", "paso global"),
+            ):
+                if estado.get(campo) != entrenamiento.get(campo):
+                    raise ValueError(
+                        f"El {etiqueta} no coincide entre el manifiesto y el estado."
+                    )
+            historial = estado["historial_perdidas"]
+            if len(historial) != entrenamiento["num_registros_perdida"]:
+                raise ValueError(
+                    "La longitud del historial no coincide con el manifiesto."
+                )
+            if (historial[-1] if historial else None) != entrenamiento.get(
+                "perdida_final"
+            ):
+                raise ValueError(
+                    "El historial de perdidas no coincide con el manifiesto."
+                )
+            hiperparametros = estado["hiperparametros_entrenamiento"]
+            if hiperparametros != hiperparametros_manifest:
+                raise ValueError(
+                    "Los hiperparametros no coinciden entre el manifiesto y el estado."
+                )
+            epoca = estado.get("epoca")
+            siguiente_epoca = estado.get("siguiente_epoca")
+            paso_epoca = estado.get("paso_epoca")
+            paso_global = estado.get("paso_global")
+
+        return _resultado_inspeccion_historial(
+            historial=historial,
+            epoca=epoca,
+            siguiente_epoca=siguiente_epoca,
+            paso_epoca=paso_epoca,
+            paso_global=paso_global,
+            hiperparametros=hiperparametros,
+            metadata=manifest.get("metadata_extra", {}),
+            resume_available=entrenamiento["resume_available"],
+            estado_optimizador_disponible=tiene_optimizador,
+            formato=SCHEMA_MODELO,
+            es_legacy=False,
+        )
+
+    if ruta_modelo.stat().st_size > _MAX_WEIGHTS_BYTES + _MAX_TRAINING_STATE_BYTES:
+        raise ValueError("El checkpoint excede el tamano maximo permitido.")
+    contenido = _validar_checkpoint_legacy(
+        _torch_load_seguro(ruta_modelo, map_location="cpu")
+    )
+    tiene_optimizador = contenido.get("optimizer_state_dict") is not None
+    return _resultado_inspeccion_historial(
+        historial=contenido["historial_perdidas"],
+        epoca=contenido["epoca"],
+        siguiente_epoca=None,
+        paso_epoca=None,
+        paso_global=contenido["paso_global"],
+        hiperparametros=_hiperparametros_legacy(contenido["metadata_extra"]),
+        metadata=contenido["metadata_extra"],
+        resume_available=tiene_optimizador,
+        estado_optimizador_disponible=tiene_optimizador,
+        formato="pt_legacy",
+        es_legacy=True,
+    )
 
 
 def _cargar_componentes_portables(

@@ -16,13 +16,15 @@ PagePrincipal {
     property string mensajeEstado: ""
     property bool mensajeEsError: false
     property string accionTrasCarga: ""
+    property var modelosVisibles: []
 
     function valor(item, nombres, alternativo) {
         if (item === undefined || item === null)
             return alternativo
+        var listaNombres = Array.isArray(nombres) ? nombres : []
 
-        for (var i = 0; i < nombres.length; ++i) {
-            var candidato = item[nombres[i]]
+        for (var i = 0; i < listaNombres.length; ++i) {
+            var candidato = item[listaNombres[i]]
             if (candidato !== undefined && candidato !== null && candidato !== "")
                 return candidato
         }
@@ -36,8 +38,8 @@ PagePrincipal {
             var grupo = grupos[g]
             if (grupo === undefined || grupo === null)
                 continue
-            for (var j = 0; j < nombres.length; ++j) {
-                var anidado = grupo[nombres[j]]
+            for (var j = 0; j < listaNombres.length; ++j) {
+                var anidado = grupo[listaNombres[j]]
                 if (anidado !== undefined && anidado !== null && anidado !== "")
                     return anidado
             }
@@ -64,6 +66,16 @@ PagePrincipal {
 
     function nombre(item) {
         return String(valor(item, ["nombre", "name", "archivo"], "Modelo sin nombre"))
+    }
+
+    function esActivo(item) {
+        if (root.booleano(item, ["activo", "esActivo", "es_activo"], false))
+            return true
+        if (!root.controller || !root.controller.modeloActivoRuta)
+            return false
+        var rutaItem = root.ruta(item).replace(/\\/g, "/").toLowerCase()
+        var rutaActiva = String(root.controller.modeloActivoRuta).replace(/\\/g, "/").toLowerCase()
+        return rutaItem !== "" && rutaItem === rutaActiva
     }
 
     function capasEncoder(item) {
@@ -133,6 +145,8 @@ PagePrincipal {
         var tokenizer = booleano(item, ["tokenizadorIncluido", "tokenizer_included"], false)
         var resultado = []
 
+        if (root.esActivo(item))
+            resultado.push({ texto: "● Activo", fondo: "#DCFCE7", tinta: "#166534" })
         resultado.push({ texto: compatible ? "Compatible" : "Incompatible",
                            fondo: compatible ? "#DCFCE7" : "#FEE2E2",
                            tinta: compatible ? "#166534" : "#991B1B" })
@@ -164,6 +178,64 @@ PagePrincipal {
         accion()
     }
 
+    function reconstruirModelosVisibles() {
+        var origen = root.controller ? root.controller.modelos : []
+        var consulta = campoBusqueda.text.trim().toLowerCase()
+        var decorados = []
+        for (var i = 0; i < origen.length; ++i) {
+            var item = origen[i]
+            var tags = root.valor(item, ["tags", "etiquetas"], [])
+            var tagsTexto = Array.isArray(tags) ? tags.join(" ") : String(tags || "")
+            var textoBusqueda = [
+                root.nombre(item), root.ruta(item),
+                root.valor(item, ["formato", "format"], ""),
+                root.valor(item, ["grupo", "experimentGroup", "experiment_group"], ""),
+                root.valor(item, ["version", "versión"], ""), tagsTexto,
+                root.valor(item, ["encoding", "tokenizer_encoding"], "")
+            ].join(" ").toLowerCase()
+            if (consulta === "" || textoBusqueda.indexOf(consulta) !== -1)
+                decorados.push({ "item": item, "indice": i })
+        }
+
+        var modo = selectorOrden.currentIndex
+        decorados.sort(function(a, b) {
+            if (modo === 1 || modo === 2) {
+                var nombreA = root.nombre(a.item).toLowerCase()
+                var nombreB = root.nombre(b.item).toLowerCase()
+                var comparacion = nombreA < nombreB ? -1 : (nombreA > nombreB ? 1 : 0)
+                return modo === 2 ? -comparacion : comparacion
+            }
+            if (modo === 3 || modo === 4) {
+                var parametrosA = Number(root.valor(a.item,
+                                                     ["parametros_totales", "parametros", "parameter_count"], 0))
+                var parametrosB = Number(root.valor(b.item,
+                                                     ["parametros_totales", "parametros", "parameter_count"], 0))
+                var diferencia = parametrosA - parametrosB
+                if (diferencia !== 0)
+                    return modo === 3 ? -diferencia : diferencia
+            }
+            return a.indice - b.indice
+        })
+
+        var visibles = []
+        for (var j = 0; j < decorados.length; ++j)
+            visibles.push(decorados[j].item)
+        root.modelosVisibles = visibles
+    }
+
+    function verDetalles(item) {
+        var rutaModelo = root.ruta(item)
+        if (rutaModelo === "") {
+            root.mostrarEstado("No se encontró la ruta del modelo.", true)
+            return
+        }
+        root.stackView.push("ModelDetailScreen.qml", {
+            "stackView": root.stackView,
+            "rutaModelo": rutaModelo,
+            "modeloResumen": item
+        })
+    }
+
     function exportar(item) {
         rutaParaExportar = ruta(item)
         if (rutaParaExportar === "") {
@@ -178,6 +250,13 @@ PagePrincipal {
         var rutaModelo = ruta(item)
         if (rutaModelo === "") {
             mostrarEstado("No se encontró la ruta del modelo.", true)
+            return
+        }
+        if (accion === "inferencia" && root.esActivo(item)
+                && mainViewModel.modeloListo) {
+            root.stackView.push("InferenceScreen.qml", {
+                "stackView": root.stackView
+            })
             return
         }
         accionTrasCarga = accion
@@ -196,7 +275,7 @@ PagePrincipal {
     function exportarComoCodigo(item) {
         var rutaModelo = ruta(item)
         if (rutaModelo === "") {
-            mostrarEstado("No se encontró la ruta del modelo.", bool(True))
+            mostrarEstado("No se encontró la ruta del modelo.", true)
             return
         }
         llamar(function() {
@@ -210,8 +289,10 @@ PagePrincipal {
     }
 
     Component.onCompleted: {
-        if (controller)
+        if (controller) {
             controller.refrescar()
+            root.reconstruirModelosVisibles()
+        }
     }
 
     Connections {
@@ -219,6 +300,7 @@ PagePrincipal {
         ignoreUnknownSignals: true
 
         function onModelosCambio() {
+            root.reconstruirModelosVisibles()
             listaModelos.forceLayout()
         }
 
@@ -321,7 +403,10 @@ PagePrincipal {
             }
 
             Text {
-                text: listaModelos.count + (listaModelos.count === 1 ? " modelo disponible" : " modelos disponibles")
+                text: root.modelosVisibles.length
+                      + (root.modelosVisibles.length === 1 ? " modelo visible" : " modelos visibles")
+                      + ((root.controller && root.controller.modelos.length !== root.modelosVisibles.length)
+                         ? " de " + root.controller.modelos.length : "")
                 color: Style.Theme.texto_secundario
                 font.pixelSize: 14 * Math.min(root.sx, root.sy)
             }
@@ -391,9 +476,52 @@ PagePrincipal {
         }
     }
 
+    RowLayout {
+        id: herramientasCatalogo
+        anchors.top: aviso.bottom
+        anchors.topMargin: 9 * root.sy
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.leftMargin: 30 * root.sx
+        anchors.rightMargin: 30 * root.sx
+        height: 42 * root.sy
+        spacing: 10 * root.sx
+
+        TextField {
+            id: campoBusqueda
+            Layout.fillWidth: true
+            Layout.preferredHeight: 40 * root.sy
+            placeholderText: "Buscar por nombre, ruta, grupo, versión, etiqueta o tokenizador…"
+            selectByMouse: true
+            onTextChanged: root.reconstruirModelosVisibles()
+        }
+
+        ComboBox {
+            id: selectorOrden
+            Layout.preferredWidth: 225 * root.sx
+            Layout.preferredHeight: 40 * root.sy
+            model: ["Más recientes", "Nombre A–Z", "Nombre Z–A",
+                    "Más parámetros", "Menos parámetros"]
+            onCurrentIndexChanged: root.reconstruirModelosVisibles()
+        }
+
+        BotonPrincipal {
+            Layout.preferredWidth: 115 * root.sx
+            Layout.preferredHeight: 39 * root.sy
+            text: "Limpiar"
+            size_text: 0.26
+            enabled: campoBusqueda.text.length > 0 || selectorOrden.currentIndex !== 0
+            opacity: enabled ? 1 : 0.5
+            onClicked: {
+                campoBusqueda.clear()
+                selectorOrden.currentIndex = 0
+            }
+        }
+    }
+
     ListView {
         id: listaModelos
-        anchors.top: aviso.bottom
+        anchors.top: herramientasCatalogo.bottom
         anchors.topMargin: 12 * root.sy
         anchors.left: parent.left
         anchors.right: parent.right
@@ -403,7 +531,7 @@ PagePrincipal {
         anchors.bottomMargin: 12 * root.sy
         spacing: 14 * root.sy
         clip: true
-        model: root.controller ? root.controller.modelos : []
+        model: root.modelosVisibles
         boundsBehavior: Flickable.StopAtBounds
 
         ScrollBar.vertical: ScrollBar {
@@ -417,7 +545,7 @@ PagePrincipal {
             property bool compatible: root.booleano(info, ["compatible"], true)
 
             width: listaModelos.width - 14 * root.sx
-            height: 305 * root.sy
+            height: 352 * root.sy
             sx: root.sx
             sy: root.sy
             opacity: compatible ? 1.0 : 0.82
@@ -515,10 +643,12 @@ PagePrincipal {
                 }
 
                 Text {
-                    visible: !modelData.usarMascaraCausal
+                    visible: !root.booleano(tarjeta.info,
+                                             ["usarMascaraCausal", "usar_mascara_causal", "causal_mask"],
+                                             true)
                     text: "⚠ Sin máscara causal — modelo experimental"
                     color: "#E8A33D"
-                    font.pixelSize: 11 * sy
+                    font.pixelSize: 11 * root.sy
                 }
 
                 Flow {
@@ -530,17 +660,18 @@ PagePrincipal {
                         model: root.insignias(tarjeta.info)
 
                         delegate: Rectangle {
+                            id: insigniaModelo
                             required property var modelData
                             width: textoInsignia.implicitWidth + 16 * root.sx
                             height: 24 * root.sy
                             radius: height / 2
-                            color: modelData.fondo
+                            color: insigniaModelo.modelData.fondo
 
                             Text {
                                 id: textoInsignia
                                 anchors.centerIn: parent
-                                text: modelData.texto
-                                color: modelData.tinta
+                                text: insigniaModelo.modelData.texto
+                                color: insigniaModelo.modelData.tinta
                                 font.bold: true
                                 font.pixelSize: 10 * Math.min(root.sx, root.sy)
                             }
@@ -567,38 +698,45 @@ PagePrincipal {
                     BotonPrincipal {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 39 * root.sy
-                        text: "Abrir"
-                        size_text: 0.25
-                        enabled: tarjeta.compatible && root.controller && !root.controller.ocupado
+                        text: "Ver detalles"
+                        size_text: 0.24
+                        enabled: root.ruta(tarjeta.info) !== ""
                         ToolTip.visible: hovered
-                        ToolTip.text: "Cargar y abrir en inferencia"
-                        onClicked: root.cargarPara(tarjeta.info, "inferencia")
-                    }
-                    BotonPrincipal {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 39 * root.sy
-                        text: "Eliminar"
-                        size_text: 0.25
-                        enabled: tarjeta.compatible && root.controller && !root.controller.ocupado
-                        ToolTip.visible: hovered
-                        ToolTip.text: "Eliminar el modelo"
-                        onClicked: root.eliminarModelo(tarjeta.info)// root.cargarPara(tarjeta.info, "inferencia")
+                        ToolTip.text: "Inspeccionar arquitectura, procedencia, historial e integridad sin cargar los pesos"
+                        onClicked: root.verDetalles(tarjeta.info)
                     }
 
                     BotonPrincipal {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 39 * root.sy
-                        text: "Entrenar"
-                        size_text: 0.23
+                        text: "Abrir en inferencia"
+                        size_text: 0.21
+                        enabled: tarjeta.compatible && root.controller && !root.controller.ocupado
+                        ToolTip.visible: hovered
+                        ToolTip.text: "Cargar los pesos y comenzar una sesión de inferencia"
+                        onClicked: root.cargarPara(tarjeta.info, "inferencia")
+                    }
+
+                    BotonPrincipal {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 39 * root.sy
+                        text: "Continuar entrenamiento"
+                        size_text: 0.19
                         enabled: tarjeta.compatible && root.controller && !root.controller.ocupado
                         ToolTip.visible: hovered
                         ToolTip.text: "Cargar pesos y seleccionar datasets para continuar"
                         onClicked: root.cargarPara(tarjeta.info, "entrenamiento")
                     }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 36 * root.sy
+                    spacing: 7 * root.sx
 
                     BotonPrincipal {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 39 * root.sy
+                        Layout.preferredHeight: 36 * root.sy
                         text: "Exportar"
                         size_text: 0.24
                         enabled: tarjeta.compatible && root.controller && !root.controller.ocupado
@@ -607,7 +745,7 @@ PagePrincipal {
 
                     BotonPrincipal {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 39 * root.sy
+                        Layout.preferredHeight: 36 * root.sy
                         text: "Copiar archivo"
                         size_text: 0.20
                         enabled: root.controller && !root.controller.ocupado
@@ -616,7 +754,7 @@ PagePrincipal {
 
                     BotonPrincipal {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 39 * root.sy
+                        Layout.preferredHeight: 36 * root.sy
                         text: "Copiar ficha"
                         size_text: 0.21
                         enabled: root.controller && !root.controller.ocupado
@@ -625,13 +763,24 @@ PagePrincipal {
 
                     BotonPrincipal {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 39 * root.sy
+                        Layout.preferredHeight: 36 * root.sy
                         text: "Código"
                         size_text: 0.24
                         enabled: tarjeta.compatible && root.controller && !root.controller.ocupado
                         ToolTip.visible: hovered
                         ToolTip.text: "Generar texto para compartir modelos pequeños"
                         onClicked: root.exportarComoCodigo(tarjeta.info)
+                    }
+
+                    BotonPrincipal {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 36 * root.sy
+                        text: "Eliminar"
+                        size_text: 0.23
+                        enabled: tarjeta.compatible && root.controller && !root.controller.ocupado
+                        ToolTip.visible: hovered
+                        ToolTip.text: "Eliminar el modelo de la biblioteca"
+                        onClicked: root.eliminarModelo(tarjeta.info)
                     }
                 }
             }
@@ -641,7 +790,9 @@ PagePrincipal {
             anchors.centerIn: parent
             width: Math.min(parent.width, 680 * root.sx)
             visible: listaModelos.count === 0 && !(root.controller && root.controller.ocupado)
-            text: "Todavía no hay modelos en la biblioteca.\nImporta un archivo .tvismodel o .pt para comenzar."
+            text: root.controller && root.controller.modelos.length > 0
+                  ? "Ningún modelo coincide con la búsqueda.\nPrueba con otro nombre, grupo, etiqueta o tokenizador."
+                  : "Todavía no hay modelos en la biblioteca.\nImporta un archivo .tvismodel o .pt para comenzar."
             color: Style.Theme.texto_secundario
             horizontalAlignment: Text.AlignHCenter
             wrapMode: Text.WordWrap
