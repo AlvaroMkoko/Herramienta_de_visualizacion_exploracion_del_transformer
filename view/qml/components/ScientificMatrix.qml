@@ -11,6 +11,7 @@ Item {
     property real globalMinimum: colorMode === "sequential" ? 0 : -1
     property real globalMaximum: 1
     property string rowPrefix: "H"
+    property int rowOffset: 0
     property int columnOffset: 0
     property string valueLabel: "valor"
     property int layerNumber: 0
@@ -140,7 +141,7 @@ Item {
 
             for (var row = 0; row < root.rows; ++row) {
                 ctx.fillStyle = "#475569"
-                ctx.fillText(root.rowPrefix + String(row + 1).padStart(2, "0"),
+                ctx.fillText(root.rowPrefix + String(root.rowOffset + row + 1).padStart(2, "0"),
                              -5, row * cellHeight + cellHeight / 2)
                 for (var column = 0; column < root.columns; ++column) {
                     var value = Number(root.matrix[row][column])
@@ -213,7 +214,7 @@ Item {
             id: tooltipText
             anchors.centerIn: parent
             text: (root.layerNumber > 0 ? "capa " + root.layerNumber + " · " : "")
-                  + root.rowPrefix + String(root.selectedRow + 1).padStart(2, "0")
+                  + root.rowPrefix + String(root.rowOffset + root.selectedRow + 1).padStart(2, "0")
                   + "\n" + root.queryLabel + " → key "
                   + (root.columnOffset + root.selectedColumn)
                   + "\n" + root.valueLabel + ": "

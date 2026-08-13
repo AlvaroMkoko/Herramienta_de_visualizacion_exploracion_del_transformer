@@ -29,6 +29,12 @@ Item {
     property string exportStatus: ""
     property real keyRangeStart: 0
     property real keyRangeEnd: Math.max(0, attentionColumns - 1)
+    property string detailEyebrow: ""
+    property string detailTitle: ""
+    property string detailSummary: ""
+    property string detailBody: ""
+    property string detailExample: ""
+    property color detailAccent: "#0072B2"
 
     readonly property var currentSnapshot: (
         selectedIndex >= 0 && selectedIndex < snapshots.length
@@ -161,6 +167,16 @@ Item {
         comparisonEnabled = false
         keyRangeStart = 0
         keyRangeEnd = Math.max(0, attentionColumns - 1)
+    }
+
+    function openDetail(eyebrow, title, summary, body, example, accent) {
+        detailEyebrow = eyebrow
+        detailTitle = title
+        detailSummary = summary
+        detailBody = body
+        detailExample = example || ""
+        detailAccent = accent || "#0072B2"
+        detailCard.open()
     }
 
     function sliced(matrix) {
@@ -433,6 +449,7 @@ Item {
                         anchors.margins: 7 * root.sx
                         spacing: 6 * root.sx
                         ComboBox {
+                            visible: root.sceneIndex >= 3 && root.sceneIndex <= 12
                             Layout.preferredWidth: 150 * root.sx
                             Layout.minimumWidth: 150 * root.sx
                             Layout.maximumWidth: 150 * root.sx
@@ -442,6 +459,7 @@ Item {
                             Accessible.name: "Seleccionar rama del Transformer"
                         }
                         ColumnLayout {
+                            visible: root.sceneIndex >= 3 && root.sceneIndex <= 12
                             Layout.fillWidth: true; spacing: 0
                             Text { text: "CAPA " + (root.layerIndex + 1); color: "#475569"; font.bold: true; font.pixelSize: 9 * root.sx }
                             Slider {
@@ -454,6 +472,7 @@ Item {
                             }
                         }
                         SpinBox {
+                            visible: root.sceneIndex >= 3 && root.sceneIndex <= 12
                             Layout.preferredWidth: 76 * root.sx
                             Layout.minimumWidth: 76 * root.sx
                             Layout.maximumWidth: 76 * root.sx
@@ -531,14 +550,16 @@ Item {
                                     font.pixelSize: 18 * Math.min(root.sx, root.sy)
                                 }
                                 Text {
-                                    text: root.branchName() + " · capa " + (root.layerIndex + 1)
-                                          + " · H" + String(root.headIndex + 1).padStart(2, "0")
+                                    text: root.sceneIndex === 1
+                                          ? "Entrada del encoder · antes de sumar la posición"
+                                          : root.branchName() + " · capa " + (root.layerIndex + 1)
+                                            + " · H" + String(root.headIndex + 1).padStart(2, "0")
                                     color: "#0072B2"; font.bold: true
                                     font.pixelSize: 10 * Math.min(root.sx, root.sy)
                                 }
                             }
                             CheckBox {
-                                visible: root.densityMode >= 1
+                                visible: root.sceneIndex === 1 || root.densityMode >= 1
                                 text: "Escala local"
                                 checked: root.localScale
                                 onToggled: root.localScale = checked
@@ -606,12 +627,12 @@ Item {
                             }
 
                             // 1 · Embeddings
-                            MatrixScene {
-                                title: "Embedding escalado · token × dimensión"
-                                matrixData: (root.globalData.embedding_encoder_escalado || {}).matriz || ({})
-                                norms: (root.globalData.embedding_encoder_escalado || {}).normas_tokens || []
-                                histogram: (root.globalData.embedding_encoder_escalado || {}).histograma || ({})
-                                localScale: root.localScale; colorMode: "diverging"; sx: root.sx; sy: root.sy
+                            EmbeddingScene {
+                                tensorData: root.globalData.embedding_encoder_escalado || ({})
+                                tokens: root.currentSnapshot ? root.currentSnapshot.tokens_entrada : []
+                                localScale: root.localScale
+                                sx: root.sx
+                                sy: root.sy
                             }
 
                             // 2 · Posición: tres vistas sincronizadas
@@ -741,19 +762,86 @@ Item {
                             width: parent.width
                             spacing: 8 * root.sy
 
-                            InfoSection { title: "CONCEPTO"; body: root.scene.concept; accent: "#0072B2"; sx: root.sx }
-                            InfoSection { title: "FÓRMULA"; body: root.scene.formula; accent: "#009E73"; monospace: true; sx: root.sx }
+                            Text {
+                                visible: root.sceneIndex === 1
+                                Layout.fillWidth: true
+                                text: "EMBEDDINGS · EXPLORA SIN SATURARTE"
+                                color: "#475569"
+                                font.bold: true
+                                font.pixelSize: 9 * root.sx
+                            }
+                            Text {
+                                visible: root.sceneIndex === 1
+                                Layout.fillWidth: true
+                                text: "La vista mantiene solo lo esencial. Pulsa una tarjeta o una celda de la matriz para profundizar."
+                                color: "#334155"
+                                wrapMode: Text.WordWrap
+                                font.pixelSize: 10 * root.sx
+                            }
+                            DetailLaunchCard {
+                                visible: root.sceneIndex === 1
+                                title: "¿Qué es un embedding?"
+                                preview: "Un vector aprendido que representa un token."
+                                accent: "#0072B2"; sx: root.sx
+                                onActivated: root.openDetail(
+                                    "IDEA FUNDAMENTAL", "El token se convierte en un vector",
+                                    "El modelo no procesa directamente palabras ni IDs: consulta una fila aprendida de su tabla de embeddings.",
+                                    "Cada fila de la matriz corresponde a un token y cada columna a una dimensión latente. Una dimensión aislada normalmente no tiene una etiqueta humana como «género» o «tema»; el significado se distribuye entre muchas coordenadas y se aprende durante el entrenamiento. Tokens usados en contextos parecidos pueden terminar con patrones vectoriales parecidos, pero esta vista por sí sola no demuestra equivalencia semántica.",
+                                    "Ruta mostrada: token_id → fila de W_embed → vector de d_model componentes → multiplicación por √d_model.",
+                                    "#0072B2")
+                            }
+                            DetailLaunchCard {
+                                visible: root.sceneIndex === 1
+                                title: "¿Cómo leo la matriz?"
+                                preview: "Fila = token · columna = dimensión."
+                                accent: "#009E73"; sx: root.sx
+                                onActivated: root.openDetail(
+                                    "LECTURA", "Filas, columnas y celdas",
+                                    "Una celda es una sola coordenada del vector de un token.",
+                                    "Las filas T01, T02… siguen el orden de los tokens de entrada. Las columnas 0, 1, 2… son dimensiones internas. El número de columnas total es d_model; si el tensor es grande, la visualización puede enseñar una muestra de hasta 32 dimensiones y lo indica como nivel de detalle. Pulsa cualquier celda para ver su valor exacto y su interpretación.",
+                                    "T02, dimensión 7 = −0.42 significa que la coordenada 7 del segundo token tiene valor negativo 0.42; no significa que el token sea «negativo».",
+                                    "#009E73")
+                            }
+                            DetailLaunchCard {
+                                visible: root.sceneIndex === 1
+                                title: "Escala azul–blanco–naranja"
+                                preview: "Signo e intensidad, no importancia."
+                                accent: "#D55E00"; sx: root.sx
+                                onActivated: root.openDetail(
+                                    "COLOR", "Qué significa cada color",
+                                    "Azul representa valores negativos, blanco valores cercanos a cero y naranja valores positivos.",
+                                    "Cuanto más intenso es el azul o el naranja, mayor es la magnitud absoluta respecto al rango de la escala. El color no mide atención, probabilidad, calidad ni importancia del token. Con escala global, el rango permanece fijo para facilitar comparaciones; con escala local, los extremos se ajustan a esta matriz y resaltan diferencias pequeñas, pero ya no son directamente comparables con otras vistas.",
+                                    "Naranja intenso = valor positivo grande dentro de la escala. Azul intenso = valor negativo grande en magnitud. Ambos pueden ser igualmente fuertes.",
+                                    "#D55E00")
+                            }
+                            DetailLaunchCard {
+                                visible: root.sceneIndex === 1
+                                title: "¿Qué es la norma L2?"
+                                preview: "Resume la magnitud del vector completo."
+                                accent: "#CC79A7"; sx: root.sx
+                                onActivated: root.openDetail(
+                                    "MÉTRICA", "Norma L2 por token",
+                                    "Combina todas las dimensiones en una sola medida de tamaño: √(x₁² + ··· + x_d²).",
+                                    "Una norma mayor indica un vector de mayor magnitud antes de sumar la señal posicional. No dice por sí sola que el token sea más relevante, más frecuente o que recibirá más atención. Sirve para detectar diferencias de escala y valores atípicos. En la escena principal se muestra solo la norma del token seleccionado para reducir carga visual.",
+                                    "Dos embeddings pueden tener la misma norma y apuntar en direcciones completamente diferentes; por eso la norma no sustituye al vector.",
+                                    "#CC79A7")
+                            }
+
+                            InfoSection { visible: root.sceneIndex !== 1; title: "CONCEPTO"; body: root.scene.concept; accent: "#0072B2"; sx: root.sx }
+                            InfoSection { visible: root.sceneIndex !== 1; title: "FÓRMULA"; body: root.scene.formula; accent: "#009E73"; monospace: true; sx: root.sx }
                             InfoSection {
+                                visible: root.sceneIndex !== 1
                                 title: "INPUT"; accent: "#E69F00"; sx: root.sx
                                 body: root.scene.input + "\nshape capturado: " + root.currentInputShape()
                             }
                             InfoSection {
+                                visible: root.sceneIndex !== 1
                                 title: "OUTPUT"; accent: "#D55E00"; sx: root.sx
                                 body: root.scene.output + "\nshape capturado: " + root.currentOutputShape()
                             }
 
                             InfoSection {
-                                visible: root.densityMode >= 1
+                                visible: root.sceneIndex !== 1 && root.densityMode >= 1
                                 title: "CAPTURA / LOD"; accent: "#CC79A7"; sx: root.sx
                                 body: root.attentionData.level_of_detail
                                       ? "original: " + root.attentionData.original_shape
@@ -764,7 +852,7 @@ Item {
                             }
 
                             Rectangle {
-                                visible: root.densityMode >= 1 && root.attentionData.cabezas
+                                visible: root.sceneIndex !== 1 && root.densityMode >= 1 && root.attentionData.cabezas
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 104 * root.sy
                                 radius: 8 * root.sx; color: "#F8FAFC"; border.color: "#CBD5E1"
@@ -785,7 +873,7 @@ Item {
                             }
 
                             InfoSection {
-                                visible: root.densityMode === 2
+                                visible: root.sceneIndex !== 1 && root.densityMode === 2
                                 title: "VALIDACIÓN"; accent: "#009E73"; sx: root.sx
                                 body: root.attentionData.validacion
                                       ? "✓ sin NaN: " + root.attentionData.validacion.sin_nan
@@ -799,6 +887,7 @@ Item {
                             }
 
                             Rectangle {
+                                visible: root.sceneIndex !== 1
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 72 * root.sy
                                 radius: 8 * root.sx
@@ -869,7 +958,127 @@ Item {
         }
     }
 
+    Popup {
+        id: detailCard
+        x: Math.max(12 * root.sx, (root.width - width) / 2)
+        y: Math.max(12 * root.sy, (root.height - height) / 2)
+        width: Math.min(root.width - 24 * root.sx, 650 * root.sx)
+        height: Math.min(root.height - 24 * root.sy, 500 * root.sy)
+        modal: true
+        dim: true
+        focus: true
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+        Overlay.modal: Rectangle { color: "#73111B2E" }
+        background: Rectangle {
+            radius: 16 * root.sx
+            color: "#FFFFFF"
+            border.color: root.detailAccent
+            border.width: 2
+        }
+        contentItem: ColumnLayout {
+            spacing: 12 * root.sy
+            RowLayout {
+                Layout.fillWidth: true
+                ColumnLayout {
+                    Layout.fillWidth: true; spacing: 3 * root.sy
+                    Text {
+                        Layout.fillWidth: true; text: root.detailEyebrow
+                        color: root.detailAccent; font.bold: true
+                        font.pixelSize: 10 * root.sx
+                    }
+                    Text {
+                        Layout.fillWidth: true; text: root.detailTitle
+                        color: "#0F172A"; font.bold: true
+                        wrapMode: Text.WordWrap; font.pixelSize: 22 * root.sx
+                    }
+                }
+                Button {
+                    text: "✕"; flat: true
+                    onClicked: detailCard.close()
+                    Accessible.name: "Cerrar explicación"
+                }
+            }
+            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: "#E2E8F0" }
+            ScrollView {
+                Layout.fillWidth: true; Layout.fillHeight: true; clip: true
+                ColumnLayout {
+                    width: parent.width; spacing: 14 * root.sy
+                    Text {
+                        Layout.fillWidth: true; text: root.detailSummary
+                        color: "#1E293B"; font.bold: true
+                        wrapMode: Text.WordWrap; font.pixelSize: 15 * root.sx
+                    }
+                    Text {
+                        Layout.fillWidth: true; text: root.detailBody
+                        color: "#334155"; wrapMode: Text.WordWrap
+                        font.pixelSize: 13 * root.sx; lineHeight: 1.25
+                    }
+                    Rectangle {
+                        visible: root.detailExample.length > 0
+                        Layout.fillWidth: true
+                        implicitHeight: exampleColumn.implicitHeight + 20 * root.sy
+                        radius: 9 * root.sx; color: "#F8FAFC"; border.color: "#CBD5E1"
+                        Column {
+                            id: exampleColumn
+                            anchors.left: parent.left; anchors.right: parent.right
+                            anchors.top: parent.top; anchors.margins: 10 * root.sx
+                            spacing: 5 * root.sy
+                            Text { text: "EJEMPLO / LÍMITE"; color: root.detailAccent; font.bold: true; font.pixelSize: 9 * root.sx }
+                            Text { width: parent.width; text: root.detailExample; color: "#334155"; wrapMode: Text.WordWrap; font.pixelSize: 12 * root.sx }
+                        }
+                    }
+                }
+            }
+            Button {
+                Layout.alignment: Qt.AlignRight
+                text: "Entendido"
+                onClicked: detailCard.close()
+            }
+        }
+    }
+
     // Componentes de escena reutilizados por el StackLayout.
+    component DetailLaunchCard: Rectangle {
+        id: launchCard
+        required property string title
+        required property string preview
+        property color accent: "#0072B2"
+        property real sx: 1
+        signal activated()
+        Layout.fillWidth: true
+        Layout.minimumWidth: 0
+        implicitWidth: 0
+        implicitHeight: launchContent.implicitHeight + 18 * sx
+        radius: 9 * sx
+        color: launchMouse.containsMouse ? "#F1F5F9" : "#F8FAFC"
+        border.color: accent
+        border.width: launchMouse.containsMouse ? 2 : 1
+        activeFocusOnTab: true
+        Accessible.role: Accessible.Button
+        Accessible.name: title + ". " + preview + ". Abrir explicación detallada."
+        Keys.onReturnPressed: launchCard.activated()
+        Keys.onEnterPressed: launchCard.activated()
+        Keys.onSpacePressed: launchCard.activated()
+        Column {
+            id: launchContent
+            anchors.left: parent.left; anchors.right: parent.right
+            anchors.top: parent.top; anchors.margins: 9 * launchCard.sx
+            spacing: 3 * launchCard.sx
+            Row {
+                width: parent.width; spacing: 6 * launchCard.sx
+                Text { text: launchCard.title; width: parent.width - moreLabel.width - 8 * launchCard.sx; color: "#0F172A"; font.bold: true; font.pixelSize: 10 * launchCard.sx; elide: Text.ElideRight }
+                Text { id: moreLabel; text: "Más →"; color: launchCard.accent; font.bold: true; font.pixelSize: 9 * launchCard.sx }
+            }
+            Text { width: parent.width; text: launchCard.preview; color: "#475569"; wrapMode: Text.WordWrap; font.pixelSize: 9 * launchCard.sx }
+        }
+        MouseArea {
+            id: launchMouse; anchors.fill: parent; hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: launchCard.activated()
+        }
+    }
+
     component InfoSection: Rectangle {
         id: infoSection
         required property string title
@@ -887,6 +1096,156 @@ Item {
             spacing: 3 * infoSection.sx
             Text { text: infoSection.title; color: infoSection.accent; font.bold: true; font.pixelSize: 9 * infoSection.sx }
             Text { width: parent.width; text: infoSection.body; color: "#1E293B"; wrapMode: Text.WordWrap; font.family: infoSection.monospace ? "monospace" : "sans-serif"; font.pixelSize: 9 * infoSection.sx }
+        }
+    }
+
+    component EmbeddingScene: Item {
+        id: embeddingScene
+        property var tensorData: ({})
+        property var tokens: []
+        property bool localScale: false
+        property real sx: 1
+        property real sy: 1
+        property int selectedRow: 0
+        property int selectedColumn: 0
+        readonly property var matrixData: tensorData.matriz || ({})
+        readonly property var values: matrixData.valores || matrixData.values || []
+        readonly property var norms: tensorData.normas_tokens || []
+        readonly property var stats: tensorData.estadisticas || ({})
+        readonly property real selectedValue: values.length > selectedRow
+                                                   && values[selectedRow].length > selectedColumn
+                                               ? Number(values[selectedRow][selectedColumn]) : 0
+        readonly property real selectedNorm: norms.length > selectedRow
+                                                  ? Number(norms[selectedRow]) : 0
+
+        function tokenName(row) {
+            var offset = Math.max(0, tokens.length - values.length)
+            var tokenIndex = offset + row
+            if (tokens && tokens.length > tokenIndex && tokens[tokenIndex].texto !== undefined)
+                return "“" + tokens[tokenIndex].texto + "”"
+            return "T" + String(tokenIndex + 1).padStart(2, "0")
+        }
+
+        ColumnLayout {
+            anchors.fill: parent; spacing: 9 * embeddingScene.sy
+            RowLayout {
+                Layout.fillWidth: true
+                Text {
+                    Layout.fillWidth: true
+                    text: "Embedding escalado · token × dimensión"
+                    color: "#0F172A"; font.bold: true; font.pixelSize: 15 * embeddingScene.sx
+                }
+                Text {
+                    text: "Pulsa cualquier dato para entenderlo"
+                    color: "#64748B"; font.pixelSize: 9 * embeddingScene.sx
+                }
+            }
+            RowLayout {
+                Layout.fillWidth: true; Layout.fillHeight: true; spacing: 10 * embeddingScene.sx
+                Rectangle {
+                    objectName: "embeddingMatrixContainer"
+                    Layout.fillWidth: true; Layout.fillHeight: true
+                    Layout.minimumWidth: 600 * embeddingScene.sx
+                    Layout.preferredWidth: 850 * embeddingScene.sx
+                    radius: 10 * embeddingScene.sx; color: "#FFFFFF"; border.color: "#CBD5E1"
+                    clip: true
+                    ScientificMatrix {
+                        id: embeddingHeatmap
+                        anchors.fill: parent; anchors.margins: 8 * embeddingScene.sx
+                        matrix: embeddingScene.values
+                        colorMode: "diverging"; localScale: embeddingScene.localScale
+                        rowPrefix: "T"
+                        rowOffset: Math.max(0, embeddingScene.tokens.length - embeddingScene.values.length)
+                        valueLabel: "componente del embedding"
+                        alternativeText: "Embedding interactivo: filas por token y columnas por dimensión"
+                        onCellSelected: function(row, column, value) {
+                            embeddingScene.selectedRow = row
+                            embeddingScene.selectedColumn = column
+                            root.openDetail(
+                                "CELDA SELECCIONADA",
+                                embeddingScene.tokenName(row) + " · dimensión " + column,
+                                "Valor exacto: " + Number(value).toFixed(6),
+                                "Esta celda es una coordenada del embedding escalado del token. El signo indica en qué dirección aporta sobre este eje latente y la magnitud indica cuánto se aleja de cero. La dimensión no posee necesariamente un significado humano aislado: el Transformer utiliza el patrón completo y sus combinaciones posteriores.",
+                                "Color " + (Number(value) > 0 ? "naranja = positivo" : (Number(value) < 0 ? "azul = negativo" : "blanco = cero")) + ". No representa probabilidad, atención ni importancia.",
+                                Number(value) >= 0 ? "#D55E00" : "#0072B2")
+                        }
+                    }
+                }
+                ColumnLayout {
+                    objectName: "embeddingMetricCards"
+                    Layout.preferredWidth: 265 * embeddingScene.sx
+                    Layout.minimumWidth: 265 * embeddingScene.sx
+                    Layout.maximumWidth: 265 * embeddingScene.sx
+                    Layout.fillHeight: true; spacing: 7 * embeddingScene.sy
+
+                    DetailLaunchCard {
+                        title: "Escala de color"
+                        preview: embeddingScene.localScale ? "Local · ajustada a esta matriz" : "Global · −1 a +1"
+                        accent: "#D55E00"; sx: embeddingScene.sx
+                        onActivated: root.openDetail(
+                            "LEYENDA", "Azul ← cero → naranja",
+                            "El tono codifica el signo; la intensidad codifica la magnitud.",
+                            "Azul: valor negativo. Blanco: valor cercano a cero. Naranja: valor positivo. Los valores que exceden el extremo de la escala usan el color más intenso. La escala global fija −1, 0 y +1 para comparar vistas; la escala local usa los mínimos y máximos de esta matriz para revelar variaciones pequeñas.",
+                            "Más naranja no significa «mejor» ni «más importante». Un azul intenso y un naranja intenso tienen signos opuestos pero magnitudes comparables.",
+                            "#D55E00")
+                    }
+                    Rectangle {
+                        Layout.fillWidth: true; Layout.preferredHeight: 42 * embeddingScene.sy
+                        radius: 7 * embeddingScene.sx; border.color: "#CBD5E1"
+                        gradient: Gradient {
+                            orientation: Gradient.Horizontal
+                            GradientStop { position: 0.0; color: "#0072B2" }
+                            GradientStop { position: 0.5; color: "#FFFFFF" }
+                            GradientStop { position: 1.0; color: "#D55E00" }
+                        }
+                        RowLayout {
+                            anchors.fill: parent; anchors.margins: 5 * embeddingScene.sx
+                            Text { text: embeddingScene.localScale ? Number(embeddingHeatmap.dataMinimum).toFixed(2) : "−1"; color: "#FFFFFF"; font.bold: true; font.pixelSize: 9 * embeddingScene.sx }
+                            Text { Layout.fillWidth: true; text: "0"; color: "#0F172A"; horizontalAlignment: Text.AlignHCenter; font.bold: true; font.pixelSize: 9 * embeddingScene.sx }
+                            Text { text: embeddingScene.localScale ? Number(embeddingHeatmap.dataMaximum).toFixed(2) : "+1"; color: "#FFFFFF"; font.bold: true; font.pixelSize: 9 * embeddingScene.sx }
+                        }
+                        MouseArea {
+                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                            onClicked: root.openDetail(
+                                "LEYENDA", "Cómo se transforma un número en color",
+                                "La escala es divergente y está centrada en cero.",
+                                "Para cada celda se divide su valor entre el mayor extremo absoluto del rango. El resultado se limita a [−1, +1] y se interpola desde blanco hacia azul si es negativo o hacia naranja si es positivo. Así, el signo nunca se confunde con la intensidad.",
+                                "La saturación visual facilita detectar patrones, pero siempre debes consultar el número antes de comparar diferencias pequeñas.", "#D55E00")
+                        }
+                    }
+                    DetailLaunchCard {
+                        title: "Tensor " + (embeddingScene.tensorData.shape || "—")
+                        preview: "batch × tokens × d_model"
+                        accent: "#009E73"; sx: embeddingScene.sx
+                        onActivated: root.openDetail(
+                            "FORMA", "Qué significa " + (embeddingScene.tensorData.shape || "la forma"),
+                            "Los tres ejes son lote, secuencia y dimensión del modelo.",
+                            "El primer eje es el número de ejemplos procesados juntos; aquí normalmente es 1. El segundo es la cantidad de tokens del prompt. El tercero es d_model: cuántos números forman cada embedding. La matriz 2D elimina visualmente el eje batch y muestra token × dimensión.",
+                            embeddingScene.matrixData.level_of_detail || "Se conserva una muestra cuando el tensor supera el espacio disponible.", "#009E73")
+                    }
+                    DetailLaunchCard {
+                        title: "Celda seleccionada"
+                        preview: embeddingScene.tokenName(embeddingScene.selectedRow) + " · d" + embeddingScene.selectedColumn + " = " + embeddingScene.selectedValue.toFixed(4)
+                        accent: embeddingScene.selectedValue >= 0 ? "#D55E00" : "#0072B2"; sx: embeddingScene.sx
+                        onActivated: root.openDetail(
+                            "VALOR", embeddingScene.tokenName(embeddingScene.selectedRow) + " · dimensión " + embeddingScene.selectedColumn,
+                            "Componente: " + embeddingScene.selectedValue.toFixed(6),
+                            "Es una coordenada real utilizada en este forward pass. Debe interpretarse junto con las demás dimensiones, no como una etiqueta semántica independiente.",
+                            "Selecciona otra celda en la matriz para actualizar este dato.", embeddingScene.selectedValue >= 0 ? "#D55E00" : "#0072B2")
+                    }
+                    DetailLaunchCard {
+                        title: "Norma L2 del token"
+                        preview: embeddingScene.tokenName(embeddingScene.selectedRow) + " · " + embeddingScene.selectedNorm.toFixed(4)
+                        accent: "#CC79A7"; sx: embeddingScene.sx
+                        onActivated: root.openDetail(
+                            "MÉTRICA", "Magnitud del vector seleccionado",
+                            "Norma L2 = " + embeddingScene.selectedNorm.toFixed(6),
+                            "Se calcula elevando al cuadrado todas las coordenadas del token, sumándolas y tomando la raíz cuadrada. Resume tamaño, no dirección. Es útil para comparar escalas entre tokens, pero no mide relevancia, certeza ni atención.",
+                            "Rango global observado: mínimo " + (embeddingScene.stats.minimo || "—") + " · máximo " + (embeddingScene.stats.maximo || "—") + ". Estos extremos son componentes individuales, no normas.", "#CC79A7")
+                    }
+                    Item { Layout.fillHeight: true }
+                }
+            }
         }
     }
 
