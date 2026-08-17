@@ -7,21 +7,20 @@ import QtQuick.Layouts
 import QtQuick.Dialogs
 
 
-PagePrincipal{
-    id: root 
+PagePrincipal {
+    id: root
 
     property alias datasetModel: datasetModel
     property alias markModel: markModel
 
-
     VerDatos {
-    id: verDatos
-}
+        id: verDatos
+    }
 
     ListModel {
         id: datasetModel
     }
-    
+
     ListModel {
         id: markModel
     }
@@ -43,15 +42,12 @@ PagePrincipal{
     }
 
     function eliminarDatasetCompleto(datasetId) {
-        // 1. Elimina en el backend
         mainViewModel.datasetController.eliminarDataset(datasetId)
 
-        // 2. Si estaba seleccionado, lo saca del markModel (chip de arriba)
         let markIdx = indexOfMark(datasetId)
         if (markIdx !== -1)
             markModel.remove(markIdx)
 
-        // 3. Lo saca de la lista principal
         let dsIdx = indexOfDataset(datasetId)
         if (dsIdx !== -1)
             datasetModel.remove(dsIdx)
@@ -69,9 +65,7 @@ PagePrincipal{
 
     FileDialog {
         id: datasetDialog
-
         title: "Selecciona un dataset"
-
         nameFilters: [
             "JSONL (*.jsonl)",
             "JSON (*.json)",
@@ -79,468 +73,475 @@ PagePrincipal{
         ]
 
         onAccepted: {
-                var ruta = selectedFile.toString()
-                ruta = ruta.replace("file:///", "")
-                console.log(ruta)
-                var dataset = mainViewModel.datasetController.agregarDataset(ruta)
-                var existe = false
+            var ruta = selectedFile.toString()
+            ruta = ruta.replace("file:///", "")
+            console.log(ruta)
+            var dataset = mainViewModel.datasetController.agregarDataset(ruta)
+            var existe = false
 
-                for (var i = 0; i < datasetModel.count; ++i) {
-                    if (datasetModel.get(i).id === dataset.id) {
-                        existe = true
-                        break
-                    }
+            for (var i = 0; i < datasetModel.count; ++i) {
+                if (datasetModel.get(i).id === dataset.id) {
+                    existe = true
+                    break
                 }
+            }
 
-                if (!existe)
-                    datasetModel.append(dataset)
-            
+            if (!existe)
+                datasetModel.append(dataset)
         }
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-    BotonPrincipal {
-                anchors.left: parent.left
-                anchors.leftMargin: 10 * sx
-                anchors.top: parent.top
-                anchors.topMargin: 10 * sy
-                width: 250 * sx
-                height: 40 * sy
-                text: " ↶ Volver al inicio"
-                onClicked: {
-                    stackView.pop()
-                }
-                
-    }
-
-    //TODO El Component.onCompleted se usa cuando quieres hacer algo justo cuando se abrio la ventana 
-    //TODO Para cargar los datos que cambian se usa el formato JSCON para que facilmente ponames acceder a los datos
-
-    // Component.onCompleted: { 
-    //     cargarDatasets()
-    // }
-
-    Rectangle {
+    RowLayout {
+        id: cabecera
         anchors.top: parent.top
+        anchors.left: parent.left
         anchors.right: parent.right
+        anchors.margins: 24 * root.sx
+        height: 72 * root.sy
+        spacing: 14 * root.sx
 
-        width: 700 * sx
-        height: 60 * sy
-        color: "blue"
+        BotonPrincipal {
+            Layout.preferredWidth: 210 * root.sx
+            Layout.preferredHeight: 44 * root.sy
+            text: "\u21b6 Volver al inicio"
+            size_text: 0.27
+            onClicked: root.stackView.pop()
+        }
 
-        RowLayout{
-            anchors.fill: parent
-            anchors.margins:15 * sx
-            spacing: 10* sy
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 2 * root.sy
 
-            Text{
-                Layout.fillWidth: true
-                horizontalAlignment: Text.AlignHCenter
-                textFormat: Text.RichText
-                text: "<font color='#7d7a7a'>Selecciona uno o más: </font><font color='#6A63E8'> Data Sets</font>"
+            Text {
+                text: "Biblioteca de datasets"
+                color: Style.Theme.texto_primario
                 font.bold: true
-                font.pixelSize: 18 * sy
+                font.pixelSize: 27 * Math.min(root.sx, root.sy)
             }
 
-            BotonPrincipal {
-                
-                Layout.alignment: Qt.AlignHCenter
-                Layout.preferredWidth: 250*sx
-                Layout.preferredHeight: 40 * sy
-                text: "+ Agregar DataSet"
-                onClicked: {                    
-                        datasetDialog.open()
-                }
-
-                
+            Text {
+                text: root.datasetModel.count
+                      + (root.datasetModel.count === 1 ? " dataset disponible" : " datasets disponibles")
+                color: Style.Theme.texto_secundario
+                font.pixelSize: 14 * Math.min(root.sx, root.sy)
             }
+        }
+
+        BotonPrincipal {
+            Layout.preferredWidth: 180 * root.sx
+            Layout.preferredHeight: 44 * root.sy
+            text: "+ Agregar dataset"
+            size_text: 0.24
+            onClicked: datasetDialog.open()
         }
     }
 
+    RectanglePrincipal {
+        id: seleccion
+        anchors.top: cabecera.bottom
+        anchors.topMargin: 8 * root.sy
+        anchors.left: parent.left
+        anchors.right: panelSeleccion.left
+        anchors.leftMargin: 30 * root.sx
+        anchors.rightMargin: 18 * root.sx
+        height: 66 * root.sy
+        sx: root.sx
+        sy: root.sy
 
-    Rectangle{
-        anchors.bottom: rec1.top
-        anchors.left: rec1.left
-        anchors.bottomMargin: 10
-        color:"blue"
-        width: 1200*sx
-        height: 60 * sy
-
-        ScrollView {
+        RowLayout {
             anchors.fill: parent
+            anchors.margins: 10 * root.sx
+            spacing: 12 * root.sx
 
-            ScrollBar.horizontal.policy: ScrollBar.AsNeeded
-            ScrollBar.vertical.policy: ScrollBar.AsNeeded
+            ColumnLayout {
+                Layout.preferredWidth: 165 * root.sx
+                spacing: 1 * root.sy
 
-            Row {
-                spacing: 10
+                Text {
+                    text: "Selecci\u00f3n actual"
+                    color: Style.Theme.texto_primario
+                    font.bold: true
+                    font.pixelSize: 14 * Math.min(root.sx, root.sy)
+                }
 
-                Repeater {
-                    model: markModel
+                Text {
+                    text: root.markModel.count
+                          + (root.markModel.count === 1 ? " dataset" : " datasets")
+                    color: Style.Theme.texto_secundario
+                    font.pixelSize: 12 * Math.min(root.sx, root.sy)
+                }
+            }
 
-                    delegate: RectanglePrincipal {
-                        id:rec_padre
-                        // property int rowIndex: index
-                        // property int dsIndex: datasetIndex
-                        property string dsId: datasetId   // ahora sí existe este rol
+            Rectangle {
+                Layout.preferredWidth: 1
+                Layout.fillHeight: true
+                color: "#E5E7EB"
+            }
 
-                        width: 200
-                        height: 50
-                        color:"white"
+            ListView {
+                id: listaSeleccion
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                orientation: ListView.Horizontal
+                spacing: 8 * root.sx
+                clip: true
+                model: markModel
+                boundsBehavior: Flickable.StopAtBounds
 
+                ScrollBar.horizontal: ScrollBar {
+                    policy: ScrollBar.AsNeeded
+                }
 
-                        RowLayout{
+                delegate: Rectangle {
+                    id: chipSeleccion
+                    property string dsId: datasetId
+
+                    width: Math.min(260 * root.sx, Math.max(155 * root.sx,
+                                    textoChip.implicitWidth + 54 * root.sx))
+                    height: 40 * root.sy
+                    radius: height / 2
+                    color: "#E0E7FF"
+                    border.color: "#C7D2FE"
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 14 * root.sx
+                        anchors.rightMargin: 6 * root.sx
+                        spacing: 6 * root.sx
+
+                        Text {
+                            id: textoChip
                             Layout.fillWidth: true
-                            spacing: 20 * sx
+                            text: nombre
+                            color: "#3730A3"
+                            font.bold: true
+                            font.pixelSize: 12 * Math.min(root.sx, root.sy)
+                            elide: Text.ElideRight
+                        }
 
-                            Text{
-                                text: datasetId    
-                                color: "black"
-                                font.pixelSize: 8 * sy
-                                font.bold: true
-                            }
-
-                            BotonPrincipal {
-                                Layout.alignment: Qt.AlignHCenter
-                                Layout.preferredWidth: 40 * sx
-                                Layout.preferredHeight: 40 * sy
-                                text: "X"
-                                property var mkModel: root.markModel
-                                property var dsModel: root.datasetModel
-
-                                onClicked: {
-                                    // datasetModel.append({})
-                                        // agregarDataset()
-                                    // dsModel.setProperty(rec_padre.dsIndex, "selected", false)
-                                    // mkModel.remove(rec_padre.rowIndex)    
-                                    let dsIdx = root.indexOfDataset(rec_padre.dsId)
-                                    if (dsIdx !== -1)
-                                        root.datasetModel.setProperty(dsIdx, "selected", false)
-                                }   
+                        BotonPrincipal {
+                            Layout.preferredWidth: 30 * root.sx
+                            Layout.preferredHeight: 30 * root.sy
+                            text: "\u00d7"
+                            size_text: 0.42
+                            onClicked: {
+                                let dsIdx = root.indexOfDataset(chipSeleccion.dsId)
+                                if (dsIdx !== -1)
+                                    root.datasetModel.setProperty(dsIdx, "selected", false)
                             }
                         }
                     }
+                }
+
+                Text {
+                    anchors.centerIn: parent
+                    visible: root.markModel.count === 0
+                    text: "Marca uno o m\u00e1s datasets de la lista"
+                    color: Style.Theme.texto_secundario
+                    font.pixelSize: 13 * Math.min(root.sx, root.sy)
                 }
             }
         }
     }
-    Rectangle {
-            id: rec1
-            anchors.left: parent.left
-            anchors.bottom: parent.bottom
-            anchors.leftMargin: 10
 
-            property real size_width: 1200
-            property real size_height: 900
+    ListView {
+        id: listaDatasets
+        anchors.top: seleccion.bottom
+        anchors.topMargin: 12 * root.sy
+        anchors.left: parent.left
+        anchors.right: panelSeleccion.left
+        anchors.bottom: parent.bottom
+        anchors.leftMargin: 30 * root.sx
+        anchors.rightMargin: 18 * root.sx
+        anchors.bottomMargin: 22 * root.sy
+        spacing: 14 * root.sy
+        clip: true
+        model: datasetModel
+        boundsBehavior: Flickable.StopAtBounds
 
-            property real size_rec1: 120
-            
+        ScrollBar.vertical: ScrollBar {
+            policy: ScrollBar.AsNeeded
+        }
 
-            width: size_width * sx
-            height: size_height * sy
+        delegate: RectanglePrincipal {
+            id: tarjetaDataset
+            property var dsModel: root.datasetModel
+            property var mkModel: root.markModel
+            property int rowIndex: index
 
-            color: "blue"
-
-           ScrollView {
-            anchors.fill: parent
-            anchors.margins: 10 * sx
-            clip: true
-
-            Column {
-                id: listaDatasets
-
-                width: rec1.width - 20 * sx
-                spacing: 10 * sy
-
-                Repeater {
-                    model: datasetModel
-                    delegate: RectanglePrincipal {
-                        sx: root.sx
-                        sy: root.sy
-                        width: listaDatasets.width
-                        height: 120 * sy
-
-
-                        property var dsModel: root.datasetModel
-                        property var mkModel: root.markModel
-                        property int rowIndex: index
-
-                       ColumnLayout {
-                            anchors.fill: parent
-                            anchors.margins: 12 * sx
-                            spacing: 8 * sy
-                            //===========================
-                            // Primera fila
-                            //===========================
-                            RowLayout {
-                                Layout.fillWidth: true
-                                spacing: 15 * sx
-
-                                CheckBox {
-                                    id: check
-                                    checked: selected
-                                    
-                                    onCheckedChanged: {
-                                        dsModel.setProperty(rowIndex, "selected", checked)
-
-                                        if (checked) {
-                                            mkModel.append({
-                                                datasetId: id,   // <- unificado
-                                                ruta: ruta,
-                                                nombre:nombre
-                                            })
-                                        } else {
-                                            let i = root.indexOfMark(id)
-                                            if (i !== -1)
-                                                mkModel.remove(i)
-                                        }
-                                    }
-
-
-                                    indicator: Rectangle {
-                                        implicitWidth: 20 * sx
-                                        implicitHeight: 20 * sy
-                                        radius: 5
-
-                                        color: check.checked ? "#6A63E8" : "white"
-                                        border.width: 1.5
-                                        border.color: "#6A63E8"
-
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: "✓"
-                                            visible: check.checked
-                                            color: "white"
-                                            font.pixelSize: 13 * sy
-                                            font.bold: true
-                                        }
-                                    }
-
-                                    contentItem: Item { }
-                                }
-
-                                ColumnLayout {
-
-                                    Layout.fillWidth: true
-
-                                    Text {
-                                        text: nombre
-                                        font.pixelSize: 18 * sy
-                                        font.bold: true
-                                        color: "#222222"
-                                    }
-
-                                    Text {
-                                        text: id
-                                        font.pixelSize: 12 * sy
-                                        color: "#777777"
-                                    }
-                                }
-
-                                BotonPrincipal {
-                                    Layout.preferredWidth: 120 * sx
-                                    Layout.preferredHeight: 35 * sy
-                                    text: "Ver datos"
-
-                                    onClicked: {
-                                        var registros = mainViewModel.datasetController.obtenerRegistros(id, 50)
-                                        verDatos.mostrar(nombre, registros)
-                                    }
-                                }
-                                BotonPrincipal {
-                                    Layout.preferredWidth: 120 * sx
-                                    Layout.preferredHeight: 35 * sy
-                                    text: "Eliminar DataSet"
-
-                                    onClicked: {
-                                        root.eliminarDatasetCompleto(id)
-                                    }
-                                }
-                                
-                            }
-
-                            //===========================
-                            // Segunda fila
-                            //===========================
-
-                            RowLayout {
-
-                                Layout.fillWidth: true
-                                spacing: 20 * sx
-
-                                Text {
-                                    text: "Registros: " + registros
-                                    font.pixelSize: 13 * sy
-                                }
-
-                                Text {
-                                    text: "Tokens: " + tokens
-                                    font.pixelSize: 13 * sy
-                                }
-
-                                Text {
-                                    text: "Vocabulario: " + vocabulario
-                                    font.pixelSize: 13 * sy
-                                }
-
-                                Text {
-                                    text: "Tamaño: " + tamano_mb + " MB"
-                                    font.pixelSize: 13 * sy
-                                }
-                            }
-
-                            //===========================
-                            // Tercera fila
-                            //===========================
-
-                            RowLayout {
-
-                                Layout.fillWidth: true
-                                spacing: 20 * sx
-
-                                Text {
-                                    text: "Formato: " + formato
-                                    font.pixelSize: 13 * sy
-                                }
-
-                                Text {
-                                    text: "Estado: " + estado
-                                    color: "#4CAF50"
-                                    font.bold: true
-                                    font.pixelSize: 13 * sy
-                                }
-
-                                Text {
-                                    text: "Categorías: " + (categorias ? Object.keys(categorias).length : 0)
-                                    font.pixelSize: 13 * sy
-                                }
-
-                                Text {
-                                    text: "Campos: " + campos_texto
-                                    elide: Text.ElideRight
-                                    Layout.fillWidth: true
-                                    font.pixelSize: 13 * sy
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }    
-    }
-
-
-    Rectangle{
-        
-        property real size_width: 300
-        property real size_height:700
-        width:size_width * sx
-        height:size_height * sy
-        // color: "transparent"
-        color:"blue"
-        // clip: true          
-        
-        anchors.right: parent.right
-        anchors.verticalCenter: parent.verticalCenter   // opcional, si querés centrado vertical
-        anchors.rightMargin: 30
-        Column{
-            anchors.centerIn: parent
-            width: parent.size_width * sx
-            spacing: 60 * sy
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.verticalCenterOffset: -50 * sy
-            RectanglePrincipal {
-                
-                id: rectangulo_blanco_1
-                width: parent.width
-                height:400 * sy
-                // anchors.verticalCenterOffset: -500 * sy
-                sx: root.sx
-                sy: root.sy
-                ColumnLayout{
-                    // spacing: 10
-                    // width: parent.width-30
-                    // anchors.margins: 15 * sx
-                    anchors.fill: parent
-                    anchors.margins: 10 * sx
-                    spacing: 1 * sy 
-                    BotonPrincipal {
-                        Layout.alignment: Qt.AlignHCenter
-                        Layout.preferredWidth: 250*sx
-                        Layout.preferredHeight: 40 * sy
-                        text: "Usar selección ->"
-                        onClicked: {
-                            // let idsSeleccionados = []
-                            let datosSeleccionados = []
-
-                            for (let i = 0; i < root.markModel.count; ++i) {
-                                let item = root.markModel.get(i)
-                                // idsSeleccionados.push(item.datasetId)
-                                datosSeleccionados.push({ id: item.datasetId, nombre: item.nombre })
-                            }
-
-                            if (datosSeleccionados.length === 0) {
-                                console.log("No hay datasets seleccionados")
-                                return
-                            }
-
-                            // mainViewModel.cargarDatasetsParaEntrenar(idsSeleccionados)
-
-                            // Le pasamos la selección a la pantalla anterior (SetupScreen),
-                            // que sigue viva debajo en el stackView
-                            let setupScreen = stackView.get(stackView.depth - 2)
-                            if (setupScreen && setupScreen.actualizarDatasetsSeleccionados)
-                                setupScreen.actualizarDatasetsSeleccionados(datosSeleccionados)
-
-                            stackView.pop()
-
-
-                        }   
-                    }
-                }
-                
-            }
-
-
-        RectanglePrincipal {
-            id: rectangulo_blanco_2
-            width: parent.width
-            height:300 * sy
-            // anchors.verticalCenterOffset: -500 * sy
+            width: listaDatasets.width - 14 * root.sx
+            height: 154 * root.sy
             sx: root.sx
             sy: root.sy
-            ColumnLayout{
-                // spacing: 10
-                // width: parent.width-30
-                // anchors.margins: 15 * sx
+
+            ColumnLayout {
                 anchors.fill: parent
-                anchors.margins: 10 * sx
-                spacing: 1 * sy 
-                }   
+                anchors.margins: 16 * root.sx
+                spacing: 7 * root.sy
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 12 * root.sx
+
+                    CheckBox {
+                        id: check
+                        checked: selected
+
+                        onCheckedChanged: {
+                            tarjetaDataset.dsModel.setProperty(tarjetaDataset.rowIndex, "selected", checked)
+
+                            if (checked) {
+                                tarjetaDataset.mkModel.append({
+                                    datasetId: id,
+                                    ruta: ruta,
+                                    nombre: nombre
+                                })
+                            } else {
+                                let i = root.indexOfMark(id)
+                                if (i !== -1)
+                                    tarjetaDataset.mkModel.remove(i)
+                            }
+                        }
+
+                        indicator: Rectangle {
+                            implicitWidth: 22 * root.sx
+                            implicitHeight: 22 * root.sy
+                            radius: 5 * root.sx
+                            color: check.checked ? "#6A63E8" : "white"
+                            border.width: 1.5
+                            border.color: "#6A63E8"
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: "\u2713"
+                                visible: check.checked
+                                color: "white"
+                                font.pixelSize: 13 * Math.min(root.sx, root.sy)
+                                font.bold: true
+                            }
+                        }
+
+                        contentItem: Item { }
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 2 * root.sy
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: nombre
+                            color: Style.Theme.texto_primario
+                            font.bold: true
+                            font.pixelSize: 19 * Math.min(root.sx, root.sy)
+                            elide: Text.ElideRight
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: id
+                            color: Style.Theme.texto_secundario
+                            font.pixelSize: 12 * Math.min(root.sx, root.sy)
+                            elide: Text.ElideMiddle
+                        }
+                    }
+
+                    Rectangle {
+                        Layout.preferredWidth: etiquetaFormato.implicitWidth + 18 * root.sx
+                        Layout.preferredHeight: 25 * root.sy
+                        radius: height / 2
+                        color: "#F3F4F6"
+                        border.color: "#D1D5DB"
+
+                        Text {
+                            id: etiquetaFormato
+                            anchors.centerIn: parent
+                            text: String(formato).toUpperCase()
+                            color: "#4B5563"
+                            font.bold: true
+                            font.pixelSize: 11 * Math.min(root.sx, root.sy)
+                        }
+                    }
+
+                    BotonPrincipal {
+                        Layout.preferredWidth: 120 * root.sx
+                        Layout.preferredHeight: 36 * root.sy
+                        text: "Ver datos"
+                        size_text: 0.24
+                        onClicked: {
+                            var registrosDataset = mainViewModel.datasetController.obtenerRegistros(id, 50)
+                            verDatos.mostrar(nombre, registrosDataset)
+                        }
+                    }
+
+                    BotonPrincipal {
+                        Layout.preferredWidth: 145 * root.sx
+                        Layout.preferredHeight: 36 * root.sy
+                        text: "Eliminar dataset"
+                        size_text: 0.21
+                        onClicked: root.eliminarDatasetCompleto(id)
+                    }
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 1
+                    color: "#E5E7EB"
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 20 * root.sx
+
+                    Text {
+                        text: "Registros  " + registros
+                        color: Style.Theme.texto_primario
+                        font.pixelSize: 13 * Math.min(root.sx, root.sy)
+                    }
+
+                    Text {
+                        text: "Tokens  " + tokens
+                        color: Style.Theme.texto_primario
+                        font.pixelSize: 13 * Math.min(root.sx, root.sy)
+                    }
+
+                    Text {
+                        text: "Vocabulario  " + vocabulario
+                        color: Style.Theme.texto_primario
+                        font.pixelSize: 13 * Math.min(root.sx, root.sy)
+                    }
+
+                    Text {
+                        text: "Tama\u00f1o  " + tamano_mb + " MB"
+                        color: Style.Theme.texto_primario
+                        font.pixelSize: 13 * Math.min(root.sx, root.sy)
+                    }
+
+                    Item { Layout.fillWidth: true }
+
+                    Rectangle {
+                        Layout.preferredWidth: textoEstado.implicitWidth + 18 * root.sx
+                        Layout.preferredHeight: 24 * root.sy
+                        radius: height / 2
+                        color: "#DCFCE7"
+
+                        Text {
+                            id: textoEstado
+                            anchors.centerIn: parent
+                            text: estado
+                            color: "#166534"
+                            font.bold: true
+                            font.pixelSize: 10 * Math.min(root.sx, root.sy)
+                        }
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 20 * root.sx
+
+                    Text {
+                        text: "Categor\u00edas  " + (categorias ? Object.keys(categorias).length : 0)
+                        color: Style.Theme.texto_secundario
+                        font.pixelSize: 12 * Math.min(root.sx, root.sy)
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: "Campos  " + campos_texto
+                        color: Style.Theme.texto_secundario
+                        font.pixelSize: 12 * Math.min(root.sx, root.sy)
+                        elide: Text.ElideRight
+                    }
+                }
+            }
+        }
+
+        Text {
+            anchors.centerIn: parent
+            visible: listaDatasets.count === 0
+            text: "Todav\u00eda no hay datasets en la biblioteca.\nAgrega un archivo JSON o JSONL para comenzar."
+            color: Style.Theme.texto_secundario
+            horizontalAlignment: Text.AlignHCenter
+            font.pixelSize: 18 * Math.min(root.sx, root.sy)
+        }
+    }
+
+    RectanglePrincipal {
+        id: panelSeleccion
+        anchors.top: cabecera.bottom
+        anchors.topMargin: 8 * root.sy
+        anchors.right: parent.right
+        anchors.rightMargin: 30 * root.sx
+        width: 300 * root.sx
+        height: 244 * root.sy
+        sx: root.sx
+        sy: root.sy
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 18 * root.sx
+            spacing: 10 * root.sy
+
+            Text {
+                Layout.fillWidth: true
+                text: "Datasets para entrenar"
+                color: Style.Theme.texto_primario
+                font.bold: true
+                font.pixelSize: 18 * Math.min(root.sx, root.sy)
+                wrapMode: Text.WordWrap
+            }
+
+            Text {
+                Layout.fillWidth: true
+                text: "Selecciona uno o m\u00e1s datasets y confirma para volver a la configuraci\u00f3n."
+                color: Style.Theme.texto_secundario
+                font.pixelSize: 13 * Math.min(root.sx, root.sy)
+                wrapMode: Text.WordWrap
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 1
+                color: "#E5E7EB"
+            }
+
+            Text {
+                Layout.fillWidth: true
+                text: root.markModel.count
+                      + (root.markModel.count === 1 ? " dataset seleccionado" : " datasets seleccionados")
+                color: root.markModel.count > 0 ? "#3730A3" : Style.Theme.texto_secundario
+                font.bold: true
+                font.pixelSize: 13 * Math.min(root.sx, root.sy)
+            }
+
+            Item { Layout.fillHeight: true }
+
+            BotonPrincipal {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 42 * root.sy
+                text: "Usar selecci\u00f3n \u2192"
+                size_text: 0.24
+                onClicked: {
+                    let datosSeleccionados = []
+
+                    for (let i = 0; i < root.markModel.count; ++i) {
+                        let item = root.markModel.get(i)
+                        datosSeleccionados.push({ id: item.datasetId, nombre: item.nombre })
+                    }
+
+                    if (datosSeleccionados.length === 0) {
+                        console.log("No hay datasets seleccionados")
+                        return
+                    }
+
+                    let setupScreen = stackView.get(stackView.depth - 2)
+                    if (setupScreen && setupScreen.actualizarDatasetsSeleccionados)
+                        setupScreen.actualizarDatasetsSeleccionados(datosSeleccionados)
+
+                    stackView.pop()
+                }
             }
         }
     }
-            
 }
