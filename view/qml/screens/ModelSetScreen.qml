@@ -1,260 +1,414 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
 import "../styles" as Style
 import "../components"
-import QtQuick.Layouts
 
+PagePrincipal {
+    id: root
 
-
-PagePrincipal{
-    id: root 
-
+    // Contrato público existente: el modelo puede seguir poblándose desde fuera.
     property alias datasetModel: setModel
+    property alias markModel: markedModel
+
+    function indexOfMark(modelId) {
+        for (var i = 0; i < markedModel.count; ++i) {
+            if (markedModel.get(i).datasetId === modelId)
+                return i
+        }
+        return -1
+    }
+
+    function value(item, names, fallback) {
+        if (item === undefined || item === null)
+            return fallback
+        for (var i = 0; i < names.length; ++i) {
+            var candidate = item[names[i]]
+            if (candidate !== undefined && candidate !== null && candidate !== "")
+                return candidate
+        }
+        return fallback
+    }
+
+    function readableNumber(value) {
+        var number = Number(value)
+        if (value === undefined || value === null || value === "" || isNaN(number))
+            return "\u2014"
+        if (number >= 1000000000)
+            return (number / 1000000000).toFixed(2) + " mil M"
+        if (number >= 1000000)
+            return (number / 1000000).toFixed(2) + " M"
+        if (number >= 1000)
+            return (number / 1000).toFixed(1) + " mil"
+        return String(number)
+    }
 
     ListModel {
         id: setModel
     }
 
-    Component.onCompleted: {
-        // var datasets = mainViewModel.datasetController.obtenerModelos()
-
-        // datasetModel.clear()
-
-        // for (var i = 0; i < datasets.length; ++i) {
-        //     datasetModel.append(datasets[i])
-        // }
+    ListModel {
+        id: markedModel
     }
 
-
-
-
-
-    /*
-    MODELO EN QT -----ABAJO SOLO SE ENCUENTRA MODELOS VISUALES --------
-    
-    
-    */
-
-     BotonPrincipal {
-        anchors.left: parent.left
-        anchors.leftMargin: 10 * sx
+    RowLayout {
+        id: header
         anchors.top: parent.top
-        anchors.topMargin: 10 * sy
-        width: 250 * sx
-        height: 40 * sy
-        text: " ↶ Volver al inicio"
-        z: 10
-        onClicked: {
-            stackView.pop()
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.margins: 24 * root.sx
+        height: 72 * root.sy
+        spacing: 14 * root.sx
+
+        BotonPrincipal {
+            Layout.preferredWidth: 210 * root.sx
+            Layout.preferredHeight: 44 * root.sy
+            text: "\u21b6 Volver al inicio"
+            size_text: 0.27
+            onClicked: root.stackView.pop()
+        }
+
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 2 * root.sy
+
+            Text {
+                text: "Modelos para inferencia"
+                color: Style.Theme.texto_primario
+                font.bold: true
+                font.pixelSize: 27 * Math.min(root.sx, root.sy)
+            }
+
+            Text {
+                text: setModel.count
+                      + (setModel.count === 1 ? " modelo disponible" : " modelos disponibles")
+                color: Style.Theme.texto_secundario
+                font.pixelSize: 14 * Math.min(root.sx, root.sy)
+            }
+        }
+
+        Rectangle {
+            Layout.preferredWidth: Math.max(180 * root.sx,
+                                            selectedText.implicitWidth + 28 * root.sx)
+            Layout.preferredHeight: 36 * root.sy
+            radius: height / 2
+            color: markedModel.count > 0 ? "#EDE9FE" : "#F3F4F6"
+            border.color: markedModel.count > 0 ? "#C4B5FD" : "#D1D5DB"
+
+            Text {
+                id: selectedText
+                anchors.centerIn: parent
+                text: markedModel.count
+                      + (markedModel.count === 1 ? " seleccionado" : " seleccionados")
+                color: markedModel.count > 0 ? "#5B21B6" : Style.Theme.texto_secundario
+                font.bold: true
+                font.pixelSize: 12 * Math.min(root.sx, root.sy)
+            }
         }
     }
 
+    RectanglePrincipal {
+        id: selectionSummary
+        anchors.top: header.bottom
+        anchors.topMargin: 8 * root.sy
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.leftMargin: 30 * root.sx
+        anchors.rightMargin: 30 * root.sx
+        height: 70 * root.sy
+        sx: root.sx
+        sy: root.sy
 
-     Rectangle {
-            id: rec1
-            anchors.left: parent.left
-            anchors.bottom: parent.bottom
-            anchors.leftMargin: 10
-
-            property real size_width: 1800
-            property real size_height: 900
-
-            property real size_rec1: 120
-            
-
-            width: size_width * sx
-            height: size_height * sy
-
-            color: "blue"
-
-           ScrollView {
+        RowLayout {
             anchors.fill: parent
-            anchors.margins: 10 * sx
-            clip: true
+            anchors.margins: 12 * root.sx
+            spacing: 14 * root.sx
 
-            Column {
-                id: listaDatasets
+            Rectangle {
+                Layout.preferredWidth: 38 * root.sx
+                Layout.preferredHeight: 38 * root.sy
+                radius: 10 * root.sx
+                color: "#EDE9FE"
 
-                width: rec1.width - 20 * sx
-                spacing: 10 * sy
+                Text {
+                    anchors.centerIn: parent
+                    text: "T"
+                    color: "#6D28D9"
+                    font.bold: true
+                    font.pixelSize: 17 * Math.min(root.sx, root.sy)
+                }
+            }
 
-                Repeater {
-                    model: setModel
-                    delegate: RectanglePrincipal {
-                        sx: root.sx
-                        sy: root.sy
-                        width: listaDatasets.width
-                        height: 120 * sy
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 1 * root.sy
 
+                Text {
+                    Layout.fillWidth: true
+                    text: "Selecciona los modelos que quieres utilizar"
+                    color: Style.Theme.texto_primario
+                    font.bold: true
+                    font.pixelSize: 15 * Math.min(root.sx, root.sy)
+                    elide: Text.ElideRight
+                }
 
-                        property var dsModel: root.datasetModel
-                        property var mkModel: root.markModel
-                        property int rowIndex: index
+                Text {
+                    Layout.fillWidth: true
+                    text: "La selección no carga ni modifica los modelos; solo prepara la elección visual."
+                    color: Style.Theme.texto_secundario
+                    font.pixelSize: 12 * Math.min(root.sx, root.sy)
+                    elide: Text.ElideRight
+                }
+            }
+        }
+    }
 
-                       ColumnLayout {
-                            anchors.fill: parent
-                            anchors.margins: 12 * sx
-                            spacing: 8 * sy
-                            //===========================
-                            // Primera fila
-                            //===========================
-                            RowLayout {
-                                Layout.fillWidth: true
-                                spacing: 15 * sx
+    ListView {
+        id: modelList
+        anchors.top: selectionSummary.bottom
+        anchors.topMargin: 14 * root.sy
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.leftMargin: 30 * root.sx
+        anchors.rightMargin: 30 * root.sx
+        anchors.bottomMargin: 24 * root.sy
+        spacing: 14 * root.sy
+        clip: true
+        model: setModel
+        boundsBehavior: Flickable.StopAtBounds
 
-                                CheckBox {
-                                    id: check
-                                    checked: selected
-                                    
-                                    onCheckedChanged: {
-                                        dsModel.setProperty(rowIndex, "selected", checked)
+        ScrollBar.vertical: ScrollBar {
+            policy: ScrollBar.AsNeeded
+        }
 
-                                        if (checked) {
-                                            mkModel.append({
-                                                datasetId: id,   // <- unificado
-                                                ruta: ruta,
-                                                nombre:nombre
-                                            })
-                                        } else {
-                                            let i = root.indexOfMark(id)
-                                            if (i !== -1)
-                                                mkModel.remove(i)
-                                        }
-                                    }
+        delegate: RectanglePrincipal {
+            id: modelCard
 
+            property var info: model
+            property var dsModel: root.datasetModel
+            property var mkModel: root.markModel
+            property int rowIndex: index
+            readonly property string modelId: String(root.value(
+                                                         info,
+                                                         ["id", "modelId", "modelo_id"],
+                                                         rowIndex))
+            readonly property string modelName: String(root.value(
+                                                           info,
+                                                           ["nombre", "name", "archivo"],
+                                                           "Modelo sin nombre"))
 
-                                    indicator: Rectangle {
-                                        implicitWidth: 20 * sx
-                                        implicitHeight: 20 * sy
-                                        radius: 5
+            width: modelList.width - 14 * root.sx
+            height: 174 * root.sy
+            sx: root.sx
+            sy: root.sy
 
-                                        color: check.checked ? "#6A63E8" : "white"
-                                        border.width: 1.5
-                                        border.color: "#6A63E8"
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: 16 * root.sx
+                spacing: 8 * root.sy
 
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: "✓"
-                                            visible: check.checked
-                                            color: "white"
-                                            font.pixelSize: 13 * sy
-                                            font.bold: true
-                                        }
-                                    }
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 13 * root.sx
 
-                                    contentItem: Item { }
+                    CheckBox {
+                        id: check
+                        checked: Boolean(root.value(modelCard.info, ["selected"], false))
+
+                        onCheckedChanged: {
+                            modelCard.dsModel.setProperty(modelCard.rowIndex, "selected", checked)
+
+                            if (checked) {
+                                if (root.indexOfMark(modelCard.modelId) === -1) {
+                                    modelCard.mkModel.append({
+                                        datasetId: modelCard.modelId,
+                                        ruta: String(root.value(modelCard.info,
+                                                                ["ruta", "path"], "")),
+                                        nombre: modelCard.modelName
+                                    })
                                 }
+                            } else {
+                                let selectedIndex = root.indexOfMark(modelCard.modelId)
+                                if (selectedIndex !== -1)
+                                    modelCard.mkModel.remove(selectedIndex)
+                            }
+                        }
 
-                                ColumnLayout {
+                        indicator: Rectangle {
+                            implicitWidth: 22 * root.sx
+                            implicitHeight: 22 * root.sy
+                            radius: 5 * root.sx
+                            color: check.checked ? "#6A63E8" : "white"
+                            border.width: 1.5
+                            border.color: "#6A63E8"
 
+                            Text {
+                                anchors.centerIn: parent
+                                text: "\u2713"
+                                visible: check.checked
+                                color: "white"
+                                font.pixelSize: 13 * Math.min(root.sx, root.sy)
+                                font.bold: true
+                            }
+                        }
+
+                        contentItem: Item {}
+                    }
+
+                    Rectangle {
+                        Layout.preferredWidth: 42 * root.sx
+                        Layout.preferredHeight: 42 * root.sy
+                        radius: 10 * root.sx
+                        color: check.checked ? "#7C3AED" : "#EDE9FE"
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "T"
+                            color: check.checked ? "white" : "#6D28D9"
+                            font.bold: true
+                            font.pixelSize: 18 * Math.min(root.sx, root.sy)
+                        }
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 2 * root.sy
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: modelCard.modelName
+                            color: Style.Theme.texto_primario
+                            font.bold: true
+                            font.pixelSize: 19 * Math.min(root.sx, root.sy)
+                            elide: Text.ElideRight
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: String(root.value(modelCard.info,
+                                                    ["ruta", "path", "id"],
+                                                    "Identificador no disponible"))
+                            color: Style.Theme.texto_secundario
+                            font.pixelSize: 12 * Math.min(root.sx, root.sy)
+                            elide: Text.ElideMiddle
+                        }
+                    }
+
+                    Rectangle {
+                        Layout.preferredWidth: stateText.implicitWidth + 20 * root.sx
+                        Layout.preferredHeight: 28 * root.sy
+                        radius: height / 2
+                        color: "#DCFCE7"
+                        border.color: "#86EFAC"
+
+                        Text {
+                            id: stateText
+                            anchors.centerIn: parent
+                            text: String(root.value(modelCard.info,
+                                                    ["estado", "status"],
+                                                    "Listo para inferencia"))
+                            color: "#166534"
+                            font.bold: true
+                            font.pixelSize: 11 * Math.min(root.sx, root.sy)
+                        }
+                    }
+
+                    BotonPrincipal {
+                        Layout.preferredWidth: 150 * root.sx
+                        Layout.preferredHeight: 38 * root.sy
+                        text: "Eliminar modelo"
+                        size_text: 0.22
+                        onClicked: {
+                            // Se conserva el manejador original sin añadir lógica.
+                        }
+                    }
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 1
+                    color: "#E5E7EB"
+                }
+
+                GridLayout {
+                    Layout.fillWidth: true
+                    columns: 4
+                    columnSpacing: 10 * root.sx
+                    rowSpacing: 4 * root.sy
+
+                    Repeater {
+                        model: [
+                            {
+                                label: "CAPAS",
+                                value: root.value(modelCard.info,
+                                                  ["num_capas", "encoder_layers", "capas"], "\u2014")
+                            },
+                            {
+                                label: "CABEZAS",
+                                value: root.value(modelCard.info,
+                                                  ["num_cabezas", "heads", "nhead"], "\u2014")
+                            },
+                            {
+                                label: "DIMENSIÓN",
+                                value: root.value(modelCard.info,
+                                                  ["dimension_modelo", "d_model", "dimension"], "\u2014")
+                            },
+                            {
+                                label: "PARÁMETROS",
+                                value: root.readableNumber(root.value(
+                                                               modelCard.info,
+                                                               ["parametros_totales", "parametros"], ""))
+                            }
+                        ]
+
+                        delegate: Rectangle {
+                            id: metric
+                            required property var modelData
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 54 * root.sy
+                            radius: 8 * root.sx
+                            color: "#F9FAFB"
+                            border.color: "#E5E7EB"
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: 12 * root.sx
+                                anchors.rightMargin: 12 * root.sx
+                                spacing: 8 * root.sx
+
+                                Text {
                                     Layout.fillWidth: true
-
-                                    Text {
-                                        text: "---NOMBRE----"
-                                        font.pixelSize: 18 * sy
-                                        font.bold: true
-                                        color: "#222222"
-                                    }
-
-                                    Text {
-                                        text: "----ID----"
-                                        font.pixelSize: 12 * sy
-                                        color: "#777777"
-                                    }
-                                }
-
-                                // BotonPrincipal {
-                                //     Layout.preferredWidth: 120 * sx
-                                //     Layout.preferredHeight: 35 * sy
-                                //     text: "Ver datos"
-
-                                //     onClicked: {
-                                //         var registros = mainViewModel.datasetController.obtenerRegistros(id, 50)
-                                //         verDatos.mostrar(nombre, registros)
-                                //     }
-                                }
-                                BotonPrincipal {
-                                    Layout.preferredWidth: 120 * sx
-                                    Layout.preferredHeight: 35 * sy
-                                    text: "Eliminar Modelo"
-
-                                    onClicked: {
-                                        // root.eliminarDatasetCompleto(id)
-                                    }
-                                }
-                                
-                            }
-
-                            //===========================
-                            // Segunda fila
-                            //===========================
-
-                            RowLayout {
-
-                                Layout.fillWidth: true
-                                spacing: 20 * sx
-
-                                Text {
-                                    text: "Registros: "// + registros
-                                    font.pixelSize: 13 * sy
-                                }
-
-                                Text {
-                                    text: "Tokens: " // + tokens
-                                    font.pixelSize: 13 * sy
-                                }
-
-                                Text {
-                                    text: "Vocabulario: "// + vocabulario
-                                    font.pixelSize: 13 * sy
-                                }
-
-                                Text {
-                                    text: "Tamaño: " // + tamano_mb + " MB"
-                                    font.pixelSize: 13 * sy
-                                }
-                            }
-
-                            //===========================
-                            // Tercera fila
-                            //===========================
-
-                            RowLayout {
-
-                                Layout.fillWidth: true
-                                spacing: 20 * sx
-
-                                Text {
-                                    text: "Formato: " //+ formato
-                                    font.pixelSize: 13 * sy
-                                }
-
-                                Text {
-                                    text: "Estado: "// + estado
-                                    color: "#4CAF50"
+                                    text: metric.modelData.label
+                                    color: Style.Theme.texto_secundario
                                     font.bold: true
-                                    font.pixelSize: 13 * sy
-                                }
-
-                                Text {
-                                    text: "Categorías: "// + (categorias ? Object.keys(categorias).length : 0)
-                                    font.pixelSize: 13 * sy
-                                }
-
-                                Text {
-                                    text: "Campos: "// + campos_texto
+                                    font.pixelSize: 10 * Math.min(root.sx, root.sy)
                                     elide: Text.ElideRight
-                                    Layout.fillWidth: true
-                                    font.pixelSize: 13 * sy
+                                }
+
+                                Text {
+                                    text: String(metric.modelData.value)
+                                    color: "#5B21B6"
+                                    font.bold: true
+                                    font.pixelSize: 16 * Math.min(root.sx, root.sy)
+                                    elide: Text.ElideRight
                                 }
                             }
                         }
                     }
                 }
             }
-        }    
+        }
+
+        Text {
+            anchors.centerIn: parent
+            visible: modelList.count === 0
+            width: Math.min(parent.width - 60 * root.sx, 620 * root.sx)
+            text: "Aún no hay modelos disponibles.\nAgrega o entrena un modelo para utilizarlo en inferencia."
+            color: Style.Theme.texto_secundario
+            horizontalAlignment: Text.AlignHCenter
+            wrapMode: Text.WordWrap
+            font.pixelSize: 17 * Math.min(root.sx, root.sy)
+        }
     }
-
-
-
-
+}

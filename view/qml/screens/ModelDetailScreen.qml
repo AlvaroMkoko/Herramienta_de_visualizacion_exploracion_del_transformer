@@ -502,14 +502,14 @@ PagePrincipal {
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.leftMargin: 22 * root.sx
-        anchors.rightMargin: 22 * root.sx
-        height: 78 * root.sy
-        spacing: 12 * root.sx
+        anchors.leftMargin: 24 * root.sx
+        anchors.rightMargin: 24 * root.sx
+        height: 72 * root.sy
+        spacing: 14 * root.sx
 
         BotonPrincipal {
             Layout.preferredWidth: 170 * root.sx
-            Layout.preferredHeight: 43 * root.sy
+            Layout.preferredHeight: 44 * root.sy
             text: "↶ Biblioteca"
             size_text: 0.27
             onClicked: root.stackView.pop()
@@ -523,14 +523,14 @@ PagePrincipal {
                 text: root.nombreModelo()
                 color: Style.Theme.texto_primario
                 font.bold: true
-                font.pixelSize: 25 * Math.min(root.sx, root.sy)
+                font.pixelSize: 27 * Math.min(root.sx, root.sy)
                 elide: Text.ElideRight
             }
             Text {
                 Layout.fillWidth: true
                 text: root.rutaActual
                 color: Style.Theme.texto_secundario
-                font.pixelSize: 11 * Math.min(root.sx, root.sy)
+                font.pixelSize: 12 * Math.min(root.sx, root.sy)
                 elide: Text.ElideMiddle
             }
         }
@@ -560,7 +560,7 @@ PagePrincipal {
 
         BotonPrincipal {
             Layout.preferredWidth: 195 * root.sx
-            Layout.preferredHeight: 43 * root.sy
+            Layout.preferredHeight: 44 * root.sy
             text: "Abrir en inferencia"
             size_text: 0.23
             enabled: root.compatible() && root.controller && !root.controller.ocupado
@@ -570,7 +570,7 @@ PagePrincipal {
 
         BotonPrincipal {
             Layout.preferredWidth: 205 * root.sx
-            Layout.preferredHeight: 43 * root.sy
+            Layout.preferredHeight: 44 * root.sy
             text: "Continuar entrenamiento"
             size_text: 0.21
             enabled: root.compatible() && root.controller && !root.controller.ocupado

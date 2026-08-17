@@ -146,8 +146,8 @@ PagePrincipal {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.margins: 24 * root.sx
-        height: 68 * root.sy
-        spacing: 16 * root.sx
+        height: 72 * root.sy
+        spacing: 14 * root.sx
 
         BotonPrincipal {
             Layout.preferredWidth: 210 * root.sx
