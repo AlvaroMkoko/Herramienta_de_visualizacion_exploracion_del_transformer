@@ -336,7 +336,6 @@ PagePrincipal {
         
         
     }
-
     // Rectangle {
 
     //     anchors.fill: parent
