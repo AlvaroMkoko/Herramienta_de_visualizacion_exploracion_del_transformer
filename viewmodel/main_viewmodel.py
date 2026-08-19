@@ -21,6 +21,7 @@ from model.gestor_de_datos.dataset_loader import (
 from .dataset_controller import DatasetController
 from .comparison_controller import ComparisonController
 from .inference_controller import InferenceController
+from .learning_controller import LearningController
 from .model_library_controller import ModelLibraryController
 from .setup_controller import SetupController
 from .theory_controller import TheoryController
@@ -42,6 +43,7 @@ class MainViewModel(QObject):
         self._setup_controller = SetupController(self)
         self._dataset_controller = DatasetController()
         self._theory_controller = TheoryController()
+        self._learning_controller = LearningController(self)
         self._model_library_controller = ModelLibraryController(self)
         self._comparison_controller = ComparisonController(
             self._model_library_controller, self
@@ -74,6 +76,10 @@ class MainViewModel(QObject):
     @Property(QObject, constant=True)
     def theoryController(self) -> TheoryController:
         return self._theory_controller
+
+    @Property(QObject, constant=True)
+    def learningController(self) -> LearningController:
+        return self._learning_controller
 
     @Property(QObject, constant=True)
     def setupController(self) -> SetupController:
