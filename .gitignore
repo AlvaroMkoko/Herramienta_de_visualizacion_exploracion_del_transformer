@@ -14,3 +14,5 @@ cuda.py
 data/checkpoints/modelo.pt
 
 *.pt
+
+!data/teoria/transformer.json
