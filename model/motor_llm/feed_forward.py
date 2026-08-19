@@ -43,11 +43,20 @@ class FeedForward(nn.Module):
         activacion = self.activacion(preactivacion)
         proyeccion = self.capa_proyeccion(activacion)
         salida = self.dropout(proyeccion)
+        # La interfaz de inferencia compara unos pocos tokens en paralelo.
+        # Se conserva solo una ventana final pequeña para no retener toda la
+        # secuencia ni inflar el snapshot que cruza hacia QML.
+        inicio_visual = max(0, entrada.size(1) - 3)
         self.ultima_traza = {
             "entrada": entrada[:, -1, :].detach(),
             "preactivacion": preactivacion[:, -1, :].detach(),
             "activacion": activacion[:, -1, :].detach(),
             "salida": salida[:, -1, :].detach(),
+            "entrada_visual": entrada[:, inicio_visual:, :].detach(),
+            "preactivacion_visual": preactivacion[:, inicio_visual:, :].detach(),
+            "activacion_visual": activacion[:, inicio_visual:, :].detach(),
+            "salida_visual": salida[:, inicio_visual:, :].detach(),
+            "inicio_posicion_visual": inicio_visual,
             "shape_entrada": tuple(entrada.shape),
             "shape_oculta": tuple(activacion.shape),
             "shape_salida": tuple(salida.shape),

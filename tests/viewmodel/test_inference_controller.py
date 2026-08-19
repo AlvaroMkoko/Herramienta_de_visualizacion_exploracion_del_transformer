@@ -101,6 +101,7 @@ class TestGeneracionBasica:
             assert len(visualizacion["etapas"]) == 6
             assert visualizacion["tokens_entrada_total"] == 4
             assert visualizacion["tokens_salida_total"] == i + 1
+            assert len(visualizacion["tokens_decoder"]) == i + 1
             assert visualizacion["token_elegido"]["token_id"] == paso["token_id"]
             assert visualizacion["cantidad_candidatos"] == 1
             assert visualizacion["predicciones_top"]
@@ -115,9 +116,15 @@ class TestGeneracionBasica:
             assert detalle["metadata"]["position_encoding_type"] == "sinusoidal aditivo"
             assert detalle["global"]["embedding_encoder"]["shape"] == "1 × 4 × 32"
             assert detalle["global"]["embedding_encoder"]["matriz"]["valores"]
+            proyeccion = detalle["global"]["proyeccion_posicional_encoder"]
+            assert len(proyeccion["embedding"]) == 4
+            assert len(proyeccion["entrada"]) == 4
+            assert 0 <= proyeccion["varianza_conservada"] <= 1
             assert detalle["global"]["mascara_causal"]["porcentaje_bloqueado"] >= 0
             assert len(detalle["encoder"]) == config.num_capas
             assert len(detalle["decoder"]) == config.num_capas
+            assert len(detalle["trayectorias"]["encoder"]["capas"]) == config.num_capas + 1
+            assert len(detalle["trayectorias"]["decoder"]["capas"]) == config.num_capas + 1
 
             traza_atencion = detalle["decoder"][-1]["autoatencion"]
             assert traza_atencion["q"]
@@ -126,13 +133,17 @@ class TestGeneracionBasica:
             assert traza_atencion["scores"]
             assert traza_atencion["atencion"]
             assert traza_atencion["contribuciones"]
+            assert len(traza_atencion["flujo"]["matrices"]) == config.num_cabezas
+            assert traza_atencion["flujo"]["ventana_exacta"] is True
             assert traza_atencion["validacion"]["filas_suman_uno"] is True
             assert traza_atencion["validacion"]["sin_nan"] is True
 
             bloque = detalle["decoder"][-1]
             assert bloque["residual_autoatencion"]["ratio_actualizacion"] >= 0
+            assert len(bloque["residual_autoatencion"]["layernorm"]["fases"]) == 4
             assert bloque["ffn"]["histograma_activacion"]["total"] == config.dimension_ff
             assert bloque["ffn"]["unidades_top"]
+            assert 1 <= len(bloque["ffn"]["tokens"]) <= 3
 
         assert pasos_recibidos[-1]["texto_parcial"] == controlador._texto_generado_hasta_ahora
 

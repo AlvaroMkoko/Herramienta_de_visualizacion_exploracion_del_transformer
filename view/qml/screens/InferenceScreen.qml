@@ -632,7 +632,7 @@ PagePrincipal {
             color: "transparent"
         }
 
-        contentItem: InferenceFlowPanel {
+        contentItem: InferenceExplorationPanel {
             snapshots: root.pasosVisualizacion
             detailForward: root.detalleForwardActual
             selectedIndex: root.indicePasoVisualizado

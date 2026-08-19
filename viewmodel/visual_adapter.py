@@ -273,6 +273,135 @@ def _matriz_muestra(
     }
 
 
+def _ventana_tokens(tensor: torch.Tensor, limite: int = 24) -> tuple[torch.Tensor, int]:
+    """Devuelve una matriz token × dimensión pequeña y su offset real."""
+    datos = tensor.detach().float()
+    while datos.dim() > 2:
+        datos = datos[0]
+    if datos.dim() == 1:
+        datos = datos.unsqueeze(0)
+    inicio = max(0, int(datos.size(0)) - limite)
+    return datos[inicio:].cpu(), inicio
+
+
+def _pca_compartido(matrices: list[torch.Tensor]) -> tuple[list[list[dict]], float]:
+    """Proyecta varias nubes con una única base PCA determinista.
+
+    Ajustar cada nube por separado permitiría rotaciones/reflejos arbitrarios
+    y produciría una animación engañosa. Aquí se concatena todo, se centra una
+    sola vez y se reutilizan exactamente los mismos dos ejes.
+    """
+    preparadas = [matriz.detach().float().cpu() for matriz in matrices if matriz.numel()]
+    if not preparadas:
+        return [[] for _ in matrices], 0.0
+
+    dimension = min(int(matriz.size(-1)) for matriz in preparadas)
+    preparadas = [matriz[:, :dimension] for matriz in preparadas]
+    conjunta = torch.cat(preparadas, dim=0)
+    centrada = conjunta - conjunta.mean(dim=0, keepdim=True)
+
+    try:
+        _, valores_singulares, vh = torch.linalg.svd(centrada, full_matrices=False)
+        componentes = vh[: min(2, vh.size(0))].T.contiguous()
+        # Fija el signo de cada eje usando su carga dominante para evitar que
+        # dos capturas equivalentes parpadeen por una reflexión del SVD.
+        for eje in range(componentes.size(1)):
+            indice = int(componentes[:, eje].abs().argmax().item())
+            if float(componentes[indice, eje].item()) < 0:
+                componentes[:, eje].mul_(-1)
+        coordenadas = centrada @ componentes
+        energia = valores_singulares.square()
+        varianza = float(
+            energia[: componentes.size(1)].sum().item()
+            / max(float(energia.sum().item()), 1e-12)
+        )
+    except RuntimeError:
+        # Un fallback exacto y estable para backends sin SVD: primeras dos
+        # dimensiones centradas. Sigue siendo una proyección compartida.
+        coordenadas = centrada[:, : min(2, dimension)]
+        total = float(centrada.square().sum().item())
+        varianza = float(coordenadas.square().sum().item() / max(total, 1e-12))
+
+    if coordenadas.size(1) < 2:
+        coordenadas = torch.cat(
+            [coordenadas, torch.zeros(coordenadas.size(0), 2 - coordenadas.size(1))],
+            dim=1,
+        )
+
+    resultado: list[list[dict]] = []
+    cursor = 0
+    for matriz in preparadas:
+        cantidad = int(matriz.size(0))
+        puntos = coordenadas[cursor : cursor + cantidad]
+        resultado.append(
+            [
+                {"x": round(float(punto[0]), 6), "y": round(float(punto[1]), 6)}
+                for punto in puntos.tolist()
+            ]
+        )
+        cursor += cantidad
+    return resultado, round(varianza, 6)
+
+
+def _proyeccion_posicional(
+    embedding: torch.Tensor,
+    entrada: torch.Tensor,
+    limite: int = 24,
+) -> dict:
+    embedding_ventana, inicio_embedding = _ventana_tokens(embedding, limite)
+    entrada_ventana, inicio_entrada = _ventana_tokens(entrada, limite)
+    cantidad = min(embedding_ventana.size(0), entrada_ventana.size(0))
+    embedding_ventana = embedding_ventana[-cantidad:]
+    entrada_ventana = entrada_ventana[-cantidad:]
+    puntos, varianza = _pca_compartido([embedding_ventana, entrada_ventana])
+    return {
+        "embedding": puntos[0] if puntos else [],
+        "entrada": puntos[1] if len(puntos) > 1 else [],
+        "inicio_posicion": max(inicio_embedding, inicio_entrada),
+        "varianza_conservada": varianza,
+        "dimension_original": int(embedding_ventana.size(-1)),
+        "metodo": "PCA conjunto centrado",
+    }
+
+
+def _trayectoria_pca(
+    entrada: torch.Tensor | None,
+    bloques,
+    limite: int = 24,
+) -> dict:
+    if entrada is None:
+        return {"capas": [], "inicio_posicion": 0, "varianza_conservada": 0.0}
+
+    inicial, inicio = _ventana_tokens(entrada, limite)
+    estados = [inicial]
+    numeros_capa = [0]
+    for indice, bloque in enumerate(bloques, start=1):
+        traza = getattr(bloque.conexion_feed_forward, "ultima_traza", None) or {}
+        tensor = traza.get("salida_visual")
+        if tensor is None:
+            continue
+        estado, inicio_estado = _ventana_tokens(tensor, limite)
+        cantidad = min(inicial.size(0), estado.size(0))
+        estados = [existente[-cantidad:] for existente in estados]
+        inicial = inicial[-cantidad:]
+        estado = estado[-cantidad:]
+        estados.append(estado)
+        numeros_capa.append(indice)
+        inicio = max(inicio, inicio_estado)
+
+    puntos, varianza = _pca_compartido(estados)
+    return {
+        "capas": [
+            {"capa": numero, "puntos": nube}
+            for numero, nube in zip(numeros_capa, puntos)
+        ],
+        "inicio_posicion": inicio,
+        "varianza_conservada": varianza,
+        "dimension_original": int(estados[0].size(-1)) if estados else 0,
+        "metodo": "PCA conjunto centrado",
+    }
+
+
 def _resumen_residual(conexion) -> dict:
     traza = getattr(conexion, "ultima_traza", None)
     if not traza:
@@ -281,6 +410,12 @@ def _resumen_residual(conexion) -> dict:
     actualizacion = traza["actualizacion"].detach().float()[0]
     antes = traza["antes_norma"].detach().float()[0]
     salida = traza["salida"].detach().float()[0]
+    media = antes.mean()
+    centrado = antes - media
+    desviacion = antes.std(unbiased=False)
+    estandarizado = centrado / torch.sqrt(antes.var(unbiased=False) + traza["epsilon"])
+    gamma = conexion.norma.weight.detach().float()
+    beta = conexion.norma.bias.detach().float()
     norma_entrada = float(entrada.norm().item())
     norma_delta = float(actualizacion.norm().item())
     coseno = float(
@@ -302,6 +437,48 @@ def _resumen_residual(conexion) -> dict:
         "desviacion_despues": round(float(salida.std(unbiased=False).item()), 6),
         "histograma_antes": _histograma(antes),
         "histograma_despues": _histograma(salida),
+        "layernorm": {
+            "fases": [
+                {
+                    "id": "suma",
+                    "nombre": "x + Δx",
+                    "operacion": "Distribución antes de LayerNorm",
+                    "valores": [round(float(v), 5) for v in antes[:48].tolist()],
+                    "media": round(float(media.item()), 6),
+                    "desviacion": round(float(desviacion.item()), 6),
+                },
+                {
+                    "id": "centrado",
+                    "nombre": "Restar μ",
+                    "operacion": "x − media(x)",
+                    "valores": [round(float(v), 5) for v in centrado[:48].tolist()],
+                    "media": round(float(centrado.mean().item()), 6),
+                    "desviacion": round(float(centrado.std(unbiased=False).item()), 6),
+                },
+                {
+                    "id": "estandarizado",
+                    "nombre": "Dividir por σ",
+                    "operacion": "(x − μ) / √(var + ε)",
+                    "valores": [round(float(v), 5) for v in estandarizado[:48].tolist()],
+                    "media": round(float(estandarizado.mean().item()), 6),
+                    "desviacion": round(float(estandarizado.std(unbiased=False).item()), 6),
+                },
+                {
+                    "id": "afin",
+                    "nombre": "Aplicar γ y β",
+                    "operacion": "γ · x̂ + β",
+                    "valores": [round(float(v), 5) for v in salida[:48].tolist()],
+                    "media": round(float(salida.mean().item()), 6),
+                    "desviacion": round(float(salida.std(unbiased=False).item()), 6),
+                },
+            ],
+            "gamma_media": round(float(gamma.mean().item()), 6),
+            "gamma_minimo": round(float(gamma.min().item()), 6),
+            "gamma_maximo": round(float(gamma.max().item()), 6),
+            "beta_media": round(float(beta.mean().item()), 6),
+            "beta_minimo": round(float(beta.min().item()), 6),
+            "beta_maximo": round(float(beta.max().item()), 6),
+        },
         "vectores": {
             "entrada": [round(float(v), 5) for v in entrada[:32].tolist()],
             "actualizacion": [round(float(v), 5) for v in actualizacion[:32].tolist()],
@@ -316,6 +493,57 @@ def _resumen_ffn(feed_forward) -> dict:
     if not traza:
         return {}
     activacion = traza["activacion"].detach().float()[0]
+    entrada_visual = traza.get("entrada_visual", traza["entrada"].unsqueeze(1))
+    preactivacion_visual = traza.get(
+        "preactivacion_visual", traza["preactivacion"].unsqueeze(1)
+    )
+    activacion_visual = traza.get(
+        "activacion_visual", traza["activacion"].unsqueeze(1)
+    )
+    salida_visual = traza.get("salida_visual", traza["salida"].unsqueeze(1))
+    entrada_visual = entrada_visual.detach().float()[0]
+    preactivacion_visual = preactivacion_visual.detach().float()[0]
+    activacion_visual = activacion_visual.detach().float()[0]
+    salida_visual = salida_visual.detach().float()[0]
+    cantidad_tokens = min(
+        entrada_visual.size(0),
+        preactivacion_visual.size(0),
+        activacion_visual.size(0),
+        salida_visual.size(0),
+    )
+    inicio_posicion = int(
+        traza.get(
+            "inicio_posicion_visual",
+            max(0, int(traza["shape_entrada"][1]) - cantidad_tokens),
+        )
+    )
+
+    tokens = []
+    for indice in range(cantidad_tokens):
+        entrada_token = entrada_visual[indice]
+        pre_token = preactivacion_visual[indice]
+        activacion_token = activacion_visual[indice]
+        salida_token = salida_visual[indice]
+        tokens.append(
+            {
+                "posicion": inicio_posicion + indice,
+                "entrada": [round(float(v), 5) for v in entrada_token[:64].tolist()],
+                "preactivacion": [round(float(v), 5) for v in pre_token[:64].tolist()],
+                "activacion": [round(float(v), 5) for v in activacion_token[:64].tolist()],
+                "salida": [round(float(v), 5) for v in salida_token[:64].tolist()],
+                "norma_entrada": round(float(entrada_token.norm().item()), 6),
+                "norma_preactivacion": round(float(pre_token.norm().item()), 6),
+                "norma_activacion": round(float(activacion_token.norm().item()), 6),
+                "norma_salida": round(float(salida_token.norm().item()), 6),
+                "fraccion_negativa": round(float((pre_token < 0).float().mean().item()), 6),
+                "fraccion_casi_cero": round(
+                    float((activacion_token.abs() < 1e-6).float().mean().item()), 6
+                ),
+                "dimension_entrada": int(entrada_token.numel()),
+                "dimension_oculta": int(activacion_token.numel()),
+                "dimension_salida": int(salida_token.numel()),
+            }
+        )
     cantidad_top = min(8, int(activacion.numel()))
     valores_top, indices_top = torch.topk(activacion.abs(), cantidad_top)
     return {
@@ -323,6 +551,8 @@ def _resumen_ffn(feed_forward) -> dict:
         "shape_oculta": " × ".join(str(v) for v in traza["shape_oculta"]),
         "shape_salida": " × ".join(str(v) for v in traza["shape_salida"]),
         "activacion": traza["activacion_nombre"],
+        "tokens": tokens,
+        "inicio_posicion": inicio_posicion,
         "histograma_preactivacion": _histograma(traza["preactivacion"]),
         "histograma_activacion": _histograma(activacion),
         "estadisticas": _estadisticas_tensor(activacion),
@@ -383,6 +613,15 @@ def _resumen_traza_atencion(atencion) -> dict:
 
     original = traza["shape_scores"]
     displayed = (pesos.size(0), pesos.size(1))
+    pesos_flujo = pesos_completos.detach().float()[0]
+    # Doce tokens mantienen legibles las curvas y acotan el payload aun en
+    # modelos de 12 capas × 12 cabezas. La ventana es exacta, no agregada.
+    limite_flujo = 12
+    inicio_queries = max(0, int(pesos_flujo.size(-2)) - limite_flujo)
+    inicio_keys_flujo = max(0, int(pesos_flujo.size(-1)) - limite_flujo)
+    pesos_flujo = pesos_flujo[
+        :, inicio_queries:, inicio_keys_flujo:
+    ].cpu()
     return {
         "q": matriz_3d(traza["q_ultima"]),
         "k": matriz_3d(traza["k_destacada"]),
@@ -403,6 +642,20 @@ def _resumen_traza_atencion(atencion) -> dict:
         ],
         "key_destacada": traza["key_destacada"],
         "cabezas": cabezas,
+        "flujo": {
+            "matrices": [
+                [
+                    [round(float(valor), 6) for valor in fila]
+                    for fila in cabeza
+                ]
+                for cabeza in pesos_flujo.tolist()
+            ],
+            "inicio_queries": inicio_queries,
+            "inicio_keys": inicio_keys_flujo,
+            "queries_mostradas": int(pesos_flujo.size(-2)),
+            "keys_mostradas": int(pesos_flujo.size(-1)),
+            "ventana_exacta": True,
+        },
         "shape_q": " × ".join(str(v) for v in traza["shape_q"]),
         "shape_k": " × ".join(str(v) for v in traza["shape_k"]),
         "shape_v": " × ".join(str(v) for v in traza["shape_v"]),
@@ -498,6 +751,32 @@ def _detalle_forward(modelo, paso: dict) -> dict:
             ],
         }
 
+    if (
+        traza_global.get("embedding_encoder_escalado") is not None
+        and traza_global.get("entrada_encoder") is not None
+    ):
+        globales["proyeccion_posicional_encoder"] = _proyeccion_posicional(
+            traza_global["embedding_encoder_escalado"],
+            traza_global["entrada_encoder"],
+        )
+    if (
+        traza_global.get("embedding_decoder_escalado") is not None
+        and traza_global.get("entrada_decoder") is not None
+    ):
+        globales["proyeccion_posicional_decoder"] = _proyeccion_posicional(
+            traza_global["embedding_decoder_escalado"],
+            traza_global["entrada_decoder"],
+        )
+
+    trayectorias = {
+        "encoder": _trayectoria_pca(
+            traza_global.get("entrada_encoder"), modelo.encoder.bloques
+        ),
+        "decoder": _trayectoria_pca(
+            traza_global.get("entrada_decoder"), modelo.decoder.bloques
+        ),
+    }
+
     mascara_causal = traza_global.get("mascara_causal")
     if mascara_causal is not None:
         mascara = mascara_causal.detach().bool()
@@ -539,6 +818,7 @@ def _detalle_forward(modelo, paso: dict) -> dict:
         "global": globales,
         "encoder": encoder,
         "decoder": decoder,
+        "trayectorias": trayectorias,
         "logits": {
             "shape": _forma(logits),
             "dtype": str(paso["logits"].dtype).replace("torch.", ""),
@@ -740,6 +1020,7 @@ def resumir_paso_inferencia(
         },
         "tokens_entrada": tokens_entrada,
         "tokens_entrada_total": len(ids_entrada),
+        "tokens_decoder": etiquetas_decoder,
         "tokens_salida": tokens_salida,
         "tokens_salida_total": len(ids_generados),
         "foco_entrada": foco_entrada,

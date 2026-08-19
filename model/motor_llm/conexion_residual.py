@@ -32,11 +32,18 @@ class ConexionResidual(nn.Module):
         actualizacion = self.dropout(subcapa(x))
         suma = x + actualizacion
         salida = self.norma(suma)
+        # Ventana acotada para el rascacielos de capas. Los tensores de la
+        # última posición se mantienen por compatibilidad con las métricas
+        # existentes; esta ventana permite proyectar varios tokens juntos.
+        inicio_visual = max(0, salida.size(1) - 24)
         self.ultima_traza = {
             "entrada": x[:, -1, :].detach(),
             "actualizacion": actualizacion[:, -1, :].detach(),
             "antes_norma": suma[:, -1, :].detach(),
             "salida": salida[:, -1, :].detach(),
+            "entrada_visual": x[:, inicio_visual:, :].detach(),
+            "salida_visual": salida[:, inicio_visual:, :].detach(),
+            "inicio_posicion_visual": inicio_visual,
             "shape": tuple(salida.shape),
             "epsilon": float(self.norma.eps),
         }
