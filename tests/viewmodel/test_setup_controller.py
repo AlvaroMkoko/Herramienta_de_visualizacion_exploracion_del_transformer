@@ -86,7 +86,7 @@ class TestEstimarParametros:
 class TestResumenEnVivo:
     def test_establecer_dimension_modelo_emite_resumen(self, qtbot, controlador):
         with qtbot.waitSignal(controlador.resumen_cambio, timeout=1000) as blocker:
-            controlador.establecer_dimension_modelo(126)  # 126 % 6 == 0 (num_cabezas por defecto)
+            controlador.establecer_dimension_modelo(128)  # 128 % 4 == 0
 
         resumen = blocker.args[0]
         assert "parametros_totales" in resumen
@@ -116,7 +116,7 @@ class TestResumenEnVivo:
         )
 
         with qtbot.waitSignal(controlador.resumen_cambio, timeout=1000):
-            controlador.establecer_dimension_modelo(120)  # 120 % 6 == 0
+            controlador.establecer_dimension_modelo(120)  # 120 % 4 == 0
         # si llego hasta aqui sin excepcion, el preview no toco Tokenizer real
 
     def test_tipo_encoding_invalido_emite_error(self, qtbot, controlador):
@@ -129,6 +129,90 @@ class TestResumenEnVivo:
         """dimension_modelo no divisible entre num_cabezas (4 por defecto)."""
         with qtbot.waitSignal(controlador.error_configuracion, timeout=1000):
             controlador.establecer_dimension_modelo(97)  # 97 no es divisible entre 4
+
+
+# ---------------------------------------------------------------------------
+# Estado reactivo de configuracion
+# ---------------------------------------------------------------------------
+
+class TestEstadoConfiguracion:
+    def test_defaults_expuestos_en_configuracion_actual(self, controlador):
+        assert controlador.configuracionValida is True
+        assert controlador.errorConfiguracion == ""
+        assert controlador.configuracionActual == {
+            "tipo_encoding": 1,
+            "dimension_modelo": 64,
+            "num_cabezas": 4,
+            "num_capas": 6,
+            "dimension_ff": 256,
+            "longitud_maxima_secuencia": 64,
+            "dropout": 0.1,
+            "compartir_pesos_salida": True,
+            "activacion": "relu",
+            "usar_mascara_causal": True,
+        }
+
+    def test_transicion_invalida_a_valida_limpia_el_error(self, controlador):
+        cambios_validez = []
+        cambios_error = []
+        controlador.configuracionValidaCambio.connect(
+            lambda: cambios_validez.append(controlador.configuracionValida)
+        )
+        controlador.errorConfiguracionCambio.connect(
+            lambda: cambios_error.append(controlador.errorConfiguracion)
+        )
+
+        controlador.establecer_num_cabezas(3)  # 64 no es divisible entre 3
+
+        assert controlador.configuracionValida is False
+        assert "divisible" in controlador.errorConfiguracion
+
+        controlador.establecer_num_cabezas(4)
+
+        assert controlador.configuracionValida is True
+        assert controlador.errorConfiguracion == ""
+        assert cambios_validez == [False, True]
+        assert "divisible" in cambios_error[0]
+        assert cambios_error[-1] == ""
+
+    def test_setter_actualiza_configuracion_actual(self, qtbot, controlador):
+        with qtbot.waitSignal(controlador.configuracionActualCambio, timeout=1000):
+            controlador.establecer_dropout(0.25)
+
+        assert controlador.configuracionActual["dropout"] == pytest.approx(0.25)
+
+    def test_adoptar_modelo_sincroniza_configuracion_y_validez(self, qtbot, controlador):
+        controlador.establecer_num_cabezas(5)
+        config = ConfiguracionTransformer(
+            tamano_vocabulario=303,
+            dimension_modelo=24,
+            num_cabezas=3,
+            num_capas=2,
+            dimension_ff=72,
+            longitud_maxima_secuencia=48,
+            dropout=0.2,
+            activacion="gelu",
+            usar_mascara_causal=False,
+        )
+        modelo = Transformer(config, compartir_pesos_salida=False)
+        tokenizer = TokenizerFalso(0)
+
+        with qtbot.waitSignal(controlador.configuracionActualCambio, timeout=1000):
+            controlador.adoptar_modelo(modelo, tokenizer, emitir=False)
+
+        actual = controlador.configuracionActual
+        assert actual["tipo_encoding"] == 0
+        assert actual["dimension_modelo"] == 24
+        assert actual["num_cabezas"] == 3
+        assert actual["num_capas"] == 2
+        assert actual["dimension_ff"] == 72
+        assert actual["longitud_maxima_secuencia"] == 48
+        assert actual["dropout"] == pytest.approx(0.2)
+        assert actual["compartir_pesos_salida"] is False
+        assert actual["activacion"] == "gelu"
+        assert actual["usar_mascara_causal"] is False
+        assert controlador.configuracionValida is True
+        assert controlador.errorConfiguracion == ""
 
 
 # ---------------------------------------------------------------------------
@@ -198,3 +282,18 @@ class TestCrearModelo:
 
         modelo, _ = blocker.args
         assert modelo.capa_salida.weight is not modelo.embedding_salida.embedding.weight
+
+    def test_crear_modelo_despues_de_corregir_num_cabezas(self, qtbot, controlador):
+        controlador.establecer_num_cabezas(3)  # 64 no es divisible entre 3
+        assert controlador.configuracionValida is False
+
+        controlador.establecer_num_cabezas(4)
+        assert controlador.configuracionValida is True
+        assert controlador.errorConfiguracion == ""
+
+        with qtbot.waitSignal(controlador.modelo_creado, timeout=2000) as blocker:
+            controlador.crear_modelo()
+
+        modelo, _ = blocker.args
+        assert modelo.config.dimension_modelo == 64
+        assert modelo.config.num_cabezas == 4

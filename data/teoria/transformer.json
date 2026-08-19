@@ -2,6 +2,24 @@
   "version": 1,
   "fuente": "Vaswani et al. (2017), \"Attention Is All You Need\"",
   "nota": "El contenido describe la arquitectura original encoder-decoder. No incluye variantes posteriores (GPT decoder-only, BERT encoder-only, pre-norm, RoPE, etc.) salvo que se mencionen explicitamente como contraste.",
+  "componentes_diagrama": {
+    "encoder_add_norm_ffn": "flujo_add_norm",
+    "encoder_feed_forward": "que_es_ffn",
+    "encoder_add_norm_attention": "flujo_add_norm",
+    "encoder_self_attention": "que_es_self_attention",
+    "input_embedding": "embeddings",
+    "encoder_positional_encoding": "positional_encoding",
+    "softmax": "softmax_final",
+    "linear": "capa_linear_salida",
+    "decoder_add_norm_ffn": "flujo_add_norm",
+    "decoder_feed_forward": "que_es_ffn",
+    "decoder_add_norm_cross": "flujo_add_norm",
+    "decoder_cross_attention": "que_es_cross_attention",
+    "decoder_add_norm_masked": "flujo_add_norm",
+    "decoder_masked_attention": "por_que_mascara",
+    "output_embedding": "entrada_decoder",
+    "decoder_positional_encoding": "positional_encoding"
+  },
   "secciones": [
     {
       "id": "introduccion",
