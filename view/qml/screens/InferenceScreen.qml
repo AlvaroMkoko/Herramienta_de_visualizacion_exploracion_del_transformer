@@ -470,6 +470,7 @@ PagePrincipal {
                         SpinBox {
                             id: maxTokens
                             Layout.preferredWidth: 116 * root.sx
+                            Layout.preferredHeight: 50 * root.sy
                             from: 1
                             to: root.maxTokensPermitidos
                             value: 100
@@ -527,7 +528,6 @@ PagePrincipal {
                             enabled: usarTopK.checked && usarTopK.enabled
                         }
                     }
-
                     RowLayout {
                         Layout.fillWidth: true
 

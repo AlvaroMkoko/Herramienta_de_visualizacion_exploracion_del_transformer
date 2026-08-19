@@ -41,7 +41,7 @@ class MainViewModel(QObject):
 
         self._setup_controller = SetupController(self)
         self._dataset_controller = DatasetController()
-        self._theory_controller = TheoryController(self)
+        self._theory_controller = TheoryController()
         self._model_library_controller = ModelLibraryController(self)
         self._comparison_controller = ComparisonController(
             self._model_library_controller, self
