@@ -13,7 +13,7 @@ la aplicación vía la señal `modelo_creado`.
 los otros dos controladores con el modelo recién creado).
 """
 
-from PySide6.QtCore import QObject, Signal, Slot
+from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from model.motor_llm.config import ConfiguracionTransformer
 from model.motor_llm.tokenizer import ENCODINGS, Tokenizer
@@ -58,6 +58,9 @@ class SetupController(QObject):
     modelo_creado = Signal(object, object)  # (Transformer, Tokenizer)
     error_configuracion = Signal(str)
     resumen_cambio = Signal(dict)
+    configuracionValidaCambio = Signal()
+    errorConfiguracionCambio = Signal()
+    configuracionActualCambio = Signal()
 
     def __init__(self, parent: QObject | None = None):
         super().__init__(parent)
@@ -65,59 +68,112 @@ class SetupController(QObject):
         self.tokenizer: Tokenizer | None = None
 
         self._tipo_encoding = 1  # cl100k_base
-        self._dimension_modelo = 384
-        self._num_cabezas = 6
+        # Valores iniciales de la experiencia interactiva. Mantenerlos aquí
+        # evita que QML y el controlador construyan transitoriamente 64/6.
+        self._dimension_modelo = 64
+        self._num_cabezas = 4
         self._num_capas = 6
-        self._dimension_ff = 4 * 384
-        self._longitud_maxima_secuencia = 256
+        self._dimension_ff = 4 * 64
+        self._longitud_maxima_secuencia = 64
         self._dropout = 0.1
         self._compartir_pesos_salida = True
         self._activacion = "relu"
         self._usar_mascara_causal = True
+        self._configuracion_valida = True
+        self._error_configuracion_actual = ""
+
+    # ------------------------------------------------------------------
+    # Estado observable por QML
+    # ------------------------------------------------------------------
+
+    @Property(bool, notify=configuracionValidaCambio)
+    def configuracionValida(self) -> bool:
+        """Indica si los valores actuales pueden formar una configuración."""
+        return self._configuracion_valida
+
+    @Property(str, notify=errorConfiguracionCambio)
+    def errorConfiguracion(self) -> str:
+        """Último error de validación; se vacía al corregir los valores."""
+        return self._error_configuracion_actual
+
+    @Property("QVariantMap", notify=configuracionActualCambio)
+    def configuracionActual(self) -> dict:
+        """Instantánea de los controles de arquitectura y tokenización."""
+        return self._obtener_configuracion_actual()
+
+    def _obtener_configuracion_actual(self) -> dict:
+        return {
+            "tipo_encoding": self._tipo_encoding,
+            "dimension_modelo": self._dimension_modelo,
+            "num_cabezas": self._num_cabezas,
+            "num_capas": self._num_capas,
+            "dimension_ff": self._dimension_ff,
+            "longitud_maxima_secuencia": self._longitud_maxima_secuencia,
+            "dropout": self._dropout,
+            "compartir_pesos_salida": self._compartir_pesos_salida,
+            "activacion": self._activacion,
+            "usar_mascara_causal": self._usar_mascara_causal,
+        }
+
+    def _establecer_estado_validacion(self, error: str = "") -> None:
+        """Actualiza las propiedades persistentes usadas por los bindings QML.
+
+        ``error_configuracion`` se sigue emitiendo en cada fallo para conservar
+        el contrato existente. Las señales ``*Cambio`` solo notifican cuando
+        cambia el valor de su propiedad.
+        """
+        error = str(error or "")
+        es_valida = not error
+
+        if error != self._error_configuracion_actual:
+            self._error_configuracion_actual = error
+            self.errorConfiguracionCambio.emit()
+        if es_valida != self._configuracion_valida:
+            self._configuracion_valida = es_valida
+            self.configuracionValidaCambio.emit()
+
+    def _actualizar_parametro(self, atributo: str, valor) -> None:
+        if getattr(self, atributo) != valor:
+            setattr(self, atributo, valor)
+            self.configuracionActualCambio.emit()
+        self._recalcular_resumen()
 
     @Slot(int)
     def establecer_tipo_encoding(self, tipo_encoding: int) -> None:
         if not 0 <= tipo_encoding < len(ENCODINGS):
-            self.error_configuracion.emit(
-                f"tipo_encoding debe estar entre 0 y {len(ENCODINGS) - 1}"
-            )
+            mensaje = f"tipo_encoding debe estar entre 0 y {len(ENCODINGS) - 1}"
+            self._establecer_estado_validacion(mensaje)
+            self.error_configuracion.emit(mensaje)
             return
-        self._tipo_encoding = tipo_encoding
-        self._recalcular_resumen()
+        self._actualizar_parametro("_tipo_encoding", tipo_encoding)
 
     @Slot(int)
     def establecer_dimension_modelo(self, valor: int) -> None:
-        self._dimension_modelo = valor
-        self._recalcular_resumen()
+        self._actualizar_parametro("_dimension_modelo", valor)
 
     @Slot(int)
     def establecer_num_cabezas(self, valor: int) -> None:
-        self._num_cabezas = valor
-        self._recalcular_resumen()
+        self._actualizar_parametro("_num_cabezas", valor)
 
     @Slot(int)
     def establecer_num_capas(self, valor: int) -> None:
-        self._num_capas = valor
-        self._recalcular_resumen()
+        self._actualizar_parametro("_num_capas", valor)
 
     @Slot(int)
     def establecer_dimension_ff(self, valor: int) -> None:
-        self._dimension_ff = valor
-        self._recalcular_resumen()
+        self._actualizar_parametro("_dimension_ff", valor)
 
     @Slot(int)
     def establecer_longitud_maxima_secuencia(self, valor: int) -> None:
-        self._longitud_maxima_secuencia = valor
-        self._recalcular_resumen()
+        self._actualizar_parametro("_longitud_maxima_secuencia", valor)
 
     @Slot(float)
     def establecer_dropout(self, valor: float) -> None:
-        self._dropout = valor
+        self._actualizar_parametro("_dropout", valor)
 
     @Slot(bool)
     def establecer_compartir_pesos_salida(self, valor: bool) -> None:
-        self._compartir_pesos_salida = valor
-        self._recalcular_resumen()
+        self._actualizar_parametro("_compartir_pesos_salida", valor)
 
     @Slot(str)
     def establecer_activacion(self, valor: str) -> None:
@@ -125,14 +181,13 @@ class SetupController(QObject):
         una — se valida al reconstruir la configuración en
         `_recalcular_resumen()` (misma lógica que ya usan los demás
         setters), y se avisa por `error_configuracion` si no es válido."""
-        self._activacion = valor
-        self._recalcular_resumen()
+        self._actualizar_parametro("_activacion", valor)
 
     @Slot(bool)
     def establecer_usar_mascara_causal(self, valor: bool) -> None:
         """Ver `Transformer.crear_mascaras` para qué implica desactivarla
         — pensado como herramienta educativa, no para uso normal."""
-        self._usar_mascara_causal = valor
+        self._actualizar_parametro("_usar_mascara_causal", valor)
 
     def _recalcular_resumen(self) -> None:
         """Estima la cantidad de parámetros sin instanciar el modelo
@@ -140,12 +195,20 @@ class SetupController(QObject):
         mostrar un preview en vivo mientras el usuario mueve los
         sliders, sin disparar una descarga de red en cada cambio."""
         try:
+            if self._tipo_encoding not in TAMANOS_VOCABULARIO_CONOCIDOS:
+                raise ValueError(
+                    f"tipo_encoding debe estar entre 0 y {len(ENCODINGS) - 1}"
+                )
             tamano_vocabulario_base = TAMANOS_VOCABULARIO_CONOCIDOS[self._tipo_encoding]
             tamano_vocabulario = tamano_vocabulario_base + 3
             self._construir_configuracion(tamano_vocabulario)  # solo para validar
         except ValueError as e:
-            self.error_configuracion.emit(str(e))
+            mensaje = str(e)
+            self._establecer_estado_validacion(mensaje)
+            self.error_configuracion.emit(mensaje)
             return
+
+        self._establecer_estado_validacion()
 
         parametros = self._estimar_parametros(
             v=tamano_vocabulario, d=self._dimension_modelo, n=self._num_capas,
@@ -217,6 +280,7 @@ class SetupController(QObject):
                 necesita adjuntar ademas estado de entrenamiento restaurado.
         """
         config = modelo.config
+        configuracion_previa = self._obtener_configuracion_actual()
         self.modelo = modelo
         self.tokenizer = tokenizer
 
@@ -231,6 +295,8 @@ class SetupController(QObject):
         self._activacion = config.activacion
         self._usar_mascara_causal = config.usar_mascara_causal
 
+        if self._obtener_configuracion_actual() != configuracion_previa:
+            self.configuracionActualCambio.emit()
         self._recalcular_resumen()
         if emitir:
             self.modelo_creado.emit(modelo, tokenizer)
@@ -264,9 +330,12 @@ class SetupController(QObject):
             )
             modelo_nuevo = Transformer(config, compartir_pesos_salida=self._compartir_pesos_salida)
         except ValueError as e:
-            self.error_configuracion.emit(str(e))
+            mensaje = str(e)
+            self._establecer_estado_validacion(mensaje)
+            self.error_configuracion.emit(mensaje)
             return
 
+        self._establecer_estado_validacion()
         self.tokenizer = tokenizer_nuevo
         self.modelo = modelo_nuevo
         self.modelo_creado.emit(self.modelo, self.tokenizer)

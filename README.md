@@ -27,6 +27,26 @@ python main.py
 
 ## Flujo de trabajo
 
+La pantalla de inicio presenta la evolución prevista de la plataforma educativa:
+
+1. **Pre-test** — diagnóstico inicial; por ahora se muestra como módulo futuro.
+2. **Recorrido guiado** — disponible. Organiza 15 conceptos esenciales en cinco
+   unidades y combina lectura con el ciclo *predecir → observar → explicar*.
+3. **Laboratorios** — entrenamiento, apertura de modelos y comparación siguen
+   disponibles como accesos directos para experimentar libremente.
+4. **Post-test** — evaluación final; por ahora se muestra como módulo futuro.
+5. **Progreso y resultados** — seguimiento integral; por ahora se muestra como
+   módulo futuro.
+
+Durante el desarrollo, las cinco etapas pueden abrirse sin requisitos de
+progreso. Los módulos futuros llevan a una vista placeholder navegable para
+probar el flujo, sin simular que su funcionalidad definitiva ya existe.
+
+El recorrido guiado guarda localmente las unidades completadas y la última
+posición visitada. No requiere un dataset ni un modelo entrenado para comenzar.
+
+El flujo de los laboratorios es:
+
 1. **Configuración** — se define la arquitectura (capas, cabezas, dimensión del
    modelo, feed-forward, dropout, activación, máscara causal) con una
    estimación de parámetros y memoria que se actualiza en vivo.
@@ -140,8 +160,9 @@ Ambos aceptan `--help` con el listado completo de opciones.
 | Persistencia y biblioteca de modelos | Implementada |
 | Inferencia | Implementada |
 | Teoría contextual (CU17) | Implementada |
+| Recorrido guiado y progreso local | Implementada |
 | Visualización de embeddings 3D | Implementada |
-| Comparación de modelos (CU07) | Pendiente |
+| Comparación de modelos (CU07) | Implementada |
 | Evaluación de utilidad (RF22–RF25) | Pendiente |
 
 ## Estructura

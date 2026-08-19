@@ -8,6 +8,7 @@ import "../components"
 
 PagePrincipal {
     id: root
+    objectName: "trainingScreen"
 
     readonly property var viewModel: mainViewModel
     readonly property var trainingController: root.viewModel.trainingController
@@ -28,6 +29,7 @@ PagePrincipal {
     property var componentesSnapshot: ({})
     property var prediccionesTop: []
     property var historialVisible: []
+    property var teoriaActual: ({})
 
     property string mensajeError: ""
     property string mensajeCheckpoint: ""
@@ -45,6 +47,24 @@ PagePrincipal {
                           ? root.componentesSnapshot[localBridge.selectedId]
                           : null
         return datosReales || root.componenteBase(localBridge.selectedId)
+    }
+
+    function mostrarTeoriaComponente(componentId) {
+        if (!componentId) {
+            root.teoriaActual = ({})
+            return
+        }
+        root.teoriaActual = root.viewModel.theoryController.obtenerTeoriaDeComponente(componentId)
+    }
+
+    function mostrarConceptoRelacionado(conceptId) {
+        var concepto = root.viewModel.theoryController.obtenerConcepto(conceptId)
+        var resultado = ({})
+        for (var clave in concepto)
+            resultado[clave] = concepto[clave]
+        resultado.relacionados = root.viewModel.theoryController.obtenerRelacionados(conceptId)
+        resultado.componente_id = localBridge.selectedId
+        root.teoriaActual = resultado
     }
 
     // Velocidad de entrenamiento: retardo en segundos entre pasos.
@@ -81,57 +101,9 @@ PagePrincipal {
     }
 
     function componenteBase(componentId) {
-        var titulo = "Componente del Transformer"
-        var explicacion = "Este bloque transforma la representación que recibe antes de entregarla al siguiente paso."
-        var efecto = "Su salida continúa por el flujo principal del Transformer."
-
-        if (componentId === "input_embedding") {
-            titulo = "Input Embedding"
-            explicacion = "Convierte cada token de entrada en un vector continuo que el modelo puede ajustar."
-            efecto = "Sus vectores, sumados a la posición, alimentan la autoatención del encoder."
-        } else if (componentId === "output_embedding") {
-            titulo = "Output Embedding"
-            explicacion = "Representa los tokens de salida desplazados para aprender a predecir el siguiente token."
-            efecto = "Al añadir posición, forma las consultas iniciales de la atención causal."
-        } else if (componentId.indexOf("positional_encoding") !== -1) {
-            titulo = "Positional Encoding"
-            explicacion = "Añade una señal fija de posición para que el modelo conozca el orden de los tokens."
-            efecto = "Permite que la atención distinga qué información aparece antes o después."
-        } else if (componentId === "encoder_self_attention") {
-            titulo = "Autoatención del Encoder"
-            explicacion = "Cada token combina información de todos los tokens de entrada mediante varias cabezas."
-            efecto = "La mezcla contextual pasa a la conexión residual y a la normalización."
-        } else if (componentId === "decoder_masked_attention") {
-            titulo = "Atención causal del Decoder"
-            explicacion = "Cada posición solo puede mirar su token y los anteriores; la máscara bloquea el futuro."
-            efecto = "Produce el contexto de salida que después consultará al encoder."
-        } else if (componentId === "decoder_cross_attention") {
-            titulo = "Atención cruzada"
-            explicacion = "El decoder elige qué partes de la salida del encoder son relevantes para cada predicción."
-            efecto = "Es el puente directo entre la comprensión de la entrada y la generación de salida."
-        } else if (componentId.indexOf("feed_forward") !== -1) {
-            titulo = componentId.indexOf("encoder") === 0
-                     ? "Feed Forward · Encoder" : "Feed Forward · Decoder"
-            explicacion = "Procesa cada posición con una expansión, una activación no lineal y una proyección."
-            efecto = "Refina las características antes de la siguiente conexión residual."
-        } else if (componentId.indexOf("add_norm") !== -1) {
-            titulo = "Conexión residual · Add & Norm"
-            explicacion = "Suma la entrada original con la salida de la subcapa y normaliza el resultado."
-            efecto = "Conserva información previa y entrega una escala estable al siguiente bloque."
-        } else if (componentId === "linear") {
-            titulo = "Proyección lineal"
-            explicacion = "Convierte cada vector final del decoder en un puntaje por token del vocabulario."
-            efecto = "Softmax convierte esos puntajes en probabilidades comparables."
-        } else if (componentId === "softmax") {
-            titulo = "Softmax y pérdida"
-            explicacion = "Convierte logits en probabilidades y compara la distribución con el token correcto."
-            efecto = "El error resultante viaja hacia atrás y modifica los componentes entrenables."
-        }
-
         return {
-            "titulo": titulo,
-            "explicacion": explicacion,
-            "efecto_siguiente": efecto,
+            "titulo": root.teoriaActual && root.teoriaActual.title
+                      ? root.teoriaActual.title : "Componente del Transformer",
             "metricas": [{
                 "etiqueta": "Datos reales",
                 "valor": "Esperando",
@@ -173,8 +145,28 @@ PagePrincipal {
         property int numCapas: 1
 
         function selectComponent(componentId) {
-            selectedId = selectedId === componentId ? "" : componentId
+            if (selectedId === componentId)
+                clearSelection()
+            else {
+                selectedId = componentId
+                root.mostrarTeoriaComponente(componentId)
+            }
         }
+
+        function clearSelection() {
+            selectedId = ""
+            root.teoriaActual = ({})
+        }
+
+        function showOverview() {
+            clearSelection()
+        }
+    }
+
+    Shortcut {
+        sequence: "Esc"
+        enabled: localBridge.selectedId !== ""
+        onActivated: localBridge.clearSelection()
     }
 
     Component.onCompleted: {
@@ -220,6 +212,15 @@ PagePrincipal {
         function onCheckpoint_guardado(ruta) {
             root.mensajeCheckpoint = "Guardado: " + ruta
             root.mensajeError = ""
+        }
+    }
+
+    Connections {
+        target: root.viewModel.theoryController
+        ignoreUnknownSignals: true
+
+        function onTeoriaRecargada() {
+            root.mostrarTeoriaComponente(localBridge.selectedId)
         }
     }
 
@@ -431,6 +432,7 @@ PagePrincipal {
                             currentIndex: barraPestanas.currentIndex
 
                             TransformerDiagram {
+                                objectName: "trainingTransformerDiagram"
                                 bridge: localBridge
                                 trainingMode: true
                                 highlightedComponentId: root.componenteRelevanteId
@@ -475,15 +477,6 @@ PagePrincipal {
                         width: parent.width
                         spacing: 12 * root.sy
 
-                        Text {
-                            width: parent.width
-                            text: root.componenteActual ? root.componenteActual.titulo : "Explorador del entrenamiento"
-                            color: Style.Theme.texto_primario
-                            font.bold: true
-                            font.pixelSize: 20 * root.sx
-                            wrapMode: Text.WordWrap
-                        }
-
                         Rectangle {
                             visible: !root.componenteActual
                             width: parent.width
@@ -516,45 +509,18 @@ PagePrincipal {
                             }
                         }
 
-                        Text {
-                            visible: root.componenteActual
-                            text: "CÓMO FUNCIONA"
-                            color: "#6C5FC3"
-                            font.bold: true
-                            font.pixelSize: 11 * root.sx
-                        }
-
-                        Rectangle {
+                        ContextPanel {
+                            objectName: "trainingContextPanel"
                             visible: root.componenteActual
                             width: parent.width
-                            height: teoriaLayout.implicitHeight + 24 * root.sy
-                            radius: 9 * root.sx
-                            color: "#F7F5FC"
-                            border.color: "#DDD7F1"
-
-                            Column {
-                                id: teoriaLayout
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                anchors.verticalCenter: parent.verticalCenter
-                                anchors.margins: 12 * root.sx
-                                spacing: 9 * root.sy
-                                Text {
-                                    width: parent.width
-                                    text: root.componenteActual ? root.componenteActual.explicacion : ""
-                                    color: Style.Theme.texto_primario
-                                    font.pixelSize: 12 * root.sx
-                                    wrapMode: Text.WordWrap
-                                }
-                                Rectangle { width: parent.width; height: 1; color: "#DDD7F1" }
-                                Text {
-                                    width: parent.width
-                                    text: root.componenteActual ? "→ " + root.componenteActual.efecto_siguiente : ""
-                                    color: "#5B4FA3"
-                                    font.italic: true
-                                    font.pixelSize: 11 * root.sx
-                                    wrapMode: Text.WordWrap
-                                }
+                            height: visible ? 360 * root.sy : 0
+                            sx: root.sx
+                            sy: root.sy
+                            concepto: root.teoriaActual
+                            errorCarga: root.viewModel.theoryController.errorCarga
+                            onCloseRequested: localBridge.clearSelection()
+                            onConceptRequested: function(conceptId) {
+                                root.mostrarConceptoRelacionado(conceptId)
                             }
                         }
 
@@ -692,6 +658,7 @@ PagePrincipal {
                                 if (!controlador.estaEntrenando) {
                                     root.mensajeError = ""
                                     root.entrenamientoTerminado = false
+                                    localBridge.clearSelection()
                                     controlador.iniciar_entrenamiento_ui(
                                         root.epocasIniciales,
                                         root.tasaAprendizajeInicial,

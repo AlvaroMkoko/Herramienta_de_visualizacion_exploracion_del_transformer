@@ -57,8 +57,9 @@ Motor Transformer encoder-decoder, fiel al diagrama de *Attention Is All You Nee
 - `main_viewmodel.py` — orquestador raíz, el **único** objeto registrado en el
   contexto QML (`mainViewModel`). Expone los demás controladores como
   propiedades. `setupController`, `datasetController` y `theoryController`
-  existen desde el arranque; `trainingController` e `inferenceController`
-  aparecen recién cuando `SetupController` crea un modelo.
+  existen desde el arranque; también crea `learningController` para conservar
+  el avance educativo. `trainingController` e `inferenceController` aparecen
+  recién cuando `SetupController` crea un modelo.
 - `setup_controller.py` — único componente que **crea** el modelo. Calcula un
   resumen de parámetros en vivo sin instanciar nada ni consultar la red.
 - `training_controller.py` — entrenamiento en segundo plano, guardado de
@@ -68,6 +69,8 @@ Motor Transformer encoder-decoder, fiel al diagrama de *Attention Is All You Nee
   vista previa de registros.
 - `model_library_controller.py` — biblioteca de modelos guardados.
 - `theory_controller.py` — teoría contextual por componente (CU17).
+- `learning_controller.py` — progreso persistente del recorrido guiado: unidades
+  completadas y última posición visitada.
 - `transformer_bridge.py` — información del modelo activo para el diagrama.
 - `concurrency_manager.py` — `GestorConcurrencia`: ejecuta generadores en un
   `QThread` con soporte de pausa, cancelación y control de velocidad.
@@ -92,11 +95,13 @@ Motor Transformer encoder-decoder, fiel al diagrama de *Attention Is All You Nee
 
 ## View (`view/`)
 
-- `qml/screens/` — `HomeScreen`, `SetupScreen`, `DataSetScreen`,
-  `TrainingScreen`, `ResultsScreen`, `InferenceScreen`, `ComparisonScreen`,
-  `EvaluationScreen`.
+- `qml/screens/` — `HomeScreen`, `GuidedLearningScreen`,
+  `ModulePlaceholderScreen`, `SetupScreen`, `DataSetScreen`, `TrainingScreen`,
+  `ResultsScreen`, `InferenceScreen`, `ComparisonScreen`, `EvaluationScreen`.
 - `qml/components/` — `TransformerDiagram`, `NubeEmbeddings3D`, `SliderColumn`,
-  `BotonPrincipal`, `RectanglePrincipal`, `PagePrincipal`, `FlujoPaso`.
+  `GuidedConceptReader`, `GuidedLearningActivity`,
+  `GuidedDemoVisualization`, `BotonPrincipal`, `RectanglePrincipal`,
+  `PagePrincipal`, `FlujoPaso`.
 - `qml/styles/` — tema y escalado (`sx`/`sy`).
 - `canvas/animation_engine.py` — `VispyItem`. **Advertencia:** usa OpenGL en
   modo inmediato (`glBegin`/`glVertex2f`), que no existe en Core Profile ni

@@ -6,13 +6,77 @@ Item {
 
     property var bridge
     property bool trainingMode: false
+    // highlightedComponentId is transient training state; selectedComponentId
+    // is the persistent component chosen by the user.
     property string highlightedComponentId: ""
     property color flowColor: "#666577"
     property color attentionColor: "#9a641b"
     property color residualColor: "#6c5fc3"
 
+    readonly property string selectedComponentId: {
+        if (root.bridge === null || root.bridge === undefined)
+            return ""
+        const selected = root.bridge.selectedId
+        return selected === null || selected === undefined ? "" : String(selected)
+    }
+    readonly property bool hasSelection: selectedComponentId !== ""
+
     readonly property real designWidth: 820
     readonly property real designHeight: 900
+
+    signal componentClicked(string componentId)
+    signal selectionCleared()
+
+    function isComponentHighlighted(componentId) {
+        return root.trainingMode && root.highlightedComponentId === componentId
+    }
+
+    function clearSelection() {
+        const selected = root.selectedComponentId
+        if (selected === "") {
+            if (root.bridge && typeof root.bridge.showOverview === "function")
+                root.bridge.showOverview()
+            return
+        }
+
+        if (root.bridge && typeof root.bridge.clearSelection === "function") {
+            root.bridge.clearSelection()
+        } else if (root.bridge && typeof root.bridge.selectComponent === "function") {
+            // Compatibility with SetupScreen/TrainingScreen local bridges,
+            // whose selectComponent() already toggles the current id.
+            root.bridge.selectComponent(selected)
+            if (typeof root.bridge.showOverview === "function")
+                root.bridge.showOverview()
+        } else if (root.bridge && typeof root.bridge.showOverview === "function") {
+            root.bridge.showOverview()
+        } else {
+            return
+        }
+
+        root.selectionCleared()
+    }
+
+    function selectComponent(componentId) {
+        root.componentClicked(componentId)
+        if (componentId === root.selectedComponentId) {
+            root.clearSelection()
+            return
+        }
+        if (root.bridge && typeof root.bridge.selectComponent === "function")
+            root.bridge.selectComponent(componentId)
+    }
+
+    function showOverview() {
+        root.clearSelection()
+    }
+
+    // This area is behind all component hit targets, so a blank-space click
+    // clears the selection without stealing clicks from blocks or PE nodes.
+    MouseArea {
+        anchors.fill: parent
+        acceptedButtons: Qt.LeftButton
+        onClicked: root.clearSelection()
+    }
 
     Item {
         id: stage
@@ -187,13 +251,10 @@ Item {
                 title: modelData.title
                 subtitle: root.trainingMode ? "clic · explicación y datos reales" : modelData.sub
                 accentColor: modelData.color
-                emphasized: root.trainingMode
-                            && root.highlightedComponentId === prismDelegate.componentId
-                selected: root.bridge !== null && root.bridge !== undefined
-                          && root.bridge.selectedId === prismDelegate.componentId
+                emphasized: root.isComponentHighlighted(prismDelegate.componentId)
+                selected: root.selectedComponentId === prismDelegate.componentId
                 onClicked: function(componentId) {
-                    if (root.bridge)
-                        root.bridge.selectComponent(componentId)
+                    root.selectComponent(componentId)
                 }
             }
         }
@@ -202,21 +263,17 @@ Item {
         AddNode {
             x: 182; y: 700
             componentId: "encoder_positional_encoding"
-            selected: root.bridge !== null && root.bridge !== undefined
-                      && root.bridge.selectedId === componentId
+            selected: root.selectedComponentId === componentId
             onClicked: function(componentId) {
-                if (root.bridge)
-                    root.bridge.selectComponent(componentId)
+                root.selectComponent(componentId)
             }
         }
         PositionNode {
             x: 105; y: 696
             componentId: "encoder_positional_encoding"
-            selected: root.bridge !== null && root.bridge !== undefined
-                      && root.bridge.selectedId === componentId
+            selected: root.selectedComponentId === componentId
             onClicked: function(componentId) {
-                if (root.bridge)
-                    root.bridge.selectComponent(componentId)
+                root.selectComponent(componentId)
             }
         }
         Text { x: 67; y: 748; text: "Positional Encoding"; color: "#77758b"; font.pixelSize: 10 }
@@ -224,21 +281,17 @@ Item {
         AddNode {
             x: 578; y: 700
             componentId: "decoder_positional_encoding"
-            selected: root.bridge !== null && root.bridge !== undefined
-                      && root.bridge.selectedId === componentId
+            selected: root.selectedComponentId === componentId
             onClicked: function(componentId) {
-                if (root.bridge)
-                    root.bridge.selectComponent(componentId)
+                root.selectComponent(componentId)
             }
         }
         PositionNode {
             x: 667; y: 696
             componentId: "decoder_positional_encoding"
-            selected: root.bridge !== null && root.bridge !== undefined
-                      && root.bridge.selectedId === componentId
+            selected: root.selectedComponentId === componentId
             onClicked: function(componentId) {
-                if (root.bridge)
-                    root.bridge.selectComponent(componentId)
+                root.selectComponent(componentId)
             }
         }
         Text { x: 654; y: 748; text: "Positional Encoding"; color: "#77758b"; font.pixelSize: 10 }
