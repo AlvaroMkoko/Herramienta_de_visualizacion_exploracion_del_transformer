@@ -119,9 +119,6 @@ Utilidades transversales: `config.py` (rutas, semilla, detección CPU/CUDA),
 `constants.py` (rangos que **deben** coincidir con los de la Vista),
 `logger.py`.
 
-> **Pendiente:** `constants.py` declara `EXTENSION_CHECKPOINT = ".pt"`, pero el
-> formato actual es `.tvismodel` (`.pt` quedó como legado).
-
 ## Scripts de línea de comandos
 - `main.py` — punto de entrada de la aplicación.
 - `entrenar.py` — entrenamiento sin interfaz, con todos los formatos de dataset.
@@ -129,6 +126,7 @@ Utilidades transversales: `config.py` (rutas, semilla, detección CPU/CUDA),
 
 ## Flujo de datos
 
+```
 Vista (QML)
 │ llamada a @Slot
 ▼
@@ -143,6 +141,7 @@ ViewModel ── GestorConcurrencia ──> QThread
 ◄───────── señal Qt ────────────────┘
 ▼
 Vista (re-render)
+```
 
 Las tareas de fondo son **generadores**: cada `yield` es un paso observable.
 `GestorConcurrencia` revisa cancelación y pausa entre pasos, así que las

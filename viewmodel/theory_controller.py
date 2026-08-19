@@ -1,192 +1,250 @@
 """
 Controlador de Teoría Contextual (CU17).
 
-A diferencia de los demás controladores, no hace nada asíncrono — es
-una simple consulta de contenido estático por id de componente. La
-Vista lo llama cuando el usuario hace click en una pieza del diagrama
-de flujo (ej. los bloques de `FlujoPaso` en `TrainingScreen.qml`:
-"Atención", "FFN", "Softmax", etc.) para mostrar una tarjeta explicativa.
+Este módulo NO contiene texto de teoría. Su única responsabilidad es
+cargar, indexar y consultar `data/teoria/transformer.json`, de modo que
+ampliar o corregir el contenido no requiera tocar código Python.
 
-Los ids esperados están pensados para coincidir con los nombres que ya
-aparecen en los `flowModel`/`model` de las pantallas existentes,
-normalizados a snake_case sin acentos (ver `CONTENIDO_TEORIA` abajo).
-Si un id no está en el diccionario, `obtenerTeoria` devuelve un
-contenido "no disponible" en vez de lanzar un error — así la Vista
-nunca se rompe por un id que todavía no tiene teoría escrita.
+Diseño:
+- La carga es perezosa (al primer acceso) y se cachea en memoria.
+- Ninguna consulta lanza excepción: si falta el archivo, está corrupto o
+  se pide un id inexistente, se devuelve una estructura vacía o de
+  respaldo y se expone el motivo en `errorCarga`. La Vista llama a estos
+  métodos desde clicks del diagrama, y una excepción ahí rompería la UI.
+- `recargar()` permite editar el JSON y ver el cambio sin reiniciar.
 """
 
-from PySide6.QtCore import QObject, Slot
+from __future__ import annotations
 
-CONTENIDO_TEORIA: dict[str, dict[str, str]] = {
-    "tokens": {
-        "titulo": "Tokenización",
-        "descripcion": (
-            "Antes de que el modelo pueda procesar texto, hay que convertirlo en "
-            "números. El tokenizador parte el texto en fragmentos (tokens) — no "
-            "siempre palabras completas, a veces trozos de palabra — y le asigna "
-            "a cada uno un id numérico según su vocabulario."
-        ),
-    },
-    "embeddings": {
-        "titulo": "Embeddings",
-        "descripcion": (
-            "Cada id de token se transforma en un vector de números (el "
-            "'embedding'), aprendido durante el entrenamiento. Tokens con "
-            "significado parecido terminan con vectores parecidos — es la forma "
-            "en que el modelo representa el significado de las palabras "
-            "internamente, en vez de solo verlas como ids sueltos."
-        ),
-    },
-    "codificacion_posicional": {
-        "titulo": "Codificación Posicional",
-        "descripcion": (
-            "La atención, por sí sola, no distingue el orden de los tokens — "
-            "trataría 'el perro come' igual que 'come el perro'. La codificación "
-            "posicional le suma a cada embedding un patrón de senos y cosenos que "
-            "depende de la posición, así el modelo sabe dónde está cada token "
-            "dentro de la secuencia."
-        ),
-    },
-    "atencion": {
-        "titulo": "Multi-Head Attention (Self-Attention)",
-        "descripcion": (
-            "Cada token 'mira' a los demás tokens de la misma secuencia y decide "
-            "cuánto le importa cada uno para entender su propio significado en "
-            "contexto. 'Multi-Head' significa que esto se hace varias veces en "
-            "paralelo (varias 'cabezas'), cada una libre de aprender a fijarse en "
-            "un tipo de relación distinto (gramatical, semántica, etc.)."
-        ),
-    },
-    "atencion_causal": {
-        "titulo": "Masked Multi-Head Attention",
-        "descripcion": (
-            "Es la misma idea que la atención normal, pero con una restricción: "
-            "cada token del decoder solo puede mirar a los tokens ANTERIORES a él "
-            "(y a sí mismo), nunca a los que vienen después. Esto es necesario "
-            "porque, al generar texto, el modelo todavía no sabe cuáles van a ser "
-            "los tokens futuros."
-        ),
-    },
-    "atencion_cruzada": {
-        "titulo": "Cross-Attention",
-        "descripcion": (
-            "Acá el decoder 'consulta' al encoder: la consulta (quién pregunta) "
-            "sale del decoder, pero las respuestas posibles (qué se puede mirar) "
-            "salen de la salida del encoder. Es el mecanismo que conecta la "
-            "secuencia de entrada con la de salida — por ejemplo, qué palabras del "
-            "texto original influyen en cada palabra que se está generando."
-        ),
-    },
-    "feed_forward": {
-        "titulo": "Feed Forward",
-        "descripcion": (
-            "Después de que la atención mezcló información entre tokens, esta "
-            "capa procesa cada posición de forma independiente: expande la "
-            "dimensión, aplica una no-linealidad, y vuelve a comprimir. Es donde "
-            "el modelo 'piensa' sobre la información que ya juntó, token por token."
-        ),
-    },
-    "normalizacion": {
-        "titulo": "Add & Norm",
-        "descripcion": (
-            "Dos cosas en una: 'Add' es una conexión residual (se suma la entrada "
-            "original a la salida de la subcapa, para que el gradiente pueda fluir "
-            "sin degradarse en redes profundas), y 'Norm' es una normalización que "
-            "mantiene los valores en un rango estable, evitando que el "
-            "entrenamiento se vuelva inestable."
-        ),
-    },
-    "encoder": {
-        "titulo": "Encoder",
-        "descripcion": (
-            "Procesa la secuencia de entrada completa, de una sola vez, sin "
-            "restricciones de orden temporal — cada posición puede mirar a "
-            "cualquier otra, incluidas las que vienen después. Su salida es un "
-            "resumen contextualizado de toda la entrada, que después consulta el "
-            "decoder mediante cross-attention."
-        ),
-    },
-    "decoder": {
-        "titulo": "Decoder",
-        "descripcion": (
-            "Genera la secuencia de salida un token a la vez, de forma "
-            "autoregresiva: cada token nuevo se predice a partir de los tokens ya "
-            "generados (vía masked self-attention) y de la salida completa del "
-            "encoder (vía cross-attention)."
-        ),
-    },
-    "capa_lineal": {
-        "titulo": "Capa Linear (final)",
-        "descripcion": (
-            "Convierte la salida del decoder (un vector por posición) en un "
-            "puntaje ('logit') para cada palabra posible del vocabulario. Cuanto "
-            "más alto el logit de una palabra, más probable la considera el "
-            "modelo como la siguiente palabra."
-        ),
-    },
-    "softmax": {
-        "titulo": "Softmax",
-        "descripcion": (
-            "Convierte los logits (números sin límite, positivos o negativos) en "
-            "una distribución de probabilidad de verdad: todos los valores quedan "
-            "entre 0 y 1, y suman exactamente 1. Es el último paso antes de elegir "
-            "qué token generar."
-        ),
-    },
-    "temperatura": {
-        "titulo": "Temperatura (muestreo)",
-        "descripcion": (
-            "Escala los logits antes del softmax. Temperatura baja (ej. 0.3) "
-            "afila la distribución — el modelo casi siempre elige lo más "
-            "probable, texto más conservador. Temperatura alta (ej. 1.5) la "
-            "aplana — más variedad, pero también más riesgo de texto sin sentido."
-        ),
-    },
-    "top_k": {
-        "titulo": "Top-k (muestreo)",
-        "descripcion": (
-            "En vez de considerar las probabilidades de TODO el vocabulario, se "
-            "descartan todas las opciones excepto las k más probables, y se "
-            "elige al azar entre esas. Evita que el modelo, aunque sea con muy "
-            "baja probabilidad, termine eligiendo algo completamente absurdo."
-        ),
-    },
-    "top_p": {
-        "titulo": "Top-p / Nucleus Sampling (muestreo)",
-        "descripcion": (
-            "Parecido a top-k, pero en vez de un número fijo de candidatos, se "
-            "queda con el grupo más chico de opciones cuya probabilidad acumulada "
-            "supera p (ej. 0.9). Se adapta mejor que top-k: si el modelo está muy "
-            "seguro, el grupo es chico; si está indeciso, el grupo crece solo."
-        ),
-    },
-}
+import json
+from pathlib import Path
+from typing import Any
+
+from PySide6.QtCore import Property, QObject, Signal, Slot
+
+RUTA_TEORIA_POR_DEFECTO = Path("data/teoria/transformer.json")
 
 
 class TheoryController(QObject):
-    """Expone `CONTENIDO_TEORIA` a QML. No depende de que exista un
-    modelo creado — está disponible desde el arranque, igual que
-    `setupController` y `datasetController`."""
+    """Acceso de solo lectura al contenido teórico.
 
-    def __init__(self, parent: QObject | None = None):
+    No depende de que exista un modelo creado: la teoría es la misma sin
+    importar la configuración, así que está disponible desde el arranque.
+    """
+
+    teoriaRecargada = Signal()
+    errorCargaCambio = Signal()
+
+    def __init__(self, ruta: str | Path | None = None, parent: QObject | None = None):
         super().__init__(parent)
+        self._ruta = Path(ruta) if ruta is not None else RUTA_TEORIA_POR_DEFECTO
+        self._datos: dict[str, Any] | None = None
+        self._indice: dict[str, dict[str, Any]] = {}
+        self._seccion_de_concepto: dict[str, str] = {}
+        self._error_carga = ""
+
+    # ------------------------------------------------------------------
+    # Carga
+    # ------------------------------------------------------------------
+
+    def _asegurar_cargado(self) -> None:
+        """Carga perezosa: solo lee el archivo la primera vez que se
+        consulta algo, no al construir el controlador."""
+        if self._datos is not None:
+            return
+        self._cargar()
+
+    def _cargar(self) -> None:
+        self._datos = {"secciones": []}
+        self._indice = {}
+        self._seccion_de_concepto = {}
+        error_previo = self._error_carga
+        self._error_carga = ""
+
+        try:
+            with self._ruta.open(encoding="utf8") as archivo:
+                datos = json.load(archivo)
+        except FileNotFoundError:
+            self._error_carga = f"No se encontró el archivo de teoría: {self._ruta}"
+        except json.JSONDecodeError as error:
+            self._error_carga = f"El archivo de teoría tiene JSON inválido: {error}"
+        except OSError as error:
+            self._error_carga = f"No se pudo leer el archivo de teoría: {error}"
+        else:
+            if not isinstance(datos, dict) or not isinstance(datos.get("secciones"), list):
+                self._error_carga = "El archivo de teoría debe tener una lista 'secciones'."
+            else:
+                self._datos = datos
+                self._construir_indice()
+
+        if self._error_carga != error_previo:
+            self.errorCargaCambio.emit()
+
+    def _construir_indice(self) -> None:
+        """Aplana los conceptos en un índice por id, para que las
+        consultas sean directas en vez de recorrer todas las secciones."""
+        for seccion in self._datos.get("secciones", []):
+            if not isinstance(seccion, dict):
+                continue
+            id_seccion = seccion.get("id", "")
+            for concepto in seccion.get("conceptos", []) or []:
+                if not isinstance(concepto, dict):
+                    continue
+                id_concepto = concepto.get("id")
+                if not id_concepto:
+                    continue
+                self._indice[id_concepto] = concepto
+                self._seccion_de_concepto[id_concepto] = id_seccion
+
+    @Property(str, notify=errorCargaCambio)
+    def errorCarga(self) -> str:
+        """Vacío si la carga fue correcta. La Vista puede mostrarlo para
+        distinguir 'no hay teoría de esto' de 'el archivo no se pudo leer'."""
+        self._asegurar_cargado()
+        return self._error_carga
+
+    @Slot(result=bool)
+    def recargar(self) -> bool:
+        """Vuelve a leer el archivo desde disco. Permite editar el JSON y
+        ver el resultado sin reiniciar la aplicación."""
+        self._datos = None
+        self._asegurar_cargado()
+        self.teoriaRecargada.emit()
+        return not self._error_carga
+
+    # ------------------------------------------------------------------
+    # Consultas
+    # ------------------------------------------------------------------
+
+    @Slot(result="QVariantList")
+    def obtenerSecciones(self) -> list:
+        """Metadatos de las secciones, sin el contenido de los conceptos —
+        pensado para armar un índice o menú sin cargar todo el texto.
+
+        Devuelve `{"id", "title", "order", "cantidad_conceptos"}` por sección.
+        """
+        self._asegurar_cargado()
+        secciones = []
+        for seccion in self._datos.get("secciones", []):
+            secciones.append({
+                "id": seccion.get("id", ""),
+                "title": seccion.get("title", ""),
+                "order": seccion.get("order", 0),
+                "cantidad_conceptos": len(seccion.get("conceptos", []) or []),
+            })
+        return sorted(secciones, key=lambda s: s["order"])
+
+    @Slot(str, result="QVariantList")
+    def obtenerConceptosDeSeccion(self, id_seccion: str) -> list:
+        """Todos los conceptos de una sección, ordenados por `order`.
+        Lista vacía si la sección no existe."""
+        self._asegurar_cargado()
+        for seccion in self._datos.get("secciones", []):
+            if seccion.get("id") == id_seccion:
+                conceptos = list(seccion.get("conceptos", []) or [])
+                return sorted(conceptos, key=lambda c: c.get("order", 0))
+        return []
 
     @Slot(str, result="QVariantMap")
-    def obtenerTeoria(self, id_componente: str) -> dict:
-        """Devuelve `{"titulo": ..., "descripcion": ...}` para el
-        componente pedido. Si no existe, devuelve un contenido de
-        respaldo en vez de fallar — así un id todavía sin escribir no
-        rompe la Vista, solo muestra "sin información todavía"."""
-        return CONTENIDO_TEORIA.get(
-            id_componente,
-            {
-                "titulo": "Sin información todavía",
-                "descripcion": f'Todavía no hay teoría escrita para "{id_componente}".',
-            },
-        )
+    def obtenerConcepto(self, id_concepto: str) -> dict:
+        """Un concepto completo por su id.
+
+        Si no existe, devuelve una estructura de respaldo con las claves
+        mínimas en vez de fallar — así un id mal escrito en el diagrama
+        no rompe la tarjeta de teoría, solo muestra que falta contenido.
+        """
+        self._asegurar_cargado()
+        concepto = self._indice.get(id_concepto)
+        if concepto is None:
+            return {
+                "id": id_concepto,
+                "title": "Sin información todavía",
+                "short_description": "",
+                "explanation": f'Todavía no hay teoría escrita para "{id_concepto}".',
+                "existe": False,
+            }
+        resultado = dict(concepto)
+        resultado["existe"] = True
+        resultado["seccion"] = self._seccion_de_concepto.get(id_concepto, "")
+        return resultado
+
+    @Slot(str, result="QVariantList")
+    def obtenerRelacionados(self, id_concepto: str) -> list:
+        """Conceptos relacionados, ya resueltos a `{"id", "title",
+        "short_description"}` — así la Vista puede ofrecer navegación sin
+        tener que consultar cada id por separado. Ignora silenciosamente
+        las referencias que apunten a conceptos inexistentes."""
+        self._asegurar_cargado()
+        concepto = self._indice.get(id_concepto)
+        if concepto is None:
+            return []
+
+        relacionados = []
+        for id_relacionado in concepto.get("related_concepts", []) or []:
+            vecino = self._indice.get(id_relacionado)
+            if vecino is None:
+                continue
+            relacionados.append({
+                "id": vecino.get("id", ""),
+                "title": vecino.get("title", ""),
+                "short_description": vecino.get("short_description", ""),
+            })
+        return relacionados
 
     @Slot(result="QVariantList")
     def obtenerIdsDisponibles(self) -> list:
-        """Lista de ids con contenido real — útil para depurar qué
-        falta, o para armar un índice/menú de teoría."""
-        return list(CONTENIDO_TEORIA.keys())
+        """Todos los ids con contenido real — útil para verificar qué
+        componentes del diagrama todavía no tienen teoría asociada."""
+        self._asegurar_cargado()
+        return list(self._indice.keys())
+
+    @Slot(str, result="QVariantList")
+    def buscar(self, texto: str) -> list:
+        """Búsqueda por subcadena en título, descripción breve y
+        explicación, sin distinguir mayúsculas.
+
+        Devuelve `{"id", "title", "short_description", "seccion"}` de cada
+        coincidencia. Con texto vacío devuelve lista vacía, no todo el
+        contenido.
+        """
+        self._asegurar_cargado()
+        consulta = (texto or "").strip().lower()
+        if not consulta:
+            return []
+
+        resultados = []
+        for id_concepto, concepto in self._indice.items():
+            campos = " ".join([
+                str(concepto.get("title", "")),
+                str(concepto.get("short_description", "")),
+                str(concepto.get("explanation", "")),
+            ]).lower()
+            if consulta in campos:
+                resultados.append({
+                    "id": id_concepto,
+                    "title": concepto.get("title", ""),
+                    "short_description": concepto.get("short_description", ""),
+                    "seccion": self._seccion_de_concepto.get(id_concepto, ""),
+                })
+        return resultados
+
+    @Slot(result="QVariantList")
+    def obtenerRecorridoCompleto(self) -> list:
+        """Todos los conceptos en el orden pedagógico recomendado
+        (sección, luego concepto). Pensado para un modo 'recorrido
+        guiado' donde el usuario avanza linealmente por toda la teoría."""
+        self._asegurar_cargado()
+        recorrido = []
+        for seccion in sorted(
+            self._datos.get("secciones", []), key=lambda s: s.get("order", 0)
+        ):
+            for concepto in sorted(
+                seccion.get("conceptos", []) or [], key=lambda c: c.get("order", 0)
+            ):
+                recorrido.append({
+                    "id": concepto.get("id", ""),
+                    "title": concepto.get("title", ""),
+                    "seccion": seccion.get("id", ""),
+                    "seccion_title": seccion.get("title", ""),
+                })
+        return recorrido

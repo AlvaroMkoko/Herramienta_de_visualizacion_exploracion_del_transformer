@@ -1,0 +1,1547 @@
+{
+  "version": 1,
+  "fuente": "Vaswani et al. (2017), \"Attention Is All You Need\"",
+  "nota": "El contenido describe la arquitectura original encoder-decoder. No incluye variantes posteriores (GPT decoder-only, BERT encoder-only, pre-norm, RoPE, etc.) salvo que se mencionen explicitamente como contraste.",
+  "secciones": [
+    {
+      "id": "introduccion",
+      "title": "Introducción al Transformer",
+      "order": 1,
+      "conceptos": [
+        {
+          "id": "que_es_transformer",
+          "title": "¿Qué es un Transformer?",
+          "order": 1,
+          "short_description": "Una arquitectura de red neuronal que procesa secuencias completas a la vez, usando atención en lugar de recurrencia.",
+          "explanation": "El Transformer es una arquitectura para transformar una secuencia de entrada en una secuencia de salida (por ejemplo, una frase en inglés en su traducción al español). Su característica distintiva es que no procesa la secuencia elemento por elemento en orden, sino que mira todos los elementos simultáneamente y decide, para cada uno, cuánta importancia darle a los demás. Esa decisión es el mecanismo de atención. La arquitectura se compone de dos mitades: un encoder que lee y comprende la entrada, y un decoder que produce la salida.",
+          "intuition": "Imaginá que tenés que traducir una frase larga. Un método sería leerla palabra por palabra, de izquierda a derecha, tratando de recordar todo lo anterior. Otro método sería tener la frase entera delante y, al traducir cada palabra, mirar directamente las palabras del original que importan para esa decisión. El Transformer hace lo segundo.",
+          "example": "Entrada: \"el gato negro duerme\". Al procesar la palabra \"duerme\", el modelo puede mirar directamente \"gato\" para saber quién duerme, sin haber tenido que recordarla a lo largo de un recorrido secuencial.",
+          "visualization": {
+            "componentes": [
+              "encoder",
+              "decoder"
+            ],
+            "resaltar": "arquitectura_completa"
+          },
+          "related_concepts": [
+            "problema_que_resuelve",
+            "encoder_decoder_general",
+            "basada_en_atencion"
+          ]
+        },
+        {
+          "id": "problema_que_resuelve",
+          "title": "¿Qué problema busca resolver?",
+          "order": 2,
+          "short_description": "Elimina el cuello de botella secuencial de las redes recurrentes y permite entrenar en paralelo.",
+          "explanation": "Antes del Transformer, las arquitecturas dominantes para secuencias (RNN, LSTM, GRU) procesaban un elemento por paso, y cada paso dependía del resultado del anterior. Eso impone dos limitaciones. La primera es de cómputo: no se puede paralelizar el recorrido de una secuencia, porque el paso 5 necesita el resultado del paso 4. La segunda es de memoria efectiva: la información de un token lejano debe atravesar muchos pasos intermedios para influir en el token actual, y en el camino se degrada. El Transformer resuelve ambas: al no haber recurrencia, todos los tokens se procesan en paralelo, y cualquier par de tokens se conecta en un solo paso de atención, sin importar la distancia entre ellos.",
+          "intuition": "En una cadena de personas que se pasan un mensaje al oído, el mensaje se distorsiona con cada repetición y nadie puede hablar hasta que le llegue su turno. En una mesa redonda donde todos se ven, cualquiera puede dirigirse directamente a cualquier otro, y todos pueden hablar a la vez.",
+          "related_concepts": [
+            "diferencia_rnn_lstm",
+            "que_es_transformer"
+          ]
+        },
+        {
+          "id": "basada_en_atencion",
+          "title": "¿Qué significa que esté basada en atención?",
+          "order": 3,
+          "short_description": "Cada token calcula una combinación ponderada de los demás; los pesos los decide el propio modelo.",
+          "explanation": "Atención significa que, para construir la representación de un token, el modelo combina información de todos los tokens de la secuencia usando pesos que él mismo calcula. Un peso alto significa 'este otro token es relevante para entenderme'. Esos pesos no son fijos ni están programados: se derivan de comparar la representación de cada token con la de los demás, y cambian según el contenido de cada frase. El título del paper original, \"Attention Is All You Need\", enfatiza que este mecanismo por sí solo, sin recurrencia ni convoluciones, basta para modelar secuencias.",
+          "intuition": "Al leer la palabra \"él\" en un texto, tu atención salta automáticamente hacia atrás buscando a qué persona se refiere. No revisás todas las palabras por igual: le das mucho peso a los sustantivos candidatos y casi nada a los artículos. Eso es exactamente lo que aprende a hacer el mecanismo de atención.",
+          "related_concepts": [
+            "que_es_self_attention",
+            "query_key_value"
+          ]
+        },
+        {
+          "id": "diferencia_rnn_lstm",
+          "title": "Diferencia conceptual con RNN y LSTM",
+          "order": 4,
+          "short_description": "RNN/LSTM comprimen el pasado en un estado que viaja paso a paso; el Transformer conserva todos los tokens y los conecta directamente.",
+          "explanation": "Una RNN mantiene un vector de estado oculto que se actualiza en cada paso: al procesar el token 10, toda la información de los tokens 1 a 9 está comprimida en un solo vector de tamaño fijo. Una LSTM mejora esto con compuertas que deciden qué conservar y qué olvidar, pero la limitación de fondo persiste: hay un canal estrecho por el que debe pasar toda la historia. El Transformer no comprime nada: mantiene una representación separada para cada token durante todo el procesamiento, y las conexiones entre tokens son directas. El costo de este cambio es que la atención compara todos los pares de tokens, por lo que el cómputo crece con el cuadrado de la longitud de la secuencia, mientras que una RNN crece linealmente.",
+          "mathematical": "En una RNN, la distancia de propagación entre el token i y el token j es |i - j| pasos. En atención, es 1 paso para cualquier par. A cambio, la atención requiere calcular seq_len × seq_len comparaciones.",
+          "related_concepts": [
+            "problema_que_resuelve",
+            "producto_qk"
+          ]
+        },
+        {
+          "id": "encoder_decoder_general",
+          "title": "Encoder y Decoder: visión general",
+          "order": 5,
+          "short_description": "El encoder comprende la entrada completa; el decoder genera la salida token por token consultando al encoder.",
+          "explanation": "El encoder recibe la secuencia de entrada y produce, para cada token, una representación contextualizada: un vector que ya incorpora información del resto de la frase. El encoder no tiene restricciones de orden, cada token puede mirar a todos los demás, incluidos los que vienen después. El decoder produce la secuencia de salida de a un token por vez. Tiene dos mecanismos de atención: uno hacia los tokens que él mismo ya generó (con la restricción de no mirar hacia el futuro) y otro hacia la salida completa del encoder. En el paper original ambos se apilan N = 6 veces.",
+          "intuition": "El encoder es alguien que lee un párrafo completo y se forma una idea de cada palabra en su contexto. El decoder es alguien que escribe la traducción palabra por palabra, consultando esa comprensión y recordando lo que ya escribió.",
+          "steps": [
+            "El encoder lee toda la secuencia de entrada de una vez.",
+            "Produce una representación contextualizada por cada token de entrada.",
+            "El decoder genera el primer token de salida consultando esa representación.",
+            "Cada token nuevo del decoder se genera mirando los anteriores y la salida del encoder.",
+            "El proceso se repite hasta emitir un token de fin."
+          ],
+          "visualization": {
+            "componentes": [
+              "encoder",
+              "decoder",
+              "atencion_cruzada"
+            ],
+            "resaltar": "flujo_encoder_decoder"
+          },
+          "related_concepts": [
+            "estructura_encoder",
+            "estructura_decoder",
+            "que_es_cross_attention"
+          ]
+        },
+        {
+          "id": "flujo_general",
+          "title": "Flujo general de la información",
+          "order": 6,
+          "short_description": "Texto → tokens → vectores → capas de atención y feed-forward → probabilidades del siguiente token.",
+          "explanation": "El recorrido completo empieza con texto plano, que se corta en tokens y se convierte en números (ids). Cada id se traduce a un vector aprendido (embedding), al que se le suma información de posición. Esos vectores atraviesan las capas del encoder, donde se contextualizan. El decoder toma su propia secuencia, la contextualiza con sus dos tipos de atención, y su salida final se proyecta al tamaño del vocabulario para producir un puntaje por cada palabra posible. Softmax convierte esos puntajes en probabilidades, y de ahí se elige el siguiente token.",
+          "steps": [
+            "Texto de entrada",
+            "Tokenización a tokens y token ids",
+            "Embeddings + Positional Encoding",
+            "N bloques de Encoder",
+            "N bloques de Decoder (consultando la salida del encoder)",
+            "Capa Linear final",
+            "Softmax",
+            "Siguiente token"
+          ],
+          "related_concepts": [
+            "recorrido_completo",
+            "tokenizacion",
+            "softmax_final"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "entrada",
+      "title": "Entrada al modelo",
+      "order": 2,
+      "conceptos": [
+        {
+          "id": "texto_entrada",
+          "title": "Texto de entrada",
+          "order": 1,
+          "short_description": "El punto de partida es texto plano, que el modelo no puede procesar directamente.",
+          "explanation": "Una red neuronal opera sobre números, no sobre caracteres. El texto de entrada debe atravesar dos conversiones antes de que el modelo pueda usarlo: primero se corta en unidades discretas (tokens) y luego cada unidad se convierte en un vector de números reales. Nada del significado del texto está presente todavía en esta etapa: el texto es solo una cadena de caracteres.",
+          "example": "Entrada: \"el gato duerme\"",
+          "related_concepts": [
+            "tokenizacion"
+          ]
+        },
+        {
+          "id": "tokenizacion",
+          "title": "Tokenización",
+          "order": 2,
+          "short_description": "El texto se corta en piezas llamadas tokens, que no siempre coinciden con palabras.",
+          "explanation": "La tokenización parte el texto en unidades del vocabulario del modelo. Un token puede ser una palabra completa, un fragmento de palabra, un signo de puntuación o incluso un espacio. Los tokenizadores modernos usan algoritmos de subpalabras (como Byte-Pair Encoding) que aprenden qué fragmentos son frecuentes: las palabras comunes quedan como un solo token, y las raras se parten en pedazos. Esto permite representar cualquier texto con un vocabulario finito, sin necesidad de un token especial para cada palabra desconocida.",
+          "intuition": "Es como tener un juego de piezas fijas con las que hay que armar cualquier frase. Las palabras muy usadas tienen su propia pieza; las raras se arman juntando piezas más chicas.",
+          "example": "\"tokenización\" podría partirse en [\"token\", \"iz\", \"ación\"], mientras que \"el\" es un único token.",
+          "visualization": {
+            "componentes": [
+              "tokenizador"
+            ],
+            "resaltar": "tokens"
+          },
+          "related_concepts": [
+            "token_ids",
+            "texto_entrada"
+          ]
+        },
+        {
+          "id": "token_ids",
+          "title": "Token IDs",
+          "order": 3,
+          "short_description": "Cada token se reemplaza por su número de índice en el vocabulario.",
+          "explanation": "El vocabulario es una lista fija de todos los tokens que el modelo conoce. Cada token ocupa una posición en esa lista, y ese número es su id. La secuencia de texto se convierte así en una secuencia de enteros. Es importante entender que el id no tiene significado numérico: que un token tenga id 500 y otro id 501 no implica ninguna relación entre ellos, igual que dos palabras contiguas en un diccionario no son sinónimos.",
+          "example": "[\"el\", \" gato\", \" duerme\"] → [318, 9040, 15234]",
+          "dimensions": {
+            "entrada": "texto",
+            "salida": "[seq_len]",
+            "significado": "seq_len es la cantidad de tokens de la secuencia"
+          },
+          "related_concepts": [
+            "tokenizacion",
+            "embeddings"
+          ]
+        },
+        {
+          "id": "embeddings",
+          "title": "Embeddings",
+          "order": 4,
+          "short_description": "Cada id se traduce a un vector aprendido que sí codifica significado.",
+          "explanation": "La tabla de embeddings es una matriz con una fila por cada token del vocabulario. Buscar el embedding de un token es simplemente tomar la fila correspondiente a su id. A diferencia del id, estos vectores sí tienen estructura semántica: se aprenden durante el entrenamiento, y tokens con usos parecidos terminan con vectores parecidos. Es la primera representación del token con la que el modelo puede razonar. En esta etapa el vector todavía no depende del contexto: la palabra \"banco\" tiene el mismo embedding sin importar si la frase habla de dinero o de sentarse. Contextualizarlo es tarea de las capas de atención.",
+          "intuition": "El id es como el número de página donde aparece una palabra en el diccionario. El embedding es la definición: la información que realmente sirve para entenderla.",
+          "mathematical": "La tabla de embeddings es una matriz E de forma [tamano_vocabulario, d_model]. El embedding del token con id i es la fila E[i].",
+          "dimensions": {
+            "entrada": "[seq_len]",
+            "salida": "[seq_len, d_model]",
+            "operacion": "búsqueda en tabla",
+            "significado": "cada uno de los seq_len tokens pasa a ser un vector de d_model números"
+          },
+          "visualization": {
+            "componentes": [
+              "embedding_entrada"
+            ],
+            "resaltar": "tabla_embeddings"
+          },
+          "related_concepts": [
+            "token_ids",
+            "d_model",
+            "positional_encoding"
+          ]
+        },
+        {
+          "id": "d_model",
+          "title": "La dimensión d_model",
+          "order": 5,
+          "short_description": "El tamaño de vector que usa el modelo para representar cada token en todas sus capas.",
+          "explanation": "d_model es una de las decisiones de arquitectura más importantes: define cuántos números tiene el vector que representa a cada token. Ese mismo tamaño se conserva a lo largo de todo el modelo, porque las conexiones residuales suman la entrada de cada subcapa con su salida, y para poder sumarlas deben tener la misma forma. Un d_model mayor da más capacidad de representación, pero aumenta los parámetros y el cómputo. En el paper original, d_model = 512.",
+          "mathematical": "d_model debe ser divisible entre el número de cabezas de atención, ya que cada cabeza opera sobre d_model / num_cabezas dimensiones.",
+          "dimensions": {
+            "significado": "d_model es el ancho constante del modelo: la representación de cada token entra y sale de cada subcapa con esta dimensión"
+          },
+          "related_concepts": [
+            "embeddings",
+            "conexion_residual",
+            "cabeza_atencion"
+          ]
+        },
+        {
+          "id": "positional_encoding",
+          "title": "Positional Encoding",
+          "order": 6,
+          "short_description": "Un patrón de senos y cosenos que codifica la posición de cada token.",
+          "explanation": "El positional encoding es una matriz de la misma forma que los embeddings, donde cada fila corresponde a una posición de la secuencia. El paper original la construye con funciones seno y coseno de distintas frecuencias: las dimensiones pares usan seno y las impares coseno, y la frecuencia disminuye a medida que avanza la dimensión. Esto genera un patrón único por posición. Al ser una fórmula fija y no parámetros aprendidos, el modelo puede en principio manejar posiciones más largas que las vistas en entrenamiento.",
+          "formula": "PE(pos, 2i) = sin(pos / 10000^(2i/d_model))\nPE(pos, 2i+1) = cos(pos / 10000^(2i/d_model))",
+          "mathematical": "pos es el índice de la posición en la secuencia (0, 1, 2, ...) e i indexa las dimensiones del vector. Las frecuencias forman una progresión geométrica desde 2π hasta 10000·2π, lo que da a cada posición una firma distinguible.",
+          "dimensions": {
+            "salida": "[seq_len, d_model]",
+            "significado": "misma forma que los embeddings, para poder sumarse elemento a elemento"
+          },
+          "visualization": {
+            "componentes": [
+              "positional_encoding"
+            ],
+            "resaltar": "patron_senoidal"
+          },
+          "related_concepts": [
+            "por_que_posicion",
+            "combinacion_embedding_pe"
+          ]
+        },
+        {
+          "id": "por_que_posicion",
+          "title": "¿Por qué hace falta información de posición?",
+          "order": 7,
+          "short_description": "La atención, por sí sola, no distingue el orden de los tokens.",
+          "explanation": "El mecanismo de atención calcula, para cada par de tokens, un peso basado en sus representaciones. Ese cálculo no incluye ninguna noción de dónde está cada token: si se permutaran las filas de la matriz de entrada, la atención produciría las mismas relaciones, solo que reordenadas. En otras palabras, la atención es permutación-equivariante. Sin información de posición, el modelo trataría \"el gato come\" y \"come el gato\" como el mismo conjunto de palabras. El positional encoding rompe esa simetría inyectando la posición directamente en la representación de cada token.",
+          "intuition": "Si te dan las palabras de una frase en un montón desordenado, podés ver qué palabras hay pero no en qué orden estaban. La codificación posicional es como numerar cada papelito antes de mezclarlos.",
+          "example": "Sin positional encoding, \"el perro mordió al hombre\" y \"el hombre mordió al perro\" serían indistinguibles para la atención.",
+          "related_concepts": [
+            "positional_encoding",
+            "que_es_self_attention"
+          ]
+        },
+        {
+          "id": "combinacion_embedding_pe",
+          "title": "Cómo se combinan embedding y positional encoding",
+          "order": 8,
+          "short_description": "Se suman elemento a elemento; no se concatenan.",
+          "explanation": "La representación que entra a la primera capa es la suma del embedding del token y el positional encoding de su posición. Es una suma, no una concatenación: el vector resultante sigue teniendo d_model dimensiones, y la información de identidad y de posición quedan superpuestas en las mismas coordenadas. Puede parecer que esto mezclaría ambas señales de forma irrecuperable, pero el modelo aprende a separarlas porque el patrón posicional es sistemático y distinguible del contenido semántico. El paper además escala los embeddings por la raíz de d_model antes de sumar, para que su magnitud sea comparable a la del positional encoding.",
+          "formula": "X = Embedding(tokens) · √d_model + PE",
+          "dimensions": {
+            "entrada": "[seq_len, d_model] + [seq_len, d_model]",
+            "salida": "[seq_len, d_model]",
+            "operacion": "suma elemento a elemento"
+          },
+          "steps": [
+            "Buscar el embedding de cada token en la tabla.",
+            "Multiplicar los embeddings por la raíz cuadrada de d_model.",
+            "Calcular el positional encoding de cada posición.",
+            "Sumar ambas matrices elemento a elemento.",
+            "El resultado X es la entrada de la primera capa."
+          ],
+          "related_concepts": [
+            "embeddings",
+            "positional_encoding",
+            "d_model"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "self_attention",
+      "title": "Self-Attention",
+      "order": 3,
+      "conceptos": [
+        {
+          "id": "que_es_self_attention",
+          "title": "¿Qué es Self-Attention?",
+          "order": 1,
+          "short_description": "Cada token de una secuencia atiende a los tokens de esa misma secuencia.",
+          "explanation": "Self-attention (auto-atención) es atención donde las consultas y las respuestas provienen de la misma secuencia. Cada token pregunta al resto de su propia frase qué información necesita para representarse mejor en contexto. El resultado es que el vector de cada token deja de depender solo de su identidad y pasa a depender de la frase completa donde aparece. Se distingue así de la atención cruzada del decoder, donde las consultas vienen de una secuencia y las respuestas de otra.",
+          "intuition": "Cada palabra de la frase levanta la mano y pregunta: '¿quién de ustedes me ayuda a entender qué significo acá?'. Las palabras relevantes responden con más fuerza.",
+          "example": "En \"el banco de la plaza\", el token \"banco\" atiende fuertemente a \"plaza\", lo que empuja su representación hacia el sentido de asiento y no de institución financiera.",
+          "visualization": {
+            "componentes": [
+              "atencion"
+            ],
+            "resaltar": "matriz_atencion"
+          },
+          "related_concepts": [
+            "query_key_value",
+            "encoder_vs_masked",
+            "basada_en_atencion"
+          ]
+        },
+        {
+          "id": "info_entre_tokens",
+          "title": "¿Qué información busca cada token?",
+          "order": 2,
+          "short_description": "Cada token busca el contexto que resuelve su ambigüedad o completa su significado.",
+          "explanation": "No hay una respuesta única: lo que cada token busca depende de lo que el modelo haya aprendido que es útil. En la práctica, las cabezas de atención de un Transformer entrenado terminan especializándose en distintos tipos de relación: algunas siguen dependencias sintácticas (el sujeto de un verbo), otras resuelven correferencias (a quién se refiere un pronombre), otras atienden simplemente al token anterior. Nada de esto se programa: emerge del entrenamiento.",
+          "example": "En \"la llave no entraba en la cerradura porque era muy grande\", para representar \"era\" el modelo necesita atender a \"llave\" o a \"cerradura\" para resolver a qué se refiere.",
+          "related_concepts": [
+            "que_es_self_attention",
+            "problema_multi_head"
+          ]
+        },
+        {
+          "id": "query_key_value",
+          "title": "Query, Key y Value",
+          "order": 3,
+          "short_description": "Tres roles distintos derivados del mismo token: qué busco, qué ofrezco, qué entrego.",
+          "explanation": "Cada token genera tres vectores diferentes a partir de su representación. La Query (consulta) representa lo que ese token está buscando en los demás. La Key (clave) representa lo que ese token ofrece como identificación para que otros lo encuentren. El Value (valor) representa la información que ese token entrega si resulta seleccionado. La atención funciona comparando la Query de un token con las Keys de todos los demás para decidir cuánto de cada Value tomar.",
+          "intuition": "Es la mecánica de una búsqueda: escribís un término de búsqueda (Query), el sistema lo compara con los títulos indexados (Keys), y te devuelve el contenido de los que mejor coinciden (Values). La diferencia es que acá no se elige uno solo, sino una mezcla ponderada de todos.",
+          "steps": [
+            "Cada token produce su Query: qué información necesita.",
+            "Cada token produce su Key: cómo se anuncia ante los demás.",
+            "Cada token produce su Value: qué contenido aporta.",
+            "Se compara cada Query con todas las Keys para obtener pesos.",
+            "Se promedian los Values usando esos pesos."
+          ],
+          "visualization": {
+            "componentes": [
+              "atencion"
+            ],
+            "resaltar": "matrices_qkv"
+          },
+          "related_concepts": [
+            "obtencion_qkv",
+            "producto_qk",
+            "matrices_w_qkv"
+          ]
+        },
+        {
+          "id": "obtencion_qkv",
+          "title": "Cómo se obtienen Q, K y V a partir de X",
+          "order": 4,
+          "short_description": "Multiplicando la entrada X por tres matrices de pesos aprendidas.",
+          "explanation": "Los tres vectores no se calculan con reglas distintas ni con información distinta: los tres salen de la misma matriz de entrada X, multiplicada por tres matrices de pesos separadas. Lo que los diferencia es únicamente el contenido aprendido de esas matrices. Durante el entrenamiento, W_Q aprende a extraer de cada token aquello que sirve para buscar, W_K lo que sirve para ser encontrado, y W_V lo que sirve para ser transmitido.",
+          "formula": "Q = X · W_Q\nK = X · W_K\nV = X · W_V",
+          "mathematical": "X tiene forma [seq_len, d_model]. Cada multiplicación proyecta esas representaciones a un espacio donde la comparación de similitud resulta informativa. Las tres proyecciones se calculan en paralelo, no dependen entre sí.",
+          "dimensions": {
+            "entrada": "X: [seq_len, d_model]",
+            "salida": "Q: [seq_len, d_k], K: [seq_len, d_k], V: [seq_len, d_v]",
+            "operacion": "tres multiplicaciones matriciales independientes"
+          },
+          "related_concepts": [
+            "query_key_value",
+            "matrices_w_qkv"
+          ]
+        },
+        {
+          "id": "matrices_w_qkv",
+          "title": "Las matrices W_Q, W_K y W_V",
+          "order": 5,
+          "short_description": "Parámetros aprendidos que definen cómo se proyecta cada token a los tres roles.",
+          "explanation": "Estas tres matrices son parámetros del modelo: se inicializan al azar y se ajustan por gradiente durante el entrenamiento. No dependen de la frase: son las mismas para todos los tokens y todas las secuencias. Lo que cambia de un token a otro es la entrada que se multiplica por ellas. Un detalle importante: W_Q y W_K deben producir vectores de la misma dimensión d_k, porque van a compararse mediante producto punto. W_V puede tener una dimensión d_v distinta en principio, aunque en el paper original d_k = d_v = d_model / num_cabezas.",
+          "dimensions": {
+            "W_Q": "[d_model, d_k]",
+            "W_K": "[d_model, d_k]",
+            "W_V": "[d_model, d_v]",
+            "significado": "cada matriz proyecta del espacio del modelo al espacio del rol correspondiente"
+          },
+          "related_concepts": [
+            "obtencion_qkv",
+            "parametros_actualizados"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "calculo_attention",
+      "title": "Cálculo de Attention",
+      "order": 4,
+      "conceptos": [
+        {
+          "id": "producto_qk",
+          "title": "El producto Q × Kᵀ",
+          "order": 1,
+          "short_description": "Compara cada Query con cada Key y produce una matriz de scores de similitud.",
+          "explanation": "El producto punto entre dos vectores mide cuán alineados están: es grande cuando apuntan en direcciones parecidas. Multiplicar Q por K transpuesta calcula de una sola vez todos los productos punto entre cada Query y cada Key. El resultado es una matriz cuadrada donde la fila i, columna j contiene el score de compatibilidad entre la consulta del token i y la clave del token j: cuánta atención debería prestar i a j, antes de normalizar.",
+          "formula": "scores = Q · Kᵀ",
+          "mathematical": "Q tiene forma [seq_len, d_k] y K también. Para poder multiplicarlas hay que transponer K, obteniendo [d_k, seq_len]. El producto [seq_len, d_k] × [d_k, seq_len] da [seq_len, seq_len]. La dimensión d_k desaparece: se suma sobre ella al hacer cada producto punto.",
+          "dimensions": {
+            "entrada": "Q: [seq_len, d_k], K: [seq_len, d_k]",
+            "operacion": "Q · Kᵀ",
+            "salida": "[seq_len, seq_len]",
+            "significado": "cada elemento [i, j] es la afinidad del token i con el token j"
+          },
+          "example": "Con una secuencia de 4 tokens, la matriz de scores es de 4×4: 16 comparaciones, todas calculadas en una sola multiplicación matricial.",
+          "visualization": {
+            "componentes": [
+              "atencion"
+            ],
+            "resaltar": "matriz_scores"
+          },
+          "related_concepts": [
+            "por_que_k_transpuesta",
+            "escalamiento_sqrt_dk"
+          ]
+        },
+        {
+          "id": "por_que_k_transpuesta",
+          "title": "¿Por qué se usa Kᵀ?",
+          "order": 2,
+          "short_description": "Para que las dimensiones sean compatibles y el resultado sea una comparación de todos contra todos.",
+          "explanation": "La multiplicación de matrices exige que el número de columnas de la primera coincida con el número de filas de la segunda. Q y K tienen ambas forma [seq_len, d_k], así que Q · K sería inválido. Al transponer K obtenemos [d_k, seq_len], y ahora la dimensión interna coincide. Pero el motivo no es solo mecánico: transponer es exactamente lo que hace que la operación calcule productos punto entre filas de Q y filas de K, que es la comparación que buscamos.",
+          "dimensions": {
+            "K": "[seq_len, d_k]",
+            "K transpuesta": "[d_k, seq_len]",
+            "significado": "la transposición alinea la dimensión d_k para que se sume sobre ella"
+          },
+          "related_concepts": [
+            "producto_qk"
+          ]
+        },
+        {
+          "id": "escalamiento_sqrt_dk",
+          "title": "Escalamiento por √d_k",
+          "order": 3,
+          "short_description": "Divide los scores para evitar que softmax se sature y los gradientes desaparezcan.",
+          "explanation": "Los productos punto crecen en magnitud a medida que aumenta d_k: si las componentes de Q y K son independientes con media cero y varianza uno, el producto punto de dos vectores de dimensión d_k tiene varianza d_k. Con d_k grande, los scores toman valores muy dispersos, y al pasarlos por softmax la distribución resultante se vuelve casi one-hot: un valor cercano a 1 y el resto cercanos a 0. En esa zona el gradiente de softmax es prácticamente nulo, y el modelo deja de aprender. Dividir por la raíz de d_k devuelve la varianza a uno y mantiene softmax en un régimen donde los gradientes fluyen.",
+          "formula": "scores_escalados = (Q · Kᵀ) / √d_k",
+          "mathematical": "Si q y k tienen componentes independientes de media 0 y varianza 1, entonces q·k tiene media 0 y varianza d_k. Dividir por √d_k normaliza esa varianza a 1.",
+          "intuition": "Sin escalar, softmax recibe números tan separados entre sí que se comporta como un 'el ganador se lleva todo'. Escalar mantiene la competencia reñida, y una competencia reñida es la que produce señal útil para aprender.",
+          "related_concepts": [
+            "producto_qk",
+            "softmax_attention"
+          ]
+        },
+        {
+          "id": "mascaras_en_scores",
+          "title": "Aplicación de máscaras",
+          "order": 4,
+          "short_description": "Antes de softmax se bloquean las posiciones que no deben ser atendidas.",
+          "explanation": "Hay dos situaciones donde ciertas posiciones deben excluirse de la atención. La primera es el relleno (padding): cuando se procesan varias secuencias juntas de distinta longitud, se completan con tokens artificiales que no deben influir en nada. La segunda es la causalidad en el decoder, donde un token no puede atender a posiciones futuras. En ambos casos, la técnica es la misma: antes de aplicar softmax, se reemplazan los scores de las posiciones prohibidas por menos infinito.",
+          "mathematical": "scores[i, j] = -∞ para todo par (i, j) que deba bloquearse. Al aplicar softmax, e^(-∞) = 0, por lo que esas posiciones reciben peso exactamente cero.",
+          "related_concepts": [
+            "por_que_mascara",
+            "mascara_triangular",
+            "softmax_attention"
+          ]
+        },
+        {
+          "id": "softmax_attention",
+          "title": "Softmax sobre los scores",
+          "order": 5,
+          "short_description": "Convierte los scores en una distribución de probabilidad por cada fila.",
+          "explanation": "Softmax se aplica a cada fila de la matriz de scores por separado. Toma valores reales de cualquier magnitud y devuelve valores entre 0 y 1 que suman exactamente 1. Después de esta operación, la fila i contiene la distribución de atención del token i: cuánto peso le da a cada uno de los tokens de la secuencia, incluido él mismo. Que cada fila sume 1 es lo que convierte el paso siguiente en un promedio ponderado bien definido.",
+          "formula": "softmax(z_i) = e^(z_i) / Σ_j e^(z_j)",
+          "dimensions": {
+            "entrada": "[seq_len, seq_len]",
+            "salida": "[seq_len, seq_len]",
+            "operacion": "softmax por filas",
+            "significado": "cada fila pasa a ser una distribución de probabilidad que suma 1"
+          },
+          "visualization": {
+            "componentes": [
+              "atencion"
+            ],
+            "resaltar": "pesos_atencion"
+          },
+          "related_concepts": [
+            "interpretacion_pesos",
+            "escalamiento_sqrt_dk",
+            "mascaras_en_scores"
+          ]
+        },
+        {
+          "id": "interpretacion_pesos",
+          "title": "Interpretación de los pesos de atención",
+          "order": 6,
+          "short_description": "Cada fila indica de dónde toma información ese token y en qué proporción.",
+          "explanation": "La matriz posterior a softmax es la más interpretable del Transformer y la que suele visualizarse como un mapa de calor. Leer la fila i indica de dónde toma información el token i. Un valor alto en la posición [i, j] significa que el token i se apoya fuertemente en el token j. Vale una advertencia: pesos altos indican de dónde se copia información, pero no constituyen una explicación completa del comportamiento del modelo, ya que el contenido transmitido depende también de los Values y de las capas siguientes.",
+          "example": "En una frase con un pronombre, es común observar que la fila del pronombre concentra peso sobre el sustantivo al que se refiere.",
+          "visualization": {
+            "componentes": [
+              "atencion"
+            ],
+            "resaltar": "mapa_calor_atencion"
+          },
+          "related_concepts": [
+            "softmax_attention",
+            "producto_por_v"
+          ]
+        },
+        {
+          "id": "producto_por_v",
+          "title": "Multiplicación por V",
+          "order": 7,
+          "short_description": "Los pesos se usan para promediar los Values y producir la salida.",
+          "explanation": "El último paso multiplica la matriz de pesos por la matriz V. Como cada fila de pesos suma 1, cada fila del resultado es un promedio ponderado de todos los vectores Value. La salida para el token i es, entonces, la mezcla de la información que aportan todos los tokens, dosificada según cuánta atención les prestó i. Este resultado tiene la misma cantidad de filas que la entrada: un vector por token, ahora contextualizado.",
+          "formula": "salida = pesos_atencion · V",
+          "dimensions": {
+            "entrada": "pesos: [seq_len, seq_len], V: [seq_len, d_v]",
+            "operacion": "multiplicación matricial",
+            "salida": "[seq_len, d_v]",
+            "significado": "un vector contextualizado por cada token"
+          },
+          "related_concepts": [
+            "interpretacion_pesos",
+            "formula_attention_completa"
+          ]
+        },
+        {
+          "id": "formula_attention_completa",
+          "title": "Fórmula completa de Attention",
+          "order": 8,
+          "short_description": "Los cuatro pasos condensados en una sola expresión.",
+          "explanation": "La fórmula del paper resume todo el mecanismo: comparar consultas con claves, escalar, normalizar con softmax y promediar los valores. Se la conoce como Scaled Dot-Product Attention. Cada símbolo corresponde a un paso concreto del recorrido, y toda la operación se implementa con dos multiplicaciones matriciales y un softmax, lo que la hace muy eficiente en hardware paralelo.",
+          "formula": "Attention(Q, K, V) = softmax(Q · Kᵀ / √d_k) · V",
+          "steps": [
+            "Q · Kᵀ — comparar cada consulta con cada clave: [seq_len, seq_len]",
+            "÷ √d_k — escalar para estabilizar softmax y los gradientes",
+            "aplicar máscara si corresponde — poner -∞ en las posiciones bloqueadas",
+            "softmax — convertir cada fila en una distribución que suma 1",
+            "· V — promediar los valores con esos pesos: [seq_len, d_v]"
+          ],
+          "dimensions": {
+            "entrada": "Q: [seq_len, d_k], K: [seq_len, d_k], V: [seq_len, d_v]",
+            "salida": "[seq_len, d_v]"
+          },
+          "visualization": {
+            "componentes": [
+              "atencion"
+            ],
+            "resaltar": "formula_completa"
+          },
+          "related_concepts": [
+            "producto_qk",
+            "escalamiento_sqrt_dk",
+            "softmax_attention",
+            "producto_por_v"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "multi_head",
+      "title": "Multi-Head Attention",
+      "order": 5,
+      "conceptos": [
+        {
+          "id": "problema_multi_head",
+          "title": "¿Qué problema resuelve Multi-Head Attention?",
+          "order": 1,
+          "short_description": "Una sola atención promedia todas las relaciones en una; varias cabezas permiten capturar tipos distintos a la vez.",
+          "explanation": "Con una única función de atención, cada token produce un solo conjunto de pesos, y ese conjunto tiene que servir simultáneamente para todas las relaciones posibles: sintácticas, semánticas, de correferencia, de posición. Como softmax fuerza a repartir un total de 1, atender fuertemente a un aspecto implica descuidar otro. Multi-Head Attention resuelve esto ejecutando varias atenciones en paralelo, cada una con sus propias proyecciones, de modo que cada cabeza puede especializarse en un tipo de relación sin competir con las demás.",
+          "intuition": "Es la diferencia entre leer un texto una vez tratando de captar todo, o leerlo varias veces prestando atención a algo distinto en cada pasada, y después juntar las conclusiones.",
+          "related_concepts": [
+            "cabeza_atencion",
+            "info_entre_tokens"
+          ]
+        },
+        {
+          "id": "cabeza_atencion",
+          "title": "¿Qué es una cabeza de atención?",
+          "order": 2,
+          "short_description": "Una instancia independiente del mecanismo de atención, con sus propias matrices de proyección.",
+          "explanation": "Una cabeza es una aplicación completa de Scaled Dot-Product Attention con su propio conjunto de matrices W_Q, W_K y W_V. Todas las cabezas reciben la misma entrada X, pero al tener proyecciones distintas producen Queries, Keys y Values distintos, y por lo tanto mapas de atención distintos. Un punto clave del diseño: las cabezas no operan sobre d_model dimensiones cada una, sino sobre d_model dividido entre el número de cabezas. Así, usar más cabezas no aumenta el costo computacional total, solo lo reparte.",
+          "mathematical": "Con h cabezas, cada una trabaja con d_k = d_v = d_model / h. En el paper original, d_model = 512 y h = 8, por lo que cada cabeza opera en 64 dimensiones.",
+          "dimensions": {
+            "por_cabeza": "d_k = d_v = d_model / h",
+            "significado": "las cabezas se reparten el ancho del modelo, no lo multiplican"
+          },
+          "visualization": {
+            "componentes": [
+              "atencion"
+            ],
+            "resaltar": "cabezas_individuales"
+          },
+          "related_concepts": [
+            "qkv_por_cabeza",
+            "d_model",
+            "problema_multi_head"
+          ]
+        },
+        {
+          "id": "qkv_por_cabeza",
+          "title": "Q, K y V por cabeza",
+          "order": 3,
+          "short_description": "Cada cabeza proyecta la misma entrada con sus propias matrices.",
+          "explanation": "Todas las cabezas parten de la misma matriz X. La cabeza i la multiplica por sus matrices W_Q^i, W_K^i y W_V^i, obteniendo proyecciones a un subespacio de d_model/h dimensiones. Después ejecuta el cálculo de atención completo dentro de ese subespacio, produciendo su propia salida. En la implementación esto no se hace con h multiplicaciones separadas: se usa una sola matriz grande y luego se reorganiza el resultado, lo que es matemáticamente equivalente y mucho más eficiente.",
+          "formula": "head_i = Attention(X · W_Q^i, X · W_K^i, X · W_V^i)",
+          "dimensions": {
+            "entrada": "X: [seq_len, d_model]",
+            "salida_por_cabeza": "[seq_len, d_model/h]",
+            "significado": "cada cabeza produce una salida más angosta que la entrada"
+          },
+          "related_concepts": [
+            "cabeza_atencion",
+            "concatenacion_cabezas"
+          ]
+        },
+        {
+          "id": "concatenacion_cabezas",
+          "title": "Concatenación de las cabezas",
+          "order": 4,
+          "short_description": "Las salidas de todas las cabezas se pegan lado a lado para recuperar d_model.",
+          "explanation": "Cada cabeza produce una matriz de forma [seq_len, d_model/h]. Concatenarlas a lo ancho, en orden, reconstruye una matriz de [seq_len, d_model]. Es importante notar que hasta acá las cabezas no se han comunicado entre sí: la concatenación simplemente coloca sus resultados uno al lado del otro, y cada bloque de dimensiones pertenece a una cabeza específica. Esta es la razón por la que, al inspeccionar el modelo, las dimensiones de una cabeza forman un bloque contiguo.",
+          "formula": "Concat(head_1, ..., head_h)",
+          "dimensions": {
+            "entrada": "h matrices de [seq_len, d_model/h]",
+            "salida": "[seq_len, d_model]",
+            "operacion": "concatenación en la dimensión de características"
+          },
+          "related_concepts": [
+            "qkv_por_cabeza",
+            "matriz_wo"
+          ]
+        },
+        {
+          "id": "matriz_wo",
+          "title": "La matriz W_O y la proyección final",
+          "order": 5,
+          "short_description": "Mezcla la información de todas las cabezas en una representación integrada.",
+          "explanation": "Después de concatenar, el resultado se multiplica por una matriz de pesos W_O. Este paso no es cosmético: es el único lugar donde la información de las distintas cabezas se combina. Sin él, la salida sería una simple yuxtaposición de subespacios independientes. W_O aprende cómo ponderar y mezclar lo que aportó cada cabeza para producir una representación unificada, que además vuelve a tener exactamente d_model dimensiones, como exige la conexión residual que viene después.",
+          "formula": "MultiHead(Q, K, V) = Concat(head_1, ..., head_h) · W_O",
+          "dimensions": {
+            "W_O": "[d_model, d_model]",
+            "entrada": "[seq_len, d_model]",
+            "salida": "[seq_len, d_model]"
+          },
+          "related_concepts": [
+            "concatenacion_cabezas",
+            "conexion_residual"
+          ]
+        },
+        {
+          "id": "self_vs_multihead",
+          "title": "Self-Attention vs Multi-Head Attention",
+          "order": 6,
+          "short_description": "No son alternativas: multi-head es la forma en que se implementa la self-attention.",
+          "explanation": "Es una confusión frecuente tratarlas como dos mecanismos distintos. Self-attention describe de dónde vienen Q, K y V: de la misma secuencia. Multi-head describe cuántas atenciones se ejecutan en paralelo y cómo se combinan. Son dimensiones ortogonales de la descripción: en el Transformer original, la self-attention del encoder es multi-head, la masked self-attention del decoder es multi-head, y la atención cruzada también es multi-head. La atención cruzada es multi-head pero no es self-attention, porque sus Keys y Values vienen de otra secuencia.",
+          "example": "Encoder: self-attention + multi-head. Decoder capa 1: masked self-attention + multi-head. Decoder capa 2: cross-attention + multi-head (no es self).",
+          "related_concepts": [
+            "que_es_self_attention",
+            "cabeza_atencion",
+            "que_es_cross_attention"
+          ]
+        },
+        {
+          "id": "por_que_cabezas_distintas",
+          "title": "¿Por qué distintas cabezas aprenden relaciones distintas?",
+          "order": 7,
+          "short_description": "Porque se inicializan distinto y nada las obliga a coincidir; el entrenamiento premia la diversidad.",
+          "explanation": "No hay ningún término en la función de pérdida que fuerce a las cabezas a especializarse. La diversidad emerge por dos motivos. Primero, cada cabeza empieza con pesos aleatorios distintos, por lo que exploran soluciones diferentes desde el inicio. Segundo, si dos cabezas convergieran a hacer exactamente lo mismo, una de ellas sería redundante y no reduciría la pérdida más allá de lo que ya logra la otra; el gradiente favorece configuraciones donde cada cabeza aporta algo nuevo. Estudios sobre modelos entrenados encontraron cabezas que siguen dependencias sintácticas, otras que atienden al token anterior y otras que resuelven correferencias, aunque también se observó que muchas cabezas pueden podarse con poca pérdida de desempeño.",
+          "related_concepts": [
+            "problema_multi_head",
+            "info_entre_tokens"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "residual_norm",
+      "title": "Residual Connections y Layer Normalization",
+      "order": 6,
+      "conceptos": [
+        {
+          "id": "conexion_residual",
+          "title": "¿Qué es una conexión residual?",
+          "order": 1,
+          "short_description": "Sumar la entrada de una subcapa a su salida, creando un atajo para la información y el gradiente.",
+          "explanation": "En lugar de que cada subcapa reemplace por completo la representación que recibe, se suma su salida a su entrada. Esto significa que la subcapa solo necesita aprender qué modificar (el residuo), no reconstruir todo desde cero. La consecuencia más importante es sobre el entrenamiento: al retropropagar, el gradiente encuentra un camino directo a través de la suma, sin tener que atravesar todas las transformaciones intermedias. En una red de muchas capas, eso es lo que evita que el gradiente se desvanezca antes de llegar a las primeras.",
+          "formula": "salida = x + Sublayer(x)",
+          "intuition": "Es como editar un documento con control de cambios en lugar de reescribirlo entero: si una edición no aporta, se puede dejar el texto casi igual, y siempre queda el original de referencia.",
+          "related_concepts": [
+            "por_que_sumar_entrada",
+            "layer_normalization",
+            "d_model"
+          ]
+        },
+        {
+          "id": "por_que_sumar_entrada",
+          "title": "¿Qué problema resuelve la suma?",
+          "order": 2,
+          "short_description": "El desvanecimiento del gradiente y la dificultad de entrenar redes profundas.",
+          "explanation": "Sin conexiones residuales, el gradiente que llega a las capas iniciales es el producto de muchos factores, uno por cada capa atravesada. Si esos factores son menores que 1, el producto tiende a cero y las primeras capas prácticamente dejan de aprender. La suma residual introduce un término que deriva a 1, lo que garantiza un canal por el que el gradiente pasa sin atenuarse. Es también la razón por la que d_model debe mantenerse constante en todo el modelo: para poder sumar entrada y salida, ambas deben tener la misma forma.",
+          "mathematical": "Al derivar y = x + F(x) respecto de x se obtiene 1 + F'(x). El término 1 asegura que el gradiente nunca se anule completamente por esta vía, aunque F'(x) sea muy pequeño.",
+          "related_concepts": [
+            "conexion_residual",
+            "backpropagation"
+          ]
+        },
+        {
+          "id": "layer_normalization",
+          "title": "Layer Normalization",
+          "order": 3,
+          "short_description": "Normaliza cada vector de token para que tenga media 0 y varianza 1.",
+          "explanation": "Layer Normalization opera sobre cada token de forma independiente: toma su vector de d_model componentes, calcula la media y la desviación estándar de esas componentes, y las normaliza. Después aplica dos parámetros aprendidos, una escala y un desplazamiento, que le permiten al modelo recuperar la magnitud que le convenga. Se diferencia de Batch Normalization en que no mira el resto del batch, lo que la hace apropiada para secuencias de longitud variable y para inferencia con un solo ejemplo.",
+          "formula": "LayerNorm(x) = γ · (x - μ) / √(σ² + ε) + β",
+          "mathematical": "μ y σ² son la media y varianza de las d_model componentes de un mismo token. γ y β son parámetros aprendidos de tamaño d_model. ε es una constante pequeña que evita dividir por cero.",
+          "intuition": "Sin normalizar, las magnitudes pueden crecer o encogerse capa tras capa hasta salirse del rango donde las funciones trabajan bien. La normalización devuelve todo a una escala comparable en cada etapa.",
+          "related_concepts": [
+            "flujo_add_norm",
+            "conexion_residual"
+          ]
+        },
+        {
+          "id": "flujo_add_norm",
+          "title": "El flujo Add & Norm",
+          "order": 4,
+          "short_description": "X → Sublayer → sumar la entrada → normalizar.",
+          "explanation": "El Transformer original aplica la normalización después de la suma residual, un esquema conocido como post-norm. La entrada entra a la subcapa (atención o feed-forward), su salida se suma con la entrada original, y recién entonces se normaliza el resultado. Este bloque Add & Norm aparece dos veces en cada capa del encoder y tres veces en cada capa del decoder. Vale mencionar como contraste que muchas implementaciones posteriores adoptaron pre-norm, normalizando antes de la subcapa, porque resulta más estable en modelos muy profundos; pero el paper original usa post-norm.",
+          "formula": "salida = LayerNorm(x + Sublayer(x))",
+          "steps": [
+            "x entra a la subcapa (atención o feed-forward).",
+            "Se calcula Sublayer(x).",
+            "Se suma: x + Sublayer(x) — la conexión residual.",
+            "Se normaliza el resultado con LayerNorm.",
+            "La salida tiene la misma forma que x y alimenta la subcapa siguiente."
+          ],
+          "dimensions": {
+            "entrada": "[seq_len, d_model]",
+            "salida": "[seq_len, d_model]",
+            "significado": "la forma nunca cambia, lo que permite apilar bloques indefinidamente"
+          },
+          "visualization": {
+            "componentes": [
+              "conexion_residual",
+              "normalizacion"
+            ],
+            "resaltar": "add_norm"
+          },
+          "related_concepts": [
+            "conexion_residual",
+            "layer_normalization",
+            "estructura_encoder"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "feed_forward",
+      "title": "Feed Forward Network",
+      "order": 7,
+      "conceptos": [
+        {
+          "id": "que_es_ffn",
+          "title": "¿Qué es la red Feed Forward?",
+          "order": 1,
+          "short_description": "Dos transformaciones lineales con una activación en medio, aplicadas a cada token por separado.",
+          "explanation": "La FFN es la segunda subcapa de cada bloque. A diferencia de la atención, no mira a los demás tokens: procesa cada posición de forma completamente independiente. Consiste en expandir el vector del token a una dimensión mayor, aplicarle una no linealidad, y volver a comprimirlo a d_model. Aunque parece simple, concentra la mayor parte de los parámetros del modelo.",
+          "intuition": "Si la atención es la etapa donde los tokens conversan entre sí, la FFN es la etapa donde cada uno se queda pensando a solas sobre lo que acaba de escuchar.",
+          "related_concepts": [
+            "por_que_ffn_despues",
+            "formula_ffn"
+          ]
+        },
+        {
+          "id": "por_que_ffn_despues",
+          "title": "¿Por qué existe después de Attention?",
+          "order": 2,
+          "short_description": "La atención solo promedia; hace falta una no linealidad para transformar la información recogida.",
+          "explanation": "El resultado de la atención es un promedio ponderado de vectores Value, y un promedio ponderado es una operación lineal. Apilar operaciones lineales una tras otra equivale a una sola operación lineal, sin ganar capacidad expresiva. La FFN aporta la no linealidad que permite al modelo aprender funciones complejas sobre la información que la atención acaba de reunir. La división de trabajo es clara: la atención decide qué información traer, la FFN decide qué hacer con ella.",
+          "related_concepts": [
+            "que_es_ffn",
+            "producto_por_v"
+          ]
+        },
+        {
+          "id": "formula_ffn",
+          "title": "Fórmula de la FFN",
+          "order": 3,
+          "short_description": "FFN(x) = ReLU(x·W₁ + b₁)·W₂ + b₂",
+          "explanation": "La expresión describe tres pasos: una transformación lineal que expande, la activación ReLU que introduce la no linealidad, y una segunda transformación lineal que vuelve a comprimir. Los sesgos b₁ y b₂ permiten desplazar el resultado. El paper original usa ReLU; implementaciones posteriores adoptaron variantes como GELU o Swish, que son más suaves alrededor de cero, aunque no forman parte de la arquitectura original.",
+          "formula": "FFN(x) = max(0, x · W₁ + b₁) · W₂ + b₂",
+          "steps": [
+            "Primera transformación lineal: x · W₁ + b₁, expande de d_model a d_ff.",
+            "Activación ReLU: pone en cero todos los valores negativos.",
+            "Segunda transformación lineal: · W₂ + b₂, comprime de d_ff de vuelta a d_model."
+          ],
+          "dimensions": {
+            "W1": "[d_model, d_ff]",
+            "W2": "[d_ff, d_model]",
+            "entrada": "[seq_len, d_model]",
+            "salida": "[seq_len, d_model]"
+          },
+          "visualization": {
+            "componentes": [
+              "feed_forward"
+            ],
+            "resaltar": "expansion_compresion"
+          },
+          "related_concepts": [
+            "dimension_d_ff",
+            "activacion_relu"
+          ]
+        },
+        {
+          "id": "dimension_d_ff",
+          "title": "Las dimensiones d_model y d_ff",
+          "order": 4,
+          "short_description": "d_ff es la dimensión interna expandida, típicamente cuatro veces d_model.",
+          "explanation": "d_model es el ancho con el que la representación entra y sale de la FFN. d_ff es el ancho intermedio, al que se expande antes de comprimir. En el paper original, d_model = 512 y d_ff = 2048, es decir, una expansión de 4×. Esa proporción se volvió una convención. La expansión importa porque proyectar a un espacio de mayor dimensión antes de aplicar la no linealidad le da al modelo más margen para separar patrones que en el espacio original estarían entremezclados.",
+          "mathematical": "La FFN aporta 2 · d_model · d_ff parámetros por capa (sin contar sesgos). Con la proporción 4×, eso es 8 · d_model², más que las cuatro matrices de atención juntas, que suman 4 · d_model².",
+          "dimensions": {
+            "d_model": "ancho constante del modelo",
+            "d_ff": "ancho interno expandido, típicamente 4 · d_model"
+          },
+          "related_concepts": [
+            "formula_ffn",
+            "d_model"
+          ]
+        },
+        {
+          "id": "activacion_relu",
+          "title": "La activación ReLU",
+          "order": 5,
+          "short_description": "Convierte en cero los valores negativos y deja pasar los positivos.",
+          "explanation": "ReLU (Rectified Linear Unit) es la función max(0, x). Su efecto es que cada neurona de la capa intermedia se activa solo cuando su entrada es positiva, lo que genera representaciones dispersas: para cada token, solo una parte de las d_ff neuronas está activa. Es la única fuente de no linealidad en toda la FFN, y por lo tanto lo que impide que las dos capas lineales colapsen en una sola.",
+          "formula": "ReLU(x) = max(0, x)",
+          "related_concepts": [
+            "formula_ffn",
+            "por_que_ffn_despues"
+          ]
+        },
+        {
+          "id": "ffn_por_posicion",
+          "title": "Se aplica por posición con los mismos parámetros",
+          "order": 6,
+          "short_description": "Cada token pasa por la FFN por separado, pero todos usan las mismas matrices.",
+          "explanation": "Hay dos afirmaciones que conviene no confundir. La primera es que la FFN se aplica de forma independiente a cada posición: el resultado del token 3 no depende del token 5, porque no hay ninguna interacción entre posiciones dentro de la FFN. La segunda es que los parámetros son compartidos: no existe una FFN distinta por posición, sino una sola cuyos pesos se aplican a todas. Por eso el paper la llama 'position-wise feed-forward network'. Esto también implica que la FFN funciona con secuencias de cualquier longitud sin cambiar de tamaño.",
+          "intuition": "Es como una misma máquina por la que pasan todos los tokens de a uno: la máquina no cambia, y lo que le pasa a un token no afecta a los demás.",
+          "related_concepts": [
+            "que_es_ffn",
+            "formula_ffn"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "encoder",
+      "title": "Encoder",
+      "order": 8,
+      "conceptos": [
+        {
+          "id": "estructura_encoder",
+          "title": "Estructura completa del Encoder",
+          "order": 1,
+          "short_description": "N bloques idénticos, cada uno con self-attention y feed-forward, ambos con Add & Norm.",
+          "explanation": "Cada bloque del encoder tiene exactamente dos subcapas. La primera es multi-head self-attention, donde cada token atiende a todos los tokens de la entrada sin restricción de orden. La segunda es la red feed-forward position-wise. Cada una de las dos está envuelta por una conexión residual seguida de layer normalization. Los bloques se apilan N veces (N = 6 en el paper original), cada uno con sus propios parámetros, y la salida de un bloque es la entrada del siguiente. Como la forma nunca cambia, los bloques son intercambiables en tamaño y se pueden apilar cuantos se quiera.",
+          "steps": [
+            "Entrada: [seq_len, d_model] (embeddings + positional encoding en el primer bloque).",
+            "Multi-Head Self-Attention.",
+            "Add & Norm.",
+            "Feed Forward.",
+            "Add & Norm.",
+            "Salida: [seq_len, d_model], que alimenta el bloque siguiente."
+          ],
+          "dimensions": {
+            "entrada": "[seq_len, d_model]",
+            "salida": "[seq_len, d_model]",
+            "significado": "la forma se conserva entre bloques, lo que permite apilarlos"
+          },
+          "visualization": {
+            "componentes": [
+              "encoder"
+            ],
+            "resaltar": "bloque_encoder"
+          },
+          "related_concepts": [
+            "salida_encoder",
+            "flujo_add_norm",
+            "que_es_self_attention"
+          ]
+        },
+        {
+          "id": "salida_encoder",
+          "title": "Qué representa la salida del Encoder",
+          "order": 2,
+          "short_description": "Un vector contextualizado por cada token de entrada, no un único vector resumen.",
+          "explanation": "Un malentendido frecuente es pensar que el encoder comprime la frase en un solo vector. No lo hace: la salida tiene exactamente la misma cantidad de filas que la entrada, un vector por token. Lo que cambia es el contenido de cada vector. Al entrar, el vector de un token representaba solo su identidad y su posición; al salir, representa ese token tal como aparece en esa frase específica. Esta matriz completa es la que el decoder consulta mediante atención cruzada, y es también la razón por la que el decoder puede enfocarse en distintas partes de la entrada según qué esté generando.",
+          "example": "En \"el banco de la plaza\" y \"el banco me cobró\", el token \"banco\" entra al encoder con el mismo vector en ambos casos, pero sale con vectores distintos.",
+          "dimensions": {
+            "salida": "[seq_len_entrada, d_model]",
+            "significado": "una representación contextualizada por cada token de la entrada"
+          },
+          "related_concepts": [
+            "estructura_encoder",
+            "que_es_cross_attention",
+            "origen_qkv_cross"
+          ]
+        },
+        {
+          "id": "contextualizacion",
+          "title": "Cómo se vuelven contextualizadas las representaciones",
+          "order": 3,
+          "short_description": "Cada capa mezcla información de los vecinos; apilando capas, el contexto se vuelve más abstracto.",
+          "explanation": "En la primera capa, cada token incorpora información de los demás tokens tal como entraron, es decir, en su forma sin contexto. En la segunda capa, atiende a representaciones que ya fueron contextualizadas una vez, por lo que la información que recibe es de segundo orden. Al apilar capas, las representaciones capturan relaciones progresivamente más abstractas y de mayor alcance. Es común observar que las capas iniciales de un modelo entrenado atienden a patrones superficiales y de proximidad, mientras que las profundas capturan relaciones más semánticas.",
+          "related_concepts": [
+            "salida_encoder",
+            "estructura_encoder"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "decoder",
+      "title": "Decoder",
+      "order": 9,
+      "conceptos": [
+        {
+          "id": "estructura_decoder",
+          "title": "Estructura completa del Decoder",
+          "order": 1,
+          "short_description": "N bloques con tres subcapas: masked self-attention, cross-attention y feed-forward.",
+          "explanation": "El decoder se parece al encoder pero tiene una subcapa más. La primera es masked multi-head self-attention: los tokens ya generados atienden entre sí, con la restricción de no mirar hacia el futuro. La segunda es la atención encoder-decoder, donde el decoder consulta la salida del encoder. La tercera es la red feed-forward. Cada una de las tres está seguida de Add & Norm. Igual que en el encoder, el bloque se repite N veces con parámetros independientes.",
+          "steps": [
+            "Entrada: embeddings de la secuencia de salida + positional encoding.",
+            "Masked Multi-Head Self-Attention.",
+            "Add & Norm.",
+            "Encoder-Decoder Attention (consulta la salida del encoder).",
+            "Add & Norm.",
+            "Feed Forward.",
+            "Add & Norm.",
+            "Salida: [seq_len_salida, d_model], que alimenta el bloque siguiente."
+          ],
+          "dimensions": {
+            "entrada": "[seq_len_salida, d_model]",
+            "salida": "[seq_len_salida, d_model]"
+          },
+          "visualization": {
+            "componentes": [
+              "decoder"
+            ],
+            "resaltar": "bloque_decoder"
+          },
+          "related_concepts": [
+            "por_que_mascara",
+            "que_es_cross_attention",
+            "estructura_encoder"
+          ]
+        },
+        {
+          "id": "entrada_decoder",
+          "title": "Embeddings y Positional Encoding del Decoder",
+          "order": 2,
+          "short_description": "La secuencia de salida pasa por el mismo proceso de entrada que la de entrada.",
+          "explanation": "El decoder también necesita convertir tokens en vectores y agregarles posición, con el mismo procedimiento que el encoder: buscar embeddings, escalar por la raíz de d_model y sumar positional encoding. La diferencia está en qué secuencia recibe. Durante el entrenamiento recibe la secuencia objetivo completa desplazada una posición (lo que se conoce como shifted right), de modo que al predecir la posición i solo haya visto hasta la i-1. Durante la generación recibe los tokens que él mismo ya produjo.",
+          "related_concepts": [
+            "combinacion_embedding_pe",
+            "teacher_forcing",
+            "generacion_token_por_token"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "masked_self_attention",
+      "title": "Masked Self-Attention",
+      "order": 10,
+      "conceptos": [
+        {
+          "id": "por_que_mascara",
+          "title": "¿Por qué el Decoder necesita una máscara?",
+          "order": 1,
+          "short_description": "Porque al generar no existen los tokens futuros, y entrenar sin máscara enseñaría a copiarlos.",
+          "explanation": "Durante el entrenamiento se le da al decoder la secuencia objetivo completa de una vez, por eficiencia. Pero el objetivo en la posición i es exactamente el token que aparece en la posición i+1 de la entrada. Sin máscara, el modelo podría simplemente copiar ese token mediante atención, en lugar de aprender a predecirlo. El síntoma es engañoso: la pérdida de entrenamiento baja muy rápido, dando la impresión de un modelo excelente. El fallo solo aparece al generar de verdad, cuando no hay ningún token futuro que copiar y el modelo produce texto sin sentido.",
+          "intuition": "Es como estudiar para un examen con las respuestas visibles al lado de las preguntas. El resultado del ensayo es perfecto y no se aprendió nada.",
+          "visualization": {
+            "componentes": [
+              "atencion_causal"
+            ],
+            "resaltar": "mascara_causal"
+          },
+          "related_concepts": [
+            "mascara_triangular",
+            "teacher_forcing",
+            "encoder_vs_masked"
+          ]
+        },
+        {
+          "id": "no_ver_futuro",
+          "title": "Qué significa no observar tokens futuros",
+          "order": 2,
+          "short_description": "El token en la posición i solo puede atender a las posiciones 1 a i.",
+          "explanation": "La restricción es que la atención del token i se limita a sí mismo y a los anteriores. Esto se llama causalidad o autoregresividad: cada predicción depende únicamente del pasado, igual que ocurrirá en la generación real. Es importante entender que esto aplica solo a la self-attention del decoder. La atención cruzada no lleva máscara causal: el decoder puede ver la secuencia de entrada completa, porque esa secuencia ya está disponible entera desde el principio.",
+          "related_concepts": [
+            "por_que_mascara",
+            "mascara_triangular",
+            "que_es_cross_attention"
+          ]
+        },
+        {
+          "id": "mascara_triangular",
+          "title": "La máscara triangular",
+          "order": 3,
+          "short_description": "Una matriz que permite el triángulo inferior y bloquea el superior.",
+          "explanation": "La máscara es una matriz de seq_len × seq_len con la misma forma que la matriz de scores. Las posiciones permitidas son aquellas donde la columna no supera a la fila, es decir, el triángulo inferior incluyendo la diagonal. La diagonal se incluye porque un token sí puede atenderse a sí mismo. El triángulo superior corresponde a mirar hacia adelante y queda bloqueado.",
+          "example": "Para una secuencia de 4 tokens (✓ permitido, ✗ bloqueado):\n\n      t1  t2  t3  t4\nt1  [ ✓   ✗   ✗   ✗ ]\nt2  [ ✓   ✓   ✗   ✗ ]\nt3  [ ✓   ✓   ✓   ✗ ]\nt4  [ ✓   ✓   ✓   ✓ ]",
+          "dimensions": {
+            "mascara": "[seq_len, seq_len]",
+            "significado": "misma forma que la matriz de scores, se aplica elemento a elemento"
+          },
+          "related_concepts": [
+            "menos_infinito_softmax",
+            "no_ver_futuro"
+          ]
+        },
+        {
+          "id": "menos_infinito_softmax",
+          "title": "El uso de -∞ antes de Softmax",
+          "order": 4,
+          "short_description": "Poner -∞ en los scores bloqueados hace que softmax les asigne exactamente cero.",
+          "explanation": "La máscara no se aplica después de softmax poniendo ceros a mano, sino antes, reemplazando los scores prohibidos por menos infinito. El motivo es que softmax normaliza dividiendo por la suma de todos los términos: si se pusieran ceros después, el resto de la fila ya no sumaría 1. Al usar -∞ antes, la exponencial de esas posiciones da exactamente 0, quedan excluidas de la suma del denominador, y la fila sigue siendo una distribución de probabilidad válida sobre las posiciones permitidas. En la práctica se usa un número muy negativo en vez de infinito literal, para evitar operaciones indefinidas.",
+          "formula": "e^(-∞) = 0, por lo que softmax asigna probabilidad exactamente 0 a esa posición",
+          "steps": [
+            "Calcular los scores: Q · Kᵀ / √d_k.",
+            "Reemplazar por -∞ los scores del triángulo superior.",
+            "Aplicar softmax por filas.",
+            "Las posiciones bloqueadas quedan en 0 y las permitidas suman 1."
+          ],
+          "related_concepts": [
+            "mascara_triangular",
+            "softmax_attention",
+            "mascaras_en_scores"
+          ]
+        },
+        {
+          "id": "encoder_vs_masked",
+          "title": "Self-Attention del Encoder vs Masked del Decoder",
+          "order": 5,
+          "short_description": "El mismo mecanismo; la única diferencia es la máscara triangular.",
+          "explanation": "Ambas son multi-head self-attention y comparten toda la mecánica: proyecciones Q, K, V, producto escalado, softmax y promedio de Values. La diferencia es exclusivamente la máscara. El encoder no la lleva porque la secuencia de entrada está disponible entera y no hay ningún motivo para restringir la mirada; de hecho, ver el contexto posterior ayuda a desambiguar. El decoder sí la lleva porque debe comportarse igual durante el entrenamiento y durante la generación, y en la generación el futuro todavía no existe.",
+          "example": "Encoder: la matriz de atención puede tener valores en cualquier posición. Decoder: el triángulo superior está siempre en cero.",
+          "related_concepts": [
+            "que_es_self_attention",
+            "por_que_mascara",
+            "mascara_triangular"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "encoder_decoder_attention",
+      "title": "Encoder-Decoder Attention",
+      "order": 11,
+      "conceptos": [
+        {
+          "id": "que_es_cross_attention",
+          "title": "¿Qué función cumple?",
+          "order": 1,
+          "short_description": "Es el puente por donde la información de la entrada llega al decoder.",
+          "explanation": "La atención encoder-decoder, también llamada cross-attention, es el único punto donde ambas mitades del Transformer se comunican. Sin ella, el decoder generaría texto sin ninguna relación con la entrada. Su rol es permitir que, en cada paso de generación, el decoder consulte qué partes de la secuencia de entrada son relevantes para el token que está por producir. En traducción, es lo que hace posible el alineamiento entre palabras del original y de la traducción.",
+          "intuition": "El decoder escribe con el texto original abierto al lado, y en cada palabra que escribe puede subrayar qué partes del original está usando en ese momento.",
+          "visualization": {
+            "componentes": [
+              "atencion_cruzada"
+            ],
+            "resaltar": "alineamiento_entrada_salida"
+          },
+          "related_concepts": [
+            "origen_qkv_cross",
+            "diferencia_con_self",
+            "salida_encoder"
+          ]
+        },
+        {
+          "id": "origen_qkv_cross",
+          "title": "De dónde vienen Q, K y V",
+          "order": 2,
+          "short_description": "Q del decoder; K y V de la salida del encoder.",
+          "explanation": "Esta es la característica que define a la cross-attention y la que hay que tener clara para no confundirla con la self-attention. La Query se proyecta desde la representación actual del decoder: es el decoder quien pregunta, según lo que ya lleva generado. Las Keys y los Values se proyectan desde la salida del encoder: es la entrada la que ofrece y entrega información. Cada mitad usa sus propias matrices de proyección, y las tres matrices se aprenden por separado como en cualquier otra atención.",
+          "formula": "Q = X_decoder · W_Q\nK = Salida_encoder · W_K\nV = Salida_encoder · W_V",
+          "dimensions": {
+            "Q": "[seq_len_salida, d_k]",
+            "K": "[seq_len_entrada, d_k]",
+            "V": "[seq_len_entrada, d_v]",
+            "matriz_atencion": "[seq_len_salida, seq_len_entrada]",
+            "significado": "la matriz de atención ya no es cuadrada: relaciona dos secuencias de longitudes distintas"
+          },
+          "steps": [
+            "El decoder proyecta su representación actual a Queries.",
+            "La salida del encoder se proyecta a Keys y Values.",
+            "Se comparan las Queries del decoder con las Keys del encoder.",
+            "Softmax produce, por cada token de salida, una distribución sobre los tokens de entrada.",
+            "Se promedian los Values del encoder con esos pesos."
+          ],
+          "related_concepts": [
+            "que_es_cross_attention",
+            "diferencia_con_self",
+            "salida_encoder"
+          ]
+        },
+        {
+          "id": "diferencia_con_self",
+          "title": "Diferencia respecto a Self-Attention",
+          "order": 3,
+          "short_description": "En self-attention las tres proyecciones salen de la misma secuencia; acá salen de dos distintas.",
+          "explanation": "En self-attention, Q, K y V se derivan todos de la misma matriz de entrada, y la matriz de atención resultante es cuadrada porque relaciona una secuencia consigo misma. En cross-attention, Q viene de una secuencia y K, V de otra, por lo que la matriz de atención tiene forma [seq_len_salida, seq_len_entrada] y en general no es cuadrada. Otra diferencia importante es que la cross-attention no lleva máscara causal: el decoder puede mirar la entrada completa, porque esa secuencia está disponible desde el principio y no hay ningún futuro que ocultar.",
+          "related_concepts": [
+            "origen_qkv_cross",
+            "que_es_self_attention",
+            "no_ver_futuro"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "salida",
+      "title": "Salida del Transformer",
+      "order": 12,
+      "conceptos": [
+        {
+          "id": "salida_final_decoder",
+          "title": "Salida final del Decoder",
+          "order": 1,
+          "short_description": "Un vector de d_model por cada posición, listo para proyectarse al vocabulario.",
+          "explanation": "Después del último bloque, el decoder produce una matriz de [seq_len_salida, d_model]. Cada fila condensa todo lo que el modelo sabe sobre qué debería venir en esa posición, pero todavía está expresado en el espacio interno del modelo, no en términos de palabras. Falta traducir ese vector a una preferencia concreta sobre el vocabulario.",
+          "dimensions": {
+            "salida": "[seq_len_salida, d_model]"
+          },
+          "related_concepts": [
+            "capa_linear_salida",
+            "estructura_decoder"
+          ]
+        },
+        {
+          "id": "capa_linear_salida",
+          "title": "Proyección mediante la capa Linear",
+          "order": 2,
+          "short_description": "Transforma cada vector de d_model en un puntaje por cada token del vocabulario.",
+          "explanation": "Una única transformación lineal proyecta del espacio del modelo al espacio del vocabulario. Su matriz de pesos tiene forma [d_model, tamano_vocabulario], por lo que cada vector de salida pasa a tener tantos componentes como tokens conoce el modelo. El paper original menciona una técnica llamada weight tying: compartir esta matriz con la tabla de embeddings de entrada. Tiene sentido conceptual, ya que ambas relacionan el espacio del modelo con el vocabulario, y reduce considerablemente la cantidad de parámetros.",
+          "dimensions": {
+            "entrada": "[seq_len, d_model]",
+            "W": "[d_model, tamano_vocabulario]",
+            "salida": "[seq_len, tamano_vocabulario]"
+          },
+          "visualization": {
+            "componentes": [
+              "capa_lineal"
+            ],
+            "resaltar": "proyeccion_vocabulario"
+          },
+          "related_concepts": [
+            "logits",
+            "embeddings"
+          ]
+        },
+        {
+          "id": "logits",
+          "title": "Logits",
+          "order": 3,
+          "short_description": "Puntajes sin normalizar, uno por cada token posible.",
+          "explanation": "Los logits son la salida cruda de la capa lineal: números reales sin restricción de rango, que pueden ser positivos o negativos. Un logit alto significa que el modelo considera probable ese token; uno bajo, lo contrario. No son probabilidades: no están entre 0 y 1 ni suman 1. Lo que importa de ellos son las diferencias relativas, no sus valores absolutos, ya que softmax es invariante a sumar una constante a todos.",
+          "dimensions": {
+            "salida": "[seq_len, tamano_vocabulario]",
+            "significado": "un puntaje por cada token del vocabulario, en cada posición"
+          },
+          "related_concepts": [
+            "capa_linear_salida",
+            "softmax_final",
+            "logits_vs_probabilidades"
+          ]
+        },
+        {
+          "id": "softmax_final",
+          "title": "Softmax final",
+          "order": 4,
+          "short_description": "Convierte los logits en una distribución de probabilidad sobre el vocabulario.",
+          "explanation": "Es la misma función que se usa dentro de la atención, pero aplicada sobre otra dimensión y con otro propósito: acá normaliza sobre el vocabulario completo. Exponencia cada logit y lo divide por la suma de todas las exponenciales, produciendo valores entre 0 y 1 que suman exactamente 1. El resultado es la respuesta del modelo a la pregunta '¿qué tan probable es cada token del vocabulario como siguiente palabra?'.",
+          "formula": "P(token_i) = e^(logit_i) / Σ_j e^(logit_j)",
+          "dimensions": {
+            "entrada": "[tamano_vocabulario]",
+            "salida": "[tamano_vocabulario]",
+            "significado": "una distribución de probabilidad que suma 1"
+          },
+          "related_concepts": [
+            "logits",
+            "seleccion_token",
+            "distribucion_probabilidades"
+          ]
+        },
+        {
+          "id": "distribucion_probabilidades",
+          "title": "La distribución sobre los tokens",
+          "order": 5,
+          "short_description": "El modelo no elige una palabra: produce un grado de preferencia por todas.",
+          "explanation": "La salida completa del Transformer para una posición no es un token, sino un vector con una probabilidad por cada token del vocabulario. Su forma dice mucho sobre el estado del modelo: una distribución muy concentrada indica alta confianza, y una distribución plana indica que muchas continuaciones le parecen igual de plausibles. Esa forma es también lo que manipulan los parámetros de muestreo como la temperatura.",
+          "example": "Después de \"el gato\", la distribución podría dar 0.4 a \"duerme\", 0.2 a \"come\", 0.1 a \"negro\" y repartir el resto entre miles de tokens con probabilidades ínfimas.",
+          "visualization": {
+            "componentes": [
+              "softmax"
+            ],
+            "resaltar": "distribucion_vocabulario"
+          },
+          "related_concepts": [
+            "softmax_final",
+            "seleccion_token"
+          ]
+        },
+        {
+          "id": "seleccion_token",
+          "title": "Selección del siguiente token",
+          "order": 6,
+          "short_description": "De la distribución hay que extraer un token concreto, y hay varias formas de hacerlo.",
+          "explanation": "La estrategia más simple es tomar el token de mayor probabilidad, lo que se llama decodificación greedy o codiciosa. Es determinista: el mismo prompt produce siempre la misma salida, pero tiende a generar texto repetitivo. La alternativa es muestrear de la distribución, dando a cada token una chance proporcional a su probabilidad. Sobre ese muestreo se aplican controles: la temperatura, que aplana o afila la distribución antes de elegir; top-k, que restringe a los k tokens más probables; y top-p, que restringe al grupo más pequeño cuya probabilidad acumulada supera p.",
+          "steps": [
+            "Obtener la distribución de probabilidad de la posición actual.",
+            "Opcionalmente ajustar la forma con temperatura.",
+            "Opcionalmente restringir los candidatos con top-k o top-p.",
+            "Elegir un token: el más probable (greedy) o muestreando."
+          ],
+          "related_concepts": [
+            "distribucion_probabilidades",
+            "generacion_token_por_token"
+          ]
+        },
+        {
+          "id": "logits_vs_probabilidades",
+          "title": "Diferencia entre logits y probabilidades",
+          "order": 7,
+          "short_description": "Los logits son puntajes sin escala; las probabilidades están normalizadas y suman 1.",
+          "explanation": "Un logit puede valer -3.2 o 8.7 y por sí solo no dice nada: solo tiene sentido comparado con los otros logits de la misma posición. Una probabilidad siempre está entre 0 y 1, y el conjunto suma exactamente 1, lo que permite interpretarla directamente. Softmax es el puente entre ambos. Un detalle práctico: durante el entrenamiento, la función de pérdida trabaja directamente sobre los logits, porque combinar softmax y logaritmo en un solo paso es numéricamente más estable que calcularlos por separado.",
+          "related_concepts": [
+            "logits",
+            "softmax_final",
+            "cross_entropy"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "generacion_autoregresiva",
+      "title": "Generación autoregresiva",
+      "order": 13,
+      "conceptos": [
+        {
+          "id": "generacion_token_por_token",
+          "title": "Generación token por token",
+          "order": 1,
+          "short_description": "Cada token generado se agrega al contexto y el modelo vuelve a ejecutarse.",
+          "explanation": "El Transformer no produce la salida completa de una vez. Genera un token, lo agrega a la secuencia que ya tenía, y vuelve a ejecutar el decoder con esa secuencia extendida para producir el siguiente. Autoregresivo significa exactamente eso: la salida de un paso se convierte en entrada del siguiente. El encoder, en cambio, se ejecuta una sola vez al principio, ya que la secuencia de entrada no cambia durante toda la generación; su salida se reutiliza en cada paso.",
+          "example": "Entrada: \"the cat sat\"\n\nPaso 1: contexto [inicio] → genera \"el\"\nPaso 2: contexto [inicio, el] → genera \"gato\"\nPaso 3: contexto [inicio, el, gato] → genera \"se\"\nPaso 4: contexto [inicio, el, gato, se] → genera \"sentó\"\nPaso 5: contexto [inicio, el, gato, se, sentó] → genera [fin]",
+          "steps": [
+            "Ejecutar el encoder una vez sobre la secuencia de entrada.",
+            "Iniciar el decoder con el token de inicio.",
+            "Ejecutar el decoder y obtener la distribución de la última posición.",
+            "Elegir un token de esa distribución.",
+            "Agregarlo al contexto del decoder.",
+            "Repetir desde el paso 3 hasta cumplir una condición de parada."
+          ],
+          "visualization": {
+            "componentes": [
+              "decoder",
+              "softmax"
+            ],
+            "resaltar": "bucle_generacion"
+          },
+          "related_concepts": [
+            "seleccion_token",
+            "detencion_generacion",
+            "por_que_mascara"
+          ]
+        },
+        {
+          "id": "uso_tokens_anteriores",
+          "title": "Uso de los tokens generados anteriormente",
+          "order": 2,
+          "short_description": "En cada paso, el modelo vuelve a procesar todo lo generado hasta el momento.",
+          "explanation": "La masked self-attention del decoder opera sobre la secuencia completa generada hasta ese punto, lo que permite que el token nuevo sea coherente con todo lo anterior, no solo con el token inmediatamente previo. Esto tiene un costo: cada paso recalcula la atención sobre una secuencia cada vez más larga, por lo que generar es progresivamente más lento a medida que avanza. Las implementaciones eficientes usan una caché de Keys y Values para no recalcular lo ya procesado, aunque esa optimización no forma parte de la descripción del paper original.",
+          "related_concepts": [
+            "generacion_token_por_token",
+            "no_ver_futuro"
+          ]
+        },
+        {
+          "id": "detencion_generacion",
+          "title": "Cómo se detiene la generación",
+          "order": 3,
+          "short_description": "Por un token especial de fin o por un límite máximo de longitud.",
+          "explanation": "El criterio principal es un token especial de fin de secuencia, que se incluye al final de los ejemplos de entrenamiento para que el modelo aprenda cuándo una salida está completa. Cuando lo genera, el bucle se detiene y ese token no forma parte del texto final. Como respaldo siempre se define un máximo de tokens: un modelo poco entrenado puede no emitir nunca el token de fin, y sin ese límite la generación no terminaría.",
+          "related_concepts": [
+            "generacion_token_por_token",
+            "seleccion_token"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "entrenamiento",
+      "title": "Entrenamiento",
+      "order": 14,
+      "conceptos": [
+        {
+          "id": "entrenamiento_vs_inferencia",
+          "title": "Diferencia entre entrenamiento e inferencia",
+          "order": 1,
+          "short_description": "En entrenamiento se conocen las respuestas y todo se procesa en paralelo; en inferencia se genera de a un token.",
+          "explanation": "Son dos modos con dinámicas muy distintas. Durante el entrenamiento se dispone de la secuencia objetivo completa, por lo que se puede alimentar al decoder de una sola vez y calcular todas las predicciones en paralelo; la máscara causal se encarga de que ninguna posición vea su respuesta. Durante la inferencia no hay respuesta disponible: hay que generar un token, agregarlo al contexto y volver a ejecutar. Por eso entrenar sobre una secuencia larga es una sola pasada, mientras que generarla requiere tantas pasadas como tokens.",
+          "related_concepts": [
+            "teacher_forcing",
+            "generacion_token_por_token",
+            "por_que_mascara"
+          ]
+        },
+        {
+          "id": "teacher_forcing",
+          "title": "Teacher forcing",
+          "order": 2,
+          "short_description": "Durante el entrenamiento se alimenta al decoder con la respuesta correcta, no con sus propias predicciones.",
+          "explanation": "Teacher forcing consiste en darle al decoder la secuencia objetivo real desplazada una posición, en vez de lo que él mismo predijo. La ventaja es doble: permite paralelizar todas las posiciones, y evita que un error temprano arrastre a todas las predicciones siguientes durante el aprendizaje. La contrapartida es que crea una discrepancia entre entrenamiento e inferencia: el modelo se entrena viendo siempre contexto perfecto, pero al generar debe apoyarse en su propia salida, que puede contener errores. Este fenómeno se conoce como exposure bias.",
+          "example": "Objetivo: [inicio, el, gato, duerme, fin]\nEntrada del decoder: [inicio, el, gato, duerme]\nObjetivo a predecir: [el, gato, duerme, fin]\n\nEn la posición 2, el decoder ve [inicio, el] y debe predecir \"gato\".",
+          "related_concepts": [
+            "entrenamiento_vs_inferencia",
+            "por_que_mascara",
+            "entrada_decoder"
+          ]
+        },
+        {
+          "id": "prediccion_siguiente_token",
+          "title": "Predicción del siguiente token",
+          "order": 3,
+          "short_description": "La tarea de entrenamiento es, en cada posición, acertar cuál es el token que sigue.",
+          "explanation": "Con teacher forcing, cada posición del decoder produce una predicción independiente, y todas se evalúan a la vez. Una secuencia de 50 tokens genera 50 ejemplos de entrenamiento en una sola pasada, lo que hace el proceso mucho más eficiente que evaluar una predicción por vez. Que una tarea tan simple, repetida a gran escala, produzca modelos capaces de traducir o razonar es uno de los resultados más notables del área.",
+          "related_concepts": [
+            "teacher_forcing",
+            "cross_entropy"
+          ]
+        },
+        {
+          "id": "cross_entropy",
+          "title": "Cross Entropy Loss",
+          "order": 4,
+          "short_description": "Mide qué tan lejos está la distribución predicha del token correcto.",
+          "explanation": "La función de pérdida toma la probabilidad que el modelo asignó al token que realmente correspondía y calcula su logaritmo negativo. Si el modelo le dio probabilidad alta, la pérdida es cercana a cero; si le dio probabilidad muy baja, la pérdida crece rápidamente. La pérdida total es el promedio sobre todas las posiciones del batch, excluyendo las posiciones de relleno. El logaritmo penaliza con mucha fuerza los errores confiados, que es justamente el comportamiento deseado.",
+          "formula": "L = -log(P(token_correcto))",
+          "example": "Si el modelo asignó 0.9 al token correcto, la pérdida es -log(0.9) ≈ 0.105.\nSi asignó 0.1, la pérdida es -log(0.1) ≈ 2.303.\nSi asignó 0.01, la pérdida es -log(0.01) ≈ 4.605.",
+          "related_concepts": [
+            "prediccion_siguiente_token",
+            "backpropagation",
+            "logits_vs_probabilidades"
+          ]
+        },
+        {
+          "id": "backpropagation",
+          "title": "Backpropagation y gradientes",
+          "order": 5,
+          "short_description": "Se calcula cuánto contribuyó cada parámetro al error y se ajusta en consecuencia.",
+          "explanation": "Una vez calculada la pérdida, backpropagation recorre el modelo hacia atrás aplicando la regla de la cadena para obtener, por cada parámetro, la derivada de la pérdida respecto de ese parámetro. Ese valor es el gradiente, e indica en qué dirección y con qué intensidad habría que modificar el parámetro para aumentar la pérdida; por eso se avanza en la dirección contraria. Las conexiones residuales cumplen un papel decisivo en este proceso: sin ellas, el gradiente se atenuaría al atravesar muchas capas y las iniciales apenas aprenderían.",
+          "related_concepts": [
+            "cross_entropy",
+            "actualizacion_parametros",
+            "por_que_sumar_entrada"
+          ]
+        },
+        {
+          "id": "actualizacion_parametros",
+          "title": "Actualización de parámetros",
+          "order": 6,
+          "short_description": "Cada peso se mueve un poco en la dirección opuesta a su gradiente.",
+          "explanation": "Con los gradientes calculados, el optimizador actualiza cada parámetro restándole el gradiente multiplicado por la tasa de aprendizaje. Este ciclo (calcular pérdida, retropropagar, actualizar) se repite miles de veces. Cada paso individual mejora el modelo apenas, pero la acumulación de muchos pasos es lo que produce el aprendizaje.",
+          "formula": "parametro ← parametro - learning_rate · gradiente",
+          "related_concepts": [
+            "backpropagation",
+            "learning_rate",
+            "optimizer"
+          ]
+        },
+        {
+          "id": "parametros_actualizados",
+          "title": "Qué parámetros se actualizan",
+          "order": 7,
+          "short_description": "Todas las matrices aprendidas: proyecciones de atención, feed-forward, embeddings y normalización.",
+          "explanation": "Se actualizan las matrices W_Q, W_K, W_V y W_O de cada cabeza y cada capa; las matrices W₁ y W₂ de cada red feed-forward con sus sesgos; la tabla de embeddings; los parámetros de escala y desplazamiento de cada Layer Normalization; y la capa lineal de salida si no comparte pesos con los embeddings. El positional encoding sinusoidal del paper original no se actualiza, porque es una fórmula fija y no un parámetro aprendido.",
+          "steps": [
+            "W_Q, W_K, W_V — proyecciones de atención, por cabeza y por capa.",
+            "W_O — proyección de salida de multi-head, por capa.",
+            "W₁, b₁, W₂, b₂ — feed-forward, por capa.",
+            "Tabla de embeddings.",
+            "γ y β de cada Layer Normalization.",
+            "Capa lineal de salida (salvo weight tying)."
+          ],
+          "related_concepts": [
+            "matrices_w_qkv",
+            "matriz_wo",
+            "formula_ffn",
+            "positional_encoding"
+          ]
+        },
+        {
+          "id": "epoch_batch",
+          "title": "Epoch y Batch",
+          "order": 8,
+          "short_description": "Un batch es un grupo de ejemplos procesados juntos; una epoch es una pasada completa por el dataset.",
+          "explanation": "Los ejemplos no se procesan de a uno sino en grupos llamados batches, por dos motivos: aprovecha mejor el paralelismo del hardware, y el gradiente promediado sobre varios ejemplos es menos ruidoso que el de uno solo. Una epoch es haber recorrido el dataset completo una vez. Entrenar varias epochs permite que el modelo vea los mismos datos repetidamente y refine su ajuste, aunque demasiadas pueden llevar a memorizar el conjunto de entrenamiento en lugar de generalizar.",
+          "related_concepts": [
+            "learning_rate",
+            "actualizacion_parametros"
+          ]
+        },
+        {
+          "id": "learning_rate",
+          "title": "Learning rate",
+          "order": 9,
+          "short_description": "Controla el tamaño del paso en cada actualización.",
+          "explanation": "Es probablemente el hiperparámetro más sensible. Demasiado alto y las actualizaciones sobrepasan el mínimo, haciendo que la pérdida oscile o diverja. Demasiado bajo y el entrenamiento avanza tan lento que puede quedarse estancado. El paper original propone además un esquema variable: aumentar linealmente el learning rate durante los primeros pasos (warmup) y luego disminuirlo proporcionalmente al inverso de la raíz del número de paso. El warmup existe porque al inicio los parámetros son aleatorios y los gradientes poco confiables, así que conviene dar pasos pequeños.",
+          "formula": "lrate = d_model^(-0.5) · min(paso^(-0.5), paso · warmup^(-1.5))",
+          "related_concepts": [
+            "actualizacion_parametros",
+            "optimizer"
+          ]
+        },
+        {
+          "id": "optimizer",
+          "title": "Optimizer",
+          "order": 10,
+          "short_description": "El algoritmo que decide cómo convertir gradientes en actualizaciones concretas.",
+          "explanation": "El optimizador más simple resta directamente el gradiente escalado. Adam, el que usa el paper original, es más elaborado: mantiene promedios móviles del gradiente y de su cuadrado, lo que le permite adaptar el tamaño del paso para cada parámetro por separado. Un parámetro con gradientes consistentemente pequeños recibe pasos relativamente mayores, y uno con gradientes ruidosos, pasos más conservadores. El costo es memoria: Adam guarda dos valores adicionales por cada parámetro del modelo.",
+          "mathematical": "El paper original usa Adam con β₁ = 0.9, β₂ = 0.98 y ε = 10⁻⁹.",
+          "related_concepts": [
+            "actualizacion_parametros",
+            "learning_rate"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dimensiones",
+      "title": "Dimensiones y flujo matemático",
+      "order": 15,
+      "conceptos": [
+        {
+          "id": "tabla_dimensiones",
+          "title": "Dimensiones en cada operación",
+          "order": 1,
+          "short_description": "Recorrido de las formas de las matrices desde la entrada hasta la salida.",
+          "explanation": "Seguir cómo cambian las dimensiones es una de las formas más efectivas de entender qué hace cada operación. Hay tres observaciones que ayudan a orientarse. Primero, seq_len y d_model se conservan de punta a punta gracias a las conexiones residuales. Segundo, la matriz de atención es la única que tiene forma seq_len × seq_len, y es la responsable del costo cuadrático del modelo. Tercero, la dimensión d_k desaparece al calcular Q · Kᵀ, porque se suma sobre ella en cada producto punto.",
+          "dimensions": {
+            "X (entrada)": "[seq_len, d_model]",
+            "Q = X · W_Q": "[seq_len, d_k]",
+            "K = X · W_K": "[seq_len, d_k]",
+            "V = X · W_V": "[seq_len, d_v]",
+            "Q · Kᵀ": "[seq_len, seq_len]",
+            "softmax(Q · Kᵀ / √d_k)": "[seq_len, seq_len]",
+            "Attention × V": "[seq_len, d_v]",
+            "Concat de h cabezas": "[seq_len, d_model]",
+            "· W_O": "[seq_len, d_model]",
+            "FFN capa 1": "[seq_len, d_ff]",
+            "FFN capa 2": "[seq_len, d_model]",
+            "Linear de salida": "[seq_len, tamano_vocabulario]",
+            "Softmax final": "[seq_len, tamano_vocabulario]"
+          },
+          "steps": [
+            "seq_len: cantidad de tokens de la secuencia. Varía entre ejemplos.",
+            "d_model: ancho de la representación. Constante en todo el modelo.",
+            "d_k, d_v: dimensión por cabeza, igual a d_model / h.",
+            "d_ff: ancho interno de la feed-forward, típicamente 4 · d_model.",
+            "tamano_vocabulario: cantidad de tokens que el modelo conoce."
+          ],
+          "visualization": {
+            "componentes": [
+              "todos"
+            ],
+            "resaltar": "flujo_dimensiones"
+          },
+          "related_concepts": [
+            "producto_qk",
+            "concatenacion_cabezas",
+            "dimension_d_ff",
+            "capa_linear_salida"
+          ]
+        },
+        {
+          "id": "significado_dimensiones",
+          "title": "Qué significa cada dimensión",
+          "order": 2,
+          "short_description": "Cada eje de una matriz corresponde a algo concreto: tokens, características o vocabulario.",
+          "explanation": "En una matriz de [seq_len, d_model], la primera dimensión recorre los tokens y la segunda las características que describen a cada token. En la matriz de atención, [seq_len, seq_len], ambas dimensiones recorren tokens pero con roles distintos: la fila es quién consulta y la columna quién es consultado, por lo que la matriz no es simétrica. En [seq_len, tamano_vocabulario], la segunda dimensión ya no describe al token sino que enumera las opciones posibles del vocabulario.",
+          "example": "scores[3, 7] = cuánta atención presta el token 3 al token 7.\nscores[7, 3] = cuánta atención presta el token 7 al token 3.\nSon valores distintos: la atención no es simétrica.",
+          "related_concepts": [
+            "tabla_dimensiones",
+            "interpretacion_pesos"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "flujo_completo",
+      "title": "Flujo completo",
+      "order": 16,
+      "conceptos": [
+        {
+          "id": "recorrido_completo",
+          "title": "El recorrido completo de un token",
+          "order": 1,
+          "short_description": "Todo el camino, desde el texto de entrada hasta la elección del siguiente token.",
+          "explanation": "Poner las etapas en secuencia permite ver cómo se conectan. El texto se corta en tokens y se convierte en ids; cada id se traduce a un embedding al que se le suma la posición. Esa matriz atraviesa los bloques del encoder, donde la self-attention y la feed-forward, cada una con Add & Norm, contextualizan las representaciones. La salida del encoder queda disponible para el decoder. El decoder procesa su propia secuencia con masked self-attention, consulta al encoder con cross-attention, pasa por su feed-forward, y su salida se proyecta al vocabulario. Softmax convierte esos logits en probabilidades y de ahí se elige el siguiente token, que se agrega al contexto para repetir el ciclo.",
+          "steps": [
+            "Texto",
+            "Tokenización",
+            "Token IDs",
+            "Embeddings",
+            "Positional Encoding",
+            "Encoder",
+            "Self-Attention",
+            "Multi-Head Attention",
+            "Add & Norm",
+            "Feed Forward",
+            "Add & Norm",
+            "Encoder Output",
+            "Decoder",
+            "Masked Self-Attention",
+            "Encoder-Decoder Attention",
+            "Feed Forward",
+            "Linear",
+            "Logits",
+            "Softmax",
+            "Siguiente Token"
+          ],
+          "visualization": {
+            "componentes": [
+              "todos"
+            ],
+            "resaltar": "recorrido_completo"
+          },
+          "related_concepts": [
+            "flujo_general",
+            "tabla_dimensiones",
+            "generacion_token_por_token"
+          ]
+        },
+        {
+          "id": "que_le_pasa_a_un_token",
+          "title": "Qué le ocurre a la representación de un token",
+          "order": 2,
+          "short_description": "El mismo vector se transforma etapa por etapa, sin cambiar de tamaño.",
+          "explanation": "Es útil seguir a un token individual. Empieza siendo un id, un número sin significado. Se convierte en un embedding: un vector que codifica qué es esa palabra en general, pero todavía no en este contexto. Se le suma la posición, y ahora también codifica dónde está. Entra a la primera capa de atención y absorbe información de los tokens relevantes, dejando de ser genérico. La feed-forward transforma esa mezcla. Cada capa repite el ciclo, refinando la representación con contexto cada vez más elaborado. Al final, ese vector se proyecta al vocabulario y determina qué token viene después. Durante todo el recorrido, el vector nunca cambia de tamaño: siempre tiene d_model componentes.",
+          "intuition": "El token entra como una palabra de diccionario, aislada, y sale como esa palabra entendida dentro de esta frase específica.",
+          "related_concepts": [
+            "recorrido_completo",
+            "contextualizacion",
+            "embeddings"
+          ]
+        }
+      ]
+    }
+  ]
+}

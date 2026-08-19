@@ -38,6 +38,11 @@ class ConfiguracionTransformer:
         id_token_relleno: id del token de relleno (padding), usado para
             máscaras (None si el dataset no requiere relleno, ej.
             secuencias de longitud fija).
+                activacion: función de activación del feed-forward ("relu" por
+            defecto, la del paper original; "gelu" como GPT-2/BERT; "swish").
+        usar_mascara_causal: si es False, el decoder puede ver tokens
+            futuros durante el entrenamiento. Deliberadamente incorrecto,
+            pensado como herramienta educativa (ver Transformer.crear_mascaras).
     """
 
     tamano_vocabulario: int
