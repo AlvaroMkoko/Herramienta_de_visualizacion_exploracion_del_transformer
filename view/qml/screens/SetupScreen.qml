@@ -7,6 +7,7 @@ import QtQuick.Layouts
 
 PagePrincipal {
     id: root
+    objectName: "setupScreen"
 
     // La biblioteca usa esta pantalla solo para elegir datasets y
     // parametros de la nueva sesion, conservando arquitectura y pesos.
@@ -36,12 +37,36 @@ PagePrincipal {
     property int parametrosTotales: 0
     property real memoriaEstimadaMb: 0
     property string mensajeError: ""
+    property var teoriaActual: ({})
+
+    readonly property var configuracionActual: mainViewModel.setupController.configuracionActual
+    readonly property string mensajeErrorVisible: root.mensajeError !== ""
+                                                  ? root.mensajeError
+                                                  : mainViewModel.setupController.errorConfiguracion
 
     property int epocas: 6
     property real tasaAprendizaje: 0.0003
     property int batchSize: 6
     property bool inicioEntrenamientoPendiente: false
     property var datasetsInicioPendientes: []
+
+    function mostrarTeoriaComponente(componentId) {
+        if (!componentId) {
+            root.teoriaActual = ({})
+            return
+        }
+        root.teoriaActual = mainViewModel.theoryController.obtenerTeoriaDeComponente(componentId)
+    }
+
+    function mostrarConceptoRelacionado(conceptId) {
+        var concepto = mainViewModel.theoryController.obtenerConcepto(conceptId)
+        var resultado = ({})
+        for (var clave in concepto)
+            resultado[clave] = concepto[clave]
+        resultado.relacionados = mainViewModel.theoryController.obtenerRelacionados(conceptId)
+        resultado.componente_id = localBridge.selectedId
+        root.teoriaActual = resultado
+    }
 
     function completarInicioEntrenamiento() {
         if (!root.inicioEntrenamientoPendiente || !mainViewModel.modeloListo)
@@ -66,6 +91,33 @@ PagePrincipal {
         function onModeloListoCambio() {
             root.completarInicioEntrenamiento()
         }
+
+        function onErrorDataset(mensaje) {
+            root.mensajeError = mensaje
+        }
+    }
+
+    Connections {
+        target: mainViewModel.setupController
+        ignoreUnknownSignals: true
+
+        function onResumen_cambio(resumen) {
+            root.parametrosTotales = Number(resumen.parametros_totales || 0)
+            root.memoriaEstimadaMb = Number(resumen.memoria_estimada_mb || 0)
+        }
+
+        function onError_configuracion(mensaje) {
+            root.inicioEntrenamientoPendiente = false
+        }
+    }
+
+    Connections {
+        target: mainViewModel.theoryController
+        ignoreUnknownSignals: true
+
+        function onTeoriaRecargada() {
+            root.mostrarTeoriaComponente(localBridge.selectedId)
+        }
     }
 
     Component.onCompleted: {
@@ -74,18 +126,9 @@ PagePrincipal {
             root.parametrosTotales = Number(infoActual.parametros_totales || 0)
             root.memoriaEstimadaMb = Math.round(root.parametrosTotales * 4 / 1048576 * 10) / 10
             localBridge.numCapas = Number(infoActual.num_capas || 0)
+        } else {
+            localBridge.numCapas = Number(root.configuracionActual.num_capas || 1)
         }
-        mainViewModel.setupController.resumen_cambio.connect(function(resumen) {
-            root.parametrosTotales = resumen.parametros_totales
-            root.memoriaEstimadaMb = resumen.memoria_estimada_mb
-        })
-        mainViewModel.setupController.error_configuracion.connect(function(mensaje) {
-            root.inicioEntrenamientoPendiente = false
-            root.mensajeError = mensaje
-        })
-        mainViewModel.errorDataset.connect(function(mensaje) {
-            root.mensajeError = mensaje
-        })
     }
 
     // --- OBJETO PUENTE (BRIDGE) PARA EL DIAGRAMA ---
@@ -95,13 +138,26 @@ PagePrincipal {
         property string selectedId: ""
         property int numCapas: 6
         function selectComponent(id) {
-            // Si el usuario da clic al mismo componente, lo deseleccionamos
-            if (selectedId === id) {
-                selectedId = ""
-            } else {
+            if (selectedId === id)
+                clearSelection()
+            else {
                 selectedId = id
+                root.mostrarTeoriaComponente(id)
             }
         }
+        function clearSelection() {
+            selectedId = ""
+            root.teoriaActual = ({})
+        }
+        function showOverview() {
+            clearSelection()
+        }
+    }
+
+    Shortcut {
+        sequence: "Esc"
+        enabled: localBridge.selectedId !== ""
+        onActivated: localBridge.clearSelection()
     }
 
     BotonPrincipal {
@@ -198,6 +254,7 @@ PagePrincipal {
 
         // Instanciamos el diagrama puro sin la UI externa y le pasamos el puente local
         TransformerDiagram {
+            objectName: "setupTransformerDiagram"
             anchors.fill: parent
             bridge: localBridge
         }
@@ -215,12 +272,33 @@ PagePrincipal {
         anchors.verticalCenter: parent.verticalCenter
         anchors.rightMargin: 20 * sx
 
-        Column {
-            anchors.centerIn: parent
-            width: parent.width
-            spacing: 20 * sy
+        ScrollView {
+            id: panelScroll
+            anchors.fill: parent
+            clip: true
+            contentWidth: availableWidth
+            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
-            RectanglePrincipal {
+            Column {
+                width: panelScroll.availableWidth
+                spacing: 14 * sy
+
+                ContextPanel {
+                    objectName: "setupContextPanel"
+                    width: parent.width
+                    height: visible ? 390 * root.sy : 0
+                    visible: localBridge.selectedId !== ""
+                    sx: root.sx
+                    sy: root.sy
+                    concepto: root.teoriaActual
+                    errorCarga: mainViewModel.theoryController.errorCarga
+                    onCloseRequested: localBridge.clearSelection()
+                    onConceptRequested: function(conceptId) {
+                        root.mostrarConceptoRelacionado(conceptId)
+                    }
+                }
+
+                RectanglePrincipal {
                 id: rectangulo_configuracion
                 width: parent.width
                 // Altura dinámica que se ajusta a cuántos sliders sean visibles
@@ -257,7 +335,9 @@ PagePrincipal {
                         from: 1
                         to: Math.max(12, Number(mainViewModel.modeloActualInfo.num_capas || 0))
                         stepSize: 1
-                        value: root.usarModeloActual ? Number(mainViewModel.modeloActualInfo.num_capas || 1) : 6
+                        value: root.usarModeloActual
+                               ? Number(mainViewModel.modeloActualInfo.num_capas || 1)
+                               : Number(root.configuracionActual.num_capas || 6)
                         onValueChanged: {
                             localBridge.numCapas = value
                             if (!root.usarModeloActual)
@@ -275,7 +355,9 @@ PagePrincipal {
                         from: 32
                         to: Math.max(512, Number(mainViewModel.modeloActualInfo.dimension_modelo || 0))
                         stepSize: 32
-                        value: root.usarModeloActual ? Number(mainViewModel.modeloActualInfo.dimension_modelo || 32) : 64
+                        value: root.usarModeloActual
+                               ? Number(mainViewModel.modeloActualInfo.dimension_modelo || 32)
+                               : Number(root.configuracionActual.dimension_modelo || 64)
                         onValueChanged: {
                             if (!root.usarModeloActual)
                                 mainViewModel.setupController.establecer_dimension_modelo(value)
@@ -294,7 +376,9 @@ PagePrincipal {
                         from: 16
                         to: Math.max(512, Number(mainViewModel.modeloActualInfo.longitud_maxima_secuencia || 0))
                         stepSize: 16
-                        value: root.usarModeloActual ? Number(mainViewModel.modeloActualInfo.longitud_maxima_secuencia || 16) : 64
+                        value: root.usarModeloActual
+                               ? Number(mainViewModel.modeloActualInfo.longitud_maxima_secuencia || 16)
+                               : Number(root.configuracionActual.longitud_maxima_secuencia || 64)
                         onValueChanged: {
                             if (!root.usarModeloActual)
                                 mainViewModel.setupController.establecer_longitud_maxima_secuencia(value)
@@ -313,7 +397,9 @@ PagePrincipal {
                         from: 128
                         to: Math.max(2048, Number(mainViewModel.modeloActualInfo.dimension_ff || 0))
                         stepSize: 128
-                        value: root.usarModeloActual ? Number(mainViewModel.modeloActualInfo.dimension_ff || 128) : 256
+                        value: root.usarModeloActual
+                               ? Number(mainViewModel.modeloActualInfo.dimension_ff || 128)
+                               : Number(root.configuracionActual.dimension_ff || 256)
                         onValueChanged: {
                             if (!root.usarModeloActual)
                                 mainViewModel.setupController.establecer_dimension_ff(value)
@@ -340,9 +426,10 @@ PagePrincipal {
                             opacity: enabled ? 1.0 : 0.55
 
                             model: ["relu", "gelu", "swish"]
-                            currentIndex: root.usarModeloActual
-                                ? Math.max(0, model.indexOf(String(mainViewModel.modeloActualInfo.activacion || "relu")))
-                                : 0
+                            currentIndex: Math.max(0, model.indexOf(String(
+                                root.usarModeloActual
+                                ? (mainViewModel.modeloActualInfo.activacion || "relu")
+                                : (root.configuracionActual.activacion || "relu"))))
 
                             onActivated: {
                                 if (!root.usarModeloActual) {
@@ -373,8 +460,8 @@ PagePrincipal {
                                 enabled: !root.usarModeloActual
                                 opacity: enabled ? 1.0 : 0.55
                                 checked: root.usarModeloActual
-                                        ? (mainViewModel.modeloActualInfo.usar_mascara_causal !== false)
-                                        : true
+                                         ? (mainViewModel.modeloActualInfo.usar_mascara_causal !== false)
+                                         : (root.configuracionActual.usar_mascara_causal !== false)
                                 onToggled: {
                                     if (!root.usarModeloActual)
                                         mainViewModel.setupController.establecer_usar_mascara_causal(checked)
@@ -407,7 +494,9 @@ PagePrincipal {
                         from: 1
                         to: Math.max(12, Number(mainViewModel.modeloActualInfo.num_cabezas || 0))
                         stepSize: 1
-                        value: root.usarModeloActual ? Number(mainViewModel.modeloActualInfo.num_cabezas || 1) : 4
+                        value: root.usarModeloActual
+                               ? Number(mainViewModel.modeloActualInfo.num_cabezas || 1)
+                               : Number(root.configuracionActual.num_cabezas || 4)
                         onValueChanged: {
                             if (!root.usarModeloActual)
                                 mainViewModel.setupController.establecer_num_cabezas(value)
@@ -425,7 +514,9 @@ PagePrincipal {
                         from: 0
                         to: Math.max(0.5, Number(mainViewModel.modeloActualInfo.dropout || 0))
                         stepSize: 0.05
-                        value: root.usarModeloActual ? Number(mainViewModel.modeloActualInfo.dropout || 0) : 0.1
+                        value: root.usarModeloActual
+                               ? Number(mainViewModel.modeloActualInfo.dropout || 0)
+                               : Number(root.configuracionActual.dropout || 0.1)
                         tipo_dato: "decimal"
                         onValueChanged: {
                             if (!root.usarModeloActual)
@@ -433,38 +524,62 @@ PagePrincipal {
                         }
                     }
 
-                    // --- Sliders de Hiperparámetros de Entrenamiento (General) ---
-                    SliderColumn {
-                        Layout.fillWidth: true
-                        visible: localBridge.selectedId === ""
-                        sx: root.sx
-                        sy: root.sy
-                        text: "Épocas"
-                        from: 1; to: 24; stepSize: 1; value: 6
-                        onValueChanged: root.epocas = value
-                    }
-                    SliderColumn {
-                        Layout.fillWidth: true
-                        visible: localBridge.selectedId === ""
-                        sx: root.sx
-                        sy: root.sy
-                        text: "Learning Rate"
-                        from: 0; to: 0.01; stepSize: 0.0001; value: 0.0003; tipo_dato: "decimal"
-                        onValueChanged: root.tasaAprendizaje = value
-                    }
-                    SliderColumn {
-                        Layout.fillWidth: true
-                        visible: localBridge.selectedId === ""
-                        sx: root.sx
-                        sy: root.sy
-                        text: "Batch Size"
-                        from: 1; to: 24; stepSize: 1; value: 6
-                        onValueChanged: root.batchSize = value
-                    }
                 }
             }
 
-            RectanglePrincipal {
+                RectanglePrincipal {
+                    id: rectanguloEntrenamiento
+                    objectName: "trainingParametersCard"
+                    width: parent.width
+                    height: layoutEntrenamiento.implicitHeight + 30 * root.sy
+                    sx: root.sx
+                    sy: root.sy
+
+                    ColumnLayout {
+                        id: layoutEntrenamiento
+                        anchors.fill: parent
+                        anchors.margins: 15 * root.sx
+                        spacing: 5 * root.sy
+
+                        Text {
+                            text: "Entrenamiento"
+                            color: Style.Theme.texto_primario
+                            font.pixelSize: 16 * root.sx
+                            font.bold: true
+                            Layout.alignment: Qt.AlignHCenter
+                            Layout.bottomMargin: 8 * root.sy
+                        }
+
+                        SliderColumn {
+                            Layout.fillWidth: true
+                            sx: root.sx
+                            sy: root.sy
+                            text: "Épocas / iteraciones"
+                            from: 1; to: 24; stepSize: 1; value: root.epocas
+                            onValueChanged: root.epocas = value
+                        }
+                        SliderColumn {
+                            Layout.fillWidth: true
+                            sx: root.sx
+                            sy: root.sy
+                            text: "Learning Rate"
+                            from: 0; to: 0.01; stepSize: 0.0001
+                            value: root.tasaAprendizaje
+                            tipo_dato: "decimal"
+                            onValueChanged: root.tasaAprendizaje = value
+                        }
+                        SliderColumn {
+                            Layout.fillWidth: true
+                            sx: root.sx
+                            sy: root.sy
+                            text: "Batch Size"
+                            from: 1; to: 24; stepSize: 1; value: root.batchSize
+                            onValueChanged: root.batchSize = value
+                        }
+                    }
+                }
+
+                RectanglePrincipal {
                 id: rectangulo_resumen
                 width: parent.width 
                 height: layoutResumen.implicitHeight + 20 * sy
@@ -487,8 +602,8 @@ PagePrincipal {
 
                     Text {
                         Layout.alignment: Qt.AlignHCenter
-                        visible: root.mensajeError !== ""
-                        text: root.mensajeError
+                        visible: root.mensajeErrorVisible !== ""
+                        text: root.mensajeErrorVisible
                         color: "red"
                         wrapMode: Text.WordWrap
                         Layout.preferredWidth: parent.width
@@ -498,15 +613,21 @@ PagePrincipal {
                 }
             }
 
-            BotonPrincipal {
+                BotonPrincipal {
                 id: botonIniciarEntrenamiento
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: 200 * root.sx
                 height: 50 * root.sy
                 text: root.usarModeloActual ? "Continuar Entrenamiento" : "Iniciar Entrenamiento"
+                enabled: root.usarModeloActual || mainViewModel.setupController.configuracionValida
+                opacity: enabled ? 1.0 : 0.5
 
                 onClicked: {
                     root.mensajeError = ""
+
+                    if (!root.usarModeloActual
+                            && !mainViewModel.setupController.configuracionValida)
+                        return
 
                     if (datasetsSeleccionadosModel.count === 0) {
                         root.mensajeError = "Selecciona al menos un dataset para continuar."
@@ -529,6 +650,12 @@ PagePrincipal {
                         return
                     }
                     root.completarInicioEntrenamiento()
+                }
+                }
+
+                Item {
+                    width: 1
+                    height: 12 * root.sy
                 }
             }
         }

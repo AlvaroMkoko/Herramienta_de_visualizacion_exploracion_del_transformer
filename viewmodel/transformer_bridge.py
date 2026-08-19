@@ -9,9 +9,11 @@ from .transformer_model import COMPONENTS
 
 class TransformerBridge(QObject):
     selectionChanged = Signal()
+    selectionCleared = Signal()
     activePageChanged = Signal()
     modelConfigChanged = Signal()
     resetCameraRequested = Signal()
+    componentClicked = Signal(str)
     componentActivated = Signal(str)
 
     def __init__(self, parent: QObject | None = None) -> None:
@@ -115,24 +117,47 @@ class TransformerBridge(QObject):
     def activePage(self) -> str:
         return self._active_page
 
+    def _set_selection_state(self, component_id: str, page: str) -> bool:
+        """Apply selection and page atomically before notifying observers."""
+        selection_changed = component_id != self._selected_id
+        page_changed = page != self._active_page
+        self._selected_id = component_id
+        self._active_page = page
+        if selection_changed:
+            self.selectionChanged.emit()
+        if page_changed:
+            self.activePageChanged.emit()
+        return selection_changed
+
     @Slot(str)
     def selectComponent(self, component_id: str) -> None:
         if component_id not in COMPONENTS:
             return
-        changed = component_id != self._selected_id
-        self._selected_id = component_id
-        if changed:
-            self.selectionChanged.emit()
-        if self._active_page != "detail":
-            self._active_page = "detail"
-            self.activePageChanged.emit()
+
+        self.componentClicked.emit(component_id)
+
+        # Un segundo clic sobre el mismo bloque vuelve al estado general. Este
+        # comportamiento coincide con los bridges ligeros usados directamente
+        # desde QML.
+        if component_id == self._selected_id:
+            self.clearSelection()
+            return
+
+        self._set_selection_state(component_id, "detail")
         self.componentActivated.emit(component_id)
 
     @Slot()
+    def clearSelection(self) -> None:
+        """Clear the persistent user selection and return to the overview."""
+        had_selection = bool(self._selected_id)
+        self._set_selection_state("", "overview")
+        if had_selection:
+            self.selectionCleared.emit()
+
+    @Slot()
     def showOverview(self) -> None:
-        if self._active_page != "overview":
-            self._active_page = "overview"
-            self.activePageChanged.emit()
+        """Show the overview, whose invariant is that no block is selected."""
+        self.clearSelection()
 
     @Slot()
     def resetCamera(self) -> None:
