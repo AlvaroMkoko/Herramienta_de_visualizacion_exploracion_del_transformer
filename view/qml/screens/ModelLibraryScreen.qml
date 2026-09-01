@@ -9,6 +9,7 @@ import "../components"
 
 PagePrincipal {
     id: root
+    objectName: "modelLibraryScreen"
     helpModalObjectName: "modelLibraryTheoryModal"
     helpPanelObjectName: "modelLibraryTheoryPanel"
 
@@ -523,6 +524,7 @@ PagePrincipal {
 
     ListView {
         id: listaModelos
+        objectName: "modelLibraryModelList"
         anchors.top: herramientasCatalogo.bottom
         anchors.topMargin: 12 * root.sy
         anchors.left: parent.left
@@ -615,13 +617,14 @@ PagePrincipal {
                             id: architectureValue
                             required property var modelData
                             Layout.fillWidth: true
+                            Layout.minimumWidth: 0
+                            Layout.preferredWidth: 1
                             spacing: 2 * root.sx
                             Text {
-                                Layout.maximumWidth: Math.max(
-                                                         0,
-                                                         architectureValue.width
-                                                         - architectureHelp.implicitWidth
-                                                         - architectureValue.spacing)
+                                objectName: "modelLibraryArchitectureMetric"
+                                Layout.minimumWidth: 0
+                                Layout.preferredWidth: implicitWidth
+                                Layout.maximumWidth: implicitWidth
                                 text: architectureValue.modelData.label + ": "
                                       + architectureValue.modelData.value
                                 color: "#312E81"
@@ -635,6 +638,10 @@ PagePrincipal {
                                 conceptLabel: architectureValue.modelData.label
                                 controlSize: Math.max(20, 23 * Math.min(root.sx, root.sy))
                                 onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                            }
+                            Item {
+                                Layout.fillWidth: true
+                                Layout.minimumWidth: 0
                             }
                         }
                     }
@@ -654,13 +661,14 @@ PagePrincipal {
                             id: dimensionValue
                             required property var modelData
                             Layout.fillWidth: true
+                            Layout.minimumWidth: 0
+                            Layout.preferredWidth: 1
                             spacing: 2 * root.sx
                             Text {
-                                Layout.maximumWidth: Math.max(
-                                                         0,
-                                                         dimensionValue.width
-                                                         - dimensionHelp.implicitWidth
-                                                         - dimensionValue.spacing)
+                                objectName: "modelLibraryDimensionMetric"
+                                Layout.minimumWidth: 0
+                                Layout.preferredWidth: implicitWidth
+                                Layout.maximumWidth: implicitWidth
                                 text: dimensionValue.modelData.label + " "
                                       + dimensionValue.modelData.value
                                 color: Style.Theme.texto_primario
@@ -673,6 +681,10 @@ PagePrincipal {
                                 conceptLabel: dimensionValue.modelData.label
                                 controlSize: Math.max(20, 23 * Math.min(root.sx, root.sy))
                                 onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                            }
+                            Item {
+                                Layout.fillWidth: true
+                                Layout.minimumWidth: 0
                             }
                         }
                     }
@@ -691,15 +703,14 @@ PagePrincipal {
                             id: storageValue
                             required property var modelData
                             Layout.fillWidth: true
+                            Layout.minimumWidth: 0
+                            Layout.preferredWidth: 1
                             spacing: 2 * root.sx
                             Text {
-                                Layout.maximumWidth: Math.max(
-                                                         0,
-                                                         storageValue.width
-                                                         - (storageHelp.visible
-                                                            ? storageHelp.implicitWidth
-                                                              + storageValue.spacing
-                                                            : 0))
+                                objectName: "modelLibraryStorageMetric"
+                                Layout.minimumWidth: 0
+                                Layout.preferredWidth: implicitWidth
+                                Layout.maximumWidth: implicitWidth
                                 text: storageValue.modelData.label + " "
                                       + storageValue.modelData.value
                                 color: Style.Theme.texto_secundario
@@ -713,6 +724,10 @@ PagePrincipal {
                                 conceptLabel: storageValue.modelData.label
                                 controlSize: Math.max(20, 23 * Math.min(root.sx, root.sy))
                                 onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                            }
+                            Item {
+                                Layout.fillWidth: true
+                                Layout.minimumWidth: 0
                             }
                         }
                     }
@@ -731,13 +746,14 @@ PagePrincipal {
                             id: trainingValue
                             required property var modelData
                             Layout.fillWidth: true
+                            Layout.minimumWidth: 0
+                            Layout.preferredWidth: 1
                             spacing: 2 * root.sx
                             Text {
-                                Layout.maximumWidth: Math.max(
-                                                         0,
-                                                         trainingValue.width
-                                                         - trainingHelp.implicitWidth
-                                                         - trainingValue.spacing)
+                                objectName: "modelLibraryTrainingMetric"
+                                Layout.minimumWidth: 0
+                                Layout.preferredWidth: implicitWidth
+                                Layout.maximumWidth: implicitWidth
                                 text: trainingValue.modelData.label + " "
                                       + trainingValue.modelData.value
                                 color: Style.Theme.texto_secundario
@@ -751,6 +767,10 @@ PagePrincipal {
                                 controlSize: Math.max(20, 23 * Math.min(root.sx, root.sy))
                                 onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
                             }
+                            Item {
+                                Layout.fillWidth: true
+                                Layout.minimumWidth: 0
+                            }
                         }
                     }
                 }
@@ -762,12 +782,12 @@ PagePrincipal {
                                                      ["usarMascaraCausal", "usar_mascara_causal", "causal_mask"],
                                                      true)
                     Layout.fillWidth: true
+                    spacing: 2 * root.sx
                     Text {
-                        Layout.maximumWidth: Math.max(
-                                                 0,
-                                                 maskValue.width
-                                                 - maskHelp.implicitWidth
-                                                 - maskValue.spacing)
+                        objectName: "modelLibraryMaskMetric"
+                        Layout.minimumWidth: 0
+                        Layout.preferredWidth: implicitWidth
+                        Layout.maximumWidth: implicitWidth
                         text: parent.mascaraActiva
                               ? "Máscara causal activada"
                               : "⚠ Sin máscara causal — modelo experimental"
@@ -782,6 +802,10 @@ PagePrincipal {
                         conceptLabel: "Máscara causal"
                         controlSize: Math.max(20, 23 * Math.min(root.sx, root.sy))
                         onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                    }
+                    Item {
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
                     }
                 }
 
