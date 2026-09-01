@@ -9,6 +9,8 @@ import "../components"
 PagePrincipal {
     id: root
     objectName: "trainingScreen"
+    helpModalObjectName: "trainingTheoryModal"
+    helpPanelObjectName: "trainingContextPanel"
 
     readonly property var viewModel: mainViewModel
     readonly property var trainingController: root.viewModel.trainingController
@@ -52,19 +54,42 @@ PagePrincipal {
     function mostrarTeoriaComponente(componentId) {
         if (!componentId) {
             root.teoriaActual = ({})
+            root.closeTheory()
             return
         }
-        root.teoriaActual = root.viewModel.theoryController.obtenerTeoriaDeComponente(componentId)
+        root.teoriaActual = root.openTheoryComponent(componentId)
     }
 
     function mostrarConceptoRelacionado(conceptId) {
-        var concepto = root.viewModel.theoryController.obtenerConcepto(conceptId)
-        var resultado = ({})
-        for (var clave in concepto)
-            resultado[clave] = concepto[clave]
-        resultado.relacionados = root.viewModel.theoryController.obtenerRelacionados(conceptId)
-        resultado.componente_id = localBridge.selectedId
-        root.teoriaActual = resultado
+        root.teoriaActual = root.openTheoryConcept(conceptId)
+    }
+
+    function conceptoParaMetrica(etiqueta) {
+        var texto = String(etiqueta || "").toLowerCase()
+        if (texto.indexOf("rms") !== -1)
+            return "gradient_norm_rms"
+        if (texto.indexOf("gradiente") !== -1)
+            return "gradient_norm_l2"
+        if (texto.indexOf("entrop") !== -1 || texto.indexOf("peso de atención") !== -1)
+            return "interpretacion_pesos"
+        if (texto.indexOf("norma de pesos") !== -1)
+            return "weight_norm"
+        if (texto.indexOf("parámetro") !== -1)
+            return "parameter_count"
+        if (texto.indexOf("logit") !== -1)
+            return "logits"
+        if (texto.indexOf("vocabulario") !== -1)
+            return "tokenizacion"
+        if (texto.indexOf("activación") !== -1)
+            return "activation_functions"
+        if (texto.indexOf("máscara") !== -1)
+            return "por_que_mascara"
+        if (texto.indexOf("token") !== -1)
+            return "token_ids"
+        if (texto.indexOf("forma") !== -1 || texto.indexOf("dimensión") !== -1
+                || texto.indexOf("expansión") !== -1 || texto.indexOf("mapa") !== -1)
+            return "tabla_dimensiones"
+        return ""
     }
 
     // Velocidad de entrenamiento: retardo en segundos entre pasos.
@@ -149,13 +174,15 @@ PagePrincipal {
                 clearSelection()
             else {
                 selectedId = componentId
-                root.mostrarTeoriaComponente(componentId)
+                root.teoriaActual = root.previewTheoryComponent(componentId)
+                root.closeTheory()
             }
         }
 
         function clearSelection() {
             selectedId = ""
             root.teoriaActual = ({})
+            root.closeTheory()
         }
 
         function showOverview() {
@@ -165,7 +192,7 @@ PagePrincipal {
 
     Shortcut {
         sequence: "Esc"
-        enabled: localBridge.selectedId !== ""
+        enabled: localBridge.selectedId !== "" && !root.theoryModalOpened
         onActivated: localBridge.clearSelection()
     }
 
@@ -212,15 +239,6 @@ PagePrincipal {
         function onCheckpoint_guardado(ruta) {
             root.mensajeCheckpoint = "Guardado: " + ruta
             root.mensajeError = ""
-        }
-    }
-
-    Connections {
-        target: root.viewModel.theoryController
-        ignoreUnknownSignals: true
-
-        function onTeoriaRecargada() {
-            root.mostrarTeoriaComponente(localBridge.selectedId)
         }
     }
 
@@ -325,11 +343,11 @@ PagePrincipal {
 
                     Repeater {
                         model: [
-                            { label: "ÉPOCA", value: (root.epocaActual + 1) + " / " + root.epocasIniciales, color: "#6C5FC3" },
-                            { label: "PASO", value: String(root.pasoGlobalActual), color: "#3979B7" },
-                            { label: "PÉRDIDA", value: root.numero(root.perdidaActual, 4), color: "#258F6F" },
-                            { label: "Δ PÉRDIDA", value: (root.deltaPerdida > 0 ? "+" : "") + root.numero(root.deltaPerdida, 4), color: root.deltaPerdida <= 0 ? "#258F6F" : "#B25D35" },
-                            { label: "GRADIENTE", value: root.numero(root.normaGradiente, 3), color: "#9A641B" }
+                            { label: "ÉPOCA", value: (root.epocaActual + 1) + " / " + root.epocasIniciales, color: "#6C5FC3", help: "epoch_batch" },
+                            { label: "PASO", value: String(root.pasoGlobalActual), color: "#3979B7", help: "training_step" },
+                            { label: "PÉRDIDA", value: root.numero(root.perdidaActual, 4), color: "#258F6F", help: "cross_entropy" },
+                            { label: "Δ PÉRDIDA", value: (root.deltaPerdida > 0 ? "+" : "") + root.numero(root.deltaPerdida, 4), color: root.deltaPerdida <= 0 ? "#258F6F" : "#B25D35", help: "loss_delta" },
+                            { label: "GRADIENTE L2", value: root.numero(root.normaGradiente, 3), color: "#9A641B", help: "gradient_norm_l2" }
                         ]
 
                         delegate: Rectangle {
@@ -344,12 +362,28 @@ PagePrincipal {
                             Column {
                                 anchors.centerIn: parent
                                 spacing: 3 * root.sy
-                                Text {
+                                Row {
                                     anchors.horizontalCenter: parent.horizontalCenter
-                                    text: summaryMetric.modelData.label
-                                    color: Style.Theme.texto_secundario
-                                    font.bold: true
-                                    font.pixelSize: 10 * root.sx
+                                    spacing: 1 * root.sx
+                                    Text {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        text: summaryMetric.modelData.label
+                                        color: Style.Theme.texto_secundario
+                                        font.bold: true
+                                        font.pixelSize: 10 * root.sx
+                                    }
+                                    ConceptHelpButton {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        objectName: "trainingMetricHelp_"
+                                                    + summaryMetric.modelData.help
+                                        conceptId: summaryMetric.modelData.help
+                                        conceptLabel: summaryMetric.modelData.label
+                                        controlSize: Math.max(18, 19 * Math.min(root.sx,
+                                                                               root.sy))
+                                        onHelpRequested: function(conceptId) {
+                                            root.openTheoryConcept(conceptId)
+                                        }
+                                    }
                                 }
                                 Text {
                                     anchors.horizontalCenter: parent.horizontalCenter
@@ -359,6 +393,7 @@ PagePrincipal {
                                     font.pixelSize: 18 * root.sx
                                 }
                             }
+
                         }
                     }
                 }
@@ -401,6 +436,17 @@ PagePrincipal {
                                 elide: Text.ElideRight
                                 font.pixelSize: 10 * root.sx
                             }
+                        }
+                        ConceptHelpButton {
+                            objectName: "trainingLossHelpButton"
+                            conceptId: "cross_entropy"
+                            controlSize: Math.max(24, 28 * Math.min(root.sx, root.sy))
+                            onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                        }
+                        ConceptHelpButton {
+                            conceptId: "gradient_norm_rms"
+                            controlSize: Math.max(24, 28 * Math.min(root.sx, root.sy))
+                            onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
                         }
                     }
                 }
@@ -448,6 +494,7 @@ PagePrincipal {
                                 // Solo rota sola cuando la pestaña esta visible,
                                 // para no repintar un Canvas que nadie ve.
                                 rotacionAutomatica: barraPestanas.currentIndex === 1
+                                onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
                             }
                         }
                     }
@@ -509,27 +556,34 @@ PagePrincipal {
                             }
                         }
 
-                        ContextPanel {
-                            objectName: "trainingContextPanel"
+                        ConceptSummary {
+                            objectName: "trainingConceptSummary"
+                            openButtonObjectName: "trainingOpenTheoryButton"
                             visible: root.componenteActual
                             width: parent.width
-                            height: visible ? 360 * root.sy : 0
+                            height: visible ? implicitHeight : 0
                             sx: root.sx
                             sy: root.sy
                             concepto: root.teoriaActual
-                            errorCarga: root.viewModel.theoryController.errorCarga
+                            onOpenRequested: root.mostrarTeoriaComponente(localBridge.selectedId)
                             onCloseRequested: localBridge.clearSelection()
-                            onConceptRequested: function(conceptId) {
-                                root.mostrarConceptoRelacionado(conceptId)
-                            }
                         }
 
-                        Text {
+                        RowLayout {
                             visible: root.componenteActual
-                            text: "DATOS REALES · BATCH ACTUAL"
-                            color: "#258F6F"
-                            font.bold: true
-                            font.pixelSize: 11 * root.sx
+                            width: parent.width
+                            spacing: 6 * root.sx
+                            Text {
+                                text: "DATOS REALES · BATCH ACTUAL"
+                                color: "#258F6F"
+                                font.bold: true
+                                font.pixelSize: 11 * root.sx
+                            }
+                            ConceptHelpButton {
+                                conceptId: "epoch_batch"
+                                controlSize: Math.max(22, 25 * Math.min(root.sx, root.sy))
+                                onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                            }
                         }
 
                         Repeater {
@@ -569,6 +623,16 @@ PagePrincipal {
                                             wrapMode: Text.WordWrap
                                         }
                                     }
+                                    ConceptHelpButton {
+                                        readonly property string resolvedConceptId:
+                                            String(metricDelegate.modelData.concepto_id || "") !== ""
+                                            ? String(metricDelegate.modelData.concepto_id)
+                                            : root.conceptoParaMetrica(metricDelegate.modelData.etiqueta)
+                                        visible: resolvedConceptId !== ""
+                                        conceptId: resolvedConceptId
+                                        controlSize: Math.max(22, 25 * Math.min(root.sx, root.sy))
+                                        onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                                    }
                                     Text {
                                         text: metricDelegate.modelData.valor
                                         color: Style.Theme.texto_primario
@@ -584,11 +648,20 @@ PagePrincipal {
                             width: parent.width
                             spacing: 6 * root.sy
 
-                            Text {
-                                text: "ATENCIÓN POR CAPA"
-                                color: "#9A641B"
-                                font.bold: true
-                                font.pixelSize: 11 * root.sx
+                            RowLayout {
+                                width: parent.width
+                                spacing: 6 * root.sx
+                                Text {
+                                    text: "ATENCIÓN POR CAPA"
+                                    color: "#9A641B"
+                                    font.bold: true
+                                    font.pixelSize: 11 * root.sx
+                                }
+                                ConceptHelpButton {
+                                    conceptId: "interpretacion_pesos"
+                                    controlSize: Math.max(22, 25 * Math.min(root.sx, root.sy))
+                                    onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                                }
                             }
                             Repeater {
                                 model: root.componenteActual ? root.componenteActual.capas : []
@@ -719,14 +792,28 @@ PagePrincipal {
                         font.pixelSize: 10 * root.sx
                     }
 
-                    Text {
+                    RowLayout {
                         Layout.fillWidth: true
-                        text: "LR " + root.tasaAprendizajeInicial.toFixed(4)
-                              + "  ·  Batch " + root.batchSizeInicial
-                              + "  ·  " + root.epocasIniciales + " épocas"
-                        color: Style.Theme.texto_secundario
-                        horizontalAlignment: Text.AlignHCenter
-                        font.pixelSize: 10 * root.sx
+                        spacing: 5 * root.sx
+                        Item { Layout.fillWidth: true }
+                        Text {
+                            text: "LR " + root.tasaAprendizajeInicial.toFixed(4)
+                                  + "  ·  Batch " + root.batchSizeInicial
+                                  + "  ·  " + root.epocasIniciales + " épocas"
+                            color: Style.Theme.texto_secundario
+                            font.pixelSize: 10 * root.sx
+                        }
+                        ConceptHelpButton {
+                            conceptId: "learning_rate"
+                            controlSize: Math.max(21, 24 * Math.min(root.sx, root.sy))
+                            onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                        }
+                        ConceptHelpButton {
+                            conceptId: "epoch_batch"
+                            controlSize: Math.max(21, 24 * Math.min(root.sx, root.sy))
+                            onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                        }
+                        Item { Layout.fillWidth: true }
                     }
 
                     Text {

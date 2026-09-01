@@ -8,6 +8,8 @@ import "../components"
 
 PagePrincipal {
     id: root
+    helpModalObjectName: "modelDetailTheoryModal"
+    helpPanelObjectName: "modelDetailTheoryPanel"
 
     required property string rutaModelo
     property var modeloResumen: ({})
@@ -25,6 +27,7 @@ PagePrincipal {
     property string mensajeEstado: ""
     property bool mensajeEsError: false
     property string accionTrasCarga: ""
+    property var teoriaActual: ({})
 
     readonly property var descriptorActual: root.tiene(root.campo(root.detalle, ["descriptor"], null))
                                                 ? root.campo(root.detalle, ["descriptor"], {})
@@ -494,7 +497,24 @@ PagePrincipal {
         property string selectedId: ""
         property int numCapas: Math.max(1, Number(root.campoCombinado(
                                                      ["capasEncoder", "encoder_layers", "num_capas"], 1)))
-        function selectComponent(componentId) {}
+        function selectComponent(componentId) {
+            var nextId = String(componentId || "")
+            if (selectedId === nextId) {
+                clearSelection()
+                return
+            }
+            selectedId = nextId
+            root.teoriaActual = root.previewTheoryComponent(selectedId)
+            root.closeTheory()
+        }
+        function clearSelection() {
+            selectedId = ""
+            root.teoriaActual = ({})
+            root.closeTheory()
+        }
+        function showOverview() {
+            clearSelection()
+        }
     }
 
     RowLayout {
@@ -701,12 +721,20 @@ PagePrincipal {
                             anchors.fill: parent
                             anchors.margins: 14 * root.sx
                             spacing: 6 * root.sy
-                            Text {
+                            RowLayout {
                                 Layout.fillWidth: true
-                                text: "MAPA DE LA ARQUITECTURA"
-                                color: "#6D28D9"
-                                font.bold: true
-                                font.pixelSize: 12 * Math.min(root.sx, root.sy)
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: "MAPA DE LA ARQUITECTURA"
+                                    color: "#6D28D9"
+                                    font.bold: true
+                                    font.pixelSize: 12 * Math.min(root.sx, root.sy)
+                                }
+                                ConceptHelpButton {
+                                    conceptId: "encoder_decoder_general"
+                                    controlSize: Math.max(20, 23 * Math.min(root.sx, root.sy))
+                                    onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                                }
                             }
                             Text {
                                 Layout.fillWidth: true
@@ -721,9 +749,11 @@ PagePrincipal {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
                                 TransformerDiagram {
+                                    objectName: "modelDetailTransformerDiagram"
                                     anchors.fill: parent
                                     bridge: miniBridge
-                                    enabled: false
+                                    trainingMode: false
+                                    enabled: true
                                     opacity: 0.92
                                 }
                             }
@@ -754,22 +784,22 @@ PagePrincipal {
                                 rowSpacing: 9 * root.sy
                                 Repeater {
                                     model: [
-                                        { e: "Capas encoder", v: root.campoCombinado(["capasEncoder", "encoder_layers"], null) },
-                                        { e: "Capas decoder", v: root.campoCombinado(["capasDecoder", "decoder_layers"], null) },
-                                        { e: "Cabezas", v: root.campoCombinado(["cabezas", "num_cabezas", "heads"], null) },
-                                        { e: "d_model", v: root.campoCombinado(["dModel", "d_model", "dimension_modelo", "dimension"], null) },
-                                        { e: "d_head", v: root.campoCombinado(["dimensionCabeza", "dimension_cabeza", "headDimension", "head_dimension", "d_head"], null) },
-                                        { e: "d_ff", v: root.campoCombinado(["dFF", "d_ff", "dimension_ff", "dimensionFF"], null) },
-                                        { e: "Contexto", v: root.campoCombinado(["contexto", "context_length", "longitud_maxima_secuencia"], null) },
-                                        { e: "Vocabulario", v: root.campoCombinado(["vocabulario", "vocab_size", "tamano_vocabulario"], null) },
-                                        { e: "Parámetros", v: root.campoCombinado(["parametrosTotales", "parametros_totales", "parametros"], null), numero: true },
-                                        { e: "Activación", v: root.campoCombinado(["activacion", "activation"], null) },
-                                        { e: "Dropout", v: root.campoCombinado(["dropout"], null) },
-                                        { e: "Máscara causal", v: root.booleanoTexto(root.campoCombinado(["mascaraCausal", "usar_mascara_causal", "causal_mask"], null)) },
-                                        { e: "Normalización", v: root.campoCombinado(["normalizacion", "normalization", "normType", "tipo_normalizacion", "normalization_type"], null) },
-                                        { e: "Orden de normalización", v: root.campoCombinado(["ordenNormalizacion", "normalizationOrder", "normalization_order", "orden_normalizacion"], null) },
-                                        { e: "Weight tying", v: root.booleanoTexto(root.campoCombinado(["weightTying", "weight_tying", "pesosCompartidos", "compartir_pesos_salida"], null)) },
-                                        { e: "Formato", v: root.campo(root.descriptorActual, ["formato", "format"], null) }
+                                        { e: "Capas encoder", v: root.campoCombinado(["capasEncoder", "encoder_layers"], null), conceptId: "layer_count" },
+                                        { e: "Capas decoder", v: root.campoCombinado(["capasDecoder", "decoder_layers"], null), conceptId: "layer_count" },
+                                        { e: "Cabezas", v: root.campoCombinado(["cabezas", "num_cabezas", "heads"], null), conceptId: "cabeza_atencion" },
+                                        { e: "d_model", v: root.campoCombinado(["dModel", "d_model", "dimension_modelo", "dimension"], null), conceptId: "d_model" },
+                                        { e: "d_head", v: root.campoCombinado(["dimensionCabeza", "dimension_cabeza", "headDimension", "head_dimension", "d_head"], null), conceptId: "cabeza_atencion" },
+                                        { e: "d_ff", v: root.campoCombinado(["dFF", "d_ff", "dimension_ff", "dimensionFF"], null), conceptId: "dimension_d_ff" },
+                                        { e: "Contexto", v: root.campoCombinado(["contexto", "context_length", "longitud_maxima_secuencia"], null), conceptId: "context_window" },
+                                        { e: "Vocabulario", v: root.campoCombinado(["vocabulario", "vocab_size", "tamano_vocabulario"], null), conceptId: "tokenizacion" },
+                                        { e: "Parámetros", v: root.campoCombinado(["parametrosTotales", "parametros_totales", "parametros"], null), numero: true, conceptId: "parameter_count" },
+                                        { e: "Activación", v: root.campoCombinado(["activacion", "activation"], null), conceptId: "activation_functions" },
+                                        { e: "Dropout", v: root.campoCombinado(["dropout"], null), conceptId: "dropout" },
+                                        { e: "Máscara causal", v: root.booleanoTexto(root.campoCombinado(["mascaraCausal", "usar_mascara_causal", "causal_mask"], null)), conceptId: "por_que_mascara" },
+                                        { e: "Normalización", v: root.campoCombinado(["normalizacion", "normalization", "normType", "tipo_normalizacion", "normalization_type"], null), conceptId: "layer_normalization" },
+                                        { e: "Orden de normalización", v: root.campoCombinado(["ordenNormalizacion", "normalizationOrder", "normalization_order", "orden_normalizacion"], null), conceptId: "flujo_add_norm" },
+                                        { e: "Weight tying", v: root.booleanoTexto(root.campoCombinado(["weightTying", "weight_tying", "pesosCompartidos", "compartir_pesos_salida"], null)), conceptId: "capa_linear_salida" },
+                                        { e: "Formato", v: root.campo(root.descriptorActual, ["formato", "format"], null), conceptId: "checkpoint" }
                                     ]
                                     delegate: Rectangle {
                                         id: arquitecturaMetrica
@@ -783,12 +813,22 @@ PagePrincipal {
                                             anchors.fill: parent
                                             anchors.margins: 8 * root.sx
                                             spacing: 2 * root.sy
-                                            Text {
+                                            RowLayout {
                                                 Layout.fillWidth: true
-                                                text: arquitecturaMetrica.modelData.e
-                                                color: Style.Theme.texto_secundario
-                                                font.pixelSize: 10 * Math.min(root.sx, root.sy)
-                                                elide: Text.ElideRight
+                                                spacing: 3 * root.sx
+                                                Text {
+                                                    Layout.fillWidth: true
+                                                    text: arquitecturaMetrica.modelData.e
+                                                    color: Style.Theme.texto_secundario
+                                                    font.pixelSize: 10 * Math.min(root.sx, root.sy)
+                                                    elide: Text.ElideRight
+                                                }
+                                                ConceptHelpButton {
+                                                    visible: conceptId !== ""
+                                                    conceptId: arquitecturaMetrica.modelData.conceptId || ""
+                                                    controlSize: Math.max(18, 20 * Math.min(root.sx, root.sy))
+                                                    onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                                                }
                                             }
                                             Text {
                                                 Layout.fillWidth: true
@@ -806,6 +846,19 @@ PagePrincipal {
                             }
                         }
                     }
+                }
+
+                ConceptSummary {
+                    objectName: "modelDetailConceptSummary"
+                    openButtonObjectName: "modelDetailOpenTheoryButton"
+                    Layout.fillWidth: true
+                    visible: miniBridge.selectedId !== ""
+                    Layout.preferredHeight: visible ? implicitHeight : 0
+                    sx: root.sx
+                    sy: root.sy
+                    concepto: root.teoriaActual
+                    onOpenRequested: root.openTheoryComponent(miniBridge.selectedId)
+                    onCloseRequested: miniBridge.clearSelection()
                 }
 
                 RectanglePrincipal {
@@ -1042,17 +1095,17 @@ PagePrincipal {
                     Repeater {
                         model: [
                             { e: "Tarea", v: root.campo(root.procedenciaActual, ["tarea", "task"], null) },
-                            { e: "Ejemplos vistos", v: root.numeroLegible(root.campo(root.procedenciaActual, ["ejemplosVistos", "ejemplos_vistos", "examplesSeen"], null)) },
-                            { e: "Tokens de origen vistos", v: root.numeroLegible(root.campo(root.procedenciaActual, ["tokensOrigenVistos", "tokens_origen_vistos", "sourceTokensSeen", "tokensVistos", "tokensSeen"], null)) },
-                            { e: "Tokens objetivo vistos", v: root.numeroLegible(root.campo(root.procedenciaActual, ["tokensObjetivoVistos", "tokens_objetivo_vistos", "targetTokensSeen"], null)) },
-                            { e: "Learning rate", v: root.texto(root.campo(root.procedenciaActual, ["learningRate", "learning_rate", "lr"], null), "No registrado") },
-                            { e: "Batch size", v: root.texto(root.campo(root.procedenciaActual, ["batchSize", "batch_size"], null), "No registrado") },
+                            { e: "Ejemplos vistos", v: root.numeroLegible(root.campo(root.procedenciaActual, ["ejemplosVistos", "ejemplos_vistos", "examplesSeen"], null)), conceptId: "training_step" },
+                            { e: "Tokens de origen vistos", v: root.numeroLegible(root.campo(root.procedenciaActual, ["tokensOrigenVistos", "tokens_origen_vistos", "sourceTokensSeen", "tokensVistos", "tokensSeen"], null)), conceptId: "tokenizacion" },
+                            { e: "Tokens objetivo vistos", v: root.numeroLegible(root.campo(root.procedenciaActual, ["tokensObjetivoVistos", "tokens_objetivo_vistos", "targetTokensSeen"], null)), conceptId: "tokenizacion" },
+                            { e: "Learning rate", v: root.texto(root.campo(root.procedenciaActual, ["learningRate", "learning_rate", "lr"], null), "No registrado"), conceptId: "learning_rate" },
+                            { e: "Batch size", v: root.texto(root.campo(root.procedenciaActual, ["batchSize", "batch_size"], null), "No registrado"), conceptId: "epoch_batch" },
                             { e: "Semilla", v: root.texto(root.campo(root.procedenciaActual, ["semilla", "seed"], null), "No registrada") },
                             { e: "Primera sesión", v: root.texto(root.campo(root.procedenciaActual, ["primera_sesion_inicio_utc", "primeraSesionInicioUtc"], null), "No registrada") },
                             { e: "Última sesión iniciada", v: root.texto(root.campo(root.procedenciaActual, ["ultima_sesion_inicio_utc", "ultimaSesionInicioUtc"], null), "No registrada") },
                             { e: "Última sesión finalizada", v: root.texto(root.campo(root.procedenciaActual, ["ultima_sesion_fin_utc", "ultimaSesionFinUtc"], null), "No registrada") },
                             { e: "Duración entrenando", v: root.duracionLegible(root.campo(root.procedenciaActual, ["duracion_entrenamiento_segundos", "duracion", "duration"], null)) },
-                            { e: "Checkpoint creado/guardado", v: root.texto(root.campo(root.procedenciaActual, ["creado_en", "created_at", "fecha", "date"], null), "No registrada") }
+                            { e: "Checkpoint creado/guardado", v: root.texto(root.campo(root.procedenciaActual, ["creado_en", "created_at", "fecha", "date"], null), "No registrada"), conceptId: "checkpoint" }
                         ]
                         delegate: RectanglePrincipal {
                             id: procedenciaMetrica
@@ -1064,11 +1117,21 @@ PagePrincipal {
                             ColumnLayout {
                                 anchors.fill: parent
                                 anchors.margins: 13 * root.sx
-                                Text {
+                                RowLayout {
                                     Layout.fillWidth: true
-                                    text: procedenciaMetrica.modelData.e
-                                    color: Style.Theme.texto_secundario
-                                    font.pixelSize: 11 * Math.min(root.sx, root.sy)
+                                    spacing: 4 * root.sx
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: procedenciaMetrica.modelData.e
+                                        color: Style.Theme.texto_secundario
+                                        font.pixelSize: 11 * Math.min(root.sx, root.sy)
+                                    }
+                                    ConceptHelpButton {
+                                        visible: conceptId !== ""
+                                        conceptId: procedenciaMetrica.modelData.conceptId || ""
+                                        controlSize: Math.max(18, 21 * Math.min(root.sx, root.sy))
+                                        onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                                    }
                                 }
                                 Text {
                                     Layout.fillWidth: true
@@ -1177,6 +1240,11 @@ PagePrincipal {
                                     font.bold: true
                                     font.pixelSize: 12 * Math.min(root.sx, root.sy)
                                 }
+                                ConceptHelpButton {
+                                    conceptId: "cross_entropy"
+                                    controlSize: Math.max(20, 23 * Math.min(root.sx, root.sy))
+                                    onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                                }
                                 Text {
                                     text: root.puntosPerdida().length + " puntos"
                                     color: Style.Theme.texto_secundario
@@ -1265,12 +1333,12 @@ PagePrincipal {
                         spacing: 10 * root.sy
                         Repeater {
                             model: [
-                                { e: "Época", v: root.campo(root.historialActual, ["epoca", "epoch"], root.campo(root.descriptorActual, ["epoca"], null)) },
-                                { e: "Paso global", v: root.campo(root.historialActual, ["pasoGlobal", "paso_global", "globalStep"], root.campo(root.descriptorActual, ["paso_global"], null)) },
-                                { e: "Pérdida de entrenamiento", v: root.resumenSerie(root.campo(root.historialActual, ["perdidas", "losses"], [])) },
-                                { e: "Validación", v: root.resumenSerie(root.campo(root.historialActual, ["validacion", "validation"], [])) },
-                                { e: "Perplexity", v: root.resumenSerie(root.campo(root.historialActual, ["perplexity", "perplejidad"], [])) },
-                                { e: "Precisión", v: root.resumenSerie(root.campo(root.historialActual, ["precision", "accuracy"], [])) }
+                                { e: "Época", v: root.campo(root.historialActual, ["epoca", "epoch"], root.campo(root.descriptorActual, ["epoca"], null)), conceptId: "epoch_batch" },
+                                { e: "Paso global", v: root.campo(root.historialActual, ["pasoGlobal", "paso_global", "globalStep"], root.campo(root.descriptorActual, ["paso_global"], null)), conceptId: "training_step" },
+                                { e: "Pérdida de entrenamiento", v: root.resumenSerie(root.campo(root.historialActual, ["perdidas", "losses"], [])), conceptId: "cross_entropy" },
+                                { e: "Validación", v: root.resumenSerie(root.campo(root.historialActual, ["validacion", "validation"], [])), conceptId: "validation_loss" },
+                                { e: "Perplexity", v: root.resumenSerie(root.campo(root.historialActual, ["perplexity", "perplejidad"], [])), conceptId: "perplexity" },
+                                { e: "Precisión", v: root.resumenSerie(root.campo(root.historialActual, ["precision", "accuracy"], [])), conceptId: "accuracy" }
                             ]
                             delegate: RectanglePrincipal {
                                 id: historiaMetrica
@@ -1288,6 +1356,11 @@ PagePrincipal {
                                         text: historiaMetrica.modelData.e
                                         color: Style.Theme.texto_secundario
                                         font.pixelSize: 11 * Math.min(root.sx, root.sy)
+                                    }
+                                    ConceptHelpButton {
+                                        conceptId: historiaMetrica.modelData.conceptId
+                                        controlSize: Math.max(18, 21 * Math.min(root.sx, root.sy))
+                                        onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
                                     }
                                     Text {
                                         Layout.preferredWidth: 190 * root.sx
@@ -1332,11 +1405,20 @@ PagePrincipal {
                         anchors.fill: parent
                         anchors.margins: 15 * root.sx
                         spacing: 6 * root.sy
-                        Text {
-                            text: "CHECKPOINTS DEL EXPERIMENTO"
-                            color: "#6D28D9"
-                            font.bold: true
-                            font.pixelSize: 12 * Math.min(root.sx, root.sy)
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Text {
+                                Layout.fillWidth: true
+                                text: "CHECKPOINTS DEL EXPERIMENTO"
+                                color: "#6D28D9"
+                                font.bold: true
+                                font.pixelSize: 12 * Math.min(root.sx, root.sy)
+                            }
+                            ConceptHelpButton {
+                                conceptId: "checkpoint"
+                                controlSize: Math.max(20, 23 * Math.min(root.sx, root.sy))
+                                onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                            }
                         }
                         Repeater {
                             model: root.listaDe(root.historialActual, ["checkpoints", "puntosGuardados"])

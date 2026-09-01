@@ -9,6 +9,8 @@ import "../components"
 
 PagePrincipal {
     id: root
+    helpModalObjectName: "modelLibraryTheoryModal"
+    helpPanelObjectName: "modelLibraryTheoryPanel"
 
     property var controller: mainViewModel.modelLibraryController
     property string rutaParaExportar: ""
@@ -545,7 +547,7 @@ PagePrincipal {
             property bool compatible: root.booleano(info, ["compatible"], true)
 
             width: listaModelos.width - 14 * root.sx
-            height: 352 * root.sy
+            height: Math.max(360, 390 * root.sy)
             sx: root.sx
             sy: root.sy
             opacity: compatible ? 1.0 : 0.82
@@ -600,55 +602,187 @@ PagePrincipal {
                     color: "#E5E7EB"
                 }
 
-                Text {
+                RowLayout {
                     Layout.fillWidth: true
-                    text: "Encoder: " + root.capasEncoder(tarjeta.info) + " capas"
-                          + "   ·   Decoder: " + root.capasDecoder(tarjeta.info) + " capas"
-                          + "   ·   Cabezas: " + root.valor(tarjeta.info, ["num_cabezas", "cabezas", "heads", "nhead"], "—")
-                    color: "#312E81"
-                    font.bold: true
-                    font.pixelSize: 15 * Math.min(root.sx, root.sy)
-                    elide: Text.ElideRight
+                    spacing: 5 * root.sx
+                    Repeater {
+                        model: [
+                            { label: "Encoder", value: root.capasEncoder(tarjeta.info) + " capas", help: "layer_count" },
+                            { label: "Decoder", value: root.capasDecoder(tarjeta.info) + " capas", help: "layer_count" },
+                            { label: "Cabezas", value: root.valor(tarjeta.info, ["num_cabezas", "cabezas", "heads", "nhead"], "—"), help: "cabeza_atencion" }
+                        ]
+                        delegate: RowLayout {
+                            id: architectureValue
+                            required property var modelData
+                            Layout.fillWidth: true
+                            spacing: 2 * root.sx
+                            Text {
+                                Layout.maximumWidth: Math.max(
+                                                         0,
+                                                         architectureValue.width
+                                                         - architectureHelp.implicitWidth
+                                                         - architectureValue.spacing)
+                                text: architectureValue.modelData.label + ": "
+                                      + architectureValue.modelData.value
+                                color: "#312E81"
+                                font.bold: true
+                                font.pixelSize: 14 * Math.min(root.sx, root.sy)
+                                elide: Text.ElideRight
+                            }
+                            ConceptHelpButton {
+                                id: architectureHelp
+                                conceptId: architectureValue.modelData.help
+                                conceptLabel: architectureValue.modelData.label
+                                controlSize: Math.max(20, 23 * Math.min(root.sx, root.sy))
+                                onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                            }
+                        }
+                    }
                 }
 
-                Text {
+                RowLayout {
                     Layout.fillWidth: true
-                    text: "d_model " + root.valor(tarjeta.info, ["dimension_modelo", "dimension", "d_model"], "—")
-                          + "   ·   d_ff " + root.valor(tarjeta.info, ["dimension_ff", "dimensionFF", "d_ff"], "—")
-                          + "   ·   Contexto " + root.valor(tarjeta.info, ["longitud_maxima_secuencia", "contexto", "context_length", "max_seq_len"], "—")
-                          + "   ·   Vocabulario " + root.numeroLegible(root.valor(tarjeta.info, ["tamano_vocabulario", "vocabulario", "vocab_size"], "—"))
-                    color: Style.Theme.texto_primario
-                    font.pixelSize: 14 * Math.min(root.sx, root.sy)
-                    elide: Text.ElideRight
+                    spacing: 5 * root.sx
+                    Repeater {
+                        model: [
+                            { label: "d_model", value: root.valor(tarjeta.info, ["dimension_modelo", "dimension", "d_model"], "—"), help: "d_model" },
+                            { label: "d_ff", value: root.valor(tarjeta.info, ["dimension_ff", "dimensionFF", "d_ff"], "—"), help: "dimension_d_ff" },
+                            { label: "Contexto", value: root.valor(tarjeta.info, ["longitud_maxima_secuencia", "contexto", "context_length", "max_seq_len"], "—"), help: "context_window" },
+                            { label: "Vocabulario", value: root.numeroLegible(root.valor(tarjeta.info, ["tamano_vocabulario", "vocabulario", "vocab_size"], "—")), help: "tokenizacion" }
+                        ]
+                        delegate: RowLayout {
+                            id: dimensionValue
+                            required property var modelData
+                            Layout.fillWidth: true
+                            spacing: 2 * root.sx
+                            Text {
+                                Layout.maximumWidth: Math.max(
+                                                         0,
+                                                         dimensionValue.width
+                                                         - dimensionHelp.implicitWidth
+                                                         - dimensionValue.spacing)
+                                text: dimensionValue.modelData.label + " "
+                                      + dimensionValue.modelData.value
+                                color: Style.Theme.texto_primario
+                                font.pixelSize: 13 * Math.min(root.sx, root.sy)
+                                elide: Text.ElideRight
+                            }
+                            ConceptHelpButton {
+                                id: dimensionHelp
+                                conceptId: dimensionValue.modelData.help
+                                conceptLabel: dimensionValue.modelData.label
+                                controlSize: Math.max(20, 23 * Math.min(root.sx, root.sy))
+                                onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                            }
+                        }
+                    }
                 }
 
-                Text {
+                RowLayout {
                     Layout.fillWidth: true
-                    text: "Parámetros " + root.numeroLegible(root.valor(tarjeta.info, ["parametros_totales", "parametros", "parameter_count", "num_parameters"], "—"))
-                          + "   ·   Tamaño " + root.tamanoLegible(tarjeta.info)
-                          + "   ·   Tokenizador " + root.valor(tarjeta.info, ["encoding", "tokenizer_encoding"], "No especificado")
-                    color: Style.Theme.texto_secundario
-                    font.pixelSize: 13 * Math.min(root.sx, root.sy)
-                    elide: Text.ElideRight
+                    spacing: 5 * root.sx
+                    Repeater {
+                        model: [
+                            { label: "Parámetros", value: root.numeroLegible(root.valor(tarjeta.info, ["parametros_totales", "parametros", "parameter_count", "num_parameters"], "—")), help: "parameter_count" },
+                            { label: "Tamaño", value: root.tamanoLegible(tarjeta.info), help: "" },
+                            { label: "Tokenizador", value: root.valor(tarjeta.info, ["encoding", "tokenizer_encoding"], "No especificado"), help: "tokenizacion" }
+                        ]
+                        delegate: RowLayout {
+                            id: storageValue
+                            required property var modelData
+                            Layout.fillWidth: true
+                            spacing: 2 * root.sx
+                            Text {
+                                Layout.maximumWidth: Math.max(
+                                                         0,
+                                                         storageValue.width
+                                                         - (storageHelp.visible
+                                                            ? storageHelp.implicitWidth
+                                                              + storageValue.spacing
+                                                            : 0))
+                                text: storageValue.modelData.label + " "
+                                      + storageValue.modelData.value
+                                color: Style.Theme.texto_secundario
+                                font.pixelSize: 12 * Math.min(root.sx, root.sy)
+                                elide: Text.ElideRight
+                            }
+                            ConceptHelpButton {
+                                id: storageHelp
+                                visible: storageValue.modelData.help !== ""
+                                conceptId: storageValue.modelData.help
+                                conceptLabel: storageValue.modelData.label
+                                controlSize: Math.max(20, 23 * Math.min(root.sx, root.sy))
+                                onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                            }
+                        }
+                    }
                 }
 
-                Text {
+                RowLayout {
                     Layout.fillWidth: true
-                    text: "Entrenamiento: época " + root.valor(tarjeta.info, ["epoca", "epoch"], "—")
-                          + "   ·   paso " + root.valor(tarjeta.info, ["paso_global", "pasos", "global_step"], "—")
-                          + "   ·   loss " + root.perdidaLegible(tarjeta.info)
-                    color: Style.Theme.texto_secundario
-                    font.pixelSize: 13 * Math.min(root.sx, root.sy)
-                    elide: Text.ElideRight
+                    spacing: 5 * root.sx
+                    Repeater {
+                        model: [
+                            { label: "Época", value: root.valor(tarjeta.info, ["epoca", "epoch"], "—"), help: "epoch_batch" },
+                            { label: "Paso", value: root.valor(tarjeta.info, ["paso_global", "pasos", "global_step"], "—"), help: "training_step" },
+                            { label: "Loss", value: root.perdidaLegible(tarjeta.info), help: "cross_entropy" }
+                        ]
+                        delegate: RowLayout {
+                            id: trainingValue
+                            required property var modelData
+                            Layout.fillWidth: true
+                            spacing: 2 * root.sx
+                            Text {
+                                Layout.maximumWidth: Math.max(
+                                                         0,
+                                                         trainingValue.width
+                                                         - trainingHelp.implicitWidth
+                                                         - trainingValue.spacing)
+                                text: trainingValue.modelData.label + " "
+                                      + trainingValue.modelData.value
+                                color: Style.Theme.texto_secundario
+                                font.pixelSize: 12 * Math.min(root.sx, root.sy)
+                                elide: Text.ElideRight
+                            }
+                            ConceptHelpButton {
+                                id: trainingHelp
+                                conceptId: trainingValue.modelData.help
+                                conceptLabel: trainingValue.modelData.label
+                                controlSize: Math.max(20, 23 * Math.min(root.sx, root.sy))
+                                onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                            }
+                        }
+                    }
                 }
 
-                Text {
-                    visible: !root.booleano(tarjeta.info,
-                                             ["usarMascaraCausal", "usar_mascara_causal", "causal_mask"],
-                                             true)
-                    text: "⚠ Sin máscara causal — modelo experimental"
-                    color: "#E8A33D"
-                    font.pixelSize: 11 * root.sy
+                RowLayout {
+                    id: maskValue
+                    property bool mascaraActiva: root.booleano(
+                                                     tarjeta.info,
+                                                     ["usarMascaraCausal", "usar_mascara_causal", "causal_mask"],
+                                                     true)
+                    Layout.fillWidth: true
+                    Text {
+                        Layout.maximumWidth: Math.max(
+                                                 0,
+                                                 maskValue.width
+                                                 - maskHelp.implicitWidth
+                                                 - maskValue.spacing)
+                        text: parent.mascaraActiva
+                              ? "Máscara causal activada"
+                              : "⚠ Sin máscara causal — modelo experimental"
+                        color: parent.mascaraActiva ? Style.Theme.texto_secundario : "#E8A33D"
+                        font.pixelSize: 11 * root.sy
+                        elide: Text.ElideRight
+                        maximumLineCount: 1
+                    }
+                    ConceptHelpButton {
+                        id: maskHelp
+                        conceptId: "por_que_mascara"
+                        conceptLabel: "Máscara causal"
+                        controlSize: Math.max(20, 23 * Math.min(root.sx, root.sy))
+                        onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                    }
                 }
 
                 Flow {

@@ -92,6 +92,7 @@ Item {
     readonly property var stages: [
         {
             short: "Embeddings + posición",
+            conceptId: "combinacion_embedding_pe",
             eyebrow: "01 · DEL ID AL VECTOR",
             title: "El orden deforma el significado",
             accent: "#7C3AED",
@@ -102,6 +103,7 @@ Item {
         },
         {
             short: "Flujo de atención",
+            conceptId: "formula_attention_completa",
             eyebrow: "02 · SELF-ATTENTION",
             title: "La información viaja entre tokens",
             accent: "#0284C7",
@@ -112,6 +114,7 @@ Item {
         },
         {
             short: "Split + merge",
+            conceptId: "problema_multi_head",
             eyebrow: "03 · MULTI-HEAD",
             title: "Una partición, no varias copias",
             accent: "#D97706",
@@ -122,6 +125,7 @@ Item {
         },
         {
             short: "FFN",
+            conceptId: "que_es_ffn",
             eyebrow: "04 · EXPANDIR Y COMPRIMIR",
             title: "La misma red, respuestas distintas",
             accent: "#DB2777",
@@ -132,6 +136,7 @@ Item {
         },
         {
             short: "Residual + Norm",
+            conceptId: "flujo_add_norm",
             eyebrow: "05 · CONSERVAR Y ESTABILIZAR",
             title: "Un atajo para la señal original",
             accent: "#059669",
@@ -142,6 +147,7 @@ Item {
         },
         {
             short: "Rascacielos",
+            conceptId: "contextualizacion",
             eyebrow: "06 · TRAYECTORIA POR CAPAS",
             title: "El contexto reorganiza cada piso",
             accent: "#4F46E5",
@@ -152,6 +158,7 @@ Item {
         },
         {
             short: "Carrera softmax",
+            conceptId: "seleccion_token",
             eyebrow: "07 · SIGUIENTE TOKEN",
             title: "El contexto cambia la clasificación",
             accent: "#DC2626",
@@ -166,6 +173,7 @@ Item {
     signal closeRequested()
     signal stepSelected(int index)
     signal nextTokenRequested()
+    signal theoryRequested(string conceptId)
 
     function clampSelections() {
         var layers = Math.max(1, Number(metadata.num_layers || 1))
@@ -621,6 +629,17 @@ Item {
                                 wrapMode: Text.WordWrap
                                 lineHeight: 1.22
                                 font.pixelSize: 12 * root.sx
+                            }
+                            Button {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: Math.max(38, 44 * root.sy)
+                                text: "ⓘ  Abrir explicación completa"
+                                font.bold: true
+                                font.pixelSize: Math.max(12, 12 * root.sx)
+                                onClicked: root.theoryRequested(root.stage.conceptId)
+                                ToolTip.visible: hovered
+                                ToolTip.text: "Leer este concepto en una ventana amplia"
+                                Accessible.name: "Abrir explicación completa de " + root.stage.title
                             }
                             InfoCard {
                                 Layout.fillWidth: true

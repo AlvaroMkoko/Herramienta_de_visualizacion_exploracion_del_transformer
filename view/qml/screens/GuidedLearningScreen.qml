@@ -9,6 +9,8 @@ import "../components"
 PagePrincipal {
     id: root
     objectName: "guidedLearningScreen"
+    helpModalObjectName: "guidedTheoryModal"
+    helpPanelObjectName: "guidedTheoryPanel"
 
     readonly property real uiScale: Math.max(0.82, Math.min(width / 1280, height / 820))
     readonly property int totalUnits: 5
@@ -22,8 +24,6 @@ PagePrincipal {
     property int selectedPrediction: -1
     property var currentConcept: ({})
     property var currentRelatedConcepts: []
-    property var deepDiveConcept: ({})
-    property var deepDiveRelatedConcepts: []
     property int progressRevision: 0
     property var fallbackCompletedUnitIds: []
 
@@ -275,9 +275,7 @@ PagePrincipal {
         if (!conceptId || typeof mainViewModel === "undefined"
                 || !mainViewModel.theoryController)
             return
-        root.deepDiveConcept = mainViewModel.theoryController.obtenerConcepto(conceptId)
-        root.deepDiveRelatedConcepts = mainViewModel.theoryController.obtenerRelacionados(conceptId)
-        deepDivePopup.open()
+        root.openTheoryConcept(conceptId)
     }
 
     function leaveScreen() {
@@ -319,8 +317,8 @@ PagePrincipal {
     Shortcut {
         sequence: "Esc"
         onActivated: {
-            if (deepDivePopup.opened)
-                deepDivePopup.close()
+            if (root.theoryModalOpened)
+                root.closeTheory()
             else
                 root.leaveScreen()
         }
@@ -788,157 +786,4 @@ PagePrincipal {
         onAccepted: root.resetProgress()
     }
 
-    Popup {
-        id: deepDivePopup
-        objectName: "guidedDeepDivePopup"
-        anchors.centerIn: Overlay.overlay
-        width: Math.min(710 * root.uiScale, root.width - 40 * root.uiScale)
-        height: Math.min(650 * root.uiScale, root.height - 40 * root.uiScale)
-        modal: true
-        focus: true
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-
-        background: Rectangle {
-            radius: 15 * root.uiScale
-            color: "#FFFFFF"
-            border.color: "#BFB5DF"
-            border.width: 1
-        }
-
-        contentItem: ColumnLayout {
-            spacing: 10 * root.uiScale
-
-            RowLayout {
-                Layout.fillWidth: true
-
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 2 * root.uiScale
-
-                    Text {
-                        Layout.fillWidth: true
-                        text: "Profundizar"
-                        color: "#6654B3"
-                        font.bold: true
-                        font.pixelSize: 11 * root.uiScale
-                    }
-
-                    Text {
-                        Layout.fillWidth: true
-                        text: String(root.deepDiveConcept.title || "Concepto")
-                        color: Style.Theme.texto_primario
-                        font.bold: true
-                        font.pixelSize: 21 * root.uiScale
-                        wrapMode: Text.WordWrap
-                        Accessible.role: Accessible.Heading
-                        Accessible.name: text
-                    }
-                }
-
-                Button {
-                    id: closeDeepDiveButton
-                    objectName: "guidedCloseDeepDiveButton"
-                    Layout.preferredWidth: 38 * root.uiScale
-                    Layout.preferredHeight: 38 * root.uiScale
-                    text: "×"
-                    flat: true
-                    activeFocusOnTab: true
-                    Accessible.name: "Cerrar profundización"
-                    onClicked: deepDivePopup.close()
-                }
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 1
-                color: "#E6E1F1"
-            }
-
-            ScrollView {
-                id: deepDiveScroll
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                contentWidth: availableWidth
-                clip: true
-
-                Column {
-                    width: deepDiveScroll.availableWidth
-                    spacing: 12 * root.uiScale
-
-                    Text {
-                        width: parent.width
-                        text: String(root.deepDiveConcept.explanation || "")
-                        color: Style.Theme.texto_primario
-                        font.pixelSize: 13 * root.uiScale
-                        lineHeight: 1.2
-                        wrapMode: Text.WordWrap
-                    }
-
-                    Rectangle {
-                        visible: root.deepDiveConcept.intuition !== undefined
-                                 && String(root.deepDiveConcept.intuition) !== ""
-                        width: parent.width
-                        height: visible ? deepIntuition.implicitHeight + 24 * root.uiScale : 0
-                        radius: 9 * root.uiScale
-                        color: "#F6F3FC"
-                        border.color: "#DDD7F1"
-
-                        Text {
-                            id: deepIntuition
-                            anchors.fill: parent
-                            anchors.margins: 12 * root.uiScale
-                            text: "Idea clave: " + String(root.deepDiveConcept.intuition || "")
-                            color: "#514978"
-                            font.pixelSize: 12 * root.uiScale
-                            font.italic: true
-                            wrapMode: Text.WordWrap
-                        }
-                    }
-
-                    Text {
-                        width: parent.width
-                        visible: root.deepDiveRelatedConcepts.length > 0
-                        text: "CONCEPTOS RELACIONADOS"
-                        color: "#6654B3"
-                        font.bold: true
-                        font.pixelSize: 10 * root.uiScale
-                    }
-
-                    Repeater {
-                        model: root.deepDiveRelatedConcepts
-
-                        delegate: Button {
-                            id: relatedDelegate
-                            required property var modelData
-                            width: parent.width
-                            height: Math.max(50 * root.uiScale,
-                                             relatedText.implicitHeight + 18 * root.uiScale)
-                            activeFocusOnTab: true
-                            Accessible.name: "Abrir concepto relacionado: " + String(modelData.title || modelData.id)
-
-                            background: Rectangle {
-                                radius: 8 * root.uiScale
-                                color: relatedDelegate.hovered ? "#F0ECFA" : "#F8F7FC"
-                                border.color: "#DED8F0"
-                            }
-
-                            contentItem: Text {
-                                id: relatedText
-                                text: String(relatedDelegate.modelData.title || relatedDelegate.modelData.id)
-                                      + "\n" + String(relatedDelegate.modelData.short_description || "")
-                                color: "#51458D"
-                                font.pixelSize: 11 * root.uiScale
-                                wrapMode: Text.WordWrap
-                                verticalAlignment: Text.AlignVCenter
-                                leftPadding: 10 * root.uiScale
-                                rightPadding: 10 * root.uiScale
-                            }
-
-                            onClicked: root.openDeepDive(String(modelData.id))
-                        }
-                    }
-                }
-            }
-        }
-    }
 }

@@ -289,6 +289,45 @@
             "positional_encoding",
             "d_model"
           ]
+        },
+        {
+          "id": "dataset",
+          "title": "Dataset",
+          "order": 9,
+          "short_description": "Es la colección de ejemplos con la que el modelo aprende o se evalúa.",
+          "explanation": "Un dataset reúne pares o secuencias de texto que se transforman en tokens antes de entrar al Transformer. Durante el entrenamiento se divide en batches y el modelo ajusta sus parámetros para reducir el error sobre esos ejemplos. La cantidad no basta: datos duplicados, contradictorios, sesgados o mal limpiados pueden enseñar patrones indeseados. También conviene separar datos de entrenamiento, validación y prueba; evaluar con ejemplos que el modelo ya vio produce una impresión engañosa de su desempeño.",
+          "example": "Para traducción, un ejemplo puede contener una frase en español como entrada y su traducción al inglés como objetivo. Miles de pares forman el dataset.",
+          "related_concepts": [
+            "tokenizacion",
+            "epoch_batch",
+            "generalization"
+          ]
+        },
+        {
+          "id": "pca_projection",
+          "title": "Proyección PCA",
+          "order": 10,
+          "short_description": "Reduce embeddings de muchas dimensiones a dos o tres ejes que conservan tanta variación como sea posible.",
+          "explanation": "PCA, o análisis de componentes principales, centra los vectores y busca direcciones ortogonales donde el conjunto cambia más. Proyectar sobre las tres primeras permite dibujar embeddings de d_model dimensiones en una escena 3D. La proyección ayuda a explorar grupos y separaciones, pero es una vista parcial: dos puntos cercanos en pantalla todavía pueden diferir en dimensiones descartadas. PCA no modifica los embeddings ni participa en el entrenamiento; solo construye una representación visual de ellos.",
+          "formula": "Z = (X - media(X)) · W₃",
+          "example": "Si los embeddings tienen 128 dimensiones, PCA calcula tres combinaciones de esas 128 coordenadas y produce un punto [x, y, z] por token.",
+          "related_concepts": [
+            "embeddings",
+            "explained_variance"
+          ]
+        },
+        {
+          "id": "explained_variance",
+          "title": "Varianza explicada",
+          "order": 11,
+          "short_description": "Indica qué fracción de la variación original conservan los ejes mostrados por PCA.",
+          "explanation": "Cada componente principal captura una parte de la dispersión de los embeddings. La varianza explicada acumulada suma la contribución de los ejes elegidos y la compara con la variación total. Un porcentaje alto significa que la vista conserva buena parte de la estructura global; uno bajo advierte que muchas diferencias quedaron fuera de la pantalla. No mide precisión, calidad semántica ni desempeño del modelo: solo informa cuánto de la geometría del conjunto se retuvo al reducir dimensiones.",
+          "formula": "varianza explicada = (λ₁ + λ₂ + λ₃) / Σᵢ λᵢ",
+          "example": "Una varianza explicada de 0.72 significa que los tres ejes visibles conservan el 72 % de la variación medida en el espacio original.",
+          "related_concepts": [
+            "pca_projection",
+            "embeddings"
+          ]
         }
       ]
     },
@@ -841,9 +880,23 @@
           ]
         },
         {
+          "id": "activation_functions",
+          "title": "Funciones de activación: ReLU, GELU y Swish",
+          "order": 6,
+          "short_description": "La activación elegida introduce no linealidad en la capa feed-forward y cambia cómo responde a valores cercanos a cero.",
+          "explanation": "Esta herramienta permite elegir ReLU, GELU o Swish (implementada como SiLU). ReLU anula las entradas negativas y deja pasar las positivas; es simple y fue la activación del Transformer original. GELU atenúa de forma suave los valores según su magnitud y es habitual en modelos de lenguaje. Swish multiplica la entrada por una sigmoide, por lo que también conserva una transición suave y puede producir valores negativos pequeños. Las tres se aplican entre la expansión a d_ff y la proyección de regreso a d_model. El nombre mostrado en la configuración indica cuál usa realmente el modelo actual.",
+          "formula": "ReLU(x)=max(0,x) · GELU(x)≈xΦ(x) · Swish/SiLU(x)=x·σ(x)",
+          "example": "Para x = -1, ReLU devuelve 0; GELU y Swish devuelven un valor negativo pequeño. Para entradas positivas grandes, las tres se aproximan a x.",
+          "related_concepts": [
+            "activacion_relu",
+            "formula_ffn",
+            "dimension_d_ff"
+          ]
+        },
+        {
           "id": "ffn_por_posicion",
           "title": "Se aplica por posición con los mismos parámetros",
-          "order": 6,
+          "order": 7,
           "short_description": "Cada token pasa por la FFN por separado, pero todos usan las mismas matrices.",
           "explanation": "Hay dos afirmaciones que conviene no confundir. La primera es que la FFN se aplica de forma independiente a cada posición: el resultado del token 3 no depende del token 5, porque no hay ninguna interacción entre posiciones dentro de la FFN. La segunda es que los parámetros son compartidos: no existe una FFN distinta por posición, sino una sola cuyos pesos se aplican a todas. Por eso el paper la llama 'position-wise feed-forward network'. Esto también implica que la FFN funciona con secuencias de cualquier longitud sin cambiar de tamaño.",
           "intuition": "Es como una misma máquina por la que pasan todos los tokens de a uno: la máquina no cambia, y lo que le pasa a un token no afecta a los demás.",
@@ -1243,6 +1296,62 @@
             "softmax_final",
             "cross_entropy"
           ]
+        },
+        {
+          "id": "temperature",
+          "title": "Temperatura",
+          "order": 8,
+          "short_description": "Controla qué tan concentrada o diversa queda la distribución antes de elegir el siguiente token.",
+          "explanation": "La temperatura divide los logits antes de aplicar softmax. Con una temperatura menor que 1, las diferencias entre logits se amplifican: los tokens favoritos concentran más probabilidad y la salida suele ser más predecible. Con una temperatura mayor que 1, las diferencias se reducen y aumenta la oportunidad de elegir alternativas menos probables. No agrega conocimiento al modelo; solo cambia cómo se usa la distribución que ya produjo. Debe ser positiva, y valores extremos pueden volver la generación casi determinista o demasiado errática.",
+          "formula": "P(token_i) = softmax(logit_i / T), con T > 0",
+          "example": "Con T = 0.3 domina el candidato principal; con T = 1 se conserva la distribución original; con T = 1.5 se reparte más probabilidad entre alternativas.",
+          "related_concepts": [
+            "distribucion_probabilidades",
+            "top_p",
+            "greedy_sampling"
+          ]
+        },
+        {
+          "id": "top_k",
+          "title": "Muestreo Top-k",
+          "order": 9,
+          "short_description": "Conserva únicamente los k tokens con mayor probabilidad y vuelve a normalizar sus probabilidades.",
+          "explanation": "Top-k descarta todos los candidatos excepto una cantidad fija k. Después de filtrar, las probabilidades restantes se normalizan para volver a sumar 1 y se muestrea entre ellas. Esto evita elegir tokens extremadamente improbables, pero el mismo k no se adapta a la confianza del modelo: puede incluir opciones innecesarias cuando la distribución es muy clara o excluir alternativas razonables cuando está repartida.",
+          "formula": "candidatos = los k índices con mayor logit; P'(i) = P(i) / Σ candidatos P",
+          "example": "Con top-k = 5, solo los cinco tokens más probables participan en el sorteo, aunque el vocabulario tenga miles.",
+          "related_concepts": [
+            "seleccion_token",
+            "top_p",
+            "temperature"
+          ]
+        },
+        {
+          "id": "top_p",
+          "title": "Muestreo Top-p o nucleus sampling",
+          "order": 10,
+          "short_description": "Conserva el grupo más pequeño de tokens cuya probabilidad acumulada alcanza un umbral p.",
+          "explanation": "Top-p ordena los tokens de mayor a menor probabilidad y conserva el conjunto mínimo cuya suma alcanza p. A diferencia de top-k, la cantidad de candidatos cambia según la seguridad del modelo: si una opción domina, el núcleo puede ser pequeño; si hay muchas continuaciones plausibles, puede crecer. Tras filtrar se vuelven a normalizar las probabilidades. El parámetro p debe estar entre 0 y 1, y un valor alto permite más diversidad.",
+          "formula": "elegir el menor conjunto S tal que Σᵢ∈S P(i) ≥ p",
+          "example": "Con p = 0.9 pueden bastar tres tokens en una predicción segura y hacer falta veinte en una ambigua.",
+          "related_concepts": [
+            "seleccion_token",
+            "top_k",
+            "temperature"
+          ]
+        },
+        {
+          "id": "greedy_sampling",
+          "title": "Selección greedy o codiciosa",
+          "order": 11,
+          "short_description": "Elige siempre el token con mayor probabilidad, sin realizar un sorteo.",
+          "explanation": "La estrategia greedy toma el argmax de la distribución en cada paso. Es rápida y determinista: con el mismo modelo y contexto produce la misma elección. Sin embargo, optimizar cada paso de forma local no garantiza la mejor secuencia completa y puede favorecer repeticiones o frases poco variadas. Temperatura, top-k y top-p se usan cuando se desea muestrear; en modo greedy no cambian la regla básica de elegir el máximo.",
+          "formula": "token_siguiente = argmaxᵢ P(token_i | contexto)",
+          "example": "Si las probabilidades son [0.55, 0.30, 0.15], greedy siempre elige el primer token; el muestreo todavía podría elegir los otros.",
+          "related_concepts": [
+            "seleccion_token",
+            "temperature",
+            "generacion_token_por_token"
+          ]
         }
       ]
     },
@@ -1438,13 +1547,180 @@
             "actualizacion_parametros",
             "learning_rate"
           ]
+        },
+        {
+          "id": "dropout",
+          "title": "Dropout",
+          "order": 11,
+          "short_description": "Durante el entrenamiento apaga al azar una fracción de activaciones para reducir la dependencia de rutas concretas.",
+          "explanation": "Dropout es una técnica de regularización. En cada paso de entrenamiento pone a cero activaciones elegidas al azar con probabilidad p y escala las restantes para conservar su valor esperado. Como la máscara cambia entre pasos, las unidades no pueden apoyarse siempre en las mismas compañeras y el modelo tiende a aprender patrones más robustos. En evaluación e inferencia dropout se desactiva, por lo que la salida deja de ser aleatoria. Un valor demasiado alto puede impedir que el modelo aprenda suficiente señal.",
+          "formula": "salida = mascara · entrada / (1 - p), con mascara_i ∼ Bernoulli(1 - p)",
+          "example": "Con dropout = 0.1, aproximadamente el 10 % de las activaciones se anula en cada paso de entrenamiento; no se elimina permanentemente ningún parámetro.",
+          "related_concepts": [
+            "training_step",
+            "generalization",
+            "que_es_ffn"
+          ]
+        },
+        {
+          "id": "training_step",
+          "title": "Paso de entrenamiento",
+          "order": 12,
+          "short_description": "Es un ciclo completo de predicción, cálculo de pérdida, retropropagación y actualización sobre un batch.",
+          "explanation": "En un paso de entrenamiento se toma un batch, se ejecuta el modelo hacia adelante y se calcula la pérdida frente a los objetivos. Luego se limpian los gradientes anteriores, backpropagation calcula gradientes nuevos y el optimizador actualiza los parámetros. Un paso no equivale a una epoch: una epoch contiene tantos pasos como batches hagan falta para recorrer el dataset. Las métricas mostradas durante el proceso suelen corresponder al batch del paso actual y por eso pueden fluctuar.",
+          "steps": [
+            "Preparar y tokenizar un batch del dataset.",
+            "Ejecutar el forward y obtener logits.",
+            "Calcular la pérdida contra los tokens objetivo.",
+            "Limpiar gradientes y ejecutar backpropagation.",
+            "Aplicar la actualización del optimizador."
+          ],
+          "related_concepts": [
+            "cross_entropy",
+            "backpropagation",
+            "optimizer",
+            "dataset"
+          ]
+        },
+        {
+          "id": "loss_delta",
+          "title": "Delta de pérdida",
+          "order": 13,
+          "short_description": "Compara la pérdida actual con la anterior para mostrar si el error subió o bajó en el último paso.",
+          "explanation": "El delta de pérdida es una diferencia, no otra función de pérdida. Si se define como pérdida actual menos pérdida anterior, un valor negativo indica una disminución y uno positivo un aumento. Un solo delta puede ser ruidoso porque cada batch contiene ejemplos distintos; conviene observar la tendencia de muchos pasos o una media móvil antes de concluir que el entrenamiento mejora o empeora. Tampoco sustituye la pérdida de validación, que mide datos no usados para actualizar el modelo.",
+          "formula": "ΔL = L_actual - L_anterior",
+          "example": "Si la pérdida pasa de 2.40 a 2.25, ΔL = -0.15. Si el siguiente batch da 2.31, ΔL = +0.06; esa subida aislada no implica necesariamente divergencia.",
+          "related_concepts": [
+            "cross_entropy",
+            "training_step",
+            "validation_loss"
+          ]
+        },
+        {
+          "id": "gradient_norm_rms",
+          "title": "Norma RMS del gradiente",
+          "order": 14,
+          "short_description": "Resume el tamaño típico de los gradientes para detectar señales demasiado pequeñas o explosivas.",
+          "explanation": "La norma RMS eleva al cuadrado cada componente del gradiente, promedia esos cuadrados y toma la raíz. Así produce una sola magnitud comparable incluso entre tensores con diferente cantidad de elementos. Un valor muy cercano a cero puede indicar que una parte del modelo recibe poca señal; uno que crece de forma extrema puede anticipar inestabilidad o gradientes explosivos. No existe un umbral universal y una norma grande no identifica por sí sola un error: debe interpretarse junto con la pérdida, el learning rate y su evolución temporal.",
+          "formula": "RMS(g) = √((1 / n) · Σᵢ gᵢ²)",
+          "example": "La interfaz puede resaltar el bloque con mayor RMS para mostrar dónde está la señal de actualización más intensa en el batch actual.",
+          "related_concepts": [
+            "backpropagation",
+            "training_step",
+            "loss_delta",
+            "learning_rate"
+          ]
+        },
+        {
+          "id": "gradient_norm_l2",
+          "title": "Norma L2 global del gradiente",
+          "order": 15,
+          "short_description": "Combina todos los gradientes del modelo en una sola magnitud global antes de que el optimizador actualice los pesos.",
+          "explanation": "La norma L2 global trata todos los componentes de todos los gradientes como un único vector: suma sus cuadrados y toma la raíz. En esta herramienta se calcula después de backpropagation y antes del paso del optimizador. Sirve para seguir la escala total de la señal de actualización y detectar crecimientos bruscos compatibles con gradientes explosivos. A diferencia de la norma RMS, no divide entre el número de componentes, por lo que su magnitud también depende del tamaño del modelo. Debe compararse con su propia evolución y junto con la pérdida y el learning rate.",
+          "formula": "||g||₂ = √(Σᵢ gᵢ²)",
+          "example": "Si los gradientes fueran [3, 4], la norma L2 sería 5. La RMS de esos mismos valores sería √12.5 ≈ 3.54; son métricas distintas.",
+          "related_concepts": [
+            "gradient_norm_rms",
+            "backpropagation",
+            "optimizer",
+            "learning_rate"
+          ]
+        },
+        {
+          "id": "weight_norm",
+          "title": "Norma de los pesos",
+          "order": 16,
+          "short_description": "Resume la magnitud conjunta de los parámetros de un bloque, no cuántos parámetros contiene.",
+          "explanation": "La norma de pesos mostrada resume mediante una norma L2 la magnitud de los parámetros aprendidos de un componente. Puede ayudar a observar cambios de escala durante el entrenamiento, pero no mide calidad, pérdida ni número de parámetros. Su valor depende de la arquitectura, la inicialización, la regularización y el tiempo de entrenamiento, por lo que conviene comparar el mismo bloque a lo largo de varios pasos en vez de usar un umbral universal.",
+          "formula": "||θ||₂ = √(Σᵢ θᵢ²)",
+          "related_concepts": [
+            "parameter_count",
+            "actualizacion_parametros",
+            "gradient_norm_rms"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "evaluacion_persistencia",
+      "title": "Evaluación, generalización y persistencia",
+      "order": 15,
+      "conceptos": [
+        {
+          "id": "validation_loss",
+          "title": "Pérdida de validación",
+          "order": 1,
+          "short_description": "Mide el error sobre ejemplos separados que no se usan para actualizar los parámetros.",
+          "explanation": "La pérdida de validación se calcula con la misma función que la de entrenamiento, pero sobre una partición reservada y con el modelo en modo evaluación. No se ejecuta backpropagation ni se modifica ningún peso. Sirve para estimar si lo aprendido se transfiere a datos no vistos: si la pérdida de entrenamiento sigue bajando mientras la de validación empeora, puede haber sobreajuste. Para que la comparación sea confiable, el conjunto de validación no debe contener duplicados ni variantes casi idénticas de los ejemplos de entrenamiento.",
+          "formula": "L_validación = promedio de -log P(token_correcto) sobre el conjunto reservado",
+          "example": "Entrenamiento = 0.8 y validación = 0.9 pueden indicar un ajuste razonable; entrenamiento = 0.2 y validación = 2.1 sugieren una brecha de generalización importante.",
+          "related_concepts": [
+            "cross_entropy",
+            "generalization",
+            "dataset"
+          ]
+        },
+        {
+          "id": "perplexity",
+          "title": "Perplexity",
+          "order": 2,
+          "short_description": "Transforma la pérdida logarítmica en una escala interpretable como incertidumbre promedio entre tokens.",
+          "explanation": "La perplexity se obtiene exponenciando la cross entropy media por token. Un valor menor es mejor: indica que el modelo concentra más probabilidad en los tokens correctos. De forma intuitiva, una perplexity de 10 se parece a estar eligiendo, en promedio, entre unas diez alternativas igualmente plausibles. Esta interpretación es aproximada y solo permite comparaciones justas cuando se usan el mismo dataset, tokenizador y forma de calcular la pérdida; vocabularios distintos cambian la escala.",
+          "formula": "perplexity = exp(pérdida media por token)",
+          "example": "Si la pérdida media es 2.0, la perplexity es e² ≈ 7.39. Si la pérdida baja a 1.0, la perplexity baja a e ≈ 2.72.",
+          "related_concepts": [
+            "validation_loss",
+            "cross_entropy",
+            "tokenizacion"
+          ]
+        },
+        {
+          "id": "accuracy",
+          "title": "Accuracy o exactitud",
+          "order": 3,
+          "short_description": "Es la fracción de predicciones en las que el token o la clase elegida coincide exactamente con el objetivo.",
+          "explanation": "Para exactitud por token se toma el candidato de mayor probabilidad en cada posición y se cuenta cuántas veces coincide con el token correcto. Es fácil de comunicar, pero descarta información útil: trata igual una predicción casi correcta y otra que asignó probabilidad mínima al objetivo. También puede inflarse si se incluyen tokens de relleno o clases muy frecuentes. Por eso debe especificarse qué posiciones se cuentan y acompañarse de pérdida, perplexity u otras métricas adecuadas a la tarea.",
+          "formula": "accuracy = predicciones correctas / predicciones evaluadas",
+          "example": "Si 840 de 1000 tokens evaluados coinciden con el objetivo, la accuracy es 0.84, es decir, 84 %.",
+          "related_concepts": [
+            "validation_loss",
+            "prediccion_siguiente_token",
+            "generalization"
+          ]
+        },
+        {
+          "id": "generalization",
+          "title": "Generalización",
+          "order": 4,
+          "short_description": "Es la capacidad de aplicar lo aprendido a ejemplos nuevos, no solo recordar el dataset de entrenamiento.",
+          "explanation": "Un modelo generaliza cuando mantiene buen desempeño sobre datos que no participaron en sus actualizaciones. Memorizar puede reducir mucho la pérdida de entrenamiento sin producir un sistema útil fuera de ese conjunto. La brecha entre métricas de entrenamiento y validación ayuda a detectar el problema, aunque también importan la representatividad y limpieza de las particiones. Más datos diversos, regularización como dropout y una detención oportuna pueden mejorar la generalización, pero ninguna métrica aislada la garantiza.",
+          "example": "Un traductor que repite perfectamente las frases de entrenamiento pero falla con frases nuevas memorizó; uno que conserva el significado en ejemplos inéditos generaliza.",
+          "related_concepts": [
+            "validation_loss",
+            "dataset",
+            "dropout"
+          ]
+        },
+        {
+          "id": "checkpoint",
+          "title": "Checkpoint",
+          "order": 5,
+          "short_description": "Es una instantánea guardada del modelo y de los metadatos necesarios para usarlo o continuar su entrenamiento.",
+          "explanation": "Un checkpoint contiene como mínimo la configuración de arquitectura y los pesos aprendidos. Para reanudar el entrenamiento con mayor fidelidad también puede guardar el estado del optimizador, el paso y la epoch, el historial de métricas y estados aleatorios. El tokenizador y su vocabulario deben ser compatibles: interpretar los mismos ids con otro vocabulario cambia por completo el texto. Guardar un checkpoint no demuestra que el modelo sea bueno; conviene acompañarlo con procedencia, métricas de validación, versiones e información de integridad.",
+          "example": "Un archivo portable puede bastar para inferencia; uno reanudable agrega el estado de Adam y los contadores para continuar el proceso desde un punto conocido.",
+          "related_concepts": [
+            "training_step",
+            "optimizer",
+            "validation_loss",
+            "tokenizacion"
+          ]
         }
       ]
     },
     {
       "id": "dimensiones",
       "title": "Dimensiones y flujo matemático",
-      "order": 15,
+      "order": 16,
       "conceptos": [
         {
           "id": "tabla_dimensiones",
@@ -1498,13 +1774,54 @@
             "tabla_dimensiones",
             "interpretacion_pesos"
           ]
+        },
+        {
+          "id": "context_window",
+          "title": "Longitud máxima de contexto",
+          "order": 3,
+          "short_description": "Es el máximo de tokens que el modelo puede procesar en una secuencia, no el tamaño de cada vector.",
+          "explanation": "La longitud máxima de contexto limita cuántas posiciones admite una entrada o una secuencia del decoder. Se mide en tokens después de tokenizar, no en palabras ni caracteres. Si un ejemplo es más corto puede rellenarse o procesarse con su longitud real; si supera el límite debe truncarse o dividirse. Aumentar este valor permite secuencias más largas, pero la atención convencional consume más memoria y cálculo porque compara pares de posiciones. Esta cantidad es distinta de d_model, que indica cuántas características tiene el vector de cada token.",
+          "example": "Con contexto 64, una secuencia tokenizada de 50 tokens cabe completa; una de 80 necesita truncamiento o segmentación.",
+          "related_concepts": [
+            "tokenizacion",
+            "significado_dimensiones",
+            "positional_encoding"
+          ]
+        },
+        {
+          "id": "layer_count",
+          "title": "Número de capas del Transformer",
+          "order": 4,
+          "short_description": "Indica cuántos bloques se apilan; en esta herramienta la configuración crea ese número tanto en el encoder como en el decoder.",
+          "explanation": "Cada capa repite las subcapas de atención, feed-forward y normalización con parámetros propios. Más capas permiten encadenar más transformaciones y suelen aumentar la capacidad, pero también elevan el número de parámetros, la memoria y el tiempo de cómputo. En la configuración principal de esta herramienta, num_capas se aplica por separado al encoder y al decoder: elegir 3 crea tres bloques de encoder y tres de decoder. En los detalles de un modelo guardado ambos conteos pueden mostrarse de forma independiente.",
+          "example": "num_capas = 2 significa dos bloques apilados en el encoder y dos en el decoder, no dos bloques en total.",
+          "related_concepts": [
+            "estructura_encoder",
+            "estructura_decoder",
+            "parameter_count"
+          ]
+        },
+        {
+          "id": "parameter_count",
+          "title": "Número de parámetros",
+          "order": 5,
+          "short_description": "Cuenta los valores aprendibles del modelo y aproxima su tamaño, pero no mide por sí solo su calidad.",
+          "explanation": "Un parámetro es un valor que el optimizador puede aprender, por ejemplo una entrada de las matrices de atención, las capas feed-forward, los embeddings o la normalización. El conteo total suma el número de elementos de todos esos tensores entrenables. Más parámetros suelen requerir más memoria y cómputo, aunque el consumo real también depende del tipo numérico, las activaciones y los estados del optimizador. Dos modelos con el mismo conteo pueden comportarse de forma muy distinta; el número no reemplaza la evaluación con pérdida o métricas de validación.",
+          "formula": "parámetros totales = Σ tensores entrenables.numel()",
+          "example": "Un millón de parámetros en float32 ocupa cerca de 4 MB solo para los pesos; entrenar requiere memoria adicional para gradientes y estados del optimizador.",
+          "related_concepts": [
+            "parametros_actualizados",
+            "layer_count",
+            "dimension_d_ff",
+            "checkpoint"
+          ]
         }
       ]
     },
     {
       "id": "flujo_completo",
       "title": "Flujo completo",
-      "order": 16,
+      "order": 17,
       "conceptos": [
         {
           "id": "recorrido_completo",

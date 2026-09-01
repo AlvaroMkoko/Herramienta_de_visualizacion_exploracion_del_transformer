@@ -119,19 +119,34 @@ ColumnLayout {
 
     property real sx: 1
     property real sy: 1
+    property string helpConceptId: ""
+
+    signal helpRequested(string conceptId)
 
     Layout.fillWidth: true
 
     spacing: 8 * sy
 
-    Text {
-        id: titulo
-
+    RowLayout {
         Layout.fillWidth: true
+        spacing: 6 * root.sx
 
-        color: "#555555"
-        font.pixelSize: 14 * sy
-        wrapMode: Text.WordWrap
+        Text {
+            id: titulo
+            Layout.fillWidth: true
+            color: "#555555"
+            font.pixelSize: 14 * root.sy
+            wrapMode: Text.WordWrap
+        }
+
+        ConceptHelpButton {
+            visible: root.helpConceptId !== ""
+            conceptId: root.helpConceptId
+            controlSize: Math.max(24, 27 * Math.min(root.sx, root.sy))
+            onHelpRequested: function(conceptId) {
+                root.helpRequested(conceptId)
+            }
+        }
     }
 
     RowLayout {

@@ -9,6 +9,8 @@ import QtQuick.Dialogs
 
 PagePrincipal {
     id: root
+    helpModalObjectName: "loadDatasetTheoryModal"
+    helpPanelObjectName: "loadDatasetTheoryPanel"
 
     property alias datasetModel: datasetModel
     property alias markModel: markModel
@@ -244,22 +246,46 @@ PagePrincipal {
                     Layout.fillWidth: true
                     spacing: 20 * root.sx
 
-                    Text {
-                        text: "Registros  " + registros
-                        color: Style.Theme.texto_primario
-                        font.pixelSize: 13 * Math.min(root.sx, root.sy)
+                    RowLayout {
+                        spacing: 4 * root.sx
+                        Text {
+                            text: "Registros  " + registros
+                            color: Style.Theme.texto_primario
+                            font.pixelSize: 13 * Math.min(root.sx, root.sy)
+                        }
+                        ConceptHelpButton {
+                            conceptId: "dataset"
+                            controlSize: Math.max(21, 24 * Math.min(root.sx, root.sy))
+                            onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                        }
                     }
 
-                    Text {
-                        text: "Tokens  " + tokens
-                        color: Style.Theme.texto_primario
-                        font.pixelSize: 13 * Math.min(root.sx, root.sy)
+                    RowLayout {
+                        spacing: 4 * root.sx
+                        Text {
+                            text: "Tokens  " + tokens
+                            color: Style.Theme.texto_primario
+                            font.pixelSize: 13 * Math.min(root.sx, root.sy)
+                        }
+                        ConceptHelpButton {
+                            conceptId: "tokenizacion"
+                            controlSize: Math.max(21, 24 * Math.min(root.sx, root.sy))
+                            onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                        }
                     }
 
-                    Text {
-                        text: "Vocabulario  " + vocabulario
-                        color: Style.Theme.texto_primario
-                        font.pixelSize: 13 * Math.min(root.sx, root.sy)
+                    RowLayout {
+                        spacing: 4 * root.sx
+                        Text {
+                            text: "Vocabulario  " + vocabulario
+                            color: Style.Theme.texto_primario
+                            font.pixelSize: 13 * Math.min(root.sx, root.sy)
+                        }
+                        ConceptHelpButton {
+                            conceptId: "token_ids"
+                            controlSize: Math.max(21, 24 * Math.min(root.sx, root.sy))
+                            onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                        }
                     }
 
                     Text {

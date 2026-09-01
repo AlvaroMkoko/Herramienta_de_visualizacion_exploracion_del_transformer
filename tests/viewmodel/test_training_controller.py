@@ -119,6 +119,20 @@ class TestEntrenamientoBasico:
             }.issubset(visualizacion["componentes"])
             assert visualizacion["componentes"]["encoder_self_attention"]["capas"]
 
+            def metricas_en(nodo):
+                if isinstance(nodo, dict):
+                    if "etiqueta" in nodo and "valor" in nodo:
+                        yield nodo
+                    for valor in nodo.values():
+                        yield from metricas_en(valor)
+                elif isinstance(nodo, list):
+                    for valor in nodo:
+                        yield from metricas_en(valor)
+
+            metricas = list(metricas_en(visualizacion["componentes"]))
+            assert metricas
+            assert all(metrica.get("concepto_id") for metrica in metricas)
+
     def test_contadores_de_epoca_y_paso_global_a_traves_de_varias_epocas(self, qtbot, controlador, config):
         pasos_recibidos = []
         controlador.paso_entrenamiento.connect(pasos_recibidos.append)

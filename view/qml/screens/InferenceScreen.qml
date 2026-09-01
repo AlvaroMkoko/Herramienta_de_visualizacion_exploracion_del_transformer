@@ -8,6 +8,8 @@ import "../components"
 
 PagePrincipal {
     id: root
+    helpModalObjectName: "inferenceTheoryModal"
+    helpPanelObjectName: "inferenceTheoryPanel"
 
     property var controller: mainViewModel.inferenceController
     property var modelInfo: mainViewModel.modeloActualInfo
@@ -455,10 +457,20 @@ PagePrincipal {
                             Layout.fillWidth: true
                             spacing: 2 * root.sy
 
-                            Text {
-                                text: "Máximo de tokens nuevos"
-                                color: Style.Theme.texto_primario
-                                font.pixelSize: 14 * Math.min(root.sx, root.sy)
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 6 * root.sx
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: "Máximo de tokens nuevos"
+                                    color: Style.Theme.texto_primario
+                                    font.pixelSize: 14 * Math.min(root.sx, root.sy)
+                                }
+                                ConceptHelpButton {
+                                    conceptId: "detencion_generacion"
+                                    controlSize: Math.max(24, 27 * Math.min(root.sx, root.sy))
+                                    onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                                }
                             }
                             Text {
                                 text: "Límite de longitud de la respuesta"
@@ -487,6 +499,11 @@ PagePrincipal {
                             text: "Temperatura"
                             color: Style.Theme.texto_primario
                             font.pixelSize: 14 * Math.min(root.sx, root.sy)
+                        }
+                        ConceptHelpButton {
+                            conceptId: "temperature"
+                            controlSize: Math.max(24, 27 * Math.min(root.sx, root.sy))
+                            onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
                         }
                         Text {
                             text: temperatura.value.toFixed(2)
@@ -518,6 +535,11 @@ PagePrincipal {
                             enabled: (!root.controller || !root.controller.estaGenerando)
                                      && !muestreoCodicioso.checked
                         }
+                        ConceptHelpButton {
+                            conceptId: "top_k"
+                            controlSize: Math.max(24, 27 * Math.min(root.sx, root.sy))
+                            onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                        }
                         SpinBox {
                             id: topK
                             Layout.preferredWidth: 116 * root.sx
@@ -539,6 +561,11 @@ PagePrincipal {
                             enabled: (!root.controller || !root.controller.estaGenerando)
                                      && !muestreoCodicioso.checked
                         }
+                        ConceptHelpButton {
+                            conceptId: "top_p"
+                            controlSize: Math.max(24, 27 * Math.min(root.sx, root.sy))
+                            onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                        }
                         Text {
                             text: topP.value.toFixed(2)
                             color: "#6D28D9"
@@ -557,12 +584,21 @@ PagePrincipal {
                         enabled: usarTopP.checked && usarTopP.enabled
                     }
 
-                    CheckBox {
-                        id: muestreoCodicioso
+                    RowLayout {
                         Layout.fillWidth: true
-                        text: "Muestreo codicioso (elegir siempre el token más probable)"
-                        checked: false
-                        enabled: !root.controller || !root.controller.estaGenerando
+                        spacing: 6 * root.sx
+                        CheckBox {
+                            id: muestreoCodicioso
+                            Layout.fillWidth: true
+                            text: "Muestreo codicioso (elegir siempre el token más probable)"
+                            checked: false
+                            enabled: !root.controller || !root.controller.estaGenerando
+                        }
+                        ConceptHelpButton {
+                            conceptId: "greedy_sampling"
+                            controlSize: Math.max(24, 27 * Math.min(root.sx, root.sy))
+                            onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                        }
                     }
 
                     Item { Layout.fillHeight: true }
@@ -599,13 +635,22 @@ PagePrincipal {
                         }
                     }
 
-                    Text {
+                    RowLayout {
                         Layout.fillWidth: true
-                        text: "Cada clic ejecuta un paso autoregresivo y actualiza las visualizaciones del token elegido."
-                        color: Style.Theme.texto_secundario
-                        horizontalAlignment: Text.AlignHCenter
-                        wrapMode: Text.WordWrap
-                        font.pixelSize: 10 * root.sx
+                        spacing: 6 * root.sx
+                        Text {
+                            Layout.fillWidth: true
+                            text: "Cada clic ejecuta un paso autoregresivo y actualiza las visualizaciones del token elegido."
+                            color: Style.Theme.texto_secundario
+                            horizontalAlignment: Text.AlignHCenter
+                            wrapMode: Text.WordWrap
+                            font.pixelSize: 10 * root.sx
+                        }
+                        ConceptHelpButton {
+                            conceptId: "generacion_token_por_token"
+                            controlSize: Math.max(22, 25 * Math.min(root.sx, root.sy))
+                            onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                        }
                     }
                 }
             }
@@ -642,6 +687,7 @@ PagePrincipal {
             sy: root.sy
             onCloseRequested: flujoInferencia.close()
             onNextTokenRequested: root.generarSiguienteToken()
+            onTheoryRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
             onStepSelected: function(index) {
                 root.indicePasoVisualizado = index
             }

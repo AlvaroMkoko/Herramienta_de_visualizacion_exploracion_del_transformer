@@ -1068,12 +1068,53 @@ def _formatear_numero(valor: float) -> str:
     return f"{valor:.4f}"
 
 
-def _metrica(etiqueta: str, valor, detalle: str = "") -> dict:
+_CONCEPTO_POR_METRICA = {
+    "Intensidad de aprendizaje (RMS)": "gradient_norm_rms",
+    "Norma de pesos": "weight_norm",
+    "Parámetros": "parameter_count",
+    "Parámetros entrenables": "parameter_count",
+    "Forma del batch": "epoch_batch",
+    "Tokens únicos": "token_ids",
+    "Dimensión del vector": "d_model",
+    "Pesos compartidos": "capa_linear_salida",
+    "Longitud usada": "context_window",
+    "Amplitud RMS": "positional_encoding",
+    "Entropía media": "interpretacion_pesos",
+    "Mayor peso de atención": "interpretacion_pesos",
+    "Cabezas × capas": "cabeza_atencion",
+    "Máscara causal": "por_que_mascara",
+    "Mapa Q × K": "producto_qk",
+    "Expansión": "dimension_d_ff",
+    "Activación": "activation_functions",
+    "Forma de logits": "logits",
+    "Desviación de logits": "logits",
+    "Vocabulario": "tokenizacion",
+    "Confianza top-1 media": "distribucion_probabilidades",
+    "Probabilidad del objetivo": "cross_entropy",
+    "Acierto top-1": "accuracy",
+    "Entropía de salida": "distribucion_probabilidades",
+    "Capas observadas": "layer_count",
+    "Dimensión normalizada": "layer_normalization",
+    "Dropout": "dropout",
+}
+
+
+def _metrica(
+    etiqueta: str,
+    valor,
+    detalle: str = "",
+    concepto_id: str | None = None,
+) -> dict:
     if isinstance(valor, float):
         texto = _formatear_numero(valor)
     else:
         texto = str(valor)
-    return {"etiqueta": etiqueta, "valor": texto, "detalle": detalle}
+    return {
+        "etiqueta": etiqueta,
+        "valor": texto,
+        "detalle": detalle,
+        "concepto_id": concepto_id or _CONCEPTO_POR_METRICA.get(etiqueta, ""),
+    }
 
 
 def _estadisticas_modulos(modulos) -> dict:

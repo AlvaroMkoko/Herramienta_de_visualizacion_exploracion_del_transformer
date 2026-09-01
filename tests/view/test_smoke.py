@@ -159,25 +159,46 @@ def training_qml(qapp, monkeypatch):
     qapp.processEvents()
 
 
-def test_seleccionar_bloque_muestra_teoria_y_permite_deseleccionar(
+def test_seleccionar_bloque_espera_el_boton_para_abrir_teoria(
     setup_qml, qapp
 ):
     window, _ = setup_qml
     diagram = window.findChild(QObject, "setupTransformerDiagram")
+    summary = window.findChild(QObject, "setupConceptSummary")
+    open_button = window.findChild(QObject, "setupOpenTheoryButton")
     panel = window.findChild(QObject, "setupContextPanel")
+    modal = window.findChild(QObject, "setupTheoryModal")
     training_parameters = window.findChild(QObject, "trainingParametersCard")
 
     assert diagram is not None
+    assert summary is not None
+    assert open_button is not None
     assert panel is not None
+    assert modal is not None
     assert training_parameters is not None
     assert panel.property("visible") is False
+    assert modal.property("visible") is False
     assert training_parameters.property("visible") is True
 
     _invocar(diagram, "selectComponent", "input_embedding")
     qapp.processEvents()
 
+    concepto = _como_python(summary.property("concepto"))
+    assert summary.property("visible") is True
+    assert panel.property("visible") is False
+    assert modal.property("visible") is False
+    assert concepto["id"] == "embeddings"
+    assert concepto["componente_id"] == "input_embedding"
+    assert concepto["short_description"]
+    # La explicación grande solo se abre mediante el botón de la selección.
+    _invocar(summary, "requestOpen")
+    qapp.processEvents()
+
     concepto = _como_python(panel.property("concepto"))
     assert panel.property("visible") is True
+    assert modal.property("visible") is True
+    assert modal.property("width") >= 700
+    assert modal.property("height") >= 500
     assert concepto["id"] == "embeddings"
     assert concepto["componente_id"] == "input_embedding"
     assert concepto["explanation"]
@@ -188,15 +209,18 @@ def test_seleccionar_bloque_muestra_teoria_y_permite_deseleccionar(
     _invocar(diagram, "selectComponent", "input_embedding")
     qapp.processEvents()
     assert panel.property("visible") is False
+    assert summary.property("visible") is False
 
     _invocar(diagram, "selectComponent", "softmax")
     qapp.processEvents()
-    concepto = _como_python(panel.property("concepto"))
+    concepto = _como_python(summary.property("concepto"))
+    assert modal.property("visible") is False
     assert concepto["id"] == "softmax_final"
 
     _invocar(diagram, "clearSelection")
     qapp.processEvents()
     assert panel.property("visible") is False
+    assert modal.property("visible") is False
 
 
 def test_error_de_cabezas_desaparece_al_corregir_configuracion(
@@ -224,22 +248,80 @@ def test_error_de_cabezas_desaparece_al_corregir_configuracion(
     assert screen.property("mensajeErrorVisible") == ""
 
 
-def test_entrenamiento_consulta_la_misma_teoria_del_json(training_qml, qapp):
+def test_entrenamiento_espera_el_boton_y_consulta_la_teoria_del_json(
+    training_qml, qapp
+):
     diagram = training_qml.findChild(QObject, "trainingTransformerDiagram")
+    summary = training_qml.findChild(QObject, "trainingConceptSummary")
+    open_button = training_qml.findChild(QObject, "trainingOpenTheoryButton")
+    modal = training_qml.findChild(QObject, "trainingTheoryModal")
     panel = training_qml.findChild(QObject, "trainingContextPanel")
 
     assert diagram is not None
+    assert summary is not None
+    assert open_button is not None
+    assert modal is not None
     assert panel is not None
     assert panel.property("visible") is False
 
     _invocar(diagram, "selectComponent", "decoder_masked_attention")
     qapp.processEvents()
 
+    concepto = _como_python(summary.property("concepto"))
+    assert summary.property("visible") is True
+    assert panel.property("visible") is False
+    assert modal.property("visible") is False
+    assert concepto["id"] == "por_que_mascara"
+    assert concepto["componente_id"] == "decoder_masked_attention"
+
+    _invocar(summary, "requestOpen")
+    qapp.processEvents()
     concepto = _como_python(panel.property("concepto"))
     assert panel.property("visible") is True
     assert concepto["id"] == "por_que_mascara"
-    assert concepto["componente_id"] == "decoder_masked_attention"
 
     _invocar(diagram, "clearSelection")
     qapp.processEvents()
     assert panel.property("visible") is False
+
+
+def test_ayuda_inline_de_perdida_abre_el_glosario_en_modal(
+    training_qml, qapp
+):
+    help_button = training_qml.findChild(QObject, "trainingLossHelpButton")
+    modal = training_qml.findChild(QObject, "trainingTheoryModal")
+    panel = training_qml.findChild(QObject, "trainingContextPanel")
+
+    assert help_button is not None
+    assert modal is not None
+    assert panel is not None
+    assert 22 <= help_button.property("width") <= 30
+    assert 22 <= help_button.property("height") <= 30
+
+    _invocar(help_button, "requestHelp")
+    qapp.processEvents()
+
+    concepto = _como_python(panel.property("concepto"))
+    assert modal.property("visible") is True
+    assert panel.property("visible") is True
+    assert concepto["id"] == "cross_entropy"
+    assert concepto["title"] == "Cross Entropy Loss"
+    assert concepto["explanation"]
+
+
+def test_selector_de_activacion_abre_la_explicacion_de_todas_las_opciones(
+    setup_qml, qapp
+):
+    window, _ = setup_qml
+    help_button = window.findChild(QObject, "conceptHelp_activation_functions")
+    panel = window.findChild(QObject, "setupContextPanel")
+
+    assert help_button is not None
+    assert panel is not None
+
+    _invocar(help_button, "requestHelp")
+    qapp.processEvents()
+
+    concepto = _como_python(panel.property("concepto"))
+    assert concepto["id"] == "activation_functions"
+    assert "ReLU, GELU y Swish" in concepto["title"]

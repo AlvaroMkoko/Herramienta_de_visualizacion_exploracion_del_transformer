@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from viewmodel.theory_controller import TheoryController
 
 
@@ -25,6 +27,32 @@ MAPA_ESPERADO = {
     "decoder_masked_attention": "por_que_mascara",
     "output_embedding": "entrada_decoder",
     "decoder_positional_encoding": "positional_encoding",
+}
+
+
+CONCEPTOS_TECNICOS_REQUERIDOS = {
+    "temperature": "salida",
+    "top_k": "salida",
+    "top_p": "salida",
+    "greedy_sampling": "salida",
+    "dropout": "entrenamiento",
+    "training_step": "entrenamiento",
+    "loss_delta": "entrenamiento",
+    "gradient_norm_rms": "entrenamiento",
+    "gradient_norm_l2": "entrenamiento",
+    "weight_norm": "entrenamiento",
+    "activation_functions": "feed_forward",
+    "context_window": "dimensiones",
+    "layer_count": "dimensiones",
+    "parameter_count": "dimensiones",
+    "pca_projection": "entrada",
+    "explained_variance": "entrada",
+    "validation_loss": "evaluacion_persistencia",
+    "perplexity": "evaluacion_persistencia",
+    "accuracy": "evaluacion_persistencia",
+    "generalization": "evaluacion_persistencia",
+    "checkpoint": "evaluacion_persistencia",
+    "dataset": "entrada",
 }
 
 
@@ -108,6 +136,39 @@ def test_json_mapea_exhaustivamente_los_16_ids_del_diagrama():
         assert teoria["id"] == id_concepto
         assert teoria["title"]
         assert teoria["explanation"]
+
+
+@pytest.mark.parametrize(
+    ("id_concepto", "seccion_esperada"),
+    CONCEPTOS_TECNICOS_REQUERIDOS.items(),
+)
+def test_catalogo_incluye_conceptos_tecnicos_con_contenido_pedagogico(
+    id_concepto, seccion_esperada
+):
+    controlador = TheoryController()
+
+    concepto = controlador.obtenerConcepto(id_concepto)
+
+    assert controlador.errorCarga == ""
+    assert concepto["existe"] is True
+    assert concepto["id"] == id_concepto
+    assert concepto["seccion"] == seccion_esperada
+    assert len(concepto["title"].strip()) >= 3
+    assert len(concepto["short_description"].strip()) >= 20
+    assert len(concepto["explanation"].strip()) >= 120
+    assert any(
+        concepto.get(campo)
+        for campo in ("formula", "example", "steps")
+    )
+
+    ids_relacionados = concepto.get("related_concepts", [])
+    relacionados_resueltos = controlador.obtenerRelacionados(id_concepto)
+    assert ids_relacionados
+    assert [item["id"] for item in relacionados_resueltos] == ids_relacionados
+    assert all(
+        item["title"] and item["short_description"]
+        for item in relacionados_resueltos
+    )
 
 
 def test_teoria_de_componente_incluye_relacionados_resueltos(tmp_path):

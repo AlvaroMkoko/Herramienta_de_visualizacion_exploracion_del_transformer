@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -8,385 +10,278 @@ Popup {
     property var registros: []
     property string datasetNombre: ""
 
-    width: 700
-    height: 500
-    modal: true
-    focus: true
-    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+    readonly property real viewportWidth: Overlay.overlay
+                                                   ? Overlay.overlay.width
+                                                   : (parent ? parent.width : 960)
+    readonly property real viewportHeight: Overlay.overlay
+                                                    ? Overlay.overlay.height
+                                                    : (parent ? parent.height : 720)
+    readonly property real edgeMargin: viewportWidth < 640 || viewportHeight < 600
+                                               ? 12 : 24
+    readonly property real contentMargin: width < 520 ? 14 : 24
 
     function mostrar(nombre, listaRegistros) {
-        datasetNombre = nombre
-        registros = listaRegistros
+        datasetNombre = nombre === undefined || nombre === null
+                ? "" : String(nombre)
+        registros = listaRegistros || []
         open()
+
+        Qt.callLater(function() {
+            listView.positionViewAtBeginning()
+        })
     }
 
-    ColumnLayout {
+    parent: Overlay.overlay
+    anchors.centerIn: Overlay.overlay
+    width: Math.max(1, Math.min(960, viewportWidth - edgeMargin * 2))
+    height: Math.max(1, Math.min(720, viewportHeight - edgeMargin * 2))
+    padding: 0
+    modal: true
+    dim: true
+    focus: true
+    closePolicy: Popup.CloseOnEscape
+
+    Overlay.modal: Rectangle {
+        color: "#990F172A"
+    }
+
+    background: Rectangle {
+        color: "#FFFFFF"
+        radius: 16
+        border.width: 1
+        border.color: "#D9DEE8"
+    }
+
+    contentItem: ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 15
-        spacing: 10
+        anchors.margins: popup.contentMargin
+        spacing: popup.width < 520 ? 12 : 16
 
-        Text {
-            text: "Vista previa: " + popup.datasetNombre
-            font.bold: true
-            font.pixelSize: 16
-        }
+        Accessible.name: "Vista previa del dataset " + popup.datasetNombre
 
-        Text {
-            text: registros.length + " registros mostrados"
-            color: "#777777"
-            font.pixelSize: 12
-        }
-
-        ScrollView {
+        RowLayout {
             Layout.fillWidth: true
-            Layout.fillHeight: true
-            clip: true
+            spacing: 12
 
-            ListView {
-                id: listView
-                model: popup.registros
-                spacing: 8
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 3
 
-                delegate: Rectangle {
-                    width: listView.width
-                    height: contenido.implicitHeight + 20
-                    color: index % 2 === 0 ? "#f5f5f5" : "#ffffff"
-                    radius: 4
-
-                    Text {
-                        id: contenido
-                        anchors.fill: parent
-                        anchors.margins: 10
-                        wrapMode: Text.Wrap
-                        text: JSON.stringify(modelData, null, 2)
-                        font.family: "monospace"
-                        font.pixelSize: 11
-                    }
+                Label {
+                    Layout.fillWidth: true
+                    text: "Vista previa de datos"
+                    color: "#111827"
+                    font.bold: true
+                    font.pixelSize: popup.width < 520 ? 19 : 23
+                    wrapMode: Text.Wrap
                 }
+
+                Label {
+                    Layout.fillWidth: true
+                    text: popup.datasetNombre !== ""
+                          ? popup.datasetNombre : "Dataset sin nombre"
+                    color: "#4B5563"
+                    font.pixelSize: popup.width < 520 ? 13 : 15
+                    elide: Text.ElideRight
+                    maximumLineCount: 2
+                    wrapMode: Text.Wrap
+                }
+            }
+
+            ToolButton {
+                id: closeButton
+
+                Layout.alignment: Qt.AlignTop
+                Layout.preferredWidth: 42
+                Layout.preferredHeight: 42
+                focusPolicy: Qt.StrongFocus
+                hoverEnabled: true
+                text: "×"
+
+                Accessible.name: "Cerrar vista previa de datos"
+                Accessible.description: "Cierra este diálogo y vuelve a la pantalla anterior"
+
+                ToolTip.delay: 400
+                ToolTip.visible: hovered
+                ToolTip.text: "Cerrar (Esc)"
+
+                background: Rectangle {
+                    color: closeButton.down
+                           ? "#E5E7EB"
+                           : (closeButton.hovered || closeButton.activeFocus
+                              ? "#F3F4F6" : "transparent")
+                    radius: 9
+                    border.width: closeButton.activeFocus ? 2 : 0
+                    border.color: "#6A63E8"
+                }
+
+                contentItem: Text {
+                    text: closeButton.text
+                    color: "#374151"
+                    font.pixelSize: 26
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+
+                onClicked: popup.close()
             }
         }
 
-        BotonPrincipal {
-            Layout.alignment: Qt.AlignRight
-            text: "Cerrar"
-            onClicked: popup.close()
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 1
+            color: "#E5E7EB"
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+
+            Rectangle {
+                Layout.preferredWidth: recordCount.implicitWidth + 20
+                Layout.preferredHeight: 30
+                color: "#F0EEFF"
+                radius: 15
+
+                Label {
+                    id: recordCount
+                    anchors.centerIn: parent
+                    text: popup.registros.length + " registros mostrados"
+                    color: "#514BC2"
+                    font.bold: true
+                    font.pixelSize: 12
+                }
+            }
+
+            Item {
+                Layout.fillWidth: true
+            }
+
+            Label {
+                visible: popup.width >= 560
+                text: "Desplázate para explorar los registros"
+                color: "#6B7280"
+                font.pixelSize: 12
+            }
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            color: "#F8FAFC"
+            radius: 11
+            border.width: 1
+            border.color: "#E1E6EF"
+            clip: true
+
+            ScrollView {
+                id: recordsScroll
+
+                anchors.fill: parent
+                anchors.margins: 1
+                clip: true
+                contentWidth: availableWidth
+
+                ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                ScrollBar.vertical.policy: ScrollBar.AsNeeded
+
+                ListView {
+                    id: listView
+
+                    width: recordsScroll.availableWidth
+                    height: recordsScroll.availableHeight
+                    model: popup.registros
+                    spacing: 8
+                    clip: true
+                    reuseItems: true
+                    boundsBehavior: Flickable.StopAtBounds
+                    activeFocusOnTab: true
+
+                    Accessible.name: "Registros de " + popup.datasetNombre
+
+                    header: Item {
+                        width: 1
+                        height: 8
+                    }
+
+                    footer: Item {
+                        width: 1
+                        height: 8
+                    }
+
+                    delegate: Rectangle {
+                        id: recordDelegate
+
+                        required property int index
+                        required property var modelData
+
+                        width: Math.max(0, listView.width - 16)
+                        height: Math.max(54, contenido.implicitHeight + 24)
+                        x: 8
+                        color: recordDelegate.index % 2 === 0
+                               ? "#FFFFFF" : "#F3F5F9"
+                        radius: 8
+                        border.width: 1
+                        border.color: "#E2E7F0"
+
+                        Text {
+                            id: contenido
+
+                            anchors.fill: parent
+                            anchors.margins: 12
+                            text: {
+                                try {
+                                    var serialized = JSON.stringify(
+                                                recordDelegate.modelData, null, 2)
+                                    return serialized === undefined
+                                            ? String(recordDelegate.modelData)
+                                            : serialized
+                                } catch (error) {
+                                    return String(recordDelegate.modelData)
+                                }
+                            }
+                            textFormat: Text.PlainText
+                            color: "#273142"
+                            wrapMode: Text.Wrap
+                            font.family: Qt.platform.os === "windows"
+                                         ? "Consolas" : "monospace"
+                            font.pixelSize: 12
+                        }
+                    }
+                }
+            }
+
+            Label {
+                anchors.centerIn: parent
+                visible: listView.count === 0
+                text: "No hay registros para mostrar."
+                color: "#6B7280"
+                font.pixelSize: 14
+            }
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 12
+
+            Label {
+                Layout.fillWidth: true
+                visible: popup.width >= 420
+                text: "También puedes presionar Esc para cerrar"
+                color: "#6B7280"
+                font.pixelSize: 12
+            }
+
+            BotonPrincipal {
+                Layout.alignment: Qt.AlignRight
+                Layout.preferredWidth: 124
+                Layout.preferredHeight: 40
+                text: "Cerrar"
+                Accessible.name: "Cerrar vista previa de datos"
+                onClicked: popup.close()
+            }
         }
     }
+
+    onOpened: closeButton.forceActiveFocus()
 }
-
-
-// import QtQuick
-// import QtQuick.Controls
-// import QtQuick.Layouts
-
-// Popup {
-//     id: popup
-
-//     property var registros: []
-//     property var datasetInfo: ({})   // fila completa del datasetModel (tokens, vocabulario, etc.)
-
-//     property color colorAccent: "#6A63E8"
-//     property color colorBg: "#f7f7fb"
-//     property color colorBorder: "#e3e1f5"
-//     property color colorTextMuted: "#8a8a8a"
-
-//     width: 640
-//     height: 520
-//     modal: true
-//     focus: true
-//     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-
-//     background: Rectangle {
-//         color: "white"
-//         radius: 14
-//         border.width: 1
-//         border.color: colorBorder
-//     }
-
-//     function mostrar(datasetRow, listaRegistros) {
-//         datasetInfo = datasetRow
-//         registros = listaRegistros
-//         tabBar.currentIndex = 0
-//         open()
-//     }
-
-//     function calcularFrecuencia() {
-//         var conteo = {}
-
-//         for (var i = 0; i < registros.length; ++i) {
-//             var reg = registros[i]
-//             var texto = (reg.instruction || "") + " " + (reg.context || "") + " " + (reg.response || "")
-//             var palabras = texto.toLowerCase().match(/[a-záéíóúñü0-9]+/g) || []
-
-//             for (var j = 0; j < palabras.length; ++j) {
-//                 var p = palabras[j]
-//                 if (p.length < 4) continue
-//                 conteo[p] = (conteo[p] || 0) + 1
-//             }
-//         }
-
-//         var lista = Object.keys(conteo).map(function(k) {
-//             return { palabra: k, veces: conteo[k] }
-//         })
-
-//         lista.sort(function(a, b) { return b.veces - a.veces })
-//         return lista.slice(0, 15)
-//     }
-
-//     ColumnLayout {
-//         anchors.fill: parent
-//         anchors.margins: 20
-//         spacing: 14
-
-//         // ---------- Header ----------
-//         RowLayout {
-//             Layout.fillWidth: true
-
-//             ColumnLayout {
-//                 spacing: 2
-//                 Text {
-//                     text: popup.datasetInfo.nombre || "Dataset"
-//                     font.bold: true
-//                     font.pixelSize: 18
-//                     color: "#222222"
-//                 }
-//                 Text {
-//                     text: (popup.datasetInfo.registros || 0) + " registros · " +
-//                           (popup.datasetInfo.formato || "")
-//                     font.pixelSize: 12
-//                     color: popup.colorTextMuted
-//                 }
-//             }
-
-//             Item { Layout.fillWidth: true }
-
-//             ToolButton {
-//                 text: "✕"
-//                 onClicked: popup.close()
-//                 background: Item {}
-//                 contentItem: Text {
-//                     text: "✕"
-//                     color: popup.colorTextMuted
-//                     font.pixelSize: 16
-//                     horizontalAlignment: Text.AlignHCenter
-//                     verticalAlignment: Text.AlignVCenter
-//                 }
-//             }
-//         }
-
-//         // ---------- Tabs ----------
-//         TabBar {
-//             id: tabBar
-//             Layout.fillWidth: true
-//             background: Rectangle { color: "transparent" }
-
-//             TabButton {
-//                 text: "muestra"
-//                 width: implicitWidth + 24
-//             }
-//             TabButton {
-//                 text: "tokens"
-//                 width: implicitWidth + 24
-//             }
-//             TabButton {
-//                 text: "frecuencia"
-//                 width: implicitWidth + 24
-//             }
-//             TabButton {
-//                 text: "estadísticas"
-//                 width: implicitWidth + 24
-//             }
-//         }
-
-//         Rectangle {
-//             Layout.fillWidth: true
-//             height: 1
-//             color: popup.colorBorder
-//         }
-
-//         // ---------- Contenido ----------
-//         StackLayout {
-//             Layout.fillWidth: true
-//             Layout.fillHeight: true
-//             currentIndex: tabBar.currentIndex
-
-//             // === Muestra ===
-//             ColumnLayout {
-//                 spacing: 8
-
-//                 Rectangle {
-//                     Layout.fillWidth: true
-//                     Layout.fillHeight: true
-//                     color: popup.colorBg
-//                     radius: 10
-//                     border.width: 1
-//                     border.color: popup.colorBorder
-
-//                     ScrollView {
-//                         anchors.fill: parent
-//                         anchors.margins: 14
-//                         clip: true
-
-//                         Text {
-//                             width: parent.width
-//                             wrapMode: Text.Wrap
-//                             font.family: "Consolas, monospace"
-//                             font.pixelSize: 12
-//                             lineHeight: 1.4
-//                             color: "#333333"
-//                             text: {
-//                                 if (registros.length === 0) return "Sin datos disponibles."
-//                                 var r = registros[0]
-//                                 var texto = (r.instruction || "") + " " + (r.context || "") + " " + (r.response || "")
-//                                 return texto.substring(0, 300) + (texto.length > 300 ? "…" : "")
-//                             }
-//                         }
-//                     }
-//                 }
-
-//                 Text {
-//                     text: "Primeros 300 caracteres del corpus — vista previa del primer registro"
-//                     font.pixelSize: 11
-//                     color: popup.colorTextMuted
-//                 }
-//             }
-
-//             // === Tokens ===
-//             GridLayout {
-//                 columns: 2
-//                 columnSpacing: 14
-//                 rowSpacing: 14
-
-//                 Repeater {
-//                     model: [
-//                         { label: "Tokens totales", valor: popup.datasetInfo.tokens },
-//                         { label: "Promedio por registro", valor: popup.datasetInfo.tokens_promedio },
-//                         { label: "Longitud máxima", valor: popup.datasetInfo.longitud_maxima },
-//                         { label: "Longitud mínima", valor: popup.datasetInfo.longitud_minima },
-//                         { label: "Vocabulario único", valor: popup.datasetInfo.vocabulario },
-//                         { label: "Ejemplos vacíos", valor: popup.datasetInfo.ejemplos_vacios }
-//                     ]
-
-//                     delegate: Rectangle {
-//                         Layout.fillWidth: true
-//                         Layout.preferredHeight: 70
-//                         radius: 10
-//                         color: popup.colorBg
-//                         border.width: 1
-//                         border.color: popup.colorBorder
-
-//                         ColumnLayout {
-//                             anchors.centerIn: parent
-//                             spacing: 2
-
-//                             Text {
-//                                 text: modelData.valor !== undefined ? modelData.valor : "—"
-//                                 font.bold: true
-//                                 font.pixelSize: 20
-//                                 color: popup.colorAccent
-//                                 Layout.alignment: Qt.AlignHCenter
-//                             }
-//                             Text {
-//                                 text: modelData.label
-//                                 font.pixelSize: 11
-//                                 color: popup.colorTextMuted
-//                                 Layout.alignment: Qt.AlignHCenter
-//                             }
-//                         }
-//                     }
-//                 }
-//             }
-
-//             // === Frecuencia ===
-//             ScrollView {
-//                 clip: true
-
-//                 ColumnLayout {
-//                     width: parent.width
-//                     spacing: 6
-
-//                     Repeater {
-//                         model: popup.calcularFrecuencia()
-
-//                         delegate: RowLayout {
-//                             Layout.fillWidth: true
-//                             spacing: 10
-
-//                             Text {
-//                                 text: modelData.palabra
-//                                 font.pixelSize: 13
-//                                 color: "#333333"
-//                                 Layout.preferredWidth: 140
-//                                 elide: Text.ElideRight
-//                             }
-
-//                             Rectangle {
-//                                 Layout.fillWidth: true
-//                                 height: 16
-//                                 radius: 8
-//                                 color: popup.colorBg
-
-//                                 Rectangle {
-//                                     height: parent.height
-//                                     radius: 8
-//                                     color: popup.colorAccent
-//                                     width: Math.max(6, parent.width *
-//                                         (modelData.veces / (popup.calcularFrecuencia()[0]
-//                                             ? popup.calcularFrecuencia()[0].veces : 1)))
-//                                 }
-//                             }
-
-//                             Text {
-//                                 text: modelData.veces
-//                                 font.pixelSize: 12
-//                                 color: popup.colorTextMuted
-//                                 Layout.preferredWidth: 30
-//                                 horizontalAlignment: Text.AlignRight
-//                             }
-//                         }
-//                     }
-//                 }
-//             }
-
-//             // === Estadísticas ===
-//             ScrollView {
-//                 clip: true
-
-//                 ColumnLayout {
-//                     width: parent.width
-//                     spacing: 10
-
-//                     Repeater {
-//                         model: [
-//                             { label: "ID", valor: popup.datasetInfo.id },
-//                             { label: "Formato", valor: popup.datasetInfo.formato },
-//                             { label: "Tamaño", valor: (popup.datasetInfo.tamano_mb || 0) + " MB" },
-//                             { label: "Estado", valor: popup.datasetInfo.estado },
-//                             { label: "Categorías", valor: popup.datasetInfo.categorias ? Object.keys(popup.datasetInfo.categorias).length : 0 },
-//                             { label: "Campos", valor: popup.datasetInfo.campos_texto }
-//                         ]
-
-//                         delegate: RowLayout {
-//                             Layout.fillWidth: true
-
-//                             Text {
-//                                 text: modelData.label
-//                                 font.bold: true
-//                                 font.pixelSize: 13
-//                                 color: "#555555"
-//                                 Layout.preferredWidth: 120
-//                             }
-//                             Text {
-//                                 text: modelData.valor !== undefined ? modelData.valor : "—"
-//                                 font.pixelSize: 13
-//                                 color: "#333333"
-//                                 Layout.fillWidth: true
-//                                 wrapMode: Text.Wrap
-//                             }
-//                         }
-//                     }
-//                 }
-//             }
-//         }
-//     }
-// }

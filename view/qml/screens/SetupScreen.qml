@@ -8,6 +8,8 @@ import QtQuick.Layouts
 PagePrincipal {
     id: root
     objectName: "setupScreen"
+    helpModalObjectName: "setupTheoryModal"
+    helpPanelObjectName: "setupContextPanel"
 
     // La biblioteca usa esta pantalla solo para elegir datasets y
     // parametros de la nueva sesion, conservando arquitectura y pesos.
@@ -53,19 +55,14 @@ PagePrincipal {
     function mostrarTeoriaComponente(componentId) {
         if (!componentId) {
             root.teoriaActual = ({})
+            root.closeTheory()
             return
         }
-        root.teoriaActual = mainViewModel.theoryController.obtenerTeoriaDeComponente(componentId)
+        root.teoriaActual = root.openTheoryComponent(componentId)
     }
 
     function mostrarConceptoRelacionado(conceptId) {
-        var concepto = mainViewModel.theoryController.obtenerConcepto(conceptId)
-        var resultado = ({})
-        for (var clave in concepto)
-            resultado[clave] = concepto[clave]
-        resultado.relacionados = mainViewModel.theoryController.obtenerRelacionados(conceptId)
-        resultado.componente_id = localBridge.selectedId
-        root.teoriaActual = resultado
+        root.teoriaActual = root.openTheoryConcept(conceptId)
     }
 
     function completarInicioEntrenamiento() {
@@ -111,15 +108,6 @@ PagePrincipal {
         }
     }
 
-    Connections {
-        target: mainViewModel.theoryController
-        ignoreUnknownSignals: true
-
-        function onTeoriaRecargada() {
-            root.mostrarTeoriaComponente(localBridge.selectedId)
-        }
-    }
-
     Component.onCompleted: {
         if (root.usarModeloActual && mainViewModel.modeloListo) {
             var infoActual = mainViewModel.modeloActualInfo
@@ -142,12 +130,14 @@ PagePrincipal {
                 clearSelection()
             else {
                 selectedId = id
-                root.mostrarTeoriaComponente(id)
+                root.teoriaActual = root.previewTheoryComponent(id)
+                root.closeTheory()
             }
         }
         function clearSelection() {
             selectedId = ""
             root.teoriaActual = ({})
+            root.closeTheory()
         }
         function showOverview() {
             clearSelection()
@@ -156,7 +146,7 @@ PagePrincipal {
 
     Shortcut {
         sequence: "Esc"
-        enabled: localBridge.selectedId !== ""
+        enabled: localBridge.selectedId !== "" && !root.theoryModalOpened
         onActivated: localBridge.clearSelection()
     }
 
@@ -283,19 +273,17 @@ PagePrincipal {
                 width: panelScroll.availableWidth
                 spacing: 14 * sy
 
-                ContextPanel {
-                    objectName: "setupContextPanel"
+                ConceptSummary {
+                    objectName: "setupConceptSummary"
+                    openButtonObjectName: "setupOpenTheoryButton"
                     width: parent.width
-                    height: visible ? 390 * root.sy : 0
+                    height: visible ? implicitHeight : 0
                     visible: localBridge.selectedId !== ""
                     sx: root.sx
                     sy: root.sy
                     concepto: root.teoriaActual
-                    errorCarga: mainViewModel.theoryController.errorCarga
+                    onOpenRequested: root.mostrarTeoriaComponente(localBridge.selectedId)
                     onCloseRequested: localBridge.clearSelection()
-                    onConceptRequested: function(conceptId) {
-                        root.mostrarConceptoRelacionado(conceptId)
-                    }
                 }
 
                 RectanglePrincipal {
@@ -330,6 +318,8 @@ PagePrincipal {
                         sx: root.sx
                         sy: root.sy
                         text: "Capas Encoder (Nx)"
+                        helpConceptId: "layer_count"
+                        onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
                         enabled: !root.usarModeloActual
                         opacity: enabled ? 1.0 : 0.55
                         from: 1
@@ -350,6 +340,8 @@ PagePrincipal {
                         sx: root.sx
                         sy: root.sy
                         text: "Dimensión del Modelo"
+                        helpConceptId: "d_model"
+                        onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
                         enabled: !root.usarModeloActual
                         opacity: enabled ? 1.0 : 0.55
                         from: 32
@@ -371,6 +363,8 @@ PagePrincipal {
                         sx: root.sx
                         sy: root.sy
                         text: "Longitud Máxima de Secuencia"
+                        helpConceptId: "context_window"
+                        onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
                         enabled: !root.usarModeloActual
                         opacity: enabled ? 1.0 : 0.55
                         from: 16
@@ -392,6 +386,8 @@ PagePrincipal {
                         sx: root.sx
                         sy: root.sy
                         text: "Dimensión Feed-Forward"
+                        helpConceptId: "dimension_d_ff"
+                        onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
                         enabled: !root.usarModeloActual
                         opacity: enabled ? 1.0 : 0.55
                         from: 128
@@ -412,10 +408,21 @@ PagePrincipal {
                         visible: localBridge.selectedId.indexOf("feed_forward") !== -1
                         spacing: 4 * root.sy
 
-                        Text {
-                            text: "Función de Activación"
-                            color: Style.Theme.texto_primario
-                            font.pixelSize: 13 * root.sx
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 6 * root.sx
+
+                            Text {
+                                Layout.fillWidth: true
+                                text: "Función de Activación"
+                                color: Style.Theme.texto_primario
+                                font.pixelSize: 13 * root.sx
+                            }
+                            ConceptHelpButton {
+                                conceptId: "activation_functions"
+                                controlSize: Math.max(24, 27 * Math.min(root.sx, root.sy))
+                                onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                            }
                         }
 
                         ComboBox {
@@ -455,6 +462,12 @@ PagePrincipal {
                                 Layout.fillWidth: true
                             }
 
+                            ConceptHelpButton {
+                                conceptId: "por_que_mascara"
+                                controlSize: Math.max(24, 27 * Math.min(root.sx, root.sy))
+                                onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                            }
+
                             Switch {
                                 id: switchMascaraCausal
                                 enabled: !root.usarModeloActual
@@ -489,6 +502,8 @@ PagePrincipal {
                         sx: root.sx
                         sy: root.sy
                         text: "Número de Cabezas (Heads)"
+                        helpConceptId: "cabeza_atencion"
+                        onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
                         enabled: !root.usarModeloActual
                         opacity: enabled ? 1.0 : 0.55
                         from: 1
@@ -509,6 +524,8 @@ PagePrincipal {
                         sx: root.sx
                         sy: root.sy
                         text: "Drop-out"
+                        helpConceptId: "dropout"
+                        onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
                         enabled: !root.usarModeloActual
                         opacity: enabled ? 1.0 : 0.55
                         from: 0
@@ -555,6 +572,8 @@ PagePrincipal {
                             sx: root.sx
                             sy: root.sy
                             text: "Épocas / iteraciones"
+                            helpConceptId: "epoch_batch"
+                            onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
                             from: 1; to: 24; stepSize: 1; value: root.epocas
                             onValueChanged: root.epocas = value
                         }
@@ -563,6 +582,8 @@ PagePrincipal {
                             sx: root.sx
                             sy: root.sy
                             text: "Learning Rate"
+                            helpConceptId: "learning_rate"
+                            onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
                             from: 0; to: 0.01; stepSize: 0.0001
                             value: root.tasaAprendizaje
                             tipo_dato: "decimal"
@@ -573,6 +594,8 @@ PagePrincipal {
                             sx: root.sx
                             sy: root.sy
                             text: "Batch Size"
+                            helpConceptId: "epoch_batch"
+                            onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
                             from: 1; to: 24; stepSize: 1; value: root.batchSize
                             onValueChanged: root.batchSize = value
                         }
@@ -592,12 +615,21 @@ PagePrincipal {
                     anchors.margins: 15 * sx
                     spacing: 6 * sy
 
-                    Text {
+                    RowLayout {
                         Layout.alignment: Qt.AlignHCenter
-                        text: "Parámetros: " + root.parametrosTotales.toLocaleString()
-                            + "  (~" + root.memoriaEstimadaMb + " MB)"
-                        color: Style.Theme.texto_primario
-                        font.pixelSize: 14 * root.sx
+                        spacing: 6 * root.sx
+
+                        Text {
+                            text: "Parámetros: " + root.parametrosTotales.toLocaleString()
+                                + "  (~" + root.memoriaEstimadaMb + " MB)"
+                            color: Style.Theme.texto_primario
+                            font.pixelSize: 14 * root.sx
+                        }
+                        ConceptHelpButton {
+                            conceptId: "parameter_count"
+                            controlSize: Math.max(24, 27 * Math.min(root.sx, root.sy))
+                            onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                        }
                     }
 
                     Text {

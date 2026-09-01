@@ -8,6 +8,8 @@ import "../components"
 
 PagePrincipal {
     id: root
+    helpModalObjectName: "comparisonTheoryModal"
+    helpPanelObjectName: "comparisonTheoryPanel"
 
     property var controller: mainViewModel.comparisonController
     property var biblioteca: mainViewModel.modelLibraryController
@@ -648,6 +650,11 @@ PagePrincipal {
                         RowLayout {
                             Layout.fillWidth: true
                             Text { text: "Tokens nuevos"; color: Style.Theme.texto_secundario }
+                            ConceptHelpButton {
+                                conceptId: "detencion_generacion"
+                                controlSize: Math.max(21, 24 * Math.min(root.sx, root.sy))
+                                onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                            }
                             SpinBox {
                                 id: maxTokens
                                 Layout.preferredWidth: 110 * root.sx
@@ -658,6 +665,11 @@ PagePrincipal {
                                 enabled: !root.controller.estaGenerando
                             }
                             Text { text: "Temperatura"; color: Style.Theme.texto_secundario }
+                            ConceptHelpButton {
+                                conceptId: "temperature"
+                                controlSize: Math.max(21, 24 * Math.min(root.sx, root.sy))
+                                onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                            }
                             Slider {
                                 id: temperatura
                                 Layout.fillWidth: true
@@ -682,6 +694,11 @@ PagePrincipal {
                                 checked: true
                                 enabled: !root.controller.estaGenerando && !muestreoCodicioso.checked
                             }
+                            ConceptHelpButton {
+                                conceptId: "top_k"
+                                controlSize: Math.max(21, 24 * Math.min(root.sx, root.sy))
+                                onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                            }
                             SpinBox {
                                 id: topK
                                 Layout.preferredWidth: 100 * root.sx
@@ -696,6 +713,11 @@ PagePrincipal {
                                 text: "Top-P"
                                 checked: true
                                 enabled: !root.controller.estaGenerando && !muestreoCodicioso.checked
+                            }
+                            ConceptHelpButton {
+                                conceptId: "top_p"
+                                controlSize: Math.max(21, 24 * Math.min(root.sx, root.sy))
+                                onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
                             }
                             Slider {
                                 id: topP
@@ -716,6 +738,11 @@ PagePrincipal {
                                 text: "Codicioso"
                                 checked: false
                                 enabled: !root.controller.estaGenerando
+                            }
+                            ConceptHelpButton {
+                                conceptId: "greedy_sampling"
+                                controlSize: Math.max(21, 24 * Math.min(root.sx, root.sy))
+                                onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
                             }
                         }
 

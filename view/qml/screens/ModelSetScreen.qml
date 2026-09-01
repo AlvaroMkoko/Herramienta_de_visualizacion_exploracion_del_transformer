@@ -7,6 +7,9 @@ import "../components"
 PagePrincipal {
     id: root
 
+    helpModalObjectName: "modelSetTheoryModal"
+    helpPanelObjectName: "modelSetContextPanel"
+
     // Contrato público existente: el modelo puede seguir poblándose desde fuera.
     property alias datasetModel: setModel
     property alias markModel: markedModel
@@ -341,21 +344,25 @@ PagePrincipal {
                         model: [
                             {
                                 label: "CAPAS",
+                                help: "layer_count",
                                 value: root.value(modelCard.info,
                                                   ["num_capas", "encoder_layers", "capas"], "\u2014")
                             },
                             {
                                 label: "CABEZAS",
+                                help: "cabeza_atencion",
                                 value: root.value(modelCard.info,
                                                   ["num_cabezas", "heads", "nhead"], "\u2014")
                             },
                             {
                                 label: "DIMENSIÓN",
+                                help: "d_model",
                                 value: root.value(modelCard.info,
                                                   ["dimension_modelo", "d_model", "dimension"], "\u2014")
                             },
                             {
                                 label: "PARÁMETROS",
+                                help: "parameter_count",
                                 value: root.readableNumber(root.value(
                                                                modelCard.info,
                                                                ["parametros_totales", "parametros"], ""))
@@ -384,6 +391,15 @@ PagePrincipal {
                                     font.bold: true
                                     font.pixelSize: 10 * Math.min(root.sx, root.sy)
                                     elide: Text.ElideRight
+                                }
+
+                                ConceptHelpButton {
+                                    conceptId: String(metric.modelData.help)
+                                    controlSize: Math.max(22, 27 * Math.min(root.sx,
+                                                                          root.sy))
+                                    onHelpRequested: function(conceptId) {
+                                        root.openTheoryConcept(conceptId)
+                                    }
                                 }
 
                                 Text {

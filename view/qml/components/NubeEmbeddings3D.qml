@@ -5,6 +5,8 @@ import "../styles" as Style
 Item {
     id: nube
 
+    signal helpRequested(string conceptId)
+
     // Datos que llegan desde TrainingScreen (payload de nube_embeddings)
     property var puntos: []
     property var etiquetas: []
@@ -161,18 +163,36 @@ Item {
         anchors.margins: 10
         spacing: 2
 
-        Text {
-            text: nube.modo === "pca"
-                  ? "Proyección: PCA (3 componentes)"
-                  : "Proyección: dims " + JSON.stringify(nube.dimensiones)
-            color: Style.Theme.texto_primario
-            font.pixelSize: 11
-            font.bold: true
+        Row {
+            spacing: 6
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: nube.modo === "pca"
+                      ? "Proyección: PCA (3 componentes)"
+                      : "Proyección: dims " + JSON.stringify(nube.dimensiones)
+                color: Style.Theme.texto_primario
+                font.pixelSize: 11
+                font.bold: true
+            }
+            ConceptHelpButton {
+                conceptId: "pca_projection"
+                controlSize: 24
+                onHelpRequested: function(conceptId) { nube.helpRequested(conceptId) }
+            }
         }
-        Text {
-            text: "Varianza conservada: " + Math.round(nube.varianzaConservada * 1000)/10 + "%"
-            color: nube.varianzaConservada < 0.25 ? "#C77B21" : "#4A7C4E"
-            font.pixelSize: 11
+        Row {
+            spacing: 6
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: "Varianza conservada: " + Math.round(nube.varianzaConservada * 1000)/10 + "%"
+                color: nube.varianzaConservada < 0.25 ? "#C77B21" : "#4A7C4E"
+                font.pixelSize: 11
+            }
+            ConceptHelpButton {
+                conceptId: "explained_variance"
+                controlSize: 24
+                onHelpRequested: function(conceptId) { nube.helpRequested(conceptId) }
+            }
         }
         Text {
             // Advertencia honesta: la proyeccion es contractiva, asi que

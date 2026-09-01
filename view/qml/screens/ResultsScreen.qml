@@ -6,6 +6,8 @@ import QtQuick.Layouts
 
 PagePrincipal {
     id: root
+    helpModalObjectName: "resultsTheoryModal"
+    helpPanelObjectName: "resultsTheoryPanel"
 
     // --- Datos recibidos desde TrainingScreen al navegar aquí ---
     property var historialPerdidas: []
@@ -28,9 +30,9 @@ PagePrincipal {
                 && (tc.guardando === undefined || !tc.guardando)
     }
 
-    function porcentajeMejora(inicial, final) {
+    function porcentajeMejora(inicial, valorFinal) {
         if (!inicial || inicial <= 0) return 0
-        return Math.round((1 - final / inicial) * 1000) / 10
+        return Math.round((1 - valorFinal / inicial) * 1000) / 10
     }
 
     // Dibujar 5000 puntos en un canvas de ~600px no aporta nada visible y
@@ -162,10 +164,18 @@ PagePrincipal {
                 rowSpacing: 10 * root.sy
                 columnSpacing: 20 * root.sx
 
-                Text {
-                    text: "Pérdida inicial"
-                    color: Style.Theme.texto_primario
-                    font.pixelSize: 13 * root.sx
+                RowLayout {
+                    spacing: 6 * root.sx
+                    Text {
+                        text: "Pérdida inicial"
+                        color: Style.Theme.texto_primario
+                        font.pixelSize: 13 * root.sx
+                    }
+                    ConceptHelpButton {
+                        conceptId: "cross_entropy"
+                        controlSize: Math.max(22, 25 * Math.min(root.sx, root.sy))
+                        onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                    }
                 }
                 Text {
                     text: root.perdidaInicial.toFixed(4)
@@ -174,10 +184,18 @@ PagePrincipal {
                     font.bold: true
                 }
 
-                Text {
-                    text: "Pérdida final"
-                    color: Style.Theme.texto_primario
-                    font.pixelSize: 13 * root.sx
+                RowLayout {
+                    spacing: 6 * root.sx
+                    Text {
+                        text: "Pérdida final"
+                        color: Style.Theme.texto_primario
+                        font.pixelSize: 13 * root.sx
+                    }
+                    ConceptHelpButton {
+                        conceptId: "cross_entropy"
+                        controlSize: Math.max(22, 25 * Math.min(root.sx, root.sy))
+                        onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                    }
                 }
                 Text {
                     text: root.perdidaFinal.toFixed(4)
@@ -186,10 +204,18 @@ PagePrincipal {
                     font.bold: true
                 }
 
-                Text {
-                    text: "Mejora"
-                    color: Style.Theme.texto_primario
-                    font.pixelSize: 13 * root.sx
+                RowLayout {
+                    spacing: 6 * root.sx
+                    Text {
+                        text: "Mejora"
+                        color: Style.Theme.texto_primario
+                        font.pixelSize: 13 * root.sx
+                    }
+                    ConceptHelpButton {
+                        conceptId: "loss_delta"
+                        controlSize: Math.max(22, 25 * Math.min(root.sx, root.sy))
+                        onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                    }
                 }
                 Text {
                     text: (root.mejoraPorcentual >= 0 ? "▼ " : "▲ ") + Math.abs(root.mejoraPorcentual) + "%"
@@ -198,10 +224,18 @@ PagePrincipal {
                     font.bold: true
                 }
 
-                Text {
-                    text: "Épocas completadas"
-                    color: Style.Theme.texto_primario
-                    font.pixelSize: 13 * root.sx
+                RowLayout {
+                    spacing: 6 * root.sx
+                    Text {
+                        text: "Épocas completadas"
+                        color: Style.Theme.texto_primario
+                        font.pixelSize: 13 * root.sx
+                    }
+                    ConceptHelpButton {
+                        conceptId: "epoch_batch"
+                        controlSize: Math.max(22, 25 * Math.min(root.sx, root.sy))
+                        onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                    }
                 }
                 Text {
                     text: String(root.epocasCompletadas)
@@ -210,10 +244,18 @@ PagePrincipal {
                     font.bold: true
                 }
 
-                Text {
-                    text: "Pasos totales"
-                    color: Style.Theme.texto_primario
-                    font.pixelSize: 13 * root.sx
+                RowLayout {
+                    spacing: 6 * root.sx
+                    Text {
+                        text: "Pasos totales"
+                        color: Style.Theme.texto_primario
+                        font.pixelSize: 13 * root.sx
+                    }
+                    ConceptHelpButton {
+                        conceptId: "training_step"
+                        controlSize: Math.max(22, 25 * Math.min(root.sx, root.sy))
+                        onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                    }
                 }
                 Text {
                     text: String(root.pasosTotales)
@@ -226,23 +268,41 @@ PagePrincipal {
             // Una mejora negativa o nula suele indicar learning rate mal
             // elegido: conviene decirlo aquí y no dejar que el usuario lo
             // descubra recién al ver que la inferencia no tiene sentido.
-            Text {
+            RowLayout {
                 Layout.fillWidth: true
                 visible: root.mejoraPorcentual <= 0
-                wrapMode: Text.WordWrap
-                text: "La pérdida no bajó durante el entrenamiento. Suele deberse a un "
-                    + "learning rate demasiado alto o demasiado bajo, o a muy pocas épocas "
-                    + "para el tamaño del dataset."
-                color: "#E8A33D"
-                font.pixelSize: 11 * root.sx
+                spacing: 6 * root.sx
+                Text {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    text: "La pérdida no bajó durante el entrenamiento. Suele deberse a un "
+                        + "learning rate demasiado alto o demasiado bajo, o a muy pocas épocas "
+                        + "para el tamaño del dataset."
+                    color: "#E8A33D"
+                    font.pixelSize: 11 * root.sx
+                }
+                ConceptHelpButton {
+                    conceptId: "learning_rate"
+                    controlSize: Math.max(22, 25 * Math.min(root.sx, root.sy))
+                    onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                }
             }
 
-            Text {
-                text: "Curva de pérdida"
-                color: Style.Theme.texto_primario
-                font.pixelSize: 15 * root.sx
-                font.bold: true
+            RowLayout {
+                Layout.fillWidth: true
                 Layout.topMargin: 10 * root.sy
+                spacing: 6 * root.sx
+                Text {
+                    text: "Curva de pérdida"
+                    color: Style.Theme.texto_primario
+                    font.pixelSize: 15 * root.sx
+                    font.bold: true
+                }
+                ConceptHelpButton {
+                    conceptId: "cross_entropy"
+                    controlSize: Math.max(22, 25 * Math.min(root.sx, root.sy))
+                    onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                }
             }
 
             Canvas {
@@ -367,14 +427,28 @@ PagePrincipal {
                     }
                 }
 
-                Text {
+                RowLayout {
                     Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    text: "«Portable» guarda solo el modelo, listo para inferencia. "
-                        + "«Reanudar» incluye además el estado del optimizador para "
-                        + "seguir entrenando después."
-                    color: "#9A9AB0"
-                    font.pixelSize: 10 * root.sx
+                    spacing: 6 * root.sx
+                    Text {
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        text: "«Portable» guarda solo el modelo, listo para inferencia. "
+                            + "«Reanudar» incluye además el estado del optimizador para "
+                            + "seguir entrenando después."
+                        color: "#9A9AB0"
+                        font.pixelSize: 10 * root.sx
+                    }
+                    ConceptHelpButton {
+                        conceptId: "checkpoint"
+                        controlSize: Math.max(22, 25 * Math.min(root.sx, root.sy))
+                        onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                    }
+                    ConceptHelpButton {
+                        conceptId: "optimizer"
+                        controlSize: Math.max(22, 25 * Math.min(root.sx, root.sy))
+                        onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                    }
                 }
 
                 Text {

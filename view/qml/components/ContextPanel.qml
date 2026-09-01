@@ -9,16 +9,27 @@ Rectangle {
     id: root
 
     property var concepto: ({})
+    // Cuando se proporciona, esta lista prevalece sobre concepto.relacionados.
+    // Esto evita mutar los QVariantMap devueltos por TheoryController.
+    property var relatedConcepts: null
     property string errorCarga: ""
     property real sx: 1.0
     property real sy: 1.0
     property bool closable: true
+    property bool expanded: false
 
     signal closeRequested()
     signal conceptRequested(string conceptId)
 
-    readonly property var relacionados: root.concepto && root.concepto.relacionados
-                                        ? root.concepto.relacionados : []
+    readonly property real contentScale: Math.max(
+                                                   0.55,
+                                                   Math.min(1.15, Math.min(root.sx, root.sy))
+                                               )
+    readonly property var relacionados: root.relatedConcepts !== null
+                                        && root.relatedConcepts !== undefined
+                                        ? root.relatedConcepts
+                                        : (root.concepto && root.concepto.relacionados
+                                           ? root.concepto.relacionados : [])
     readonly property bool tieneConcepto: root.concepto
                                            && Object.keys(root.concepto).length > 0
 
@@ -42,8 +53,15 @@ Rectangle {
         return resultado
     }
 
-    implicitHeight: 390 * root.sy
-    radius: 10 * root.sx
+    function prepareForOpen() {
+        if (theoryScroll.ScrollBar.vertical)
+            theoryScroll.ScrollBar.vertical.position = 0
+        if (closeButton.visible)
+            closeButton.forceActiveFocus()
+    }
+
+    implicitHeight: (root.expanded ? 620 : 390) * root.contentScale
+    radius: (root.expanded ? 16 : 10) * root.contentScale
     color: "#FFFFFF"
     border.color: "#D8D2EC"
     border.width: 1
@@ -51,16 +69,16 @@ Rectangle {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 14 * root.sx
-        spacing: 9 * root.sy
+        anchors.margins: (root.expanded ? 24 : 14) * root.contentScale
+        spacing: (root.expanded ? 14 : 9) * root.contentScale
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 8 * root.sx
+            spacing: 10 * root.contentScale
 
             ColumnLayout {
                 Layout.fillWidth: true
-                spacing: 2 * root.sy
+                spacing: 4 * root.contentScale
 
                 Text {
                     Layout.fillWidth: true
@@ -68,8 +86,10 @@ Rectangle {
                           ? root.texto("title") : "Teoría del componente"
                     color: Style.Theme.texto_primario
                     font.bold: true
-                    font.pixelSize: 17 * Math.min(root.sx, root.sy)
+                    font.pixelSize: (root.expanded ? 26 : 17) * root.contentScale
                     wrapMode: Text.WordWrap
+                    Accessible.role: Accessible.Heading
+                    Accessible.name: text
                 }
 
                 Text {
@@ -77,20 +97,24 @@ Rectangle {
                     visible: text !== ""
                     text: root.texto("short_description")
                     color: Style.Theme.texto_secundario
-                    font.pixelSize: 11 * Math.min(root.sx, root.sy)
+                    font.pixelSize: (root.expanded ? 14 : 11) * root.contentScale
                     wrapMode: Text.WordWrap
                 }
             }
 
             Button {
+                id: closeButton
+
                 visible: root.closable
-                Layout.preferredWidth: 32 * root.sx
-                Layout.preferredHeight: 32 * root.sy
+                Layout.preferredWidth: (root.expanded ? 42 : 32) * root.contentScale
+                Layout.preferredHeight: (root.expanded ? 42 : 32) * root.contentScale
                 text: "×"
                 flat: true
                 font.bold: true
-                font.pixelSize: 19 * Math.min(root.sx, root.sy)
-                ToolTip.visible: hovered
+                font.pixelSize: (root.expanded ? 24 : 19) * root.contentScale
+                activeFocusOnTab: true
+                Accessible.name: "Cerrar explicación"
+                ToolTip.visible: hovered || activeFocus
                 ToolTip.text: "Cerrar teoría y volver a la vista general"
                 onClicked: root.closeRequested()
             }
@@ -111,23 +135,24 @@ Rectangle {
 
             Column {
                 width: theoryScroll.availableWidth
-                spacing: 10 * root.sy
+                spacing: (root.expanded ? 16 : 10) * root.contentScale
 
                 Rectangle {
                     visible: root.errorCarga !== ""
                     width: parent.width
-                    height: visible ? errorText.implicitHeight + 18 * root.sy : 0
-                    radius: 7 * root.sx
+                    height: visible ? errorText.implicitHeight
+                                      + (root.expanded ? 24 : 18) * root.contentScale : 0
+                    radius: (root.expanded ? 9 : 7) * root.contentScale
                     color: "#FEF2F2"
                     border.color: "#FCA5A5"
 
                     Text {
                         id: errorText
                         anchors.fill: parent
-                        anchors.margins: 9 * root.sx
+                        anchors.margins: (root.expanded ? 12 : 9) * root.contentScale
                         text: root.errorCarga
                         color: "#991B1B"
-                        font.pixelSize: 10 * Math.min(root.sx, root.sy)
+                        font.pixelSize: (root.expanded ? 14 : 10) * root.contentScale
                         wrapMode: Text.WordWrap
                     }
                 }
@@ -137,8 +162,8 @@ Rectangle {
                     visible: root.tieneConcepto
                     text: root.texto("explanation")
                     color: Style.Theme.texto_primario
-                    font.pixelSize: 12 * Math.min(root.sx, root.sy)
-                    lineHeight: 1.18
+                    font.pixelSize: (root.expanded ? 16 : 12) * root.contentScale
+                    lineHeight: root.expanded ? 1.30 : 1.18
                     wrapMode: Text.WordWrap
                 }
 
@@ -147,7 +172,7 @@ Rectangle {
                     visible: !root.tieneConcepto && root.errorCarga === ""
                     text: "Selecciona un bloque del Transformer para consultar su teoría."
                     color: Style.Theme.texto_secundario
-                    font.pixelSize: 12 * Math.min(root.sx, root.sy)
+                    font.pixelSize: (root.expanded ? 16 : 12) * root.contentScale
                     wrapMode: Text.WordWrap
                 }
 
@@ -157,7 +182,7 @@ Rectangle {
                     text: "INTUICIÓN"
                     color: "#6C5FC3"
                     font.bold: true
-                    font.pixelSize: 10 * Math.min(root.sx, root.sy)
+                    font.pixelSize: (root.expanded ? 12 : 10) * root.contentScale
                 }
                 Text {
                     width: parent.width
@@ -165,15 +190,17 @@ Rectangle {
                     text: root.texto("intuition")
                     color: "#514978"
                     font.italic: true
-                    font.pixelSize: 11 * Math.min(root.sx, root.sy)
+                    font.pixelSize: (root.expanded ? 14 : 11) * root.contentScale
+                    lineHeight: root.expanded ? 1.25 : 1.0
                     wrapMode: Text.WordWrap
                 }
 
                 Rectangle {
                     visible: root.texto("formula") !== "" || root.texto("mathematical") !== ""
                     width: parent.width
-                    height: visible ? formulaColumn.implicitHeight + 20 * root.sy : 0
-                    radius: 7 * root.sx
+                    height: visible ? formulaColumn.implicitHeight
+                                      + (root.expanded ? 28 : 20) * root.contentScale : 0
+                    radius: (root.expanded ? 10 : 7) * root.contentScale
                     color: "#F5F3FB"
                     border.color: "#DDD7F1"
 
@@ -182,8 +209,8 @@ Rectangle {
                         anchors.left: parent.left
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
-                        anchors.margins: 10 * root.sx
-                        spacing: 6 * root.sy
+                        anchors.margins: (root.expanded ? 14 : 10) * root.contentScale
+                        spacing: (root.expanded ? 9 : 6) * root.contentScale
 
                         Text {
                             width: parent.width
@@ -191,7 +218,7 @@ Rectangle {
                             text: root.texto("formula")
                             color: "#433879"
                             font.family: "monospace"
-                            font.pixelSize: 11 * Math.min(root.sx, root.sy)
+                            font.pixelSize: (root.expanded ? 14 : 11) * root.contentScale
                             wrapMode: Text.WrapAnywhere
                         }
                         Text {
@@ -199,7 +226,8 @@ Rectangle {
                             visible: root.texto("mathematical") !== ""
                             text: root.texto("mathematical")
                             color: Style.Theme.texto_secundario
-                            font.pixelSize: 10 * Math.min(root.sx, root.sy)
+                            font.pixelSize: (root.expanded ? 13 : 10) * root.contentScale
+                            lineHeight: root.expanded ? 1.22 : 1.0
                             wrapMode: Text.WordWrap
                         }
                     }
@@ -211,29 +239,30 @@ Rectangle {
                     text: "EJEMPLO"
                     color: "#3979B7"
                     font.bold: true
-                    font.pixelSize: 10 * Math.min(root.sx, root.sy)
+                    font.pixelSize: (root.expanded ? 12 : 10) * root.contentScale
                 }
                 Text {
                     width: parent.width
                     visible: root.texto("example") !== ""
                     text: root.texto("example")
                     color: "#315F88"
-                    font.pixelSize: 11 * Math.min(root.sx, root.sy)
+                    font.pixelSize: (root.expanded ? 14 : 11) * root.contentScale
+                    lineHeight: root.expanded ? 1.25 : 1.0
                     wrapMode: Text.WordWrap
                 }
 
                 Column {
-                    visible: root.concepto && root.concepto.steps
-                             && root.concepto.steps.length > 0
+                    visible: Boolean(root.concepto && root.concepto.steps
+                                     && root.concepto.steps.length > 0)
                     width: parent.width
-                    spacing: 4 * root.sy
+                    spacing: (root.expanded ? 7 : 4) * root.contentScale
 
                     Text {
                         width: parent.width
                         text: "PASOS"
                         color: "#258F6F"
                         font.bold: true
-                        font.pixelSize: 10 * Math.min(root.sx, root.sy)
+                        font.pixelSize: (root.expanded ? 12 : 10) * root.contentScale
                     }
                     Repeater {
                         model: root.concepto && root.concepto.steps
@@ -243,7 +272,8 @@ Rectangle {
                             width: parent.width
                             text: "• " + String(modelData)
                             color: Style.Theme.texto_primario
-                            font.pixelSize: 10 * Math.min(root.sx, root.sy)
+                            font.pixelSize: (root.expanded ? 13 : 10) * root.contentScale
+                            lineHeight: root.expanded ? 1.22 : 1.0
                             wrapMode: Text.WordWrap
                         }
                     }
@@ -252,14 +282,14 @@ Rectangle {
                 Column {
                     visible: root.filasDimensiones().length > 0
                     width: parent.width
-                    spacing: 4 * root.sy
+                    spacing: (root.expanded ? 7 : 4) * root.contentScale
 
                     Text {
                         width: parent.width
                         text: "DIMENSIONES"
                         color: "#9A641B"
                         font.bold: true
-                        font.pixelSize: 10 * Math.min(root.sx, root.sy)
+                        font.pixelSize: (root.expanded ? 12 : 10) * root.contentScale
                     }
                     Repeater {
                         model: root.filasDimensiones()
@@ -267,12 +297,12 @@ Rectangle {
                             id: dimensionDelegate
                             required property var modelData
                             width: parent.width
-                            spacing: 8 * root.sx
+                            spacing: (root.expanded ? 12 : 8) * root.contentScale
                             Text {
                                 Layout.fillWidth: true
                                 text: dimensionDelegate.modelData.nombre
                                 color: Style.Theme.texto_secundario
-                                font.pixelSize: 9 * Math.min(root.sx, root.sy)
+                                font.pixelSize: (root.expanded ? 13 : 9) * root.contentScale
                                 wrapMode: Text.WordWrap
                             }
                             Text {
@@ -280,7 +310,7 @@ Rectangle {
                                 text: dimensionDelegate.modelData.valor
                                 color: Style.Theme.texto_primario
                                 font.family: "monospace"
-                                font.pixelSize: 9 * Math.min(root.sx, root.sy)
+                                font.pixelSize: (root.expanded ? 13 : 9) * root.contentScale
                                 horizontalAlignment: Text.AlignRight
                                 wrapMode: Text.WrapAnywhere
                             }
@@ -291,39 +321,47 @@ Rectangle {
                 Column {
                     visible: root.relacionados.length > 0
                     width: parent.width
-                    spacing: 5 * root.sy
+                    spacing: (root.expanded ? 8 : 5) * root.contentScale
 
                     Text {
                         width: parent.width
                         text: "PARA PROFUNDIZAR"
                         color: "#6C5FC3"
                         font.bold: true
-                        font.pixelSize: 10 * Math.min(root.sx, root.sy)
+                        font.pixelSize: (root.expanded ? 12 : 10) * root.contentScale
                     }
                     Repeater {
                         model: root.relacionados
-                        delegate: Rectangle {
+                        delegate: Button {
                             id: relatedDelegate
                             required property var modelData
                             width: parent.width
-                            height: relatedColumn.implicitHeight + 14 * root.sy
-                            radius: 6 * root.sx
-                            color: relatedMouse.containsMouse ? "#EEEAF8" : "#F8F7FC"
-                            border.color: "#DED8F0"
+                            implicitHeight: relatedColumn.implicitHeight
+                                            + (root.expanded ? 22 : 14) * root.contentScale
+                            padding: (root.expanded ? 11 : 7) * root.contentScale
+                            activeFocusOnTab: true
+                            Accessible.name: "Abrir concepto relacionado: "
+                                             + String(modelData.title || modelData.id)
 
-                            Column {
+                            background: Rectangle {
+                                radius: (root.expanded ? 8 : 6) * root.contentScale
+                                color: relatedDelegate.down ? "#E5DFF5"
+                                      : relatedDelegate.hovered || relatedDelegate.activeFocus
+                                        ? "#EEEAF8" : "#F8F7FC"
+                                border.color: relatedDelegate.activeFocus
+                                              ? "#7B68C8" : "#DED8F0"
+                                border.width: relatedDelegate.activeFocus ? 2 : 1
+                            }
+
+                            contentItem: Column {
                                 id: relatedColumn
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                anchors.verticalCenter: parent.verticalCenter
-                                anchors.margins: 7 * root.sx
-                                spacing: 2 * root.sy
+                                spacing: (root.expanded ? 4 : 2) * root.contentScale
                                 Text {
                                     width: parent.width
                                     text: relatedDelegate.modelData.title || relatedDelegate.modelData.id
                                     color: "#51458D"
                                     font.bold: true
-                                    font.pixelSize: 10 * Math.min(root.sx, root.sy)
+                                    font.pixelSize: (root.expanded ? 14 : 10) * root.contentScale
                                     wrapMode: Text.WordWrap
                                 }
                                 Text {
@@ -331,18 +369,14 @@ Rectangle {
                                     visible: text !== ""
                                     text: relatedDelegate.modelData.short_description || ""
                                     color: Style.Theme.texto_secundario
-                                    font.pixelSize: 9 * Math.min(root.sx, root.sy)
+                                    font.pixelSize: (root.expanded ? 12 : 9) * root.contentScale
+                                    lineHeight: root.expanded ? 1.20 : 1.0
                                     wrapMode: Text.WordWrap
                                 }
                             }
 
-                            MouseArea {
-                                id: relatedMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: root.conceptRequested(String(relatedDelegate.modelData.id))
-                            }
+                            onClicked: root.conceptRequested(
+                                           String(relatedDelegate.modelData.id))
                         }
                     }
                 }
