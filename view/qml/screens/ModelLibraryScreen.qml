@@ -20,6 +20,16 @@ PagePrincipal {
     property bool mensajeEsError: false
     property string accionTrasCarga: ""
     property var modelosVisibles: []
+    readonly property bool operacionModeloEnCurso: Boolean(
+        (root.controller && root.controller.ocupado)
+        || (root.accionTrasCarga !== "" && mainViewModel.activandoModelo))
+    readonly property string faseOperacionModelo: {
+        if (root.controller && root.controller.ocupado)
+            return root.controller.operacionActual || "Procesando modelos"
+        if (root.accionTrasCarga !== "" && mainViewModel.activandoModelo)
+            return mainViewModel.faseActivacion || "Activando modelo"
+        return ""
+    }
 
     function valor(item, nombres, alternativo) {
         if (item === undefined || item === null)
@@ -176,7 +186,7 @@ PagePrincipal {
     }
 
     function llamar(accion) {
-        if (!controller || controller.ocupado)
+        if (!controller || root.operacionModeloEnCurso)
             return
         accion()
     }
@@ -406,10 +416,12 @@ PagePrincipal {
             }
 
             Text {
-                text: root.modelosVisibles.length
-                      + (root.modelosVisibles.length === 1 ? " modelo visible" : " modelos visibles")
-                      + ((root.controller && root.controller.modelos.length !== root.modelosVisibles.length)
-                         ? " de " + root.controller.modelos.length : "")
+                text: root.operacionModeloEnCurso
+                      ? root.faseOperacionModelo + "…"
+                      : root.modelosVisibles.length
+                        + (root.modelosVisibles.length === 1 ? " modelo visible" : " modelos visibles")
+                        + ((root.controller && root.controller.modelos.length !== root.modelosVisibles.length)
+                           ? " de " + root.controller.modelos.length : "")
                 color: Style.Theme.texto_secundario
                 font.pixelSize: 14 * Math.min(root.sx, root.sy)
             }
@@ -418,7 +430,7 @@ PagePrincipal {
         BusyIndicator {
             Layout.preferredWidth: 36 * root.sy
             Layout.preferredHeight: 36 * root.sy
-            running: root.controller && root.controller.ocupado
+            running: root.operacionModeloEnCurso
             visible: running
         }
 
@@ -427,7 +439,7 @@ PagePrincipal {
             Layout.preferredHeight: 44 * root.sy
             text: "Actualizar"
             size_text: 0.26
-            enabled: root.controller && !root.controller.ocupado
+            enabled: root.controller && !root.operacionModeloEnCurso
             onClicked: root.llamar(function() { root.controller.refrescar() })
         }
 
@@ -436,7 +448,7 @@ PagePrincipal {
             Layout.preferredHeight: 44 * root.sy
             text: "Importar archivo"
             size_text: 0.24
-            enabled: root.controller && !root.controller.ocupado
+            enabled: root.controller && !root.operacionModeloEnCurso
             onClicked: dialogoImportar.open()
         }
 
@@ -445,7 +457,7 @@ PagePrincipal {
             Layout.preferredHeight: 44 * root.sy
             text: "Pegar modelo"
             size_text: 0.25
-            enabled: root.controller && !root.controller.ocupado
+            enabled: root.controller && !root.operacionModeloEnCurso
             ToolTip.visible: hovered
             ToolTip.text: "Importa un archivo de modelo copiado al portapapeles"
             onClicked: root.llamar(function() { root.controller.pegarModelo() })
@@ -869,7 +881,7 @@ PagePrincipal {
                         Layout.preferredHeight: 39 * root.sy
                         text: "Abrir en inferencia"
                         size_text: 0.21
-                        enabled: tarjeta.compatible && root.controller && !root.controller.ocupado
+                        enabled: tarjeta.compatible && root.controller && !root.operacionModeloEnCurso
                         ToolTip.visible: hovered
                         ToolTip.text: "Cargar los pesos y comenzar una sesión de inferencia"
                         onClicked: root.cargarPara(tarjeta.info, "inferencia")
@@ -880,7 +892,7 @@ PagePrincipal {
                         Layout.preferredHeight: 39 * root.sy
                         text: "Continuar entrenamiento"
                         size_text: 0.19
-                        enabled: tarjeta.compatible && root.controller && !root.controller.ocupado
+                        enabled: tarjeta.compatible && root.controller && !root.operacionModeloEnCurso
                         ToolTip.visible: hovered
                         ToolTip.text: "Cargar pesos y seleccionar datasets para continuar"
                         onClicked: root.cargarPara(tarjeta.info, "entrenamiento")
@@ -897,7 +909,7 @@ PagePrincipal {
                         Layout.preferredHeight: 36 * root.sy
                         text: "Exportar"
                         size_text: 0.24
-                        enabled: tarjeta.compatible && root.controller && !root.controller.ocupado
+                        enabled: tarjeta.compatible && root.controller && !root.operacionModeloEnCurso
                         onClicked: root.exportar(tarjeta.info)
                     }
 
@@ -906,7 +918,7 @@ PagePrincipal {
                         Layout.preferredHeight: 36 * root.sy
                         text: "Copiar archivo"
                         size_text: 0.20
-                        enabled: root.controller && !root.controller.ocupado
+                        enabled: root.controller && !root.operacionModeloEnCurso
                         onClicked: root.llamar(function() { root.controller.copiarModelo(root.ruta(tarjeta.info)) })
                     }
 
@@ -915,7 +927,7 @@ PagePrincipal {
                         Layout.preferredHeight: 36 * root.sy
                         text: "Copiar ficha"
                         size_text: 0.21
-                        enabled: root.controller && !root.controller.ocupado
+                        enabled: root.controller && !root.operacionModeloEnCurso
                         onClicked: root.llamar(function() { root.controller.copiarFicha(root.ruta(tarjeta.info)) })
                     }
 
@@ -924,7 +936,7 @@ PagePrincipal {
                         Layout.preferredHeight: 36 * root.sy
                         text: "Código"
                         size_text: 0.24
-                        enabled: tarjeta.compatible && root.controller && !root.controller.ocupado
+                        enabled: tarjeta.compatible && root.controller && !root.operacionModeloEnCurso
                         ToolTip.visible: hovered
                         ToolTip.text: "Generar texto para compartir modelos pequeños"
                         onClicked: root.exportarComoCodigo(tarjeta.info)
@@ -935,7 +947,7 @@ PagePrincipal {
                         Layout.preferredHeight: 36 * root.sy
                         text: "Eliminar"
                         size_text: 0.23
-                        enabled: tarjeta.compatible && root.controller && !root.controller.ocupado
+                        enabled: tarjeta.compatible && root.controller && !root.operacionModeloEnCurso
                         ToolTip.visible: hovered
                         ToolTip.text: "Eliminar el modelo de la biblioteca"
                         onClicked: root.eliminarModelo(tarjeta.info)
@@ -947,7 +959,7 @@ PagePrincipal {
         Text {
             anchors.centerIn: parent
             width: Math.min(parent.width, 680 * root.sx)
-            visible: listaModelos.count === 0 && !(root.controller && root.controller.ocupado)
+            visible: listaModelos.count === 0 && !root.operacionModeloEnCurso
             text: root.controller && root.controller.modelos.length > 0
                   ? "Ningún modelo coincide con la búsqueda.\nPrueba con otro nombre, grupo, etiqueta o tokenizador."
                   : "Todavía no hay modelos en la biblioteca.\nImporta un archivo .tvismodel o .pt para comenzar."
@@ -1040,7 +1052,7 @@ PagePrincipal {
                         text: "Importar código"
                         size_text: 0.23
                         enabled: campoCodigo.text.trim().length > 0
-                                 && root.controller && !root.controller.ocupado
+                                 && root.controller && !root.operacionModeloEnCurso
                         onClicked: root.llamar(function() {
                             root.controller.importarCodigo(
                                 campoCodigo.text.trim(),

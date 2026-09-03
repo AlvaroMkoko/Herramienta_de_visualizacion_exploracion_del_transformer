@@ -14,6 +14,11 @@ PagePrincipal {
 
     property alias datasetModel: datasetModel
     property alias markModel: markModel
+    readonly property var datasetController: mainViewModel.datasetController
+    readonly property var estadoTrabajo: datasetController ? datasetController.progreso : ({})
+    property string vistaPreviaPendienteId: ""
+    property string vistaPreviaPendienteNombre: ""
+    property string mensajeErrorDataset: ""
 
     VerDatos {
         id: verDatos
@@ -44,7 +49,10 @@ PagePrincipal {
     }
 
     function eliminarDatasetCompleto(datasetId) {
-        mainViewModel.datasetController.eliminarDataset(datasetId)
+        if (datasetController.ocupado)
+            return
+
+        datasetController.eliminarDataset(datasetId)
 
         let markIdx = indexOfMark(datasetId)
         if (markIdx !== -1)
@@ -55,8 +63,26 @@ PagePrincipal {
             datasetModel.remove(dsIdx)
     }
 
+    function incorporarDataset(dataset) {
+        if (!dataset || !dataset.id)
+            return
+        if (indexOfDataset(dataset.id) === -1)
+            datasetModel.append(dataset)
+    }
+
+    function solicitarVistaPrevia(datasetId, nombreDataset) {
+        if (datasetController.ocupado)
+            return
+        vistaPreviaPendienteId = datasetId
+        vistaPreviaPendienteNombre = nombreDataset
+        if (!datasetController.obtenerRegistrosAsync(datasetId, 50)) {
+            vistaPreviaPendienteId = ""
+            vistaPreviaPendienteNombre = ""
+        }
+    }
+
     Component.onCompleted: {
-        var datasets = mainViewModel.datasetController.obtenerDatasets()
+        var datasets = datasetController.obtenerDatasets()
 
         datasetModel.clear()
 
@@ -65,31 +91,63 @@ PagePrincipal {
         }
     }
 
+    Connections {
+        target: root.datasetController
+
+        function onResultado(payload) {
+            if (!payload)
+                return
+            if (payload.operacion === "agregar") {
+                root.incorporarDataset(payload.dataset)
+            } else if (payload.operacion === "vista_previa"
+                       && payload.dataset_id === root.vistaPreviaPendienteId) {
+                verDatos.mostrar(root.vistaPreviaPendienteNombre,
+                                 payload.registros || [])
+                root.vistaPreviaPendienteId = ""
+                root.vistaPreviaPendienteNombre = ""
+            }
+        }
+
+        function onError(mensaje) {
+            root.vistaPreviaPendienteId = ""
+            root.vistaPreviaPendienteNombre = ""
+            root.mensajeErrorDataset = mensaje
+            errorDatasetDialog.open()
+        }
+    }
+
     FileDialog {
         id: datasetDialog
         title: "Selecciona un dataset"
         nameFilters: [
+            "Datasets compatibles (*.jsonl *.json *.csv *.txt *.pdf)",
             "JSONL (*.jsonl)",
             "JSON (*.json)",
+            "CSV (*.csv)",
+            "Texto (*.txt)",
+            "PDF (*.pdf)",
             "Todos los archivos (*)"
         ]
 
         onAccepted: {
             var ruta = selectedFile.toString()
-            ruta = ruta.replace("file:///", "")
-            console.log(ruta)
-            var dataset = mainViewModel.datasetController.agregarDataset(ruta)
-            var existe = false
+            root.datasetController.agregarDatasetAsync(ruta)
+        }
+    }
 
-            for (var i = 0; i < datasetModel.count; ++i) {
-                if (datasetModel.get(i).id === dataset.id) {
-                    existe = true
-                    break
-                }
-            }
+    Dialog {
+        id: errorDatasetDialog
+        anchors.centerIn: parent
+        width: Math.min(520 * root.sx, root.width - 48 * root.sx)
+        modal: true
+        title: "No se pudo completar la operación"
+        standardButtons: Dialog.Ok
 
-            if (!existe)
-                datasetModel.append(dataset)
+        contentItem: Text {
+            text: root.mensajeErrorDataset
+            color: Style.Theme.texto_primario
+            font.pixelSize: 14 * Math.min(root.sx, root.sy)
+            wrapMode: Text.WordWrap
         }
     }
 
@@ -134,6 +192,7 @@ PagePrincipal {
             Layout.preferredHeight: 44 * root.sy
             text: "+ Agregar dataset"
             size_text: 0.24
+            enabled: !root.datasetController.ocupado
             onClicked: datasetDialog.open()
         }
     }
@@ -221,10 +280,8 @@ PagePrincipal {
                         Layout.preferredHeight: 36 * root.sy
                         text: "Ver datos"
                         size_text: 0.24
-                        onClicked: {
-                            var registrosDataset = mainViewModel.datasetController.obtenerRegistros(id, 50)
-                            verDatos.mostrar(nombre, registrosDataset)
-                        }
+                        enabled: !root.datasetController.ocupado
+                        onClicked: root.solicitarVistaPrevia(id, nombre)
                     }
 
                     BotonPrincipal {
@@ -232,6 +289,7 @@ PagePrincipal {
                         Layout.preferredHeight: 36 * root.sy
                         text: "Eliminar dataset"
                         size_text: 0.21
+                        enabled: !root.datasetController.ocupado
                         onClicked: root.eliminarDatasetCompleto(id)
                     }
                 }
@@ -341,6 +399,80 @@ PagePrincipal {
             color: Style.Theme.texto_secundario
             horizontalAlignment: Text.AlignHCenter
             font.pixelSize: 18 * Math.min(root.sx, root.sy)
+        }
+    }
+
+    Rectangle {
+        id: indicadorOperacion
+        anchors.fill: parent
+        z: 1000
+        visible: root.datasetController && root.datasetController.ocupado
+        color: "#990F172A"
+
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.AllButtons
+        }
+
+        Rectangle {
+            anchors.centerIn: parent
+            width: Math.min(470 * root.sx, parent.width - 48 * root.sx)
+            height: 190 * root.sy
+            radius: 16 * Math.min(root.sx, root.sy)
+            color: Style.Theme.surface
+            border.color: "#D8D5F5"
+            border.width: 1
+
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: 24 * root.sx
+                spacing: 10 * root.sy
+
+                BusyIndicator {
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.preferredWidth: 44 * root.sx
+                    Layout.preferredHeight: 44 * root.sy
+                    running: indicadorOperacion.visible
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    text: root.estadoTrabajo.fase || "Procesando dataset"
+                    color: Style.Theme.texto_primario
+                    font.bold: true
+                    font.pixelSize: 17 * Math.min(root.sx, root.sy)
+                    horizontalAlignment: Text.AlignHCenter
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    visible: text !== ""
+                    text: root.estadoTrabajo.detalle || ""
+                    color: Style.Theme.texto_secundario
+                    font.pixelSize: 12 * Math.min(root.sx, root.sy)
+                    horizontalAlignment: Text.AlignHCenter
+                    elide: Text.ElideMiddle
+                }
+
+                ProgressBar {
+                    Layout.fillWidth: true
+                    visible: !root.estadoTrabajo.indeterminado
+                             && Number(root.estadoTrabajo.total || 0) > 0
+                    from: 0
+                    to: Math.max(1, Number(root.estadoTrabajo.total || 1))
+                    value: Number(root.estadoTrabajo.valor || 0)
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    visible: !root.estadoTrabajo.indeterminado
+                             && Number(root.estadoTrabajo.total || 0) > 0
+                    text: Math.round(Number(root.estadoTrabajo.porcentaje || 0)) + " %"
+                    color: Style.Theme.texto_secundario
+                    font.pixelSize: 12 * Math.min(root.sx, root.sy)
+                    horizontalAlignment: Text.AlignHCenter
+                }
+            }
         }
     }
 }

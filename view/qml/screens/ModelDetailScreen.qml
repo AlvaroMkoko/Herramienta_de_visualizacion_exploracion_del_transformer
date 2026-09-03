@@ -28,6 +28,16 @@ PagePrincipal {
     property bool mensajeEsError: false
     property string accionTrasCarga: ""
     property var teoriaActual: ({})
+    readonly property bool operacionModeloEnCurso: Boolean(
+        (root.controller && root.controller.ocupado)
+        || (root.accionTrasCarga !== "" && mainViewModel.activandoModelo))
+    readonly property string faseOperacionModelo: {
+        if (root.controller && root.controller.ocupado)
+            return root.controller.operacionActual || "Procesando modelo"
+        if (root.accionTrasCarga !== "" && mainViewModel.activandoModelo)
+            return mainViewModel.faseActivacion || "Activando modelo"
+        return ""
+    }
 
     readonly property var descriptorActual: root.tiene(root.campo(root.detalle, ["descriptor"], null))
                                                 ? root.campo(root.detalle, ["descriptor"], {})
@@ -222,7 +232,7 @@ PagePrincipal {
     }
 
     function cargarYAvanzar(destino) {
-        if (!root.controller || root.controller.ocupado || !root.compatible())
+        if (!root.controller || root.operacionModeloEnCurso || !root.compatible())
             return
         if (destino === "inferencia" && root.esModeloActivo()
                 && mainViewModel.modeloListo) {
@@ -574,8 +584,17 @@ PagePrincipal {
         BusyIndicator {
             Layout.preferredWidth: 33 * root.sy
             Layout.preferredHeight: 33 * root.sy
-            running: root.controller && root.controller.ocupado
+            running: root.operacionModeloEnCurso
             visible: running
+        }
+
+        Text {
+            visible: root.operacionModeloEnCurso
+            text: root.faseOperacionModelo + "…"
+            color: Style.Theme.texto_secundario
+            font.pixelSize: 11 * Math.min(root.sx, root.sy)
+            Layout.maximumWidth: 180 * root.sx
+            elide: Text.ElideRight
         }
 
         BotonPrincipal {
@@ -583,7 +602,7 @@ PagePrincipal {
             Layout.preferredHeight: 44 * root.sy
             text: "Abrir en inferencia"
             size_text: 0.23
-            enabled: root.compatible() && root.controller && !root.controller.ocupado
+            enabled: root.compatible() && root.controller && !root.operacionModeloEnCurso
             opacity: enabled ? 1 : 0.5
             onClicked: root.cargarYAvanzar("inferencia")
         }
@@ -593,7 +612,7 @@ PagePrincipal {
             Layout.preferredHeight: 44 * root.sy
             text: "Continuar entrenamiento"
             size_text: 0.21
-            enabled: root.compatible() && root.controller && !root.controller.ocupado
+            enabled: root.compatible() && root.controller && !root.operacionModeloEnCurso
             opacity: enabled ? 1 : 0.5
             onClicked: root.cargarYAvanzar("entrenamiento")
         }
@@ -1543,7 +1562,7 @@ PagePrincipal {
                                 Layout.preferredHeight: 38 * root.sy
                                 text: root.cargandoTokenizacion ? "Analizando…" : "Analizar tokens"
                                 size_text: 0.25
-                                enabled: !root.cargandoTokenizacion && !(root.controller && root.controller.ocupado)
+                                enabled: !root.cargandoTokenizacion && !root.operacionModeloEnCurso
                                 opacity: enabled ? 1 : 0.5
                                 onClicked: root.analizarTexto()
                             }
@@ -1775,7 +1794,7 @@ PagePrincipal {
                             Layout.preferredHeight: 47 * root.sy
                             text: root.cargandoSalud ? "Ejecutando…" : "Ejecutar diagnóstico"
                             size_text: 0.23
-                            enabled: !root.cargandoSalud && !(root.controller && root.controller.ocupado)
+                            enabled: !root.cargandoSalud && !root.operacionModeloEnCurso
                             opacity: enabled ? 1 : 0.5
                             onClicked: root.ejecutarSalud()
                         }
@@ -2059,7 +2078,7 @@ PagePrincipal {
                                     Layout.preferredHeight: 36 * root.sy
                                     text: "Renombrar"
                                     size_text: 0.25
-                                    enabled: !root.guardandoMetadata && !(root.controller && root.controller.ocupado)
+                                    enabled: !root.guardandoMetadata && !root.operacionModeloEnCurso
                                     onClicked: root.renombrar()
                                 }
                                 BotonPrincipal {
@@ -2067,7 +2086,7 @@ PagePrincipal {
                                     Layout.preferredHeight: 36 * root.sy
                                     text: root.guardandoMetadata ? "Guardando…" : "Guardar ficha"
                                     size_text: 0.24
-                                    enabled: !root.guardandoMetadata && !(root.controller && root.controller.ocupado)
+                                    enabled: !root.guardandoMetadata && !root.operacionModeloEnCurso
                                     onClicked: root.guardarMetadata()
                                 }
                             }
@@ -2108,7 +2127,7 @@ PagePrincipal {
                                 Layout.preferredHeight: 42 * root.sy
                                 text: "Duplicar modelo"
                                 size_text: 0.24
-                                enabled: !root.guardandoMetadata && !(root.controller && root.controller.ocupado)
+                                enabled: !root.guardandoMetadata && !root.operacionModeloEnCurso
                                 onClicked: root.duplicar()
                             }
                             Rectangle {
@@ -2136,7 +2155,7 @@ PagePrincipal {
                                 Layout.preferredHeight: 40 * root.sy
                                 text: root.esModeloActivo() ? "Abrir inferencia del activo" : "Activar en inferencia"
                                 size_text: 0.23
-                                enabled: root.compatible() && !(root.controller && root.controller.ocupado)
+                                enabled: root.compatible() && !root.operacionModeloEnCurso
                                 onClicked: root.cargarYAvanzar("inferencia")
                             }
                             Item { Layout.fillHeight: true }

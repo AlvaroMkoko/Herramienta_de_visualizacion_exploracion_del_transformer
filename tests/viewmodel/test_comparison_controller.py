@@ -94,3 +94,28 @@ def test_rechaza_seleccionar_el_mismo_archivo(qtbot, tmp_path) -> None:
 
     assert errores == ["Selecciona dos modelos diferentes."]
     assert controlador.cargando is False
+
+
+def test_carga_publica_la_fase_de_cada_archivo(qtbot, tmp_path, monkeypatch) -> None:
+    controlador = ComparisonController(BibliotecaFalsa())
+    llamadas = 0
+    fases: list[str] = []
+
+    def cargar_falso(_ruta):
+        nonlocal llamadas
+        llamadas += 1
+        if llamadas == 1:
+            return object(), object(), object(), {}
+        raise ValueError("fallo simulado en el segundo modelo")
+
+    monkeypatch.setattr(controlador, "_cargar_archivo", cargar_falso)
+    controlador.faseCargaCambio.connect(lambda: fases.append(controlador.faseCarga))
+
+    with qtbot.waitSignal(controlador.error, timeout=3000):
+        controlador.cargarModelos(
+            str(tmp_path / "modelo-a.tvismodel"),
+            str(tmp_path / "modelo-b.tvismodel"),
+        )
+
+    assert fases == ["Cargando modelo 1 de 2", "Cargando modelo 2 de 2", ""]
+    assert controlador.cargando is False

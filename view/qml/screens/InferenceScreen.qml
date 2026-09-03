@@ -182,7 +182,9 @@ PagePrincipal {
         }
 
         Rectangle {
-            Layout.preferredWidth: Math.max(220 * root.sx, textoEstado.implicitWidth + 28 * root.sx)
+            Layout.preferredWidth: Math.min(
+                430 * root.sx,
+                Math.max(220 * root.sx, contenidoEstado.implicitWidth + 28 * root.sx))
             Layout.preferredHeight: 36 * root.sy
             radius: 18 * root.sy
             color: root.mensajeEsError ? "#FEE2E2"
@@ -192,17 +194,31 @@ PagePrincipal {
                                               : (root.controller && root.controller.estaGenerando
                                                  ? "#93C5FD" : "#86EFAC")
 
-            Text {
-                id: textoEstado
-                anchors.centerIn: parent
-                width: parent.width - 20 * root.sx
-                text: root.mensajeEstado
-                color: root.mensajeEsError ? "#991B1B"
-                                            : (root.controller && root.controller.estaGenerando
-                                               ? "#1E40AF" : "#166534")
-                elide: Text.ElideRight
-                horizontalAlignment: Text.AlignHCenter
-                font.pixelSize: 13 * Math.min(root.sx, root.sy)
+            RowLayout {
+                id: contenidoEstado
+                anchors.fill: parent
+                anchors.leftMargin: 10 * root.sx
+                anchors.rightMargin: 10 * root.sx
+                spacing: 6 * root.sx
+
+                BusyIndicator {
+                    Layout.preferredWidth: 20 * root.sy
+                    Layout.preferredHeight: 20 * root.sy
+                    running: root.tokenEnProceso
+                    visible: running
+                }
+
+                Text {
+                    id: textoEstado
+                    Layout.fillWidth: true
+                    text: root.mensajeEstado
+                    color: root.mensajeEsError ? "#991B1B"
+                                                : (root.controller && root.controller.estaGenerando
+                                                   ? "#1E40AF" : "#166534")
+                    elide: Text.ElideRight
+                    horizontalAlignment: Text.AlignHCenter
+                    font.pixelSize: 13 * Math.min(root.sx, root.sy)
+                }
             }
         }
     }

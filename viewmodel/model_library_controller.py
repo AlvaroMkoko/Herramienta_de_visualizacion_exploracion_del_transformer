@@ -148,6 +148,7 @@ class ModelLibraryController(QObject):
     operacion_exitosa = Signal(str)
     error = Signal(str)
     ocupadoCambio = Signal()
+    operacionActualCambio = Signal()
     modeloActivoRutaCambio = Signal()
     _archivo_validado_para_copiar = Signal(str)
 
@@ -155,6 +156,7 @@ class ModelLibraryController(QObject):
         super().__init__(parent)
         self._modelos: list[dict[str, Any]] = []
         self._ocupado = False
+        self._operacion_actual = ""
         self._modelo_activo_ruta = ""
         self._bloqueo = threading.Lock()
         self._hilos: set[threading.Thread] = set()
@@ -173,6 +175,12 @@ class ModelLibraryController(QObject):
         """Indica que una importación, exportación o carga está en curso."""
         with self._bloqueo:
             return self._ocupado
+
+    @Property(str, notify=operacionActualCambio)
+    def operacionActual(self) -> str:
+        """Descripción breve y honesta de la operación de fondo actual."""
+        with self._bloqueo:
+            return self._operacion_actual
 
     @Property(str, notify=modeloActivoRutaCambio)
     def modeloActivoRuta(self) -> str:
@@ -1636,10 +1644,12 @@ class ModelLibraryController(QObject):
             ya_ocupado = self._ocupado
             if not ya_ocupado:
                 self._ocupado = True
+                self._operacion_actual = descripcion.strip().capitalize()
         if ya_ocupado:
             self.error.emit("Ya hay otra operación de modelos en curso.")
             return
         self.ocupadoCambio.emit()
+        self.operacionActualCambio.emit()
 
         def ejecutar() -> None:
             hilo = threading.current_thread()
@@ -1652,8 +1662,10 @@ class ModelLibraryController(QObject):
             finally:
                 with self._bloqueo:
                     self._ocupado = False
+                    self._operacion_actual = ""
                     self._hilos.discard(hilo)
                 self.ocupadoCambio.emit()
+                self.operacionActualCambio.emit()
 
         hilo = threading.Thread(target=ejecutar, name="model-library", daemon=True)
         with self._bloqueo:
@@ -1664,7 +1676,9 @@ class ModelLibraryController(QObject):
             with self._bloqueo:
                 self._hilos.discard(hilo)
                 self._ocupado = False
+                self._operacion_actual = ""
             self.ocupadoCambio.emit()
+            self.operacionActualCambio.emit()
             self.error.emit(f"No se pudo iniciar la operación para {descripcion}: {exc}")
 
 

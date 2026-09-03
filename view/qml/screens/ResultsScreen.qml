@@ -20,11 +20,21 @@ PagePrincipal {
     property string mensajeError: ""
     property string mensajeGuardado: ""
 
+    readonly property var trainingController: mainViewModel.trainingController
+    readonly property bool guardandoModelo: trainingController !== null
+                                                   && trainingController !== undefined
+                                                   && trainingController.guardando === true
+    readonly property string faseGuardadoModelo: {
+        if (!root.guardandoModelo)
+            return ""
+        var fase = root.trainingController.faseGuardado
+        return fase ? String(fase) : "Guardando el modelo en disco..."
+    }
     readonly property real perdidaInicial: historialPerdidas.length > 0 ? historialPerdidas[0] : 0
     readonly property real mejoraPorcentual: porcentajeMejora(perdidaInicial, perdidaFinal)
 
     readonly property bool guardadoDisponible: {
-        var tc = mainViewModel.trainingController
+        var tc = root.trainingController
         return tc !== null && tc !== undefined
                 && (!tc.estaEntrenando || tc.estaPausado)
                 && (tc.guardando === undefined || !tc.guardando)
@@ -50,7 +60,7 @@ PagePrincipal {
     }
 
     function guardarModeloPortable(nombre) {
-        var tc = mainViewModel.trainingController
+        var tc = root.trainingController
         if (typeof tc.guardarModeloPortableConNombre === "function") {
             tc.guardarModeloPortableConNombre(nombre)
         } else {
@@ -59,7 +69,7 @@ PagePrincipal {
     }
 
     function guardarCheckpointReanudable(nombre) {
-        var tc = mainViewModel.trainingController
+        var tc = root.trainingController
         if (typeof tc.guardarCheckpointReanudableConNombre === "function") {
             tc.guardarCheckpointReanudableConNombre(nombre)
         } else {
@@ -75,11 +85,13 @@ PagePrincipal {
     }
 
     Component.onCompleted: {
-        campoNombre.text = mainViewModel.trainingController.sugerirNombreCheckpoint()
+        if (root.trainingController)
+            campoNombre.text = root.trainingController.sugerirNombreCheckpoint()
     }
 
     Connections {
-        target: mainViewModel.trainingController
+        target: root.trainingController
+        ignoreUnknownSignals: true
 
         function onCheckpoint_guardado(ruta) {
             root.mensajeError = ""
@@ -424,6 +436,28 @@ PagePrincipal {
                         root.mensajeError = ""
                         root.mensajeGuardado = ""
                         root.guardarCheckpointReanudable(campoNombre.text)
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    visible: root.guardandoModelo
+                    spacing: 9 * root.sx
+
+                    BusyIndicator {
+                        objectName: "resultsSaveBusyIndicator"
+                        Layout.preferredWidth: 26 * root.sx
+                        Layout.preferredHeight: 26 * root.sy
+                        running: root.guardandoModelo
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        objectName: "resultsSavePhaseText"
+                        text: root.faseGuardadoModelo
+                        color: Style.Theme.texto_secundario
+                        wrapMode: Text.WordWrap
+                        font.pixelSize: 11 * root.sx
                     }
                 }
 

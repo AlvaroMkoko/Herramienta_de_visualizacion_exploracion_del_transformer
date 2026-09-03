@@ -557,7 +557,9 @@ PagePrincipal {
                 BotonPrincipal {
                     Layout.preferredWidth: 245 * root.sx
                     Layout.preferredHeight: 52 * root.sy
-                    text: root.cargando ? "Cargando modelos…" : "Comparar modelos  →"
+                    text: root.cargando
+                          ? ((root.controller.faseCarga || "Cargando modelos") + "…")
+                          : "Comparar modelos  →"
                     size_text: 0.24
                     enabled: root.seleccionadoA && root.seleccionadoB && !root.cargando
                     opacity: enabled ? 1.0 : 0.48
@@ -572,6 +574,18 @@ PagePrincipal {
             height: 72 * root.sy
             running: root.cargando
             visible: running
+            z: 20
+        }
+
+        Text {
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.top: parent.verticalCenter
+            anchors.topMargin: 46 * root.sy
+            text: root.controller && root.controller.faseCarga
+                  ? root.controller.faseCarga + "…" : ""
+            color: Style.Theme.texto_secundario
+            font.pixelSize: 13 * Math.min(root.sx, root.sy)
+            visible: root.cargando
             z: 20
         }
     }

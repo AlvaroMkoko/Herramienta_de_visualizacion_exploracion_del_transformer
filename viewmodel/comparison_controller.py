@@ -31,12 +31,14 @@ class ComparisonController(QObject):
     modelosInfoCambio = Signal()
     modelosListosCambio = Signal()
     cargandoCambio = Signal()
+    faseCargaCambio = Signal()
     estaGenerandoCambio = Signal()
     cargaCompleta = Signal(str)
     error = Signal(str)
 
     _carga_lista = Signal(int, object, object, object, object, object, object)
     _carga_fallida = Signal(int, str)
+    _fase_carga_recibida = Signal(int, str)
 
     def __init__(
         self,
@@ -50,12 +52,14 @@ class ComparisonController(QObject):
         self._info_a: dict[str, Any] = {}
         self._info_b: dict[str, Any] = {}
         self._cargando = False
+        self._fase_carga = ""
         self._version_carga = 0
         self._hilos: set[threading.Thread] = set()
         self._bloqueo = threading.Lock()
 
         self._carga_lista.connect(self._instalar_modelos)
         self._carga_fallida.connect(self._al_fallar_carga)
+        self._fase_carga_recibida.connect(self._al_recibir_fase_carga)
 
     @Property(QObject, notify=controladoresCambio)
     def controladorA(self) -> InferenceController | None:
@@ -80,6 +84,22 @@ class ComparisonController(QObject):
     @Property(bool, notify=cargandoCambio)
     def cargando(self) -> bool:
         return self._cargando
+
+    @Property(str, notify=faseCargaCambio)
+    def faseCarga(self) -> str:
+        return self._fase_carga
+
+    def _establecer_fase_carga(self, fase: str) -> None:
+        if fase == self._fase_carga:
+            return
+        self._fase_carga = fase
+        self.faseCargaCambio.emit()
+
+    @Slot(int, str)
+    def _al_recibir_fase_carga(self, version: int, fase: str) -> None:
+        """Publica fases del worker solamente desde el hilo de Qt."""
+        if version == self._version_carga and self._cargando:
+            self._establecer_fase_carga(fase)
 
     @Property(bool, notify=estaGenerandoCambio)
     def estaGenerando(self) -> bool:
@@ -123,12 +143,14 @@ class ComparisonController(QObject):
         self._version_carga += 1
         version = self._version_carga
         self._cargando = True
+        self._establecer_fase_carga("Cargando modelo 1 de 2")
         self.cargandoCambio.emit()
 
         def tarea() -> None:
             hilo = threading.current_thread()
             try:
                 modelo_a, tokenizer_a, resultado_a, manifiesto_a = self._cargar_archivo(origen_a)
+                self._fase_carga_recibida.emit(version, "Cargando modelo 2 de 2")
                 modelo_b, tokenizer_b, resultado_b, manifiesto_b = self._cargar_archivo(origen_b)
                 self._carga_lista.emit(
                     version,
@@ -238,6 +260,7 @@ class ComparisonController(QObject):
         self._version_carga += 1
         if self._cargando:
             self._cargando = False
+            self._establecer_fase_carga("")
             self.cargandoCambio.emit()
         self._liberar_controladores()
 
@@ -293,6 +316,7 @@ class ComparisonController(QObject):
         self._info_a = dict(info_a)
         self._info_b = dict(info_b)
         self._cargando = False
+        self._establecer_fase_carga("")
         self.controladoresCambio.emit()
         self.modelosInfoCambio.emit()
         self.modelosListosCambio.emit()
@@ -312,6 +336,7 @@ class ComparisonController(QObject):
         if version != self._version_carga:
             return
         self._cargando = False
+        self._establecer_fase_carga("")
         self.cargandoCambio.emit()
         self.error.emit(mensaje)
 

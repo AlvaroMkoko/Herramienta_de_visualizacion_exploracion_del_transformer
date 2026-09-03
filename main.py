@@ -39,6 +39,7 @@ def main() -> None:
     # `main_view_model` se queda vivo mientras dure `app.exec()` porque
     # el contexto de QML mantiene una referencia a él (setContextProperty).
     main_view_model = MainViewModel()
+    app.aboutToQuit.connect(main_view_model.cerrar)
 
     qmlRegisterType(VispyItem, "Vispy", 1, 0, "VispyItem")
 

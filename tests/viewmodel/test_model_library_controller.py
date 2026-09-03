@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 import sys
+import threading
 import types
 from typing import Any
 
@@ -211,6 +212,28 @@ def test_cargar_modelo_emite_modelo_tokenizer_y_resultado_sin_red(
     assert modelo.state_dict().keys() == esperado.keys()
     for nombre, tensor_esperado in esperado.items():
         assert torch.equal(modelo.state_dict()[nombre].cpu(), tensor_esperado), nombre
+
+
+def test_operacion_actual_describe_el_worker_en_curso(
+    controlador: ModelLibraryController,
+    qtbot,
+) -> None:
+    iniciado = threading.Event()
+    liberar = threading.Event()
+
+    def tarea() -> None:
+        iniciado.set()
+        liberar.wait(timeout=2)
+
+    controlador._ejecutar_en_segundo_plano("verificar el modelo", tarea)
+    qtbot.waitUntil(iniciado.is_set, timeout=1000)
+
+    assert controlador.ocupado is True
+    assert controlador.operacionActual == "Verificar el modelo"
+
+    liberar.set()
+    qtbot.waitUntil(lambda: not controlador.ocupado, timeout=2000)
+    assert controlador.operacionActual == ""
 
 
 def test_helpers_aceptan_file_url_y_generan_destino_sin_sobrescribir(

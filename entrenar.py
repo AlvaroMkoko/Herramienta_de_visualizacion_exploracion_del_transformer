@@ -64,6 +64,7 @@ Al terminar (o al interrumpir con Ctrl+C), el checkpoint se guarda en
 
 import argparse
 import sys
+import time
 from pathlib import Path
 
 import torch
@@ -192,6 +193,44 @@ def _cargar_pares(args: argparse.Namespace, tokenizer: Tokenizer) -> list[tuple[
     sys.exit(f"Formato no soportado: {args.datos.suffix} (usa .csv, .json, .jsonl, .txt o .pdf)")
 
 
+def _duracion_breve(segundos: float) -> str:
+    segundos_enteros = max(0, int(round(segundos)))
+    minutos, segundos_restantes = divmod(segundos_enteros, 60)
+    horas, minutos_restantes = divmod(minutos, 60)
+    if horas:
+        return f"{horas:d}h {minutos_restantes:02d}m"
+    if minutos:
+        return f"{minutos:d}m {segundos_restantes:02d}s"
+    return f"{segundos_restantes:d}s"
+
+
+def _linea_progreso_entrenamiento(
+    completados: int,
+    total: int,
+    epoca_sesion: int,
+    epocas_sesion: int,
+    lote: int,
+    lotes_epoca: int,
+    perdida: float,
+    transcurrido: float,
+) -> str:
+    """Construye una línea compacta sin sincronizaciones adicionales con GPU."""
+    fraccion = min(1.0, completados / max(total, 1))
+    ancho = 24
+    llenos = min(ancho, int(fraccion * ancho))
+    barra = "█" * llenos + "░" * (ancho - llenos)
+    eta = (
+        transcurrido / completados * max(total - completados, 0)
+        if completados > 0
+        else 0.0
+    )
+    return (
+        f"[{barra}] {fraccion * 100:5.1f}% · "
+        f"época {epoca_sesion}/{epocas_sesion} · lote {lote}/{lotes_epoca} · "
+        f"pérdida {perdida:.4f} · ETA {_duracion_breve(eta)}"
+    )
+
+
 def main() -> None:
     args = _parsear_argumentos()
     fijar_semilla(args.semilla)
@@ -253,12 +292,22 @@ def main() -> None:
 
     # --- Bucle de entrenamiento ---
     paso_global = paso_global_inicial
+    lotes_por_epoca = len(dataloader)
+    total_pasos_sesion = args.epocas * lotes_por_epoca
+    pasos_sesion = 0
+    inicio_sesion = time.perf_counter()
+    ultima_actualizacion = 0.0
+    intervalo_progreso = 0.25 if sys.stdout.isatty() else 5.0
     try:
-        for epoca in range(epoca_inicial, epoca_inicial + args.epocas):
+        for indice_epoca, epoca in enumerate(
+            range(epoca_inicial, epoca_inicial + args.epocas), start=1
+        ):
             perdida_acumulada = 0.0
             num_batches = 0
 
-            for origen, destino_entrada, destino_objetivo in dataloader:
+            for indice_lote, (origen, destino_entrada, destino_objetivo) in enumerate(
+                dataloader, start=1
+            ):
                 origen = origen.to(dispositivo)
                 destino_entrada = destino_entrada.to(dispositivo)
                 destino_objetivo = destino_objetivo.to(dispositivo)
@@ -270,9 +319,30 @@ def main() -> None:
                 optimizador.step()
 
                 paso_global += 1
-                perdida_acumulada += perdida.item()
+                pasos_sesion += 1
+                perdida_valor = perdida.item()
+                perdida_acumulada += perdida_valor
                 num_batches += 1
-                historial_perdidas.append(perdida.item())
+                historial_perdidas.append(perdida_valor)
+
+                ahora = time.perf_counter()
+                fin_epoca = indice_lote == lotes_por_epoca
+                if fin_epoca or ahora - ultima_actualizacion >= intervalo_progreso:
+                    linea = _linea_progreso_entrenamiento(
+                        pasos_sesion,
+                        total_pasos_sesion,
+                        indice_epoca,
+                        args.epocas,
+                        indice_lote,
+                        lotes_por_epoca,
+                        perdida_valor,
+                        ahora - inicio_sesion,
+                    )
+                    if sys.stdout.isatty():
+                        print("\r" + linea, end="\n" if fin_epoca else "", flush=True)
+                    else:
+                        print(linea, flush=True)
+                    ultima_actualizacion = ahora
 
             perdida_promedio = perdida_acumulada / max(num_batches, 1)
             print(f"Época {epoca + 1}: pérdida promedio = {perdida_promedio:.4f}")

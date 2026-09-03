@@ -38,6 +38,7 @@ PagePrincipal {
 
     property int parametrosTotales: 0
     property real memoriaEstimadaMb: 0
+    property int vocabularioEstimado: 0
     property string mensajeError: ""
     property var teoriaActual: ({})
 
@@ -50,7 +51,44 @@ PagePrincipal {
     property real tasaAprendizaje: 0.0003
     property int batchSize: 6
     property bool inicioEntrenamientoPendiente: false
+    property bool preparacionDatasetSolicitada: false
+    property bool cancelacionOperacionSolicitada: false
     property var datasetsInicioPendientes: []
+    readonly property bool operacionEnCurso: mainViewModel.setupController.ocupado
+                                                || mainViewModel.activandoModelo
+                                                || mainViewModel.preparandoDataset
+    readonly property string faseOperacion: mainViewModel.preparandoDataset
+                                             ? mainViewModel.fasePreparacionDataset
+                                             : (mainViewModel.activandoModelo
+                                                ? mainViewModel.faseActivacion
+                                                : mainViewModel.setupController.fase)
+    readonly property int longitudParaEstimacion: Number(
+        root.usarModeloActual
+        ? (mainViewModel.modeloActualInfo.longitud_maxima_secuencia || 0)
+        : (root.configuracionActual.longitud_maxima_secuencia || 0))
+    readonly property int vocabularioParaEstimacion: root.vocabularioEstimado > 0
+                                                      ? root.vocabularioEstimado
+                                                      : (Number(root.configuracionActual.tipo_encoding) === 0
+                                                         ? 200022
+                                                         : (Number(root.configuracionActual.tipo_encoding) === 2
+                                                            ? 50284 : 100280))
+    // Solo logits FP32: B x T x V x 4 bytes. No pretende representar toda
+    // la memoria del entrenamiento, pero detecta configuraciones riesgosas.
+    readonly property real memoriaLogitsEstimadaMb: root.batchSize
+                                                     * root.longitudParaEstimacion
+                                                     * root.vocabularioParaEstimacion
+                                                     * 4 / 1048576
+    readonly property bool dispositivoEsGpu: String(mainViewModel.dispositivoCalculo)
+                                              .toLowerCase().indexOf("cuda") === 0
+    readonly property int severidadMemoria: root.memoriaLogitsEstimadaMb
+                                            >= (root.dispositivoEsGpu ? 4096 : 8192) ? 2
+                                            : (root.memoriaLogitsEstimadaMb
+                                               >= (root.dispositivoEsGpu ? 2048 : 4096) ? 1 : 0)
+
+    onOperacionEnCursoChanged: {
+        if (!root.operacionEnCurso)
+            root.cancelacionOperacionSolicitada = false
+    }
 
     function mostrarTeoriaComponente(componentId) {
         if (!componentId) {
@@ -65,14 +103,23 @@ PagePrincipal {
         root.teoriaActual = root.openTheoryConcept(conceptId)
     }
 
+    function solicitarPreparacionEntrenamiento() {
+        if (!root.inicioEntrenamientoPendiente
+                || root.preparacionDatasetSolicitada
+                || !mainViewModel.modeloListo)
+            return
+        root.mensajeError = ""
+        root.preparacionDatasetSolicitada = true
+        mainViewModel.cargarDatasetsParaEntrenarAsync(root.datasetsInicioPendientes)
+    }
+
     function completarInicioEntrenamiento() {
-        if (!root.inicioEntrenamientoPendiente || !mainViewModel.modeloListo)
+        if (!root.inicioEntrenamientoPendiente
+                || !root.preparacionDatasetSolicitada)
             return
         root.inicioEntrenamientoPendiente = false
+        root.preparacionDatasetSolicitada = false
         root.mensajeError = ""
-        mainViewModel.cargarDatasetsParaEntrenar(root.datasetsInicioPendientes)
-        if (root.mensajeError !== "")
-            return
         root.stackView.push("TrainingScreen.qml", {
             "stackView": root.stackView,
             "epocasIniciales": root.epocas,
@@ -81,16 +128,37 @@ PagePrincipal {
         })
     }
 
+    function cancelarOperacionEnCurso() {
+        if (root.cancelacionOperacionSolicitada)
+            return
+        root.cancelacionOperacionSolicitada = true
+        root.inicioEntrenamientoPendiente = false
+        root.preparacionDatasetSolicitada = false
+        if (mainViewModel.setupController.ocupado)
+            mainViewModel.setupController.cancelar_creacion_modelo()
+        if (mainViewModel.preparandoDataset)
+            mainViewModel.cancelarPreparacionDataset()
+        if (mainViewModel.activandoModelo)
+            mainViewModel.cancelarActivacionModelo()
+        root.mensajeError = "Cancelacion solicitada; esperando un punto seguro."
+    }
+
     Connections {
         target: mainViewModel
         ignoreUnknownSignals: true
 
         function onModeloListoCambio() {
+            root.solicitarPreparacionEntrenamiento()
+        }
+
+        function onDatasetListoParaEntrenar(cantidadPares) {
             root.completarInicioEntrenamiento()
         }
 
         function onErrorDataset(mensaje) {
             root.mensajeError = mensaje
+            root.inicioEntrenamientoPendiente = false
+            root.preparacionDatasetSolicitada = false
         }
     }
 
@@ -101,10 +169,14 @@ PagePrincipal {
         function onResumen_cambio(resumen) {
             root.parametrosTotales = Number(resumen.parametros_totales || 0)
             root.memoriaEstimadaMb = Number(resumen.memoria_estimada_mb || 0)
+            root.vocabularioEstimado = Number(resumen.tamano_vocabulario || 0)
         }
 
         function onError_configuracion(mensaje) {
+            if (root.inicioEntrenamientoPendiente)
+                root.mensajeError = mensaje
             root.inicioEntrenamientoPendiente = false
+            root.preparacionDatasetSolicitada = false
         }
     }
 
@@ -113,6 +185,7 @@ PagePrincipal {
             var infoActual = mainViewModel.modeloActualInfo
             root.parametrosTotales = Number(infoActual.parametros_totales || 0)
             root.memoriaEstimadaMb = Math.round(root.parametrosTotales * 4 / 1048576 * 10) / 10
+            root.vocabularioEstimado = Number(infoActual.tamano_vocabulario || 0)
             localBridge.numCapas = Number(infoActual.num_capas || 0)
         } else {
             localBridge.numCapas = Number(root.configuracionActual.num_capas || 1)
@@ -148,6 +221,74 @@ PagePrincipal {
         sequence: "Esc"
         enabled: localBridge.selectedId !== "" && !root.theoryModalOpened
         onActivated: localBridge.clearSelection()
+    }
+
+    Rectangle {
+        id: overlayPreparacion
+        objectName: "setupPreparationOverlay"
+        anchors.fill: parent
+        z: 1000
+        visible: root.operacionEnCurso
+        color: "#990B1020"
+
+        MouseArea {
+            anchors.fill: parent
+            // Absorbe clics para evitar crear dos modelos o datasets a la vez.
+        }
+
+        Rectangle {
+            anchors.centerIn: parent
+            width: Math.min(parent.width - 40 * root.sx, 430 * root.sx)
+            height: contenidoPreparacion.implicitHeight + 42 * root.sy
+            radius: 12 * Math.min(root.sx, root.sy)
+            color: Style.Theme.surface
+            border.color: "#6A63E8"
+            border.width: 1
+
+            ColumnLayout {
+                id: contenidoPreparacion
+                anchors.centerIn: parent
+                width: parent.width - 48 * root.sx
+                spacing: 14 * root.sy
+
+                BusyIndicator {
+                    Layout.alignment: Qt.AlignHCenter
+                    running: overlayPreparacion.visible
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    text: root.faseOperacion !== "" ? root.faseOperacion : "Preparando..."
+                    color: Style.Theme.texto_primario
+                    font.pixelSize: 15 * root.sx
+                    font.bold: true
+                    horizontalAlignment: Text.AlignHCenter
+                    wrapMode: Text.WordWrap
+                }
+
+                ProgressBar {
+                    objectName: "setupDatasetProgress"
+                    Layout.fillWidth: true
+                    from: 0
+                    to: 1
+                    value: mainViewModel.progresoPreparacionDataset
+                    visible: mainViewModel.preparandoDataset
+                             && mainViewModel.totalPreparacionDataset > 0
+                }
+
+
+                BotonPrincipal {
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.preferredWidth: 130 * root.sx
+                    Layout.preferredHeight: 38 * root.sy
+                    text: root.cancelacionOperacionSolicitada
+                          ? "Cancelando..." : "Cancelar"
+                    enabled: !root.cancelacionOperacionSolicitada
+                    opacity: enabled ? 1 : 0.55
+                    onClicked: root.cancelarOperacionEnCurso()
+                }
+            }
+        }
     }
 
     BotonPrincipal {
@@ -642,6 +783,25 @@ PagePrincipal {
                         horizontalAlignment: Text.AlignHCenter
                         font.pixelSize: 12 * root.sx
                     }
+
+                    Text {
+                        Layout.alignment: Qt.AlignHCenter
+                        Layout.preferredWidth: parent.width
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.WordWrap
+                        visible: root.memoriaLogitsEstimadaMb > 0
+                        text: (root.severidadMemoria === 2 ? "Riesgo alto de memoria. "
+                               : (root.severidadMemoria === 1 ? "Advertencia de memoria. " : ""))
+                              + "Logits del batch: ~"
+                              + Math.round(root.memoriaLogitsEstimadaMb)
+                              + " MB en " + mainViewModel.dispositivoCalculo
+                              + " (estimacion minima; no incluye gradientes ni optimizador)."
+                        color: root.severidadMemoria === 2 ? Style.Theme.error
+                               : (root.severidadMemoria === 1
+                                  ? Style.Theme.warning : Style.Theme.texto_secundario)
+                        font.pixelSize: 11 * root.sx
+                        font.bold: root.severidadMemoria > 0
+                    }
                 }
             }
 
@@ -651,7 +811,9 @@ PagePrincipal {
                 width: 200 * root.sx
                 height: 50 * root.sy
                 text: root.usarModeloActual ? "Continuar Entrenamiento" : "Iniciar Entrenamiento"
-                enabled: root.usarModeloActual || mainViewModel.setupController.configuracionValida
+                enabled: !root.operacionEnCurso
+                         && (root.usarModeloActual
+                             || mainViewModel.setupController.configuracionValida)
                 opacity: enabled ? 1.0 : 0.5
 
                 onClicked: {
@@ -668,9 +830,10 @@ PagePrincipal {
                     let idsSeleccionados = extraerdataId(datasetsSeleccionadosModel)
                     root.datasetsInicioPendientes = idsSeleccionados
                     root.inicioEntrenamientoPendiente = true
+                    root.preparacionDatasetSolicitada = false
 
                     if (!root.usarModeloActual) {
-                        mainViewModel.setupController.crear_modelo()
+                        mainViewModel.setupController.crear_modelo_async()
                     } else if (!mainViewModel.modeloListo) {
                         root.inicioEntrenamientoPendiente = false
                         root.mensajeError = "El modelo cargado ya no esta disponible."
@@ -681,7 +844,8 @@ PagePrincipal {
                         root.inicioEntrenamientoPendiente = false
                         return
                     }
-                    root.completarInicioEntrenamiento()
+                    if (root.usarModeloActual)
+                        root.solicitarPreparacionEntrenamiento()
                 }
                 }
 

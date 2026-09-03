@@ -48,6 +48,15 @@ def _crear_batches(dataset, id_token_relleno: int | None, batch_size: int):
     )
 
 
+def _cantidad_lotes(batches) -> int | None:
+    """Devuelve el total sin consumir iteradores de longitud desconocida."""
+    try:
+        cantidad = len(batches)
+    except (AttributeError, TypeError):
+        return None
+    return max(0, int(cantidad))
+
+
 def _tarea_entrenamiento(
     trabajador,
     modelo: "Transformer",
@@ -60,6 +69,7 @@ def _tarea_entrenamiento(
     estado: dict[str, Any],
     bloqueo_estado: threading.RLock,
     config_nube: dict[str, Any],
+    incluir_tensores_crudos: bool,
 ) -> Generator[dict, None, dict]:
     """Entrena en segundo plano y actualiza un estado snapshotable.
 
@@ -73,14 +83,31 @@ def _tarea_entrenamiento(
     paso_global = int(estado.get("paso_global", 0))
     historial = estado.setdefault("historial_perdidas", [])
     ejes_pca_previos = None
+    inicio_sesion = time.perf_counter()
+    pasos_sesion_completados = 0
+    lotes_por_epoca_sesion: int | None = None
+    pasos_sesion_totales: int | None = None
     
-    for epoca in range(epoca_inicial, epoca_inicial + num_epocas):
+    for indice_epoca_sesion, epoca in enumerate(
+        range(epoca_inicial, epoca_inicial + num_epocas)
+    ):
         with bloqueo_estado:
             # Si se cancela a mitad de la epoca, la continuacion repite esa
             # epoca. Sin conservar el orden completo del sampler no seria
             # correcto afirmar que puede retomarse en el batch exacto.
             estado["siguiente_epoca"] = epoca
         batches = _crear_batches(dataset, id_token_relleno, batch_size)
+        lotes_epoca_actual = _cantidad_lotes(batches)
+        if indice_epoca_sesion == 0 and lotes_epoca_actual is not None:
+            lotes_por_epoca_sesion = lotes_epoca_actual
+            pasos_sesion_totales = lotes_epoca_actual * num_epocas
+        elif (
+            lotes_por_epoca_sesion is not None
+            and lotes_epoca_actual != lotes_por_epoca_sesion
+        ):
+            # Un proveedor callable puede devolver cantidades distintas entre
+            # epocas. En ese caso ya no hay un denominador global honesto.
+            pasos_sesion_totales = None
 
         for paso_epoca, (tokens_origen, tokens_destino, objetivo) in enumerate(batches):
             inicio_paso = time.perf_counter()
@@ -100,6 +127,7 @@ def _tarea_entrenamiento(
                 nube_cfg = dict(config_nube)
 
                 paso_global += 1
+                pasos_sesion_completados += 1
                 perdida_valor = float(perdida.item())
                 historial.append(perdida_valor)
 
@@ -138,14 +166,27 @@ def _tarea_entrenamiento(
                     }
                 )
 
+                # Los tensores crudos se conservan para la API Python
+                # historica. QML usa el resumen serializable y no debe
+                # retener referencias CUDA si su cola de eventos se rezaga.
+                pesos_encoder = (
+                    modelo.encoder.pesos_atencion_por_capa()
+                    if incluir_tensores_crudos
+                    else []
+                )
+                pesos_cruzados = (
+                    modelo.decoder.pesos_atencion_cruzada_por_capa()
+                    if incluir_tensores_crudos
+                    else []
+                )
                 paso = {
                     "epoca": epoca,
                     "paso_epoca": paso_epoca,
                     "paso_global": paso_global,
                     "perdida": perdida_valor,
                     "norma_gradiente_global": norma_gradiente,
-                    "pesos_atencion_encoder_por_capa": modelo.encoder.pesos_atencion_por_capa(),
-                    "pesos_atencion_cruzada_por_capa": modelo.decoder.pesos_atencion_cruzada_por_capa(),
+                    "pesos_atencion_encoder_por_capa": pesos_encoder,
+                    "pesos_atencion_cruzada_por_capa": pesos_cruzados,
                     "visualizacion": resumir_paso_entrenamiento(
                         modelo=modelo,
                         logits=logits,
@@ -198,6 +239,37 @@ def _tarea_entrenamiento(
                 except (ValueError, IndexError, RuntimeError):
                     pass
 
+            tiempo_transcurrido = time.perf_counter() - inicio_sesion
+            if pasos_sesion_totales is not None and pasos_sesion_totales > 0:
+                progreso_fraccion = min(
+                    1.0, pasos_sesion_completados / pasos_sesion_totales
+                )
+                eta_segundos = max(
+                    0.0,
+                    (tiempo_transcurrido / pasos_sesion_completados)
+                    * (pasos_sesion_totales - pasos_sesion_completados),
+                )
+            else:
+                progreso_fraccion = None
+                eta_segundos = None
+
+            # Estos contadores pertenecen solo a esta ejecucion. ``epoca`` y
+            # ``paso_global`` conservan su significado historico para no
+            # romper checkpoints ni consumidores existentes al reanudar.
+            paso.update(
+                {
+                    "epoca_sesion": indice_epoca_sesion + 1,
+                    "epocas_sesion": num_epocas,
+                    "lote_actual": paso_epoca + 1,
+                    "lotes_por_epoca": lotes_epoca_actual,
+                    "pasos_sesion_completados": pasos_sesion_completados,
+                    "pasos_sesion_totales": pasos_sesion_totales,
+                    "progreso_fraccion": progreso_fraccion,
+                    "tiempo_transcurrido_segundos": tiempo_transcurrido,
+                    "eta_segundos": eta_segundos,
+                }
+            )
+
             yield paso
 
         with bloqueo_estado:
@@ -208,6 +280,14 @@ def _tarea_entrenamiento(
         "perdida_final": historial[-1] if historial else None,
         "epoca": estado.get("epoca"),
         "paso_global": paso_global,
+        "epocas_sesion": num_epocas,
+        "pasos_sesion_completados": pasos_sesion_completados,
+        "pasos_sesion_totales": pasos_sesion_totales,
+        "progreso_fraccion": (
+            min(1.0, pasos_sesion_completados / pasos_sesion_totales)
+            if pasos_sesion_totales
+            else None
+        ),
         "ejemplos_vistos": estado.get("ejemplos_vistos", 0),
         "tokens_origen_vistos": estado.get("tokens_origen_vistos", 0),
         "tokens_objetivo_vistos": estado.get("tokens_objetivo_vistos", 0),
@@ -226,7 +306,12 @@ class TrainingController(QObject):
 
     estaEntrenandoCambio = Signal()
     estaPausadoCambio = Signal()
+    pausaSolicitadaCambio = Signal()
+    detencionSolicitadaCambio = Signal()
     guardandoCambio = Signal()
+    faseGuardadoCambio = Signal()
+    _fase_guardado_recibida = Signal(str)
+    _guardado_finalizado = Signal()
 
     def __init__(
         self,
@@ -245,8 +330,10 @@ class TrainingController(QObject):
         self._gestor.cancelado.connect(self._al_cancelar)
         self._gestor.error.connect(self._al_error)
         self._gestor.iniciado.connect(self.estaEntrenandoCambio.emit)
-        self._gestor.pausado.connect(self.estaPausadoCambio.emit)
-        self._gestor.reanudado.connect(self.estaPausadoCambio.emit)
+        self._gestor.pausado.connect(self._al_pausar_efectivamente)
+        self._gestor.reanudado.connect(self._al_reanudar_efectivamente)
+        self._fase_guardado_recibida.connect(self._actualizar_fase_guardado)
+        self._guardado_finalizado.connect(self._finalizar_guardado)
 
         self._dataset: "Dataset | None" = None
         self._id_token_relleno_dataset: int | None = None
@@ -272,7 +359,10 @@ class TrainingController(QObject):
             resultado_carga, "optimizer_state_dict", None
         )
         self._guardando = False
+        self._fase_guardado = ""
         self._hilo_guardado: threading.Thread | None = None
+        self._pausa_solicitada = False
+        self._detencion_solicitada = False
 
         historial = list(
             getattr(resultado_carga, "historial_perdidas", []) or []
@@ -370,9 +460,21 @@ class TrainingController(QObject):
     def estaPausado(self) -> bool:
         return self.esta_pausado
 
+    @Property(bool, notify=pausaSolicitadaCambio)
+    def pausaSolicitada(self) -> bool:
+        return self._pausa_solicitada
+
+    @Property(bool, notify=detencionSolicitadaCambio)
+    def detencionSolicitada(self) -> bool:
+        return self._detencion_solicitada
+
     @Property(bool, notify=guardandoCambio)
     def guardando(self) -> bool:
         return self._guardando
+
+    @Property(str, notify=faseGuardadoCambio)
+    def faseGuardado(self) -> str:
+        return self._fase_guardado
 
     # ------------------------------------------------------------------
     # Entrenamiento
@@ -386,10 +488,14 @@ class TrainingController(QObject):
         tasa_aprendizaje: float = 3e-4,
         batch_size: int = 32,
         velocidad_inicial: float = 0.0,
+        incluir_tensores_crudos: bool = True,
     ) -> None:
         if num_epocas <= 0 or batch_size <= 0 or tasa_aprendizaje <= 0:
             self.error.emit("Epocas, batch size y learning rate deben ser mayores que cero.")
             return
+
+        self._establecer_pausa_solicitada(False)
+        self._establecer_detencion_solicitada(False)
 
         if self._optimizador is None:
             self._optimizador = torch.optim.Adam(
@@ -443,6 +549,7 @@ class TrainingController(QObject):
             self._estado_entrenamiento,
             self._bloqueo_estado,
             self._config_nube,
+            incluir_tensores_crudos,
             velocidad_inicial=velocidad_inicial,
         )
 
@@ -465,7 +572,8 @@ class TrainingController(QObject):
             num_epocas=num_epocas,
             tasa_aprendizaje=tasa_aprendizaje,
             batch_size=batch_size,
-            velocidad_inicial=velocidad_inicial
+            velocidad_inicial=velocidad_inicial,
+            incluir_tensores_crudos=False,
         )
 
     def establecer_dataset(self, dataset: "Dataset", id_token_relleno: int) -> None:
@@ -535,15 +643,26 @@ class TrainingController(QObject):
 
     @Slot()
     def detener(self) -> None:
+        if self.esta_entrenando:
+            self._establecer_detencion_solicitada(True)
+            self._establecer_pausa_solicitada(False)
         self._gestor.detener()
+        self.estaPausadoCambio.emit()
 
     @Slot()
     def pausar(self) -> None:
+        if self.esta_entrenando:
+            self._establecer_pausa_solicitada(True)
         self._gestor.pausar()
+        # ``estaPausado`` consulta el Event del worker y cambia en esta misma
+        # llamada; se notifica ya, sin esperar a que termine el batch actual.
+        self.estaPausadoCambio.emit()
 
     @Slot()
     def reanudar(self) -> None:
+        self._establecer_pausa_solicitada(False)
         self._gestor.reanudar()
+        self.estaPausadoCambio.emit()
 
     @Slot(float)
     def establecer_velocidad(self, segundos: float) -> None:
@@ -654,12 +773,21 @@ class TrainingController(QObject):
 
         ruta = self._ruta_sin_sobrescribir(nombre)
         self._guardando = True
+        self._fase_guardado = (
+            "Preparando checkpoint reanudable..."
+            if reanudable
+            else "Preparando modelo portable..."
+        )
         self.guardandoCambio.emit()
+        self.faseGuardadoCambio.emit()
 
         def guardar_en_segundo_plano() -> None:
             try:
                 # El mismo lock protege optimizer.step y la serializacion.
                 with self._bloqueo_estado:
+                    self._fase_guardado_recibida.emit(
+                        "Escribiendo el modelo en disco..."
+                    )
                     guardar_modelo_portable(
                         ruta,
                         self.modelo,
@@ -689,9 +817,7 @@ class TrainingController(QObject):
             else:
                 self.checkpoint_guardado.emit(str(ruta))
             finally:
-                self._guardando = False
-                self._hilo_guardado = None
-                self.guardandoCambio.emit()
+                self._guardado_finalizado.emit()
 
         hilo = threading.Thread(
             target=guardar_en_segundo_plano,
@@ -699,7 +825,11 @@ class TrainingController(QObject):
             daemon=True,
         )
         self._hilo_guardado = hilo
-        hilo.start()
+        try:
+            hilo.start()
+        except RuntimeError as exc:
+            self._finalizar_guardado()
+            self.error.emit(f"No se pudo iniciar el guardado: {exc}")
 
     @Slot(str)
     def guardarModeloPortableConNombre(self, nombre_archivo: str) -> None:
@@ -718,7 +848,50 @@ class TrainingController(QObject):
     # Eventos del worker
     # ------------------------------------------------------------------
 
-    def _sincronizar_estado_publico(self) -> None:
+    @Slot(str)
+    def _actualizar_fase_guardado(self, fase: str) -> None:
+        if not self._guardando or fase == self._fase_guardado:
+            return
+        self._fase_guardado = fase
+        self.faseGuardadoCambio.emit()
+
+    @Slot()
+    def _finalizar_guardado(self) -> None:
+        self._hilo_guardado = None
+        if not self._guardando and not self._fase_guardado:
+            return
+        self._guardando = False
+        self._fase_guardado = ""
+        self.faseGuardadoCambio.emit()
+        self.guardandoCambio.emit()
+
+    def _establecer_pausa_solicitada(self, valor: bool) -> None:
+        valor = bool(valor)
+        if self._pausa_solicitada == valor:
+            return
+        self._pausa_solicitada = valor
+        self.pausaSolicitadaCambio.emit()
+
+    def _establecer_detencion_solicitada(self, valor: bool) -> None:
+        valor = bool(valor)
+        if self._detencion_solicitada == valor:
+            return
+        self._detencion_solicitada = valor
+        self.detencionSolicitadaCambio.emit()
+
+    def _al_pausar_efectivamente(self) -> None:
+        self._establecer_pausa_solicitada(False)
+        self.estaPausadoCambio.emit()
+
+    def _al_reanudar_efectivamente(self) -> None:
+        self._establecer_pausa_solicitada(False)
+        self.estaPausadoCambio.emit()
+
+    def _limpiar_solicitudes_control(self) -> None:
+        self._establecer_pausa_solicitada(False)
+        self._establecer_detencion_solicitada(False)
+
+    def _sincronizar_estado_publico(self, *, copiar_historial: bool = False) -> None:
         # No bloquear el hilo de la UI mientras un modelo grande se escribe.
         # El siguiente paso o el evento final volvera a sincronizarlo.
         if not self._bloqueo_estado.acquire(blocking=False):
@@ -728,9 +901,10 @@ class TrainingController(QObject):
             self._ultimo_paso_global = int(
                 self._estado_entrenamiento.get("paso_global", 0)
             )
-            self._historial_perdidas = list(
-                self._estado_entrenamiento.get("historial_perdidas", [])
-            )
+            if copiar_historial:
+                self._historial_perdidas = list(
+                    self._estado_entrenamiento.get("historial_perdidas", [])
+                )
         finally:
             self._bloqueo_estado.release()
 
@@ -743,7 +917,8 @@ class TrainingController(QObject):
             self._estado_entrenamiento["ultima_sesion_fin_utc"] = datetime.now(
                 timezone.utc
             ).isoformat()
-        self._sincronizar_estado_publico()
+        self._sincronizar_estado_publico(copiar_historial=True)
+        self._limpiar_solicitudes_control()
         self.estaEntrenandoCambio.emit()
         self.entrenamiento_completo.emit(resultado)
 
@@ -758,7 +933,8 @@ class TrainingController(QObject):
             self._estado_entrenamiento[
                 "telemetria_procedencia_completa"
             ] = False
-        self._sincronizar_estado_publico()
+        self._sincronizar_estado_publico(copiar_historial=True)
+        self._limpiar_solicitudes_control()
         self.estaEntrenandoCambio.emit()
         self.entrenamiento_cancelado.emit(
             {"historial_perdidas": list(self._historial_perdidas)}
@@ -769,5 +945,6 @@ class TrainingController(QObject):
             self._estado_entrenamiento["ultima_sesion_fin_utc"] = datetime.now(
                 timezone.utc
             ).isoformat()
+        self._limpiar_solicitudes_control()
         self.estaEntrenandoCambio.emit()
         self.error.emit(mensaje)

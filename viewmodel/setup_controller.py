@@ -13,6 +13,8 @@ la aplicación vía la señal `modelo_creado`.
 los otros dos controladores con el modelo recién creado).
 """
 
+import threading
+
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from model.motor_llm.config import ConfiguracionTransformer
@@ -61,6 +63,14 @@ class SetupController(QObject):
     configuracionValidaCambio = Signal()
     errorConfiguracionCambio = Signal()
     configuracionActualCambio = Signal()
+    ocupadoCambio = Signal()
+    faseCambio = Signal()
+
+    # Estas senales privadas son el puente seguro entre el hilo Python que
+    # materializa los pesos y el hilo de Qt, donde se actualiza el estado QML.
+    _fase_creacion_recibida = Signal(int, str)
+    _creacion_terminada = Signal(int, object, object)
+    _creacion_fallida = Signal(int, str)
 
     def __init__(self, parent: QObject | None = None):
         super().__init__(parent)
@@ -81,6 +91,14 @@ class SetupController(QObject):
         self._usar_mascara_causal = True
         self._configuracion_valida = True
         self._error_configuracion_actual = ""
+        self._ocupado = False
+        self._fase = ""
+        self._version_creacion = 0
+        self._cancelacion_creacion_pendiente = False
+
+        self._fase_creacion_recibida.connect(self._actualizar_fase_async)
+        self._creacion_terminada.connect(self._finalizar_creacion_async)
+        self._creacion_fallida.connect(self._fallar_creacion_async)
 
     # ------------------------------------------------------------------
     # Estado observable por QML
@@ -100,6 +118,26 @@ class SetupController(QObject):
     def configuracionActual(self) -> dict:
         """Instantánea de los controles de arquitectura y tokenización."""
         return self._obtener_configuracion_actual()
+
+    @Property(bool, notify=ocupadoCambio)
+    def ocupado(self) -> bool:
+        """Indica que el tokenizador o los pesos se construyen en segundo plano."""
+        return self._ocupado
+
+    @Property(str, notify=faseCambio)
+    def fase(self) -> str:
+        """Descripcion breve de la fase de creacion que ve la interfaz."""
+        return self._fase
+
+    def _establecer_estado_creacion(
+        self, *, ocupado: bool | None = None, fase: str | None = None
+    ) -> None:
+        if ocupado is not None and ocupado != self._ocupado:
+            self._ocupado = ocupado
+            self.ocupadoCambio.emit()
+        if fase is not None and fase != self._fase:
+            self._fase = fase
+            self.faseCambio.emit()
 
     def _obtener_configuracion_actual(self) -> dict:
         return {
@@ -279,6 +317,7 @@ class SetupController(QObject):
                 ``modelo_creado``; el orquestador puede usar ``False`` cuando
                 necesita adjuntar ademas estado de entrenamiento restaurado.
         """
+        self._cancelar_creacion_activa()
         config = modelo.config
         configuracion_previa = self._obtener_configuracion_actual()
         self.modelo = modelo
@@ -303,8 +342,65 @@ class SetupController(QObject):
 
     def liberar_modelo(self) -> None:
         """Suelta las referencias pesadas mientras se reemplaza una sesion."""
+        self._cancelar_creacion_activa()
         self.modelo = None
         self.tokenizer = None
+
+    def _cancelar_creacion_activa(self) -> None:
+        """Invalida el resultado, pero conserva el bloqueo hasta que termine.
+
+        PyTorch no ofrece una interrupcion segura a mitad de la construccion.
+        Mantener ``ocupado`` evita que una segunda solicitud duplique en RAM
+        los pesos que el primer hilo todavia esta materializando.
+        """
+        if not self._ocupado:
+            return
+        self._version_creacion += 1
+        self._cancelacion_creacion_pendiente = True
+        self._establecer_estado_creacion(
+            fase="Cancelando; esperando que termine la etapa actual..."
+        )
+
+    def _finalizar_cancelacion_creacion(self) -> None:
+        if not self._cancelacion_creacion_pendiente:
+            return
+        self._cancelacion_creacion_pendiente = False
+        self._establecer_estado_creacion(ocupado=False, fase="")
+
+    @Slot()
+    def cancelar_creacion_modelo(self) -> None:
+        """Cancela cooperativamente la publicacion de la creacion en curso.
+
+        La construccion que ya entro a PyTorch termina en su hilo, pero su
+        resultado queda obsoleto y nunca reemplaza el modelo de la sesion.
+        """
+        self._cancelar_creacion_activa()
+
+    @staticmethod
+    def _materializar_modelo(parametros: dict, notificar_fase=None):
+        if notificar_fase is not None:
+            notificar_fase("Cargando tokenizador...")
+        tokenizer_nuevo = Tokenizer(parametros["tipo_encoding"])
+        id_relleno = tokenizer_nuevo.vocab_size
+        config = ConfiguracionTransformer(
+            tamano_vocabulario=tokenizer_nuevo.vocab_size + 3,
+            dimension_modelo=parametros["dimension_modelo"],
+            num_cabezas=parametros["num_cabezas"],
+            num_capas=parametros["num_capas"],
+            dimension_ff=parametros["dimension_ff"],
+            longitud_maxima_secuencia=parametros["longitud_maxima_secuencia"],
+            dropout=parametros["dropout"],
+            id_token_relleno=id_relleno,
+            activacion=parametros["activacion"],
+            usar_mascara_causal=parametros["usar_mascara_causal"],
+        )
+        if notificar_fase is not None:
+            notificar_fase("Inicializando pesos del Transformer...")
+        modelo_nuevo = Transformer(
+            config,
+            compartir_pesos_salida=parametros["compartir_pesos_salida"],
+        )
+        return modelo_nuevo, tokenizer_nuevo
 
     @Slot()
     def crear_modelo(self) -> None:
@@ -313,22 +409,15 @@ class SetupController(QObject):
         `gestor_de_datos` (padding en batches), `id_token_relleno` debe
         quedar seteado — se resuelve igual que en `entrenar.py`:
         vocab_size, vocab_size+1, vocab_size+2 para relleno/inicio/fin."""
-        try:
-            tokenizer_nuevo = Tokenizer(self._tipo_encoding)
-            id_relleno = tokenizer_nuevo.vocab_size
-            config = ConfiguracionTransformer(
-                tamano_vocabulario=tokenizer_nuevo.vocab_size + 3,
-                dimension_modelo=self._dimension_modelo,
-                num_cabezas=self._num_cabezas,
-                num_capas=self._num_capas,
-                dimension_ff=self._dimension_ff,
-                longitud_maxima_secuencia=self._longitud_maxima_secuencia,
-                dropout=self._dropout,
-                id_token_relleno=id_relleno,
-                activacion=self._activacion,
-                usar_mascara_causal=self._usar_mascara_causal,
+        if self._ocupado:
+            self.error_configuracion.emit(
+                "Ya hay una creacion de modelo en curso; espera a que termine."
             )
-            modelo_nuevo = Transformer(config, compartir_pesos_salida=self._compartir_pesos_salida)
+            return
+        try:
+            modelo_nuevo, tokenizer_nuevo = self._materializar_modelo(
+                self._obtener_configuracion_actual()
+            )
         except ValueError as e:
             mensaje = str(e)
             self._establecer_estado_validacion(mensaje)
@@ -339,3 +428,81 @@ class SetupController(QObject):
         self.tokenizer = tokenizer_nuevo
         self.modelo = modelo_nuevo
         self.modelo_creado.emit(self.modelo, self.tokenizer)
+
+    @Slot()
+    def crear_modelo_async(self) -> None:
+        """Construye tokenizador y Transformer sin bloquear el hilo QML.
+
+        Cada solicitud lleva una version. Una cancelacion o una solicitud mas
+        reciente hace que los resultados anteriores se descarten al volver al
+        hilo principal, evitando que un trabajo tardio active el modelo equivocado.
+        """
+        if self._ocupado:
+            return
+        if not self._configuracion_valida:
+            mensaje = self._error_configuracion_actual or "La configuracion no es valida."
+            self.error_configuracion.emit(mensaje)
+            return
+
+        parametros = dict(self._obtener_configuracion_actual())
+        self._version_creacion += 1
+        version = self._version_creacion
+        self._cancelacion_creacion_pendiente = False
+        self._establecer_estado_creacion(
+            ocupado=True, fase="Preparando la creacion del modelo..."
+        )
+
+        def tarea() -> None:
+            try:
+                modelo, tokenizer = self._materializar_modelo(
+                    parametros,
+                    lambda fase: self._fase_creacion_recibida.emit(version, fase),
+                )
+            except Exception as exc:  # noqa: BLE001 - se comunica a la interfaz
+                self._creacion_fallida.emit(version, str(exc))
+                return
+            self._creacion_terminada.emit(version, modelo, tokenizer)
+
+        hilo = threading.Thread(
+            target=tarea,
+            name=f"crear-transformer-{version}",
+            daemon=True,
+        )
+        try:
+            hilo.start()
+        except RuntimeError as exc:
+            self._fallar_creacion_async(
+                version, f"No se pudo iniciar el hilo de creacion: {exc}"
+            )
+
+    @Slot(int, str)
+    def _actualizar_fase_async(self, version: int, fase: str) -> None:
+        if version == self._version_creacion and self._ocupado:
+            self._establecer_estado_creacion(fase=fase)
+
+    @Slot(int, object, object)
+    def _finalizar_creacion_async(self, version: int, modelo, tokenizer) -> None:
+        if version != self._version_creacion:
+            self._finalizar_cancelacion_creacion()
+            return
+        if not self._ocupado:
+            return
+        self._cancelacion_creacion_pendiente = False
+        self._establecer_estado_validacion()
+        self.tokenizer = tokenizer
+        self.modelo = modelo
+        self._establecer_estado_creacion(ocupado=False, fase="Modelo construido")
+        self.modelo_creado.emit(modelo, tokenizer)
+
+    @Slot(int, str)
+    def _fallar_creacion_async(self, version: int, detalle: str) -> None:
+        if version != self._version_creacion:
+            self._finalizar_cancelacion_creacion()
+            return
+        if not self._ocupado:
+            return
+        self._cancelacion_creacion_pendiente = False
+        mensaje = detalle or "No se pudo crear el modelo."
+        self._establecer_estado_validacion(mensaje)
+        self._establecer_estado_creacion(ocupado=False, fase="")
+        self.error_configuracion.emit(mensaje)

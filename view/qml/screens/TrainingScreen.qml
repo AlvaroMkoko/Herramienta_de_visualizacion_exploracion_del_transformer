@@ -21,6 +21,16 @@ PagePrincipal {
 
     property int epocaActual: 0
     property int pasoGlobalActual: 0
+    property int epocaSesionActual: 0
+    property int epocasSesionActual: 0
+    property int loteActual: 0
+    property int lotesPorEpoca: 0
+    property int pasosSesionCompletados: 0
+    property int pasosSesionTotales: 0
+    property real progresoFraccion: 0
+    property real tiempoTranscurridoSegundos: 0
+    property real etaSegundos: -1
+    property bool progresoDeterminado: false
     property real perdidaActual: 0
     property real deltaPerdida: 0
     property real normaGradiente: 0
@@ -125,6 +135,58 @@ PagePrincipal {
         return isFinite(numeroReal) ? numeroReal.toFixed(decimales) : "—"
     }
 
+    function formatearDuracion(segundos) {
+        var total = Math.max(0, Math.round(Number(segundos) || 0))
+        if (total < 60)
+            return total + " s"
+        var minutos = Math.floor(total / 60)
+        var segundosRestantes = total % 60
+        if (minutos < 60)
+            return minutos + " min " + segundosRestantes + " s"
+        var horas = Math.floor(minutos / 60)
+        return horas + " h " + (minutos % 60) + " min"
+    }
+
+    function reiniciarProgresoSesion() {
+        root.epocaSesionActual = 0
+        root.epocasSesionActual = root.epocasIniciales
+        root.loteActual = 0
+        root.lotesPorEpoca = 0
+        root.pasosSesionCompletados = 0
+        root.pasosSesionTotales = 0
+        root.progresoFraccion = 0
+        root.tiempoTranscurridoSegundos = 0
+        root.etaSegundos = -1
+        root.progresoDeterminado = false
+    }
+
+    readonly property string textoProgresoEntrenamiento: {
+        if (root.trainingController.detencionSolicitada)
+            return "Detención solicitada · se aplicará al terminar el lote actual"
+        if (root.trainingController.pausaSolicitada)
+            return "Pausa solicitada · se aplicará al terminar el lote actual"
+        if (root.trainingController.estaPausado)
+            return "Entrenamiento pausado"
+        if (root.pasosSesionCompletados > 0) {
+            var texto = "Época " + root.epocaSesionActual + " / "
+                        + root.epocasSesionActual + " · lote " + root.loteActual
+            if (root.lotesPorEpoca > 0)
+                texto += " / " + root.lotesPorEpoca
+            if (root.progresoDeterminado)
+                texto += " · " + Math.round(root.progresoFraccion * 100) + "%"
+            texto += " · transcurrido "
+                     + root.formatearDuracion(root.tiempoTranscurridoSegundos)
+            if (root.etaSegundos >= 0)
+                texto += " · restante aprox. " + root.formatearDuracion(root.etaSegundos)
+            return texto
+        }
+        if (root.trainingController.estaEntrenando)
+            return "Preparando el primer lote…"
+        if (root.entrenamientoTerminado)
+            return root.fueCancelado ? "Entrenamiento detenido" : "Entrenamiento completado"
+        return "Listo para iniciar"
+    }
+
     function componenteBase(componentId) {
         return {
             "titulo": root.teoriaActual && root.teoriaActual.title
@@ -143,6 +205,28 @@ PagePrincipal {
     function registrarPaso(paso) {
         root.epocaActual = Number(paso.epoca || 0)
         root.pasoGlobalActual = Number(paso.paso_global || 0)
+        root.epocaSesionActual = Number(paso.epoca_sesion || 0)
+        root.epocasSesionActual = Number(paso.epocas_sesion || root.epocasIniciales)
+        root.loteActual = Number(paso.lote_actual || 0)
+        root.lotesPorEpoca = paso.lotes_por_epoca !== undefined
+                              && paso.lotes_por_epoca !== null
+                              ? Number(paso.lotes_por_epoca) : 0
+        root.pasosSesionCompletados = Number(paso.pasos_sesion_completados || 0)
+        root.pasosSesionTotales = paso.pasos_sesion_totales !== undefined
+                                  && paso.pasos_sesion_totales !== null
+                                  ? Number(paso.pasos_sesion_totales) : 0
+        root.progresoDeterminado = paso.progreso_fraccion !== undefined
+                                    && paso.progreso_fraccion !== null
+                                    && root.pasosSesionTotales > 0
+        root.progresoFraccion = root.progresoDeterminado
+                                ? Math.max(0, Math.min(1, Number(paso.progreso_fraccion)))
+                                : 0
+        root.tiempoTranscurridoSegundos = Number(
+            paso.tiempo_transcurrido_segundos || 0
+        )
+        root.etaSegundos = paso.eta_segundos !== undefined
+                           && paso.eta_segundos !== null
+                           ? Number(paso.eta_segundos) : -1
         root.perdidaActual = Number(paso.perdida || 0)
 
         var visualizacion = paso.visualizacion || {}
@@ -215,9 +299,22 @@ PagePrincipal {
         function onEntrenamiento_completo(resultado) {
             root.historialFinal = resultado.historial_perdidas || []
             root.perdidaFinalObtenida = Number(resultado.perdida_final || 0)
-            root.epocasCompletadas = resultado.epoca !== undefined && resultado.epoca !== null
-                                     ? Number(resultado.epoca) + 1 : 0
+            root.epocasCompletadas = resultado.epocas_sesion !== undefined
+                                     && resultado.epocas_sesion !== null
+                                     ? Number(resultado.epocas_sesion)
+                                     : (resultado.epoca !== undefined && resultado.epoca !== null
+                                        ? Number(resultado.epoca) + 1 : 0)
             root.pasosFinales = Number(resultado.paso_global || 0)
+            if (resultado.progreso_fraccion !== undefined
+                    && resultado.progreso_fraccion !== null) {
+                root.progresoDeterminado = true
+                root.progresoFraccion = Number(resultado.progreso_fraccion)
+            } else {
+                // Mientras corria no habia denominador, pero el evento final
+                // si permite representar que la ejecucion ya concluyo.
+                root.progresoDeterminado = true
+                root.progresoFraccion = 1
+            }
             root.fueCancelado = false
             root.entrenamientoTerminado = true
         }
@@ -226,7 +323,7 @@ PagePrincipal {
             var historial = resultado.historial_perdidas || []
             root.historialFinal = historial
             root.perdidaFinalObtenida = historial.length > 0 ? historial[historial.length - 1] : 0
-            root.epocasCompletadas = root.epocaActual + 1
+            root.epocasCompletadas = root.epocaSesionActual
             root.pasosFinales = root.pasoGlobalActual
             root.fueCancelado = true
             root.entrenamientoTerminado = true
@@ -299,12 +396,21 @@ PagePrincipal {
             Text {
                 id: estadoTexto
                 anchors.centerIn: parent
-                text: root.trainingController.estaEntrenando
-                      ? (root.trainingController.estaPausado ? "● Pausado" : "● Entrenando")
-                      : (root.entrenamientoTerminado ? "✓ Finalizado" : "○ Preparado")
-                color: root.trainingController.estaEntrenando
-                       ? (root.trainingController.estaPausado ? "#9A641B" : "#258F6F")
-                       : Style.Theme.texto_secundario
+                text: root.trainingController.detencionSolicitada
+                      ? "● Deteniendo"
+                      : (root.trainingController.pausaSolicitada
+                         ? "● Pausa solicitada"
+                         : (root.trainingController.estaEntrenando
+                            ? (root.trainingController.estaPausado
+                               ? "● Pausado" : "● Entrenando")
+                            : (root.entrenamientoTerminado
+                               ? "✓ Finalizado" : "○ Preparado")))
+                color: root.trainingController.detencionSolicitada
+                       ? "#B25D35"
+                       : (root.trainingController.estaEntrenando
+                          ? (root.trainingController.estaPausado
+                             ? "#9A641B" : "#258F6F")
+                          : Style.Theme.texto_secundario)
                 font.bold: true
                 font.pixelSize: 12 * root.sx
             }
@@ -343,8 +449,8 @@ PagePrincipal {
 
                     Repeater {
                         model: [
-                            { label: "ÉPOCA", value: (root.epocaActual + 1) + " / " + root.epocasIniciales, color: "#6C5FC3", help: "epoch_batch" },
-                            { label: "PASO", value: String(root.pasoGlobalActual), color: "#3979B7", help: "training_step" },
+                            { label: "ÉPOCA", value: (root.epocaSesionActual || 0) + " / " + (root.epocasSesionActual || root.epocasIniciales), color: "#6C5FC3", help: "epoch_batch" },
+                            { label: "PASO GLOBAL", value: String(root.pasoGlobalActual), color: "#3979B7", help: "training_step" },
                             { label: "PÉRDIDA", value: root.numero(root.perdidaActual, 4), color: "#258F6F", help: "cross_entropy" },
                             { label: "Δ PÉRDIDA", value: (root.deltaPerdida > 0 ? "+" : "") + root.numero(root.deltaPerdida, 4), color: root.deltaPerdida <= 0 ? "#258F6F" : "#B25D35", help: "loss_delta" },
                             { label: "GRADIENTE L2", value: root.numero(root.normaGradiente, 3), color: "#9A641B", help: "gradient_norm_l2" }
@@ -707,14 +813,56 @@ PagePrincipal {
 
             RectanglePrincipal {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 184 * root.sy
+                Layout.preferredHeight: controlesEntrenamiento.implicitHeight + 24 * root.sy
                 sx: root.sx
                 sy: root.sy
 
                 ColumnLayout {
+                    id: controlesEntrenamiento
                     anchors.fill: parent
                     anchors.margins: 12 * root.sx
                     spacing: 8 * root.sy
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6 * root.sx
+
+                        BusyIndicator {
+                            objectName: "trainingBatchBusyIndicator"
+                            Layout.preferredWidth: 22 * root.sy
+                            Layout.preferredHeight: 22 * root.sy
+                            running: root.trainingController.estaEntrenando
+                                     && (!root.trainingController.estaPausado
+                                         || root.trainingController.pausaSolicitada
+                                         || root.trainingController.detencionSolicitada)
+                            visible: running
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            objectName: "trainingGlobalProgressText"
+                            text: root.textoProgresoEntrenamiento
+                            color: root.trainingController.detencionSolicitada
+                                   ? "#B25D35" : Style.Theme.texto_secundario
+                            horizontalAlignment: Text.AlignHCenter
+                            wrapMode: Text.WordWrap
+                            font.pixelSize: 10 * root.sx
+                            font.bold: root.trainingController.pausaSolicitada
+                                       || root.trainingController.detencionSolicitada
+                        }
+                    }
+
+                    ProgressBar {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 12 * root.sy
+                        objectName: "trainingGlobalProgressBar"
+                        from: 0
+                        to: 1
+                        value: root.progresoDeterminado ? root.progresoFraccion : 0
+                        indeterminate: root.trainingController.estaEntrenando
+                                       && !root.trainingController.estaPausado
+                                       && !root.progresoDeterminado
+                    }
 
                     RowLayout {
                         Layout.fillWidth: true
@@ -723,6 +871,8 @@ PagePrincipal {
                         BotonPrincipal {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 42 * root.sy
+                            enabled: !root.trainingController.detencionSolicitada
+                            opacity: enabled ? 1 : 0.45
                             text: !root.trainingController.estaEntrenando
                                   ? "▶ Iniciar"
                                   : (root.trainingController.estaPausado ? "▶ Reanudar" : "Ⅱ Pausar")
@@ -731,6 +881,7 @@ PagePrincipal {
                                 if (!controlador.estaEntrenando) {
                                     root.mensajeError = ""
                                     root.entrenamientoTerminado = false
+                                    root.reiniciarProgresoSesion()
                                     localBridge.clearSelection()
                                     controlador.iniciar_entrenamiento_ui(
                                         root.epocasIniciales,
@@ -751,6 +902,7 @@ PagePrincipal {
                             Layout.preferredHeight: 42 * root.sy
                             text: "■ Detener"
                             enabled: root.trainingController.estaEntrenando
+                                     && !root.trainingController.detencionSolicitada
                             opacity: enabled ? 1 : 0.45
                             onClicked: root.trainingController.detener()
                         }
