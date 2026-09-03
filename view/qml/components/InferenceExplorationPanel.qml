@@ -596,14 +596,33 @@ Item {
                     border.color: root.stage.accent
                     border.width: 1
 
-                    ScrollView {
+                    ColumnLayout {
                         anchors.fill: parent
                         anchors.margins: 14 * root.sx
+                        spacing: 10 * root.sy
+
+                        TransformerMiniMap {
+                            objectName: "inferenceTransformerMiniMap"
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 272 * root.sy
+                            stageIndex: root.stageIndex
+                            branchIndex: root.branchIndex
+                            residualUsesFfn: root.residualUsesFfn
+                            accent: root.stage.accent
+                            reducedMotion: root.reducedMotion
+                            sx: root.sx
+                            sy: root.sy
+                        }
+
+                    ScrollView {
+                        id: pedagogicalScroll
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
                         clip: true
                         contentWidth: availableWidth
 
                         ColumnLayout {
-                            width: parent.width
+                            width: pedagogicalScroll.availableWidth
                             spacing: 12 * root.sy
 
                             Text {
@@ -683,6 +702,7 @@ Item {
                                 }
                             }
                         }
+                    }
                     }
                 }
             }
