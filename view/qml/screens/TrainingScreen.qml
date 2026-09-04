@@ -390,7 +390,7 @@ PagePrincipal {
             height: 34 * root.sy
             radius: height / 2
             color: root.trainingController.estaEntrenando
-                   ? (root.trainingController.estaPausado ? "#FFF4D6" : "#E4F7EB")
+                   ? (root.trainingController.estaPausado ? Style.Theme.aviso_fondo : Style.Theme.exito_fondo)
                    : "#EEF0F5"
 
             Text {
@@ -409,7 +409,7 @@ PagePrincipal {
                        ? "#B25D35"
                        : (root.trainingController.estaEntrenando
                           ? (root.trainingController.estaPausado
-                             ? "#9A641B" : "#258F6F")
+                             ? Style.Theme.aviso_texto : "#258F6F")
                           : Style.Theme.texto_secundario)
                 font.bold: true
                 font.pixelSize: 12 * root.sx
@@ -450,10 +450,10 @@ PagePrincipal {
                     Repeater {
                         model: [
                             { label: "ÉPOCA", value: (root.epocaSesionActual || 0) + " / " + (root.epocasSesionActual || root.epocasIniciales), color: "#6C5FC3", help: "epoch_batch" },
-                            { label: "PASO GLOBAL", value: String(root.pasoGlobalActual), color: "#3979B7", help: "training_step" },
+                            { label: "PASO GLOBAL", value: String(root.pasoGlobalActual), color: Style.Theme.info_texto, help: "training_step" },
                             { label: "PÉRDIDA", value: root.numero(root.perdidaActual, 4), color: "#258F6F", help: "cross_entropy" },
                             { label: "Δ PÉRDIDA", value: (root.deltaPerdida > 0 ? "+" : "") + root.numero(root.deltaPerdida, 4), color: root.deltaPerdida <= 0 ? "#258F6F" : "#B25D35", help: "loss_delta" },
-                            { label: "GRADIENTE L2", value: root.numero(root.normaGradiente, 3), color: "#9A641B", help: "gradient_norm_l2" }
+                            { label: "GRADIENTE L2", value: root.numero(root.normaGradiente, 3), color: Style.Theme.aviso_texto, help: "gradient_norm_l2" }
                         ]
 
                         delegate: Rectangle {
@@ -510,7 +510,7 @@ PagePrincipal {
                     Layout.minimumHeight: 62 * root.sy
                     Layout.maximumHeight: 62 * root.sy
                     radius: 9 * root.sx
-                    color: "#FFF9E8"
+                    color: Style.Theme.aviso_fondo
                     border.color: "#E7CD78"
 
                     RowLayout {
@@ -759,7 +759,7 @@ PagePrincipal {
                                 spacing: 6 * root.sx
                                 Text {
                                     text: "ATENCIÓN POR CAPA"
-                                    color: "#9A641B"
+                                    color: Style.Theme.aviso_texto
                                     font.bold: true
                                     font.pixelSize: 11 * root.sx
                                 }
@@ -803,7 +803,7 @@ PagePrincipal {
                             text: "Top actual: " + root.prediccionesTop.map(function(item) {
                                 return "“" + item.texto + "” " + Math.round(item.probabilidad * 100) + "%"
                             }).join("  ·  ")
-                            color: "#3979B7"
+                            color: Style.Theme.info_texto
                             font.pixelSize: 10 * root.sx
                             wrapMode: Text.WordWrap
                         }
@@ -972,7 +972,7 @@ PagePrincipal {
                         visible: root.mensajeError !== "" || root.mensajeCheckpoint !== ""
                         Layout.fillWidth: true
                         text: root.mensajeError !== "" ? "⚠ " + root.mensajeError : "✓ " + root.mensajeCheckpoint
-                        color: root.mensajeError !== "" ? "#D32F2F" : "#2E7D32"
+                        color: root.mensajeError !== "" ? Style.Theme.error_texto : Style.Theme.exito_texto
                         horizontalAlignment: Text.AlignHCenter
                         wrapMode: Text.WordWrap
                         font.pixelSize: 10 * root.sx

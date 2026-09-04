@@ -39,7 +39,7 @@ PagePrincipal {
                 Text {
                     Layout.fillWidth: true
                     text: "Paso " + root.stageNumber + " de 5"
-                    color: "#92400E"
+                    color: Style.Theme.aviso_texto
                     font.pixelSize: 12
                     font.bold: true
                 }
@@ -66,7 +66,7 @@ PagePrincipal {
                 Text {
                     anchors.centerIn: parent
                     text: "MODO DE PRUEBA"
-                    color: "#92400E"
+                    color: Style.Theme.aviso_texto
                     font.pixelSize: 10
                     font.bold: true
                     font.letterSpacing: 0.6
@@ -100,7 +100,7 @@ PagePrincipal {
                     Text {
                         anchors.centerIn: parent
                         text: root.stageNumber
-                        color: "#B45309"
+                        color: Style.Theme.aviso_texto
                         font.pixelSize: 27
                         font.bold: true
                     }

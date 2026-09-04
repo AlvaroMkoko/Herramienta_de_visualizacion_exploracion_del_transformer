@@ -95,15 +95,15 @@ PagePrincipal {
                                             selectedText.implicitWidth + 28 * root.sx)
             Layout.preferredHeight: 36 * root.sy
             radius: height / 2
-            color: markedModel.count > 0 ? "#EDE9FE" : "#F3F4F6"
-            border.color: markedModel.count > 0 ? "#C4B5FD" : "#D1D5DB"
+            color: markedModel.count > 0 ? Style.Theme.acento_fondo : Style.Theme.chip_fondo
+            border.color: markedModel.count > 0 ? "#C4B5FD" : Style.Theme.borde_suave
 
             Text {
                 id: selectedText
                 anchors.centerIn: parent
                 text: markedModel.count
                       + (markedModel.count === 1 ? " seleccionado" : " seleccionados")
-                color: markedModel.count > 0 ? "#5B21B6" : Style.Theme.texto_secundario
+                color: markedModel.count > 0 ? Style.Theme.acento_fuerte : Style.Theme.texto_secundario
                 font.bold: true
                 font.pixelSize: 12 * Math.min(root.sx, root.sy)
             }
@@ -131,12 +131,12 @@ PagePrincipal {
                 Layout.preferredWidth: 38 * root.sx
                 Layout.preferredHeight: 38 * root.sy
                 radius: 10 * root.sx
-                color: "#EDE9FE"
+                color: Style.Theme.acento_fondo
 
                 Text {
                     anchors.centerIn: parent
                     text: "T"
-                    color: "#6D28D9"
+                    color: Style.Theme.acento_fuerte
                     font.bold: true
                     font.pixelSize: 17 * Math.min(root.sx, root.sy)
                 }
@@ -242,15 +242,15 @@ PagePrincipal {
                             implicitWidth: 22 * root.sx
                             implicitHeight: 22 * root.sy
                             radius: 5 * root.sx
-                            color: check.checked ? "#6A63E8" : "white"
+                            color: check.checked ? Style.Theme.acento : Style.Theme.surface
                             border.width: 1.5
-                            border.color: "#6A63E8"
+                            border.color: Style.Theme.acento
 
                             Text {
                                 anchors.centerIn: parent
                                 text: "\u2713"
                                 visible: check.checked
-                                color: "white"
+                                color: Style.Theme.texto_sobre_color
                                 font.pixelSize: 13 * Math.min(root.sx, root.sy)
                                 font.bold: true
                             }
@@ -263,12 +263,12 @@ PagePrincipal {
                         Layout.preferredWidth: 42 * root.sx
                         Layout.preferredHeight: 42 * root.sy
                         radius: 10 * root.sx
-                        color: check.checked ? "#7C3AED" : "#EDE9FE"
+                        color: check.checked ? Style.Theme.acento : Style.Theme.acento_fondo
 
                         Text {
                             anchors.centerIn: parent
                             text: "T"
-                            color: check.checked ? "white" : "#6D28D9"
+                            color: check.checked ? Style.Theme.texto_sobre_color : Style.Theme.acento_fuerte
                             font.bold: true
                             font.pixelSize: 18 * Math.min(root.sx, root.sy)
                         }
@@ -302,7 +302,7 @@ PagePrincipal {
                         Layout.preferredWidth: stateText.implicitWidth + 20 * root.sx
                         Layout.preferredHeight: 28 * root.sy
                         radius: height / 2
-                        color: "#DCFCE7"
+                        color: Style.Theme.exito_fondo
                         border.color: "#86EFAC"
 
                         Text {
@@ -311,7 +311,7 @@ PagePrincipal {
                             text: String(root.value(modelCard.info,
                                                     ["estado", "status"],
                                                     "Listo para inferencia"))
-                            color: "#166534"
+                            color: Style.Theme.exito_texto
                             font.bold: true
                             font.pixelSize: 11 * Math.min(root.sx, root.sy)
                         }
@@ -331,7 +331,7 @@ PagePrincipal {
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 1
-                    color: "#E5E7EB"
+                    color: Style.Theme.divisor
                 }
 
                 GridLayout {
@@ -376,7 +376,7 @@ PagePrincipal {
                             Layout.preferredHeight: 54 * root.sy
                             radius: 8 * root.sx
                             color: "#F9FAFB"
-                            border.color: "#E5E7EB"
+                            border.color: Style.Theme.divisor
 
                             RowLayout {
                                 anchors.fill: parent
@@ -404,7 +404,7 @@ PagePrincipal {
 
                                 Text {
                                     text: String(metric.modelData.value)
-                                    color: "#5B21B6"
+                                    color: Style.Theme.acento_fuerte
                                     font.bold: true
                                     font.pixelSize: 16 * Math.min(root.sx, root.sy)
                                     elide: Text.ElideRight

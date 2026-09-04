@@ -569,13 +569,13 @@ PagePrincipal {
             Layout.preferredWidth: activoTexto.implicitWidth + 22 * root.sx
             Layout.preferredHeight: 30 * root.sy
             radius: height / 2
-            color: root.esModeloActivo() ? "#DCFCE7" : "#F3F4F6"
-            border.color: root.esModeloActivo() ? "#86EFAC" : "#D1D5DB"
+            color: root.esModeloActivo() ? Style.Theme.exito_fondo : Style.Theme.chip_fondo
+            border.color: root.esModeloActivo() ? "#86EFAC" : Style.Theme.borde_suave
             Text {
                 id: activoTexto
                 anchors.centerIn: parent
                 text: root.esModeloActivo() ? "● Modelo activo" : "○ No activo"
-                color: root.esModeloActivo() ? "#166534" : "#4B5563"
+                color: root.esModeloActivo() ? Style.Theme.exito_texto : Style.Theme.chip_texto
                 font.bold: true
                 font.pixelSize: 11 * Math.min(root.sx, root.sy)
             }
@@ -626,7 +626,7 @@ PagePrincipal {
         height: root.mensajeEstado === "" ? 0 : 34 * root.sy
         visible: height > 0
         radius: 8 * root.sx
-        color: root.mensajeEsError ? "#FEE2E2" : "#DCFCE7"
+        color: root.mensajeEsError ? Style.Theme.error_fondo : Style.Theme.exito_fondo
         border.color: root.mensajeEsError ? "#FCA5A5" : "#86EFAC"
         z: 20
         clip: true
@@ -636,7 +636,7 @@ PagePrincipal {
             anchors.centerIn: parent
             width: Math.min(implicitWidth, aviso.width - 18 * root.sx)
             text: root.mensajeEstado
-            color: root.mensajeEsError ? "#991B1B" : "#166534"
+            color: root.mensajeEsError ? Style.Theme.error_texto : Style.Theme.exito_texto
             horizontalAlignment: Text.AlignHCenter
             elide: Text.ElideRight
             font.pixelSize: 12 * Math.min(root.sx, root.sy)
@@ -687,7 +687,7 @@ PagePrincipal {
                 Layout.fillWidth: true
                 text: "No se pudo completar la ficha: " + root.errorDetalle
                       + ". Se muestran los datos disponibles del catálogo."
-                color: "#991B1B"
+                color: Style.Theme.error_texto
                 elide: Text.ElideRight
                 font.pixelSize: 11 * Math.min(root.sx, root.sy)
             }
@@ -745,7 +745,7 @@ PagePrincipal {
                                 Text {
                                     Layout.fillWidth: true
                                     text: "MAPA DE LA ARQUITECTURA"
-                                    color: "#6D28D9"
+                                    color: Style.Theme.acento_fuerte
                                     font.bold: true
                                     font.pixelSize: 12 * Math.min(root.sx, root.sy)
                                 }
@@ -791,7 +791,7 @@ PagePrincipal {
                             Text {
                                 Layout.fillWidth: true
                                 text: "DIMENSIONES Y DECISIONES DE DISEÑO"
-                                color: "#6D28D9"
+                                color: Style.Theme.acento_fuerte
                                 font.bold: true
                                 font.pixelSize: 12 * Math.min(root.sx, root.sy)
                             }
@@ -827,7 +827,7 @@ PagePrincipal {
                                         Layout.fillHeight: true
                                         radius: 7 * root.sx
                                         color: "#F8FAFC"
-                                        border.color: "#E5E7EB"
+                                        border.color: Style.Theme.divisor
                                         ColumnLayout {
                                             anchors.fill: parent
                                             anchors.margins: 8 * root.sx
@@ -893,7 +893,7 @@ PagePrincipal {
                         spacing: 5 * root.sy
                         Text {
                             text: "PARÁMETROS Y SHAPES POR BLOQUE"
-                            color: "#6D28D9"
+                            color: Style.Theme.acento_fuerte
                             font.bold: true
                             font.pixelSize: 12 * Math.min(root.sx, root.sy)
                         }
@@ -927,7 +927,7 @@ PagePrincipal {
                                 required property int index
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 31 * root.sy
-                                color: index % 2 === 0 ? "#F8FAFC" : "#FFFFFF"
+                                color: index % 2 === 0 ? "#F8FAFC" : Style.Theme.surface
                                 radius: 4 * root.sx
                                 RowLayout {
                                     anchors.fill: parent
@@ -981,7 +981,7 @@ PagePrincipal {
                         spacing: 4 * root.sy
                         Text {
                             text: "DIMENSIONES DE TENSORES EN EL FLUJO"
-                            color: "#6D28D9"
+                            color: Style.Theme.acento_fuerte
                             font.bold: true
                             font.pixelSize: 12 * Math.min(root.sx, root.sy)
                         }
@@ -1067,8 +1067,8 @@ PagePrincipal {
                             Layout.preferredWidth: 54 * root.sy
                             Layout.preferredHeight: 54 * root.sy
                             radius: width / 2
-                            color: "#EDE9FE"
-                            Text { anchors.centerIn: parent; text: "↗"; color: "#6D28D9"; font.pixelSize: 25 * root.sy }
+                            color: Style.Theme.acento_fondo
+                            Text { anchors.centerIn: parent; text: "↗"; color: Style.Theme.acento_fuerte; font.pixelSize: 25 * root.sy }
                         }
                         ColumnLayout {
                             Layout.fillWidth: true
@@ -1097,7 +1097,7 @@ PagePrincipal {
                                            + root.campo(root.procedenciaActual,
                                                         ["telemetria_desde_paso", "telemetriaDesdePaso", "paso_inicio_telemetria"], "")
                                          : ": el checkpoint no conserva toda la procedencia de sesiones anteriores.")
-                                color: "#B45309"
+                                color: Style.Theme.aviso_texto
                                 font.bold: true
                                 font.pixelSize: 10 * Math.min(root.sx, root.sy)
                                 elide: Text.ElideRight
@@ -1178,7 +1178,7 @@ PagePrincipal {
                         spacing: 7 * root.sy
                         Text {
                             text: "DATASETS UTILIZADOS"
-                            color: "#6D28D9"
+                            color: Style.Theme.acento_fuerte
                             font.bold: true
                             font.pixelSize: 12 * Math.min(root.sx, root.sy)
                         }
@@ -1191,12 +1191,12 @@ PagePrincipal {
                                 Layout.preferredHeight: 38 * root.sy
                                 radius: 6 * root.sx
                                 color: "#F8FAFC"
-                                border.color: "#E5E7EB"
+                                border.color: Style.Theme.divisor
                                 RowLayout {
                                     anchors.fill: parent
                                     anchors.leftMargin: 10 * root.sx
                                     anchors.rightMargin: 10 * root.sx
-                                    Text { text: "▤"; color: "#7C3AED"; font.pixelSize: 15 * root.sy }
+                                    Text { text: "▤"; color: Style.Theme.acento; font.pixelSize: 15 * root.sy }
                                     Text {
                                         Layout.fillWidth: true
                                         text: typeof datasetItem.modelData === "object"
@@ -1255,7 +1255,7 @@ PagePrincipal {
                                 Text {
                                     Layout.fillWidth: true
                                     text: "CURVA COMPLETA DE PÉRDIDA"
-                                    color: "#6D28D9"
+                                    color: Style.Theme.acento_fuerte
                                     font.bold: true
                                     font.pixelSize: 12 * Math.min(root.sx, root.sy)
                                 }
@@ -1275,7 +1275,7 @@ PagePrincipal {
                                 Layout.fillHeight: true
                                 radius: 7 * root.sx
                                 color: "#FAFAFA"
-                                border.color: "#E5E7EB"
+                                border.color: Style.Theme.divisor
                                 Canvas {
                                     id: lossCanvas
                                     anchors.fill: parent
@@ -1291,7 +1291,7 @@ PagePrincipal {
                                         var right = width - 12 * root.sx
                                         var top = 13 * root.sy
                                         var bottom = height - 30 * root.sy
-                                        ctx.strokeStyle = "#CBD5E1"
+                                        ctx.strokeStyle = Style.Theme.borde_suave
                                         ctx.lineWidth = 1
                                         ctx.beginPath()
                                         ctx.moveTo(left, top)
@@ -1310,7 +1310,7 @@ PagePrincipal {
                                         }
                                         if (maxX === minX) maxX = minX + 1
                                         if (maxY === minY) maxY = minY + 1
-                                        ctx.strokeStyle = "#7C3AED"
+                                        ctx.strokeStyle = Style.Theme.acento
                                         ctx.lineWidth = 2.2 * Math.min(root.sx, root.sy)
                                         ctx.beginPath()
                                         for (var j = 0; j < puntos.length; ++j) {
@@ -1320,7 +1320,7 @@ PagePrincipal {
                                             else ctx.lineTo(px, py)
                                         }
                                         ctx.stroke()
-                                        ctx.fillStyle = "#64748B"
+                                        ctx.fillStyle = Style.Theme.texto_secundario
                                         ctx.font = Math.max(9, 10 * Math.min(root.sx, root.sy)) + "px sans-serif"
                                         ctx.fillText(maxY.toFixed(4), 2, top + 8)
                                         ctx.fillText(minY.toFixed(4), 2, bottom)
@@ -1429,7 +1429,7 @@ PagePrincipal {
                             Text {
                                 Layout.fillWidth: true
                                 text: "CHECKPOINTS DEL EXPERIMENTO"
-                                color: "#6D28D9"
+                                color: Style.Theme.acento_fuerte
                                 font.bold: true
                                 font.pixelSize: 12 * Math.min(root.sx, root.sy)
                             }
@@ -1510,7 +1510,7 @@ PagePrincipal {
                             Text {
                                 Layout.fillWidth: true
                                 text: "LABORATORIO DEL TOKENIZADOR"
-                                color: "#6D28D9"
+                                color: Style.Theme.acento_fuerte
                                 font.bold: true
                                 font.pixelSize: 12 * Math.min(root.sx, root.sy)
                             }
@@ -1619,7 +1619,7 @@ PagePrincipal {
                         anchors.rightMargin: 13 * root.sx
                         Text {
                             text: "Tokens especiales"
-                            color: "#92400E"
+                            color: Style.Theme.aviso_texto
                             font.bold: true
                             font.pixelSize: 10 * Math.min(root.sx, root.sy)
                         }
@@ -1647,7 +1647,7 @@ PagePrincipal {
                         spacing: 5 * root.sy
                         Text {
                             text: "DESGLOSE TOKEN A TOKEN"
-                            color: "#6D28D9"
+                            color: Style.Theme.acento_fuerte
                             font.bold: true
                             font.pixelSize: 12 * Math.min(root.sx, root.sy)
                         }
@@ -1684,7 +1684,7 @@ PagePrincipal {
                                     Text {
                                         Layout.preferredWidth: 120 * root.sx
                                         text: root.campo(tokenItem.modelData, ["id", "tokenId"], "—")
-                                        color: "#5B21B6"
+                                        color: Style.Theme.acento_fuerte
                                         font.family: "monospace"
                                         font.bold: true
                                         font.pixelSize: 11 * Math.min(root.sx, root.sy)
@@ -1709,7 +1709,7 @@ PagePrincipal {
                                         text: root.campo(tokenItem.modelData, ["esEspecial", "special"], false)
                                               ? root.texto(root.campo(tokenItem.modelData, ["nombreEspecial", "specialName"], null), "Sí")
                                               : "No"
-                                        color: root.campo(tokenItem.modelData, ["esEspecial", "special"], false) ? "#92400E" : Style.Theme.texto_secundario
+                                        color: root.campo(tokenItem.modelData, ["esEspecial", "special"], false) ? Style.Theme.aviso_texto : Style.Theme.texto_secundario
                                         font.bold: root.campo(tokenItem.modelData, ["esEspecial", "special"], false)
                                         elide: Text.ElideRight
                                         font.pixelSize: 10 * Math.min(root.sx, root.sy)
@@ -1853,7 +1853,7 @@ PagePrincipal {
                         Text { text: "ⓘ"; color: "#1D4ED8"; font.pixelSize: 20 * root.sy }
                         ColumnLayout {
                             Layout.fillWidth: true
-                            Text { text: "Coherencia"; color: "#1E40AF"; font.bold: true; font.pixelSize: 11 * Math.min(root.sx, root.sy) }
+                            Text { text: "Coherencia"; color: Style.Theme.info_texto; font.bold: true; font.pixelSize: 11 * Math.min(root.sx, root.sy) }
                             Text {
                                 Layout.fillWidth: true
                                 text: root.texto(root.campo(root.campo(root.salud, ["coherencia", "coherence"], {}),
@@ -1886,7 +1886,7 @@ PagePrincipal {
                                 Text {
                                     Layout.fillWidth: true
                                     text: "MUESTRA " + (muestraSalud.index + 1)
-                                    color: "#6D28D9"
+                                    color: Style.Theme.acento_fuerte
                                     font.bold: true
                                     font.pixelSize: 11 * Math.min(root.sx, root.sy)
                                 }
@@ -1896,13 +1896,13 @@ PagePrincipal {
                                     radius: height / 2
                                     color: root.tiene(root.campo(muestraSalud.modelData, ["error"], null))
                                            || root.campo(muestraSalud.modelData, ["hayNaN", "hasNaN"], false)
-                                           ? "#FEE2E2" : "#DCFCE7"
+                                           ? Style.Theme.error_fondo : Style.Theme.exito_fondo
                                     Text {
                                         id: estadoMuestra
                                         anchors.centerIn: parent
                                         text: root.tiene(root.campo(muestraSalud.modelData, ["error"], null))
                                               ? "Error" : (root.campo(muestraSalud.modelData, ["hayNaN", "hasNaN"], false) ? "NaN" : "Sin NaN")
-                                        color: text === "Sin NaN" ? "#166534" : "#991B1B"
+                                        color: text === "Sin NaN" ? Style.Theme.exito_texto : Style.Theme.error_texto
                                         font.bold: true
                                         font.pixelSize: 9 * Math.min(root.sx, root.sy)
                                     }
@@ -1920,7 +1920,7 @@ PagePrincipal {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
                                 color: "#F8FAFC"
-                                border.color: "#E5E7EB"
+                                border.color: Style.Theme.divisor
                                 radius: 6 * root.sx
                                 ScrollView {
                                     anchors.fill: parent
@@ -1970,7 +1970,7 @@ PagePrincipal {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 42 * root.sy
                         radius: 7 * root.sx
-                        color: "#FFF7ED"
+                        color: Style.Theme.aviso_fondo
                         border.color: "#FDBA74"
                         Text {
                             anchors.fill: parent
@@ -2018,7 +2018,7 @@ PagePrincipal {
                                 Text {
                                     Layout.fillWidth: true
                                     text: "FICHA EDITABLE"
-                                    color: "#6D28D9"
+                                    color: Style.Theme.acento_fuerte
                                     font.bold: true
                                     font.pixelSize: 12 * Math.min(root.sx, root.sy)
                                 }
@@ -2105,7 +2105,7 @@ PagePrincipal {
                             spacing: 9 * root.sy
                             Text {
                                 text: "CREAR UNA VERSIÓN DERIVADA"
-                                color: "#6D28D9"
+                                color: Style.Theme.acento_fuerte
                                 font.bold: true
                                 font.pixelSize: 12 * Math.min(root.sx, root.sy)
                             }
@@ -2133,11 +2133,11 @@ PagePrincipal {
                             Rectangle {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 1
-                                color: "#E5E7EB"
+                                color: Style.Theme.divisor
                             }
                             Text {
                                 text: "MODELO ACTIVO"
-                                color: "#6D28D9"
+                                color: Style.Theme.acento_fuerte
                                 font.bold: true
                                 font.pixelSize: 11 * Math.min(root.sx, root.sy)
                             }
@@ -2176,7 +2176,7 @@ PagePrincipal {
                         spacing: 6 * root.sy
                         Text {
                             text: "VERSIONES DEL MISMO GRUPO"
-                            color: "#6D28D9"
+                            color: Style.Theme.acento_fuerte
                             font.bold: true
                             font.pixelSize: 12 * Math.min(root.sx, root.sy)
                         }
@@ -2189,8 +2189,8 @@ PagePrincipal {
                                 Layout.preferredHeight: 38 * root.sy
                                 radius: 6 * root.sx
                                 color: root.mismaRuta(root.campo(versionItem.modelData, ["ruta", "path"], ""), root.rutaActual)
-                                       ? "#EDE9FE" : "#F8FAFC"
-                                border.color: "#E5E7EB"
+                                       ? Style.Theme.acento_fondo : "#F8FAFC"
+                                border.color: Style.Theme.divisor
                                 RowLayout {
                                     anchors.fill: parent
                                     anchors.leftMargin: 10 * root.sx
@@ -2296,7 +2296,7 @@ PagePrincipal {
                         spacing: 10 * root.sy
                         Text {
                             text: "FORMAS DE CONTINUAR"
-                            color: "#6D28D9"
+                            color: Style.Theme.acento_fuerte
                             font.bold: true
                             font.pixelSize: 12 * Math.min(root.sx, root.sy)
                         }
@@ -2325,7 +2325,7 @@ PagePrincipal {
                                 Layout.fillHeight: true
                                 radius: 8 * root.sx
                                 color: "#F8FAFC"
-                                border.color: "#E5E7EB"
+                                border.color: Style.Theme.divisor
                                 RowLayout {
                                     anchors.fill: parent
                                     anchors.margins: 12 * root.sx
@@ -2333,14 +2333,14 @@ PagePrincipal {
                                         Layout.preferredWidth: 82 * root.sx
                                         Layout.preferredHeight: 28 * root.sy
                                         radius: height / 2
-                                        color: modoContinuacion.modelData.disponible === true ? "#DCFCE7"
-                                               : (modoContinuacion.modelData.disponible === false ? "#FEE2E2" : "#F3F4F6")
+                                        color: modoContinuacion.modelData.disponible === true ? Style.Theme.exito_fondo
+                                               : (modoContinuacion.modelData.disponible === false ? Style.Theme.error_fondo : Style.Theme.chip_fondo)
                                         Text {
                                             anchors.centerIn: parent
                                             text: modoContinuacion.modelData.disponible === true ? "Disponible"
                                                   : (modoContinuacion.modelData.disponible === false ? "No disponible" : "Sin dato")
-                                            color: modoContinuacion.modelData.disponible === true ? "#166534"
-                                                   : (modoContinuacion.modelData.disponible === false ? "#991B1B" : "#4B5563")
+                                            color: modoContinuacion.modelData.disponible === true ? Style.Theme.exito_texto
+                                                   : (modoContinuacion.modelData.disponible === false ? Style.Theme.error_texto : Style.Theme.chip_texto)
                                             font.bold: true
                                             font.pixelSize: 9 * Math.min(root.sx, root.sy)
                                         }
@@ -2386,7 +2386,7 @@ PagePrincipal {
                             Layout.fillWidth: true
                             Text {
                                 text: root.compatible() ? "Compatible con esta aplicación" : "Modelo incompatible"
-                                color: root.compatible() ? "#065F46" : "#991B1B"
+                                color: root.compatible() ? "#065F46" : Style.Theme.error_texto
                                 font.bold: true
                                 font.pixelSize: 13 * Math.min(root.sx, root.sy)
                             }
@@ -2397,7 +2397,7 @@ PagePrincipal {
                                                  root.compatible()
                                                  ? "El formato y el tokenizador declarados pueden cargarse."
                                                  : "Consulta el motivo de incompatibilidad antes de intentar cargarlo.")
-                                color: root.compatible() ? "#065F46" : "#991B1B"
+                                color: root.compatible() ? "#065F46" : Style.Theme.error_texto
                                 elide: Text.ElideRight
                                 font.pixelSize: 11 * Math.min(root.sx, root.sy)
                             }

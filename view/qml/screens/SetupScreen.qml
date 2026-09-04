@@ -242,7 +242,7 @@ PagePrincipal {
             height: contenidoPreparacion.implicitHeight + 42 * root.sy
             radius: 12 * Math.min(root.sx, root.sy)
             color: Style.Theme.surface
-            border.color: "#6A63E8"
+            border.color: Style.Theme.acento
             border.width: 1
 
             ColumnLayout {
@@ -354,12 +354,12 @@ PagePrincipal {
                             Layout.preferredWidth: 200 * sx
                             Layout.preferredHeight: 60 * sy
                             radius: 6
-                            color: "#6A63E8"
+                            color: Style.Theme.acento
 
                             Text {
                                 anchors.centerIn: parent
                                 text: nombre
-                                color: "white"
+                                color: Style.Theme.texto_sobre_color
                                 font.pixelSize: 15 * sy
                                 elide: Text.ElideRight
                                 width: parent.width - 10
@@ -630,7 +630,7 @@ PagePrincipal {
                             text: "Sin máscara causal el decoder puede ver tokens futuros. La pérdida "
                                 + "bajará más rápido de lo normal (está copiando la respuesta), pero el "
                                 + "texto generado será incoherente. Útil solo para experimentar."
-                            color: "#E8A33D"
+                            color: Style.Theme.aviso_texto
                             font.pixelSize: 11 * root.sx
                         }
                     }

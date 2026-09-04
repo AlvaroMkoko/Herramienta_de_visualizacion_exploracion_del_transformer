@@ -317,13 +317,13 @@ PagePrincipal {
             Layout.preferredWidth: Math.min(610 * root.sx, mensajeCabecera.implicitWidth + 36 * root.sx)
             Layout.preferredHeight: 38 * root.sy
             radius: height / 2
-            color: root.mensajeEsError ? "#FEE2E2" : "#EDE9FE"
+            color: root.mensajeEsError ? Style.Theme.error_fondo : Style.Theme.acento_fondo
             border.color: root.mensajeEsError ? "#FCA5A5" : "#C4B5FD"
             Text {
                 id: mensajeCabecera
                 anchors.centerIn: parent
                 text: root.mensajeEstado
-                color: root.mensajeEsError ? "#991B1B" : "#5B21B6"
+                color: root.mensajeEsError ? Style.Theme.error_texto : Style.Theme.acento_fuerte
                 font.pixelSize: 12 * Math.min(root.sx, root.sy)
                 elide: Text.ElideRight
                 width: Math.min(570 * root.sx, implicitWidth)
@@ -400,9 +400,9 @@ PagePrincipal {
                         width: listaModelos.width - 10 * root.sx
                         height: 126 * root.sy
                         radius: 10 * root.sx
-                        color: elegida ? "#F5F3FF" : "#FFFFFF"
+                        color: elegida ? Style.Theme.acento_fondo : Style.Theme.surface
                         border.width: elegida ? 2 : 1
-                        border.color: elegida ? "#7C3AED" : "#D1D5DB"
+                        border.color: elegida ? Style.Theme.acento : Style.Theme.borde_suave
                         opacity: utilizable ? 1.0 : 0.58
 
                         RowLayout {
@@ -414,13 +414,13 @@ PagePrincipal {
                                 Layout.preferredWidth: 48 * root.sx
                                 Layout.preferredHeight: 48 * root.sy
                                 radius: 12 * root.sx
-                                color: tarjetaModelo.elegida ? "#7C3AED" : "#EDE9FE"
+                                color: tarjetaModelo.elegida ? Style.Theme.acento : Style.Theme.acento_fondo
                                 Text {
                                     anchors.centerIn: parent
                                     text: tarjetaModelo.elegida
                                           ? root.etiquetaSeleccion(tarjetaModelo.modelData).slice(-1)
                                           : "T"
-                                    color: tarjetaModelo.elegida ? "white" : "#6D28D9"
+                                    color: tarjetaModelo.elegida ? Style.Theme.texto_sobre_color : Style.Theme.acento_fuerte
                                     font.bold: true
                                     font.pixelSize: 20 * Math.min(root.sx, root.sy)
                                 }
@@ -449,7 +449,7 @@ PagePrincipal {
                                     text: "Parámetros: " + root.numeroLegible(root.valor(tarjetaModelo.modelData, ["parametros", "parametros_totales"], 0))
                                           + "   ·   encoding: " + root.valor(tarjetaModelo.modelData, ["encoding"], "desconocido")
                                           + "   ·   época: " + root.valor(tarjetaModelo.modelData, ["epoca"], "—")
-                                    color: "#7C3AED"
+                                    color: Style.Theme.acento
                                     font.pixelSize: 12 * Math.min(root.sx, root.sy)
                                     elide: Text.ElideRight
                                 }
@@ -463,8 +463,8 @@ PagePrincipal {
                                          : "Listo para inferencia")
                                       : "No disponible para inferencia"
                                 color: tarjetaModelo.utilizable
-                                       ? (tarjetaModelo.elegida ? "#6D28D9" : "#166534")
-                                       : "#991B1B"
+                                       ? (tarjetaModelo.elegida ? Style.Theme.acento_fuerte : Style.Theme.exito_texto)
+                                       : Style.Theme.error_texto
                                 font.bold: true
                                 horizontalAlignment: Text.AlignRight
                                 font.pixelSize: 12 * Math.min(root.sx, root.sy)
@@ -519,15 +519,15 @@ PagePrincipal {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         radius: 9 * root.sx
-                        color: modelData.item ? "#F5F3FF" : "#F9FAFB"
-                        border.color: modelData.item ? "#C4B5FD" : "#D1D5DB"
+                        color: modelData.item ? Style.Theme.acento_fondo : "#F9FAFB"
+                        border.color: modelData.item ? "#C4B5FD" : Style.Theme.borde_suave
                         ColumnLayout {
                             anchors.fill: parent
                             anchors.margins: 12 * root.sx
                             spacing: 5 * root.sy
                             Text {
                                 text: resumenSeleccionado.modelData.etiqueta
-                                color: "#7C3AED"
+                                color: Style.Theme.acento
                                 font.bold: true
                                 font.pixelSize: 11 * Math.min(root.sx, root.sy)
                             }
@@ -618,7 +618,7 @@ PagePrincipal {
                     Text {
                         Layout.fillWidth: true
                         text: "PROMPT Y PARÁMETROS COMPARTIDOS"
-                        color: "#6D28D9"
+                        color: Style.Theme.acento_fuerte
                         font.bold: true
                         font.pixelSize: 13 * Math.min(root.sx, root.sy)
                     }
@@ -695,7 +695,7 @@ PagePrincipal {
                             }
                             Text {
                                 text: temperatura.value.toFixed(2)
-                                color: "#6D28D9"
+                                color: Style.Theme.acento_fuerte
                                 font.bold: true
                             }
                         }
@@ -744,7 +744,7 @@ PagePrincipal {
                             }
                             Text {
                                 text: topP.value.toFixed(2)
-                                color: "#6D28D9"
+                                color: Style.Theme.acento_fuerte
                                 font.bold: true
                             }
                             CheckBox {
@@ -820,8 +820,8 @@ PagePrincipal {
                         tokens: root.tokensA,
                         duracion: root.duracionA,
                         estado: root.estadoA,
-                        acento: "#7C3AED",
-                        fondo: "#F5F3FF"
+                        acento: Style.Theme.acento,
+                        fondo: Style.Theme.acento_fondo
                     },
                     {
                         etiqueta: "MODELO B",
@@ -888,7 +888,7 @@ PagePrincipal {
                             Layout.fillHeight: true
                             radius: 8 * root.sx
                             color: "#FAFAFA"
-                            border.color: "#E5E7EB"
+                            border.color: Style.Theme.divisor
 
                             ScrollView {
                                 anchors.fill: parent

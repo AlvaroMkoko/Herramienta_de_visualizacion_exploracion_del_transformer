@@ -187,9 +187,9 @@ PagePrincipal {
                 Math.max(220 * root.sx, contenidoEstado.implicitWidth + 28 * root.sx))
             Layout.preferredHeight: 36 * root.sy
             radius: 18 * root.sy
-            color: root.mensajeEsError ? "#FEE2E2"
+            color: root.mensajeEsError ? Style.Theme.error_fondo
                                          : (root.controller && root.controller.estaGenerando
-                                            ? "#DBEAFE" : "#DCFCE7")
+                                            ? Style.Theme.info_fondo : Style.Theme.exito_fondo)
             border.color: root.mensajeEsError ? "#FCA5A5"
                                               : (root.controller && root.controller.estaGenerando
                                                  ? "#93C5FD" : "#86EFAC")
@@ -212,9 +212,9 @@ PagePrincipal {
                     id: textoEstado
                     Layout.fillWidth: true
                     text: root.mensajeEstado
-                    color: root.mensajeEsError ? "#991B1B"
+                    color: root.mensajeEsError ? Style.Theme.error_texto
                                                 : (root.controller && root.controller.estaGenerando
-                                                   ? "#1E40AF" : "#166534")
+                                                   ? Style.Theme.info_texto : Style.Theme.exito_texto)
                     elide: Text.ElideRight
                     horizontalAlignment: Text.AlignHCenter
                     font.pixelSize: 13 * Math.min(root.sx, root.sy)
@@ -282,16 +282,16 @@ PagePrincipal {
                             selectByMouse: true
                             enabled: !root.controller || !root.controller.estaGenerando
                             color: Style.Theme.texto_primario
-                            placeholderTextColor: "#9CA3AF"
+                            placeholderTextColor: Style.Theme.texto_terciario
                             font.pixelSize: 15 * Math.min(root.sx, root.sy)
                             leftPadding: 13 * root.sx
                             rightPadding: 13 * root.sx
                             topPadding: 11 * root.sy
                             bottomPadding: 11 * root.sy
                             background: Rectangle {
-                                color: "#FAFAFC"
+                                color: Style.Theme.chip_fondo
                                 radius: 8 * root.sx
-                                border.color: campoPrompt.activeFocus ? "#8B5CF6" : "#D1D5DB"
+                                border.color: campoPrompt.activeFocus ? Style.Theme.acento : Style.Theme.borde_suave
                                 border.width: campoPrompt.activeFocus ? 2 : 1
                             }
                         }
@@ -333,7 +333,7 @@ PagePrincipal {
 
                         Text {
                             text: root.tokensGenerados + (root.tokensGenerados === 1 ? " token" : " tokens")
-                            color: "#6D28D9"
+                            color: Style.Theme.acento_fuerte
                             font.bold: true
                             font.pixelSize: 12 * Math.min(root.sx, root.sy)
                         }
@@ -352,16 +352,16 @@ PagePrincipal {
                             selectByMouse: true
                             wrapMode: TextEdit.Wrap
                             color: Style.Theme.texto_primario
-                            placeholderTextColor: "#9CA3AF"
+                            placeholderTextColor: Style.Theme.texto_terciario
                             font.pixelSize: 16 * Math.min(root.sx, root.sy)
                             leftPadding: 14 * root.sx
                             rightPadding: 14 * root.sx
                             topPadding: 13 * root.sy
                             bottomPadding: 13 * root.sy
                             background: Rectangle {
-                                color: "#FAFAFC"
+                                color: Style.Theme.chip_fondo
                                 radius: 8 * root.sx
-                                border.color: "#D1D5DB"
+                                border.color: Style.Theme.borde_suave
                             }
                             onTextChanged: cursorPosition = length
                         }
@@ -412,7 +412,7 @@ PagePrincipal {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
                                 radius: 8 * root.sx
-                                color: "#F5F3FF"
+                                color: Style.Theme.acento_fondo
                                 border.color: "#DDD6FE"
 
                                 Column {
@@ -422,7 +422,7 @@ PagePrincipal {
                                     Text {
                                         anchors.horizontalCenter: parent.horizontalCenter
                                         text: metrica.modelData.valor
-                                        color: "#5B21B6"
+                                        color: Style.Theme.acento_fuerte
                                         font.bold: true
                                         font.pixelSize: 22 * Math.min(root.sx, root.sy)
                                     }
@@ -463,7 +463,7 @@ PagePrincipal {
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 1
-                        color: "#E5E7EB"
+                        color: Style.Theme.divisor
                     }
 
                     RowLayout {
@@ -523,7 +523,7 @@ PagePrincipal {
                         }
                         Text {
                             text: temperatura.value.toFixed(2)
-                            color: "#6D28D9"
+                            color: Style.Theme.acento_fuerte
                             font.bold: true
                             font.pixelSize: 13 * Math.min(root.sx, root.sy)
                         }
@@ -584,7 +584,7 @@ PagePrincipal {
                         }
                         Text {
                             text: topP.value.toFixed(2)
-                            color: "#6D28D9"
+                            color: Style.Theme.acento_fuerte
                             font.bold: true
                             font.pixelSize: 13 * Math.min(root.sx, root.sy)
                         }

@@ -26,6 +26,7 @@ os.environ["QSG_RHI_BACKEND"] = "opengl"
 from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterType
 from PySide6.QtQuickControls2 import QQuickStyle
 from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import QCoreApplication
 
 from view.canvas.animation_engine import VispyItem
 from viewmodel.main_viewmodel import MainViewModel
@@ -35,6 +36,9 @@ def main() -> None:
     QQuickStyle.setStyle("Basic")
 
     app = QApplication(sys.argv)
+
+    QCoreApplication.setOrganizationName("TT")
+    QCoreApplication.setApplicationName("TransformerVisualizer")
 
     # `main_view_model` se queda vivo mientras dure `app.exec()` porque
     # el contexto de QML mantiene una referencia a él (setContextProperty).

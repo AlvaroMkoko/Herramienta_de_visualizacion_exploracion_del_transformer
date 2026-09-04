@@ -159,22 +159,22 @@ PagePrincipal {
         var resultado = []
 
         if (root.esActivo(item))
-            resultado.push({ texto: "● Activo", fondo: "#DCFCE7", tinta: "#166534" })
+            resultado.push({ texto: "● Activo", fondo: Style.Theme.exito_fondo, tinta: Style.Theme.exito_texto })
         resultado.push({ texto: compatible ? "Compatible" : "Incompatible",
-                           fondo: compatible ? "#DCFCE7" : "#FEE2E2",
-                           tinta: compatible ? "#166534" : "#991B1B" })
+                           fondo: compatible ? Style.Theme.exito_fondo : Style.Theme.error_fondo,
+                           tinta: compatible ? Style.Theme.exito_texto : Style.Theme.error_texto })
         if (inferencia)
-            resultado.push({ texto: "Inferencia lista", fondo: "#DBEAFE", tinta: "#1E40AF" })
+            resultado.push({ texto: "Inferencia lista", fondo: Style.Theme.info_fondo, tinta: Style.Theme.info_texto })
         if (entrenable)
-            resultado.push({ texto: "Entrenable", fondo: "#F3E8FF", tinta: "#6B21A8" })
+            resultado.push({ texto: "Entrenable", fondo: Style.Theme.acento_fondo, tinta: "#6B21A8" })
         if (reanudable)
-            resultado.push({ texto: "Reanudable", fondo: "#FEF3C7", tinta: "#92400E" })
+            resultado.push({ texto: "Reanudable", fondo: "#FEF3C7", tinta: Style.Theme.aviso_texto })
         if (tokenizer)
             resultado.push({ texto: "Tokenizador incluido", fondo: "#CCFBF1", tinta: "#115E59" })
         if (portable)
             resultado.push({ texto: "Portable", fondo: "#E0E7FF", tinta: "#3730A3" })
         if (esLegado(item))
-            resultado.push({ texto: "Legado .pt", fondo: "#F3F4F6", tinta: "#4B5563" })
+            resultado.push({ texto: "Legado .pt", fondo: Style.Theme.chip_fondo, tinta: Style.Theme.chip_texto })
         return resultado
     }
 
@@ -471,7 +471,7 @@ PagePrincipal {
         width: Math.min(parent.width - 40 * root.sx, textoAviso.implicitWidth + 34 * root.sx)
         height: root.mensajeEstado === "" ? 0 : 34 * root.sy
         radius: 8 * root.sx
-        color: root.mensajeEsError ? "#FEE2E2" : "#DCFCE7"
+        color: root.mensajeEsError ? Style.Theme.error_fondo : Style.Theme.exito_fondo
         border.color: root.mensajeEsError ? "#FCA5A5" : "#86EFAC"
         visible: height > 0
         clip: true
@@ -484,7 +484,7 @@ PagePrincipal {
             anchors.centerIn: parent
             width: Math.min(implicitWidth, aviso.width - 20 * root.sx)
             text: root.mensajeEstado
-            color: root.mensajeEsError ? "#991B1B" : "#166534"
+            color: root.mensajeEsError ? Style.Theme.error_texto : Style.Theme.exito_texto
             elide: Text.ElideRight
             horizontalAlignment: Text.AlignHCenter
             font.pixelSize: 13 * Math.min(root.sx, root.sy)
@@ -588,14 +588,14 @@ PagePrincipal {
                         Layout.preferredWidth: etiquetaFormato.implicitWidth + 18 * root.sx
                         Layout.preferredHeight: 25 * root.sy
                         radius: height / 2
-                        color: "#F3F4F6"
-                        border.color: "#D1D5DB"
+                        color: Style.Theme.chip_fondo
+                        border.color: Style.Theme.borde_suave
 
                         Text {
                             id: etiquetaFormato
                             anchors.centerIn: parent
                             text: String(root.valor(tarjeta.info, ["formato", "format"], root.esLegado(tarjeta.info) ? "PT" : "TVISMODEL")).toUpperCase()
-                            color: "#4B5563"
+                            color: Style.Theme.chip_texto
                             font.bold: true
                             font.pixelSize: 11 * Math.min(root.sx, root.sy)
                         }
@@ -613,7 +613,7 @@ PagePrincipal {
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 1
-                    color: "#E5E7EB"
+                    color: Style.Theme.divisor
                 }
 
                 RowLayout {
@@ -803,7 +803,7 @@ PagePrincipal {
                         text: parent.mascaraActiva
                               ? "Máscara causal activada"
                               : "⚠ Sin máscara causal — modelo experimental"
-                        color: parent.mascaraActiva ? Style.Theme.texto_secundario : "#E8A33D"
+                        color: parent.mascaraActiva ? Style.Theme.texto_secundario : Style.Theme.aviso_texto
                         font.pixelSize: 11 * root.sy
                         elide: Text.ElideRight
                         maximumLineCount: 1

@@ -108,7 +108,7 @@ PagePrincipal {
                     Layout.preferredWidth: 190
                     Layout.preferredHeight: 34
                     radius: height / 2
-                    color: "#F3E8FF"
+                    color: Style.Theme.acento_fondo
                     border.width: 1
                     border.color: "#D8B4FE"
 
@@ -129,7 +129,7 @@ PagePrincipal {
                 Layout.rightMargin: root.pageMargin
                 Layout.preferredHeight: 58
                 radius: Style.Theme.radius
-                color: "#F5F3FF"
+                color: Style.Theme.acento_fondo
                 border.width: 1
                 border.color: "#DDD6FE"
 
@@ -143,12 +143,12 @@ PagePrincipal {
                         Layout.preferredWidth: 28
                         Layout.preferredHeight: 28
                         radius: 14
-                        color: "#7C3AED"
+                        color: Style.Theme.acento
 
                         Text {
                             anchors.centerIn: parent
                             text: "i"
-                            color: "white"
+                            color: Style.Theme.texto_sobre_color
                             font.pixelSize: 15
                             font.bold: true
                         }
@@ -157,7 +157,7 @@ PagePrincipal {
                     Text {
                         Layout.fillWidth: true
                         text: "Modo de prueba activo: puedes abrir cualquier etapa sin completar las anteriores. Los módulos futuros muestran una vista placeholder."
-                        color: "#4C1D95"
+                        color: Style.Theme.acento_fuerte
                         font.pixelSize: 13
                         wrapMode: Text.WordWrap
                     }
@@ -207,7 +207,7 @@ PagePrincipal {
                             readonly property bool stageAvailable: parent ? parent.stageAvailable : false
                             readonly property string stageRoute: parent ? parent.stageRoute : ""
                             readonly property string kind: parent ? parent.kind : ""
-                            readonly property string accentColor: parent ? parent.accentColor : "#9CA3AF"
+                            readonly property string accentColor: parent ? parent.accentColor : Style.Theme.texto_terciario
                             readonly property string note: parent ? parent.note : ""
                             readonly property bool stagePlaceholder: parent ? parent.stagePlaceholder : false
                             readonly property string testButtonName: parent ? parent.testButtonName : ""
@@ -224,7 +224,7 @@ PagePrincipal {
                                                : parent.right
                                 anchors.rightMargin: stageContainer.stageOrder < 5 ? 8 : 0
                                 radius: Style.Theme.radius
-                                color: stageContainer.stageAvailable ? Style.Theme.surface : "#FAFAFC"
+                                color: stageContainer.stageAvailable ? Style.Theme.surface : Style.Theme.chip_fondo
                                 border.width: stageContainer.kind === "guided" ? 2 : 1
                                 border.color: stageContainer.kind === "guided"
                                               ? stageContainer.accentColor
@@ -248,12 +248,12 @@ PagePrincipal {
                                             radius: 18
                                             color: stageContainer.stageAvailable
                                                    ? stageContainer.accentColor
-                                                   : "#E5E7EB"
+                                                   : Style.Theme.divisor
 
                                             Text {
                                                 anchors.centerIn: parent
                                                 text: stageContainer.stageOrder
-                                                color: stageContainer.stageAvailable ? "white" : "#6B7280"
+                                                color: stageContainer.stageAvailable ? Style.Theme.texto_sobre_color : Style.Theme.texto_secundario
                                                 font.pixelSize: 16
                                                 font.bold: true
                                             }
@@ -265,15 +265,15 @@ PagePrincipal {
                                             Layout.preferredWidth: statusLabel.implicitWidth + 16
                                             Layout.preferredHeight: 24
                                             radius: 12
-                                            color: stageContainer.stageAvailable ? "#DCFCE7" : "#F3F4F6"
+                                            color: stageContainer.stageAvailable ? Style.Theme.exito_fondo : Style.Theme.chip_fondo
                                             border.width: 1
-                                            border.color: stageContainer.stageAvailable ? "#BBF7D0" : "#E5E7EB"
+                                            border.color: stageContainer.stageAvailable ? "#BBF7D0" : Style.Theme.divisor
 
                                             Text {
                                                 id: statusLabel
                                                 anchors.centerIn: parent
                                                 text: stageContainer.stageStatus.toUpperCase()
-                                                color: stageContainer.stageAvailable ? "#166534" : "#6B7280"
+                                                color: stageContainer.stageAvailable ? Style.Theme.exito_texto : Style.Theme.texto_secundario
                                                 font.pixelSize: 9
                                                 font.bold: true
                                                 font.letterSpacing: 0.35
@@ -337,7 +337,7 @@ PagePrincipal {
                                                 text: root.completedUnitsCount + "/"
                                                       + root.totalUnitsCount + " · "
                                                       + root.learningProgressPercent + "%"
-                                                color: "#6D28D9"
+                                                color: Style.Theme.acento_fuerte
                                                 font.pixelSize: 10
                                                 font.bold: true
                                             }
@@ -347,14 +347,14 @@ PagePrincipal {
                                             Layout.fillWidth: true
                                             Layout.preferredHeight: 6
                                             radius: 3
-                                            color: "#EDE9FE"
+                                            color: Style.Theme.acento_fondo
 
                                             Rectangle {
                                                 width: parent.width * Math.max(0, Math.min(100,
                                                        root.learningProgressPercent)) / 100
                                                 height: parent.height
                                                 radius: parent.radius
-                                                color: "#7C3AED"
+                                                color: Style.Theme.acento
 
                                                 Behavior on width {
                                                     NumberAnimation { duration: 180 }
@@ -383,12 +383,12 @@ PagePrincipal {
                                         background: Rectangle {
                                             radius: 8
                                             color: guidedButton.down
-                                                   ? "#5B21B6"
-                                                   : (guidedButton.hovered ? "#6D28D9" : "#7C3AED")
+                                                   ? Style.Theme.acento_fuerte
+                                                   : (guidedButton.hovered ? Style.Theme.acento_fuerte : Style.Theme.acento)
                                         }
                                         contentItem: Text {
                                             text: guidedButton.text
-                                            color: "white"
+                                            color: Style.Theme.texto_sobre_color
                                             font.pixelSize: 12
                                             font.bold: true
                                             horizontalAlignment: Text.AlignHCenter
@@ -417,13 +417,13 @@ PagePrincipal {
                                         background: Rectangle {
                                             radius: 8
                                             color: placeholderButton.down
-                                                   ? "#B45309"
+                                                   ? Style.Theme.aviso_texto
                                                    : (placeholderButton.hovered ? "#D97706" : "#F59E0B")
                                         }
 
                                         contentItem: Text {
                                             text: placeholderButton.text
-                                            color: "white"
+                                            color: Style.Theme.texto_sobre_color
                                             font.pixelSize: 12
                                             font.bold: true
                                             horizontalAlignment: Text.AlignHCenter
@@ -460,7 +460,7 @@ PagePrincipal {
                                                 radius: 7
                                                 color: trainingButton.down
                                                        ? Style.Theme.boton_presionado
-                                                       : (trainingButton.hovered ? "#EDE9FE" : Style.Theme.boton)
+                                                       : (trainingButton.hovered ? Style.Theme.acento_fondo : Style.Theme.boton)
                                                 border.width: 1
                                                 border.color: Style.Theme.borde_boton
                                             }
@@ -485,7 +485,7 @@ PagePrincipal {
                                                 radius: 7
                                                 color: libraryButton.down
                                                        ? Style.Theme.boton_presionado
-                                                       : (libraryButton.hovered ? "#EDE9FE" : Style.Theme.boton)
+                                                       : (libraryButton.hovered ? Style.Theme.acento_fondo : Style.Theme.boton)
                                                 border.width: 1
                                                 border.color: Style.Theme.borde_boton
                                             }
@@ -510,7 +510,7 @@ PagePrincipal {
                                                 radius: 7
                                                 color: comparisonButton.down
                                                        ? Style.Theme.boton_presionado
-                                                       : (comparisonButton.hovered ? "#EDE9FE" : Style.Theme.boton)
+                                                       : (comparisonButton.hovered ? Style.Theme.acento_fondo : Style.Theme.boton)
                                                 border.width: 1
                                                 border.color: Style.Theme.borde_boton
                                             }
@@ -527,7 +527,7 @@ PagePrincipal {
                                             Layout.preferredWidth: 7
                                             Layout.preferredHeight: 7
                                             radius: 4
-                                            color: "#CBD5E1"
+                                            color: Style.Theme.borde_suave
                                         }
 
                                         Text {
@@ -625,7 +625,7 @@ PagePrincipal {
                         property bool stageAvailable: true
                         property string stageRoute: "GuidedLearningScreen.qml"
                         property string kind: "guided"
-                        property string accentColor: "#7C3AED"
+                        property string accentColor: Style.Theme.acento
                         property string note: "Punto de inicio disponible ahora."
                         property bool stagePlaceholder: false
                         property string testButtonName: ""
@@ -720,12 +720,12 @@ PagePrincipal {
                         Layout.preferredWidth: 38
                         Layout.preferredHeight: 38
                         radius: 10
-                        color: "#F3E8FF"
+                        color: Style.Theme.acento_fondo
 
                         Text {
                             anchors.centerIn: parent
                             text: "{ }"
-                            color: "#7C3AED"
+                            color: Style.Theme.acento
                             font.pixelSize: 13
                             font.bold: true
                         }
@@ -768,7 +768,7 @@ PagePrincipal {
                             radius: 8
                             color: datasetButton.down
                                    ? Style.Theme.boton_presionado
-                                   : (datasetButton.hovered ? "#EDE9FE" : Style.Theme.boton)
+                                   : (datasetButton.hovered ? Style.Theme.acento_fondo : Style.Theme.boton)
                             border.width: 1
                             border.color: Style.Theme.borde_boton
                         }

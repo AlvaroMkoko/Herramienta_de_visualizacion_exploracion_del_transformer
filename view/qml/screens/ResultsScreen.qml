@@ -137,7 +137,7 @@ PagePrincipal {
         anchors.topMargin: 4 * sy
         visible: root.fueCancelado
         text: "Se detuvo antes de terminar todas las épocas. El modelo se puede guardar igual."
-        color: "#E8A33D"
+        color: Style.Theme.aviso_texto
         font.pixelSize: 12 * sx
     }
 
@@ -231,7 +231,7 @@ PagePrincipal {
                 }
                 Text {
                     text: (root.mejoraPorcentual >= 0 ? "▼ " : "▲ ") + Math.abs(root.mejoraPorcentual) + "%"
-                    color: root.mejoraPorcentual >= 0 ? "#4CAF50" : "#E05252"
+                    color: root.mejoraPorcentual >= 0 ? Style.Theme.exito_texto : Style.Theme.error_texto
                     font.pixelSize: 13 * root.sx
                     font.bold: true
                 }
@@ -290,7 +290,7 @@ PagePrincipal {
                     text: "La pérdida no bajó durante el entrenamiento. Suele deberse a un "
                         + "learning rate demasiado alto o demasiado bajo, o a muy pocas épocas "
                         + "para el tamaño del dataset."
-                    color: "#E8A33D"
+                    color: Style.Theme.aviso_texto
                     font.pixelSize: 11 * root.sx
                 }
                 ConceptHelpButton {
@@ -353,7 +353,7 @@ PagePrincipal {
                         ctx.stroke()
                     }
 
-                    ctx.strokeStyle = "#6A63E8"
+                    ctx.strokeStyle = Style.Theme.acento
                     ctx.lineWidth = 2
                     ctx.beginPath()
                     for (var i = 0; i < datos.length; ++i) {
@@ -470,7 +470,7 @@ PagePrincipal {
                         text: "«Portable» guarda solo el modelo, listo para inferencia. "
                             + "«Reanudar» incluye además el estado del optimizador para "
                             + "seguir entrenando después."
-                        color: "#9A9AB0"
+                        color: Style.Theme.texto_terciario
                         font.pixelSize: 10 * root.sx
                     }
                     ConceptHelpButton {
@@ -490,7 +490,7 @@ PagePrincipal {
                     visible: root.mensajeGuardado !== ""
                     wrapMode: Text.WordWrap
                     text: root.mensajeGuardado
-                    color: "#4CAF50"
+                    color: Style.Theme.exito_texto
                     font.pixelSize: 11 * root.sx
                 }
 
@@ -499,7 +499,7 @@ PagePrincipal {
                     visible: root.mensajeError !== ""
                     wrapMode: Text.WordWrap
                     text: root.mensajeError
-                    color: "#E05252"
+                    color: Style.Theme.error_texto
                     font.pixelSize: 11 * root.sx
                 }
             }
@@ -540,7 +540,7 @@ PagePrincipal {
                     wrapMode: Text.WordWrap
                     text: "Genera texto con el modelo recién entrenado. No hace falta "
                         + "guardarlo antes: sigue cargado en memoria."
-                    color: "#9A9AB0"
+                    color: Style.Theme.texto_terciario
                     font.pixelSize: 10 * root.sx
                 }
             }

@@ -236,7 +236,7 @@ PagePrincipal {
             Rectangle {
                 Layout.preferredWidth: 1
                 Layout.fillHeight: true
-                color: "#E5E7EB"
+                color: Style.Theme.divisor
             }
 
             ListView {
@@ -368,15 +368,15 @@ PagePrincipal {
                             implicitWidth: 22 * root.sx
                             implicitHeight: 22 * root.sy
                             radius: 5 * root.sx
-                            color: check.checked ? "#6A63E8" : "white"
+                            color: check.checked ? Style.Theme.acento : Style.Theme.surface
                             border.width: 1.5
-                            border.color: "#6A63E8"
+                            border.color: Style.Theme.acento
 
                             Text {
                                 anchors.centerIn: parent
                                 text: "\u2713"
                                 visible: check.checked
-                                color: "white"
+                                color: Style.Theme.texto_sobre_color
                                 font.pixelSize: 13 * Math.min(root.sx, root.sy)
                                 font.bold: true
                             }
@@ -411,14 +411,14 @@ PagePrincipal {
                         Layout.preferredWidth: etiquetaFormato.implicitWidth + 18 * root.sx
                         Layout.preferredHeight: 25 * root.sy
                         radius: height / 2
-                        color: "#F3F4F6"
-                        border.color: "#D1D5DB"
+                        color: Style.Theme.chip_fondo
+                        border.color: Style.Theme.borde_suave
 
                         Text {
                             id: etiquetaFormato
                             anchors.centerIn: parent
                             text: String(formato).toUpperCase()
-                            color: "#4B5563"
+                            color: Style.Theme.chip_texto
                             font.bold: true
                             font.pixelSize: 11 * Math.min(root.sx, root.sy)
                         }
@@ -446,7 +446,7 @@ PagePrincipal {
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 1
-                    color: "#E5E7EB"
+                    color: Style.Theme.divisor
                 }
 
                 RowLayout {
@@ -507,13 +507,13 @@ PagePrincipal {
                         Layout.preferredWidth: textoEstado.implicitWidth + 18 * root.sx
                         Layout.preferredHeight: 24 * root.sy
                         radius: height / 2
-                        color: "#DCFCE7"
+                        color: Style.Theme.exito_fondo
 
                         Text {
                             id: textoEstado
                             anchors.centerIn: parent
                             text: estado
-                            color: "#166534"
+                            color: Style.Theme.exito_texto
                             font.bold: true
                             font.pixelSize: 10 * Math.min(root.sx, root.sy)
                         }
@@ -587,7 +587,7 @@ PagePrincipal {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 1
-                color: "#E5E7EB"
+                color: Style.Theme.divisor
             }
 
             Text {

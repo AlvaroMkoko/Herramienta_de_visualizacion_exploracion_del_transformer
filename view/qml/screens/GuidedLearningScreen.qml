@@ -336,7 +336,7 @@ PagePrincipal {
             Layout.fillWidth: true
             Layout.preferredHeight: 88 * root.uiScale
             radius: 14 * root.uiScale
-            color: "#FFFFFF"
+            color: Style.Theme.surface
             border.color: "#D8D2EC"
 
             RowLayout {
@@ -478,7 +478,7 @@ PagePrincipal {
                 Layout.preferredWidth: 242 * root.uiScale
                 Layout.fillHeight: true
                 radius: 14 * root.uiScale
-                color: "#FFFFFF"
+                color: Style.Theme.surface
                 border.color: "#D8D2EC"
 
                 ColumnLayout {
@@ -527,7 +527,7 @@ PagePrincipal {
                                 radius: 10 * root.uiScale
                                 color: root.currentUnitIndex === unitDelegate.index
                                        ? "#F0ECFA"
-                                       : unitDelegate.hovered ? "#F8F6FC" : "#FFFFFF"
+                                       : unitDelegate.hovered ? "#F8F6FC" : Style.Theme.surface
                                 border.width: root.currentUnitIndex === unitDelegate.index ? 2 : 1
                                 border.color: root.currentUnitIndex === unitDelegate.index
                                               ? "#7968CA" : "#E0DCEB"
@@ -617,7 +617,7 @@ PagePrincipal {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 82 * root.uiScale
                     radius: 12 * root.uiScale
-                    color: "#FFFFFF"
+                    color: Style.Theme.surface
                     border.color: "#D8D2EC"
 
                     ColumnLayout {
@@ -667,7 +667,7 @@ PagePrincipal {
                                     background: Rectangle {
                                         radius: 8 * root.uiScale
                                         color: root.currentConceptIndex === conceptDelegate.index
-                                               ? "#EDE8FA" : conceptDelegate.hovered ? "#F7F5FC" : "#F3F4F6"
+                                               ? "#EDE8FA" : conceptDelegate.hovered ? "#F7F5FC" : Style.Theme.chip_fondo
                                         border.color: root.currentConceptIndex === conceptDelegate.index
                                                       ? "#7968CA" : "transparent"
                                     }
