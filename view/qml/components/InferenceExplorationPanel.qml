@@ -17,11 +17,13 @@ Item {
     property real sy: 1
 
     property int stageIndex: 0
+    property int operationIndex: 0
     property int branchIndex: 0 // 0 encoder · 1 decoder causal · 2 cross-attention
     property int layerIndex: Math.max(0, Number(metadata.num_layers || 1) - 1)
     property int headIndex: 0
     property bool residualUsesFfn: false
     property bool reducedMotion: false
+    property bool sequencePlaying: false
 
     readonly property var currentSnapshot: selectedIndex >= 0 && selectedIndex < snapshots.length
                                                    ? snapshots[selectedIndex] : null
@@ -81,6 +83,16 @@ Item {
                 ? (globalData.proyeccion_posicional_encoder || ({}))
                 : (globalData.proyeccion_posicional_decoder || ({}))
     }
+    readonly property var currentEmbeddingTensor: {
+        if (!detailAvailable)
+            return ({})
+        return branchIndex === 0
+                ? (globalData.embedding_encoder_escalado || ({}))
+                : (globalData.embedding_decoder_escalado || ({}))
+    }
+    readonly property var currentHiddenTensor: detailAvailable
+                                                   ? (globalData.salida_decoder || ({}))
+                                                   : ({})
     readonly property var currentTrajectory: {
         if (!detailAvailable || !detailForward.trayectorias)
             return ({})
@@ -168,7 +180,15 @@ Item {
             caveat: "Las barras muestran el top capturado; «resto» completa la masa de probabilidad hasta 1."
         }
     ]
-    readonly property var stage: stages[stageIndex]
+    readonly property var flowSteps: flowModel.steps
+    readonly property var operation: flowSteps.length
+                                             ? flowSteps[Math.max(0, Math.min(flowSteps.length - 1,
+                                                                              operationIndex))]
+                                             : ({})
+    readonly property bool operationDataAvailable: detailAvailable
+                                                       || !Boolean(operation.requiresDetail)
+    readonly property var stage: stages[Math.max(0, Math.min(stages.length - 1,
+                                                             stageIndex))]
 
     signal closeRequested()
     signal stepSelected(int index)
@@ -183,14 +203,125 @@ Item {
     }
 
     function setStage(index) {
-        stageIndex = Math.max(0, Math.min(stages.length - 1, index))
-        if (stageIndex === 0 || stageIndex === 3 || stageIndex === 5)
-            branchIndex = Math.min(branchIndex, 1)
+        var bounded = Math.max(0, Math.min(stages.length - 1, index))
+        for (var preferred = 0; preferred < flowSteps.length; ++preferred) {
+            if (Number(flowSteps[preferred].stageIndex) === bounded
+                    && Number(flowSteps[preferred].branchIndex) === branchIndex) {
+                selectOperation(preferred)
+                return
+            }
+        }
+        for (var fallback = 0; fallback < flowSteps.length; ++fallback) {
+            if (Number(flowSteps[fallback].stageIndex) === bounded) {
+                selectOperation(fallback)
+                return
+            }
+        }
     }
 
     function setBranch(index) {
-        branchIndex = index
+        var bounded = Math.max(0, Math.min(2, index))
+        var kind = operationKind(operation.id || "")
+        for (var candidate = 0; candidate < flowSteps.length; ++candidate) {
+            if (Number(flowSteps[candidate].branchIndex) === bounded
+                    && operationKind(flowSteps[candidate].id) === kind) {
+                selectOperation(candidate)
+                return
+            }
+        }
+        for (var first = 0; first < flowSteps.length; ++first) {
+            if (Number(flowSteps[first].branchIndex) === bounded) {
+                selectOperation(first)
+                return
+            }
+        }
+        branchIndex = bounded
         clampSelections()
+    }
+
+    function operationKind(operationId) {
+        var value = String(operationId || "")
+        if (value.indexOf("addnorm_ffn") !== -1)
+            return "addnorm_ffn"
+        if (value.indexOf("addnorm") !== -1)
+            return "addnorm_attention"
+        var kinds = ["embedding", "position", "qkv", "scores", "mask",
+                     "softmax", "weighted", "multihead", "ffn", "layers"]
+        for (var index = 0; index < kinds.length; ++index) {
+            if (value.indexOf(kinds[index]) !== -1)
+                return kinds[index]
+        }
+        return value
+    }
+
+    function synchronizeOperation() {
+        if (!flowSteps.length)
+            return
+        var selectedOperation = flowSteps[Math.max(
+            0, Math.min(flowSteps.length - 1, operationIndex))]
+        if (!selectedOperation || selectedOperation.id === undefined)
+            return
+        stageIndex = Number(selectedOperation.stageIndex || 0)
+        branchIndex = Number(selectedOperation.branchIndex || 0)
+        residualUsesFfn = Boolean(selectedOperation.residualUsesFfn)
+        clampSelections()
+        timelinePositionTimer.restart()
+    }
+
+    function setOperation(index) {
+        var bounded = Math.max(0, Math.min(flowSteps.length - 1, index))
+        if (operationIndex === bounded)
+            synchronizeOperation()
+        else
+            operationIndex = bounded
+    }
+
+    function selectOperation(index) {
+        sequencePlaying = false
+        setOperation(index)
+    }
+
+    function previousOperation() {
+        selectOperation(operationIndex - 1)
+    }
+
+    function nextOperation() {
+        selectOperation(operationIndex + 1)
+    }
+
+    function toggleResidualStep() {
+        var wantedFfn = !residualUsesFfn
+        for (var index = 0; index < flowSteps.length; ++index) {
+            var candidate = flowSteps[index]
+            if (Number(candidate.branchIndex) === branchIndex
+                    && Number(candidate.stageIndex) === 4
+                    && Boolean(candidate.residualUsesFfn) === wantedFfn) {
+                selectOperation(index)
+                return
+            }
+        }
+    }
+
+    function sectionLabel(section) {
+        if (section === "encoder")
+            return "ENCODER"
+        if (section === "decoder")
+            return "DECODER"
+        return "SALIDA"
+    }
+
+    function sectionProgress() {
+        var section = operation.section || ""
+        var current = 0
+        var total = 0
+        for (var index = 0; index < flowSteps.length; ++index) {
+            if (flowSteps[index].section === section) {
+                total += 1
+                if (index <= operationIndex)
+                    current += 1
+            }
+        }
+        return current + "/" + total
     }
 
     function branchLabel() {
@@ -226,7 +357,90 @@ Item {
                 + Number(currentSnapshot.validacion ? currentSnapshot.validacion.suma_probabilidades : 0).toFixed(4)
     }
 
+    function operationEvidenceText() {
+        if (Boolean(operation.requiresDetail) && !detailAvailable)
+            return "Selecciona el token mas reciente para recuperar su captura tensorial."
+        var operationId = String(operation.id || "")
+        if (operationId.indexOf("embedding") !== -1)
+            return (currentEmbeddingTensor.shape || "-") + " \u00b7 d_model "
+                    + Number(metadata.d_model || 0) + " \u00b7 valores reales"
+        if (operationId.indexOf("position") !== -1)
+            return "d_model " + Number(metadata.d_model || 0)
+                    + " \u00b7 varianza PCA "
+                    + (Number(currentProjection.varianza_conservada || 0) * 100).toFixed(1) + "%"
+        if (operationId.indexOf("qkv") !== -1)
+            return "Q " + (currentAttention.shape_q || "-") + " \u00b7 K "
+                    + (currentAttention.shape_k || "-") + " \u00b7 V "
+                    + (currentAttention.shape_v || "-")
+        if (operationId.indexOf("scores") !== -1)
+            return branchLabel() + " \u00b7 capa " + (layerIndex + 1)
+                    + " \u00b7 captura " + (currentAttention.displayed_shape || "-")
+        if (operationId.indexOf("mask") !== -1 && operationId.indexOf("addnorm") === -1)
+            return "Bloqueado " + Number((currentAttention.validacion || {}).porcentaje_bloqueado || 0).toFixed(1)
+                    + "% \u00b7 peso maximo prohibido "
+                    + Number((currentAttention.validacion || {}).maximo_peso_enmascarado || 0).toExponential(2)
+        if (operationId.indexOf("softmax") !== -1 && operationId !== "output_softmax")
+            return branchLabel() + " \u00b7 H" + String(headIndex + 1).padStart(2, "0")
+                    + " \u00b7 error maximo \u03a3A "
+                    + Number((currentAttention.validacion || {}).error_max_suma || 0).toExponential(2)
+        if (operationId.indexOf("weighted") !== -1)
+            return branchLabel() + " \u00b7 "
+                    + ((currentAttention.contribuciones || []).length) + " cabezas capturadas"
+        if (stageIndex === 2)
+            return Number(metadata.num_heads || 0) + " cabezas \u00d7 "
+                    + Number(metadata.d_head || 0) + " dims = d_model "
+                    + Number(metadata.d_model || 0)
+        if (stageIndex === 3)
+            return (currentFfn.shape_entrada || "-") + " \u2192 "
+                    + (currentFfn.shape_oculta || "-") + " \u2192 "
+                    + (currentFfn.shape_salida || "-")
+        if (stageIndex === 4)
+            return (residualUsesFfn ? "Residual FFN" : "Residual atencion")
+                    + " \u00b7 capa " + (layerIndex + 1) + " \u00b7 post-norm"
+        if (stageIndex === 5)
+            return "PCA conjunto \u00b7 " + ((currentTrajectory.capas || []).length) + " pisos"
+        if (operationId === "linear_logits") {
+            var linearData = detailForward.logits_lineales || detailForward.logits || ({})
+            return (linearData.shape || "-") + " \u00b7 " + (linearData.dtype || "-")
+                    + " \u00b7 finitos " + Boolean(linearData.sin_nan && linearData.sin_inf)
+        }
+        if (!currentSnapshot)
+            return "Genera al menos un token para iniciar la carrera."
+        return snapshots.length + " contextos \u00b7 \u03a3p = "
+                + Number(currentSnapshot.validacion ? currentSnapshot.validacion.suma_probabilidades : 0).toFixed(4)
+    }
+
     onMetadataChanged: clampSelections()
+    onOperationIndexChanged: synchronizeOperation()
+
+    InferenceFlowSteps {
+        id: flowModel
+    }
+
+    Timer {
+        id: sequenceTimer
+        running: root.sequencePlaying
+        repeat: false
+        interval: Math.max(1200, Number(root.operation.duration || 4200))
+        onTriggered: {
+            if (root.operationIndex >= root.flowSteps.length - 1) {
+                root.sequencePlaying = false
+                return
+            }
+            root.setOperation(root.operationIndex + 1)
+            restart()
+        }
+    }
+
+    Timer {
+        id: timelinePositionTimer
+        interval: 0
+        repeat: false
+        onTriggered: operationTimeline.positionViewAtIndex(root.operationIndex,
+                                                           ListView.Contain)
+    }
+
+    Component.onCompleted: synchronizeOperation()
 
     Rectangle {
         anchors.fill: parent
@@ -281,13 +495,13 @@ Item {
                     Layout.preferredWidth: dataChipText.implicitWidth + 24 * root.sx
                     Layout.preferredHeight: 32 * root.sy
                     radius: height / 2
-                    color: root.detailAvailable || root.stageIndex === 6 ? "#DCFCE7" : "#FEF3C7"
-                    border.color: root.detailAvailable || root.stageIndex === 6 ? "#86EFAC" : "#FCD34D"
+                    color: root.operationDataAvailable ? "#DCFCE7" : "#FEF3C7"
+                    border.color: root.operationDataAvailable ? "#86EFAC" : "#FCD34D"
                     Text {
                         id: dataChipText
                         anchors.centerIn: parent
-                        text: root.detailAvailable || root.stageIndex === 6 ? "● Datos reales" : "Captura no disponible"
-                        color: root.detailAvailable || root.stageIndex === 6 ? "#166534" : "#92400E"
+                        text: root.operationDataAvailable ? "● Datos reales" : "Captura no disponible"
+                        color: root.operationDataAvailable ? "#166534" : "#92400E"
                         font.bold: true
                         font.pixelSize: 10 * Math.min(root.sx, root.sy)
                     }
@@ -455,13 +669,13 @@ Item {
                     }
 
                     ActionPill {
-                        visible: root.stageIndex === 4
+                        visible: root.stageIndex === 4 && root.branchIndex < 2
                         Layout.preferredWidth: 132 * root.sx
                         Layout.preferredHeight: 32 * root.sy
                         label: root.residualUsesFfn ? "Subcapa: FFN" : "Subcapa: atención"
                         selected: root.residualUsesFfn
                         accent: root.stage.accent
-                        onClicked: root.residualUsesFfn = !root.residualUsesFfn
+                        onClicked: root.toggleResidualStep()
                     }
                 }
             }
@@ -484,12 +698,33 @@ Item {
                     StackLayout {
                         anchors.fill: parent
                         anchors.margins: 12 * root.sx
-                        currentIndex: root.stageIndex
+                        currentIndex: Number(root.operation.visualIndex || 0)
+
+                        TokenEmbeddingScene {
+                            tensorData: root.currentEmbeddingTensor
+                            tokens: root.currentTokens
+                            active: Number(root.operation.visualIndex) === 0 && root.detailAvailable
+                            reducedMotion: root.reducedMotion
+                            sx: root.sx
+                            sy: root.sy
+                        }
 
                         EmbeddingPositionScene {
                             projection: root.currentProjection
                             tokens: root.currentTokens
-                            active: root.stageIndex === 0 && root.detailAvailable
+                            active: Number(root.operation.visualIndex) === 1 && root.detailAvailable
+                            reducedMotion: root.reducedMotion
+                            sx: root.sx
+                            sy: root.sy
+                        }
+                        AttentionComputationScene {
+                            attentionData: root.currentAttention
+                            causalMaskData: root.globalData.mascara_causal || ({})
+                            phase: String(root.operation.phase || "qkv")
+                            branchIndex: root.branchIndex
+                            headIndex: root.headIndex
+                            layerIndex: root.layerIndex
+                            active: Number(root.operation.visualIndex) === 2 && root.detailAvailable
                             reducedMotion: root.reducedMotion
                             sx: root.sx
                             sy: root.sy
@@ -500,7 +735,7 @@ Item {
                             keyTokens: root.keyTokens
                             crossAttention: root.branchIndex === 2
                             headIndex: root.headIndex
-                            active: root.stageIndex === 1 && root.detailAvailable
+                            active: Number(root.operation.visualIndex) === 3 && root.detailAvailable
                             reducedMotion: root.reducedMotion
                             sx: root.sx
                             sy: root.sy
@@ -509,7 +744,7 @@ Item {
                         MultiHeadSplitScene {
                             metadata: root.metadata
                             attentionData: root.currentAttention
-                            active: root.stageIndex === 2 && root.detailAvailable
+                            active: Number(root.operation.visualIndex) === 4 && root.detailAvailable
                             reducedMotion: root.reducedMotion
                             sx: root.sx
                             sy: root.sy
@@ -517,14 +752,14 @@ Item {
                         FeedForwardExpansionScene {
                             sceneData: root.currentFfn
                             tokens: root.currentTokens
-                            active: root.stageIndex === 3 && root.detailAvailable
+                            active: Number(root.operation.visualIndex) === 5 && root.detailAvailable
                             reducedMotion: root.reducedMotion
                             sx: root.sx
                             sy: root.sy
                         }
                         ResidualLayerNormScene {
                             sceneData: root.currentResidual
-                            active: root.stageIndex === 4 && root.detailAvailable
+                            active: Number(root.operation.visualIndex) === 6 && root.detailAvailable
                             reducedMotion: root.reducedMotion
                             sublayerLabel: root.residualUsesFfn ? "FFN" : "Atención"
                             sx: root.sx
@@ -533,14 +768,26 @@ Item {
                         LayerSkyscraperScene {
                             trajectory: root.currentTrajectory
                             tokens: root.currentTokens
-                            active: root.stageIndex === 5 && root.detailAvailable
+                            active: Number(root.operation.visualIndex) === 7 && root.detailAvailable
+                            sx: root.sx
+                            sy: root.sy
+                        }
+                        OutputProjectionScene {
+                            snapshot: root.currentSnapshot
+                            logitsData: root.detailAvailable
+                                        ? (root.detailForward.logits_lineales
+                                           || root.detailForward.logits || ({}))
+                                        : ({})
+                            hiddenData: root.currentHiddenTensor
+                            active: Number(root.operation.visualIndex) === 8 && root.detailAvailable
+                            reducedMotion: root.reducedMotion
                             sx: root.sx
                             sy: root.sy
                         }
                         SoftmaxRaceScene {
                             snapshots: root.snapshots
                             initialStep: root.selectedIndex
-                            active: root.stageIndex === 6
+                            active: Number(root.operation.visualIndex) === 9
                             reducedMotion: root.reducedMotion
                             sx: root.sx
                             sy: root.sy
@@ -551,7 +798,7 @@ Item {
                     Rectangle {
                         anchors.fill: parent
                         anchors.margins: 12 * root.sx
-                        visible: root.stageIndex < 6 && !root.detailAvailable
+                        visible: Boolean(root.operation.requiresDetail) && !root.detailAvailable
                         radius: 12 * root.sx
                         color: "#F8FAFC"
                         border.color: "#F59E0B"
@@ -608,6 +855,7 @@ Item {
                             stageIndex: root.stageIndex
                             branchIndex: root.branchIndex
                             residualUsesFfn: root.residualUsesFfn
+                            operationId: String(root.operation.id || "")
                             accent: root.stage.accent
                             reducedMotion: root.reducedMotion
                             sx: root.sx
@@ -627,7 +875,9 @@ Item {
 
                             Text {
                                 Layout.fillWidth: true
-                                text: root.stage.eyebrow
+                                text: root.sectionLabel(root.operation.section)
+                                      + " · PASO " + (root.operationIndex + 1)
+                                      + " DE " + root.flowSteps.length
                                 color: root.stage.accent
                                 font.bold: true
                                 font.letterSpacing: 0.7
@@ -635,7 +885,7 @@ Item {
                             }
                             Text {
                                 Layout.fillWidth: true
-                                text: root.stage.title
+                                text: root.operation.title || root.stage.title
                                 color: "#0F172A"
                                 font.bold: true
                                 wrapMode: Text.WordWrap
@@ -643,7 +893,7 @@ Item {
                             }
                             Text {
                                 Layout.fillWidth: true
-                                text: root.stage.concept
+                                text: "QUÉ OCURRE\n" + (root.operation.operation || root.stage.concept)
                                 color: "#334155"
                                 wrapMode: Text.WordWrap
                                 lineHeight: 1.22
@@ -655,30 +905,45 @@ Item {
                                 text: "ⓘ  Abrir explicación completa"
                                 font.bold: true
                                 font.pixelSize: Math.max(12, 12 * root.sx)
-                                onClicked: root.theoryRequested(root.stage.conceptId)
+                                onClicked: root.theoryRequested(root.operation.conceptId || root.stage.conceptId)
                                 ToolTip.visible: hovered
                                 ToolTip.text: "Leer este concepto en una ventana amplia"
-                                Accessible.name: "Abrir explicación completa de " + root.stage.title
+                                Accessible.name: "Abrir explicación completa de "
+                                                 + (root.operation.title || root.stage.title)
                             }
                             InfoCard {
                                 Layout.fillWidth: true
-                                eyebrow: "OPERACIÓN"
-                                body: root.stage.formula
+                                eyebrow: "FÓRMULA DE ESTA OPERACIÓN"
+                                body: root.operation.formula || root.stage.formula
                                 accent: root.stage.accent
                                 monospace: true
                                 sx: root.sx
                             }
                             InfoCard {
                                 Layout.fillWidth: true
-                                eyebrow: "PRUEBA A HACER"
-                                body: root.stage.hint
+                                eyebrow: "QUÉ REPRESENTA LA ANIMACIÓN"
+                                body: root.operation.visualMeaning || root.stage.hint
                                 accent: "#0284C7"
                                 sx: root.sx
                             }
                             InfoCard {
                                 Layout.fillWidth: true
+                                eyebrow: "POR QUÉ SE NECESITA"
+                                body: root.operation.purpose || "—"
+                                accent: "#7C3AED"
+                                sx: root.sx
+                            }
+                            InfoCard {
+                                Layout.fillWidth: true
+                                eyebrow: "CÓMO SE USA EN EL SIGUIENTE PASO"
+                                body: root.operation.nextStep || "—"
+                                accent: "#D97706"
+                                sx: root.sx
+                            }
+                            InfoCard {
+                                Layout.fillWidth: true
                                 eyebrow: "DATOS DE ESTA CAPTURA"
-                                body: root.evidenceText()
+                                body: root.operationEvidenceText()
                                 accent: "#059669"
                                 sx: root.sx
                             }
@@ -694,7 +959,7 @@ Item {
                                     anchors.right: parent.right
                                     anchors.top: parent.top
                                     anchors.margins: 11 * root.sx
-                                    text: "⚠  " + root.stage.caveat
+                                    text: "⚠  " + (root.operation.caveat || root.stage.caveat)
                                     color: "#9A3412"
                                     wrapMode: Text.WordWrap
                                     lineHeight: 1.18
@@ -709,7 +974,7 @@ Item {
 
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 74 * root.sy
+                Layout.preferredHeight: 96 * root.sy
                 radius: 12 * root.sx
                 color: "#FFFFFF"
                 border.color: "#D8E0EA"
@@ -717,56 +982,140 @@ Item {
                 RowLayout {
                     anchors.fill: parent
                     anchors.margins: 7 * root.sx
-                    spacing: 6 * root.sx
+                    spacing: 8 * root.sx
 
-                    Repeater {
-                        model: root.stages
-                        delegate: Rectangle {
-                            id: stageButton
-                            required property var modelData
-                            required property int index
-                            objectName: "inferenceSceneButton" + index
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            radius: 9 * root.sx
-                            color: root.stageIndex === index ? modelData.accent : "#F8FAFC"
-                            border.color: root.stageIndex === index ? modelData.accent : "#D8E0EA"
-                            border.width: root.stageIndex === index ? 2 : 1
+                    ActionPill {
+                        Layout.preferredWidth: 96 * root.sx
+                        Layout.preferredHeight: 38 * root.sy
+                        label: "\u2190 Anterior"
+                        enabled: root.operationIndex > 0
+                        accent: root.stage.accent
+                        onClicked: root.previousOperation()
+                    }
 
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.margins: 7 * root.sx
-                                spacing: 7 * root.sx
-                                Rectangle {
-                                    Layout.preferredWidth: 26 * root.sx
-                                    Layout.preferredHeight: 26 * root.sy
-                                    radius: height / 2
-                                    color: root.stageIndex === stageButton.index ? "#33FFFFFF" : stageButton.modelData.accent
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: stageButton.index + 1
-                                        color: "white"
-                                        font.bold: true
-                                        font.pixelSize: 10 * root.sx
-                                    }
-                                }
-                                Text {
-                                    Layout.fillWidth: true
-                                    text: stageButton.modelData.short
-                                    color: root.stageIndex === stageButton.index ? "white" : "#334155"
-                                    font.bold: root.stageIndex === stageButton.index
-                                    wrapMode: Text.WordWrap
-                                    maximumLineCount: 2
-                                    elide: Text.ElideRight
-                                    font.pixelSize: 9 * root.sx
-                                }
+                    ActionPill {
+                        Layout.preferredWidth: 126 * root.sx
+                        Layout.preferredHeight: 38 * root.sy
+                        label: root.sequencePlaying ? "\u23f8 Pausar" : "\u25b6 Recorrido"
+                        selected: root.sequencePlaying
+                        accent: "#4F46E5"
+                        onClicked: {
+                            if (root.sequencePlaying) {
+                                root.sequencePlaying = false
+                                return
                             }
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: root.setStage(stageButton.index)
+                            if (root.operationIndex >= root.flowSteps.length - 1)
+                                root.setOperation(0)
+                            root.sequencePlaying = true
+                            sequenceTimer.restart()
+                        }
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        spacing: 3 * root.sy
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 19 * root.sy
+                            Text {
+                                text: root.sectionLabel(root.operation.section)
+                                      + "  " + root.sectionProgress()
+                                color: root.stage.accent
+                                font.bold: true
+                                font.pixelSize: 9 * root.sx
+                            }
+                            Text {
+                                Layout.fillWidth: true
+                                text: "Recorrido real: encoder \u2192 decoder causal \u2192 atencion cruzada \u2192 salida"
+                                color: "#64748B"
+                                horizontalAlignment: Text.AlignHCenter
+                                elide: Text.ElideRight
+                                font.pixelSize: 8.5 * root.sx
+                            }
+                            Text {
+                                text: (root.operationIndex + 1) + "/" + root.flowSteps.length
+                                color: "#334155"
+                                font.bold: true
+                                font.pixelSize: 9 * root.sx
                             }
                         }
+
+                        ListView {
+                            id: operationTimeline
+                            objectName: "inferenceOperationTimeline"
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            orientation: ListView.Horizontal
+                            spacing: 5 * root.sx
+                            clip: true
+                            currentIndex: root.operationIndex
+                            boundsBehavior: Flickable.StopAtBounds
+                            model: root.flowSteps
+
+                            delegate: Rectangle {
+                                id: operationButton
+                                required property var modelData
+                                required property int index
+                                readonly property color stepAccent: root.stages[Number(modelData.stageIndex)].accent
+                                objectName: "inferenceOperationButton" + index
+                                width: Math.max(124 * root.sx, operationLabel.implicitWidth + 44 * root.sx)
+                                height: ListView.view.height
+                                radius: 8 * root.sx
+                                color: root.operationIndex === index ? stepAccent : "#F8FAFC"
+                                border.color: root.operationIndex === index ? stepAccent : "#CBD5E1"
+                                border.width: root.operationIndex === index ? 2 : 1
+
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.margins: 6 * root.sx
+                                    spacing: 6 * root.sx
+                                    Rectangle {
+                                        Layout.preferredWidth: 24 * root.sx
+                                        Layout.preferredHeight: 24 * root.sy
+                                        radius: height / 2
+                                        color: root.operationIndex === operationButton.index
+                                               ? "#33FFFFFF" : operationButton.stepAccent
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: operationButton.index + 1
+                                            color: "white"
+                                            font.bold: true
+                                            font.pixelSize: 8 * root.sx
+                                        }
+                                    }
+                                    Text {
+                                        id: operationLabel
+                                        Layout.fillWidth: true
+                                        text: operationButton.modelData.short
+                                        color: root.operationIndex === operationButton.index
+                                               ? "white" : "#334155"
+                                        font.bold: root.operationIndex === operationButton.index
+                                        elide: Text.ElideRight
+                                        font.pixelSize: 8.5 * root.sx
+                                    }
+                                }
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: root.selectOperation(operationButton.index)
+                                }
+                            }
+
+                            ScrollBar.horizontal: ScrollBar {
+                                policy: ScrollBar.AsNeeded
+                            }
+                        }
+                    }
+
+                    ActionPill {
+                        Layout.preferredWidth: 96 * root.sx
+                        Layout.preferredHeight: 38 * root.sy
+                        label: "Siguiente \u2192"
+                        enabled: root.operationIndex < root.flowSteps.length - 1
+                        accent: root.stage.accent
+                        onClicked: root.nextOperation()
                     }
                 }
             }

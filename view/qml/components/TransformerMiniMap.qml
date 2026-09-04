@@ -8,6 +8,7 @@ Item {
     property int stageIndex: 0
     property int branchIndex: 0
     property bool residualUsesFfn: false
+    property string operationId: ""
     property color accent: "#4F46E5"
     property bool reducedMotion: false
     property real sx: 1
@@ -16,8 +17,20 @@ Item {
     // Esta propiedad documenta la intención del componente y permite
     // comprobarla desde las pruebas. El minimapa no contiene MouseArea.
     readonly property bool interactive: false
-    readonly property var activeBlockIds: componentsForCurrentStage()
-    readonly property string activeRegion: locationForCurrentStage()
+    readonly property string normalizedOperationId: normalizeOperationId(operationId)
+    readonly property var semanticBlockIds: componentsForOperation(normalizedOperationId)
+    readonly property bool hasSemanticOperation: semanticBlockIds.length > 0
+    readonly property var activeBlockIds: hasSemanticOperation
+                                                  ? semanticBlockIds
+                                                  : componentsForCurrentStage()
+    readonly property string activeRegion: hasSemanticOperation
+                                                   ? locationForOperation(normalizedOperationId)
+                                                   : locationForCurrentStage()
+    readonly property bool crossOperationActive: hasSemanticOperation
+                                                         ? (normalizedOperationId.indexOf("cross") !== -1
+                                                            || normalizedOperationId.indexOf("cruzada") !== -1)
+                                                         : ((stageIndex === 1 || stageIndex === 2)
+                                                            && branchIndex === 2)
 
     readonly property var encoderBlocks: [
         { ids: ["encoder_add_norm_ffn"], title: "Add & Norm · FFN", color: "#7664DD" },
@@ -39,6 +52,192 @@ Item {
     ]
 
     implicitHeight: 272 * sy
+
+    function normalizeOperationId(value) {
+        return String(value || "").trim().toLowerCase()
+                .replace(/[\s-]+/g, "_")
+    }
+
+    function containsOperationPart(operation, part) {
+        return operation.indexOf(part) !== -1
+    }
+
+    function isEncoderOperation(operation) {
+        return operation === "encoder" || operation.indexOf("encoder_") === 0
+    }
+
+    function isDecoderOperation(operation) {
+        return operation === "decoder" || operation.indexOf("decoder_") === 0
+    }
+
+    function isPositionOperation(operation) {
+        return containsOperationPart(operation, "position")
+                || containsOperationPart(operation, "positional")
+                || containsOperationPart(operation, "posicion")
+    }
+
+    function isAddNormOperation(operation) {
+        return containsOperationPart(operation, "addnorm")
+                || containsOperationPart(operation, "add_norm")
+                || containsOperationPart(operation, "residual")
+    }
+
+    function isFfnOperation(operation) {
+        return containsOperationPart(operation, "ffn")
+                || containsOperationPart(operation, "feed_forward")
+                || containsOperationPart(operation, "feedforward")
+    }
+
+    function isLayersOperation(operation) {
+        return containsOperationPart(operation, "layers")
+                || containsOperationPart(operation, "stack")
+                || containsOperationPart(operation, "complete")
+                || containsOperationPart(operation, "completo")
+    }
+
+    function isAttentionOperation(operation) {
+        return containsOperationPart(operation, "attention")
+                || containsOperationPart(operation, "atencion")
+                || containsOperationPart(operation, "qkv")
+                || containsOperationPart(operation, "scores")
+                || containsOperationPart(operation, "weighted")
+                || containsOperationPart(operation, "ponderada")
+                || containsOperationPart(operation, "multihead")
+                || containsOperationPart(operation, "multi_head")
+                || containsOperationPart(operation, "softmax")
+    }
+
+    function componentsForOperation(operation) {
+        if (!operation)
+            return []
+        if (operation === "linear_logits" || operation.indexOf("linear_logits_") === 0)
+            return ["linear"]
+        if (operation === "output_softmax" || operation.indexOf("output_softmax_") === 0)
+            return ["softmax"]
+
+        if (isEncoderOperation(operation)) {
+            if (isLayersOperation(operation))
+                return ["encoder_self_attention", "encoder_add_norm_attention",
+                        "encoder_feed_forward", "encoder_add_norm_ffn"]
+            if (isAddNormOperation(operation))
+                return [isFfnOperation(operation)
+                        ? "encoder_add_norm_ffn" : "encoder_add_norm_attention"]
+            if (isFfnOperation(operation))
+                return ["encoder_feed_forward"]
+            if (isAttentionOperation(operation))
+                return ["encoder_self_attention"]
+
+            var encoderInputBlocks = []
+            if (containsOperationPart(operation, "embedding"))
+                encoderInputBlocks.push("input_embedding")
+            if (isPositionOperation(operation))
+                encoderInputBlocks.push("encoder_positional_encoding")
+            return encoderInputBlocks
+        }
+
+        if (isDecoderOperation(operation)) {
+            if (isLayersOperation(operation))
+                return ["decoder_masked_attention", "decoder_add_norm_masked",
+                        "decoder_cross_attention", "decoder_add_norm_cross",
+                        "decoder_feed_forward", "decoder_add_norm_ffn"]
+            if (isAddNormOperation(operation)) {
+                if (containsOperationPart(operation, "masked")
+                        || containsOperationPart(operation, "causal"))
+                    return ["decoder_add_norm_masked"]
+                if (containsOperationPart(operation, "cross")
+                        || containsOperationPart(operation, "cruzada"))
+                    return ["decoder_add_norm_cross"]
+                return ["decoder_add_norm_ffn"]
+            }
+            if (isFfnOperation(operation))
+                return ["decoder_feed_forward"]
+            if (containsOperationPart(operation, "masked")
+                    || containsOperationPart(operation, "causal"))
+                return ["decoder_masked_attention"]
+            if (containsOperationPart(operation, "cross")
+                    || containsOperationPart(operation, "cruzada"))
+                return ["decoder_cross_attention"]
+
+            var decoderInputBlocks = []
+            if (containsOperationPart(operation, "embedding"))
+                decoderInputBlocks.push("output_embedding")
+            if (isPositionOperation(operation))
+                decoderInputBlocks.push("decoder_positional_encoding")
+            return decoderInputBlocks
+        }
+        return []
+    }
+
+    function attentionPhaseLabel(operation) {
+        if (containsOperationPart(operation, "qkv"))
+            return "Q, K y V"
+        if (containsOperationPart(operation, "scores"))
+            return "Scores QKᵀ / √d_head"
+        if (containsOperationPart(operation, "mask"))
+            return "Aplicación de máscara"
+        if (containsOperationPart(operation, "softmax"))
+            return "Softmax de atención"
+        if (containsOperationPart(operation, "weighted")
+                || containsOperationPart(operation, "ponderada"))
+            return "Atención ponderada A·V"
+        if (containsOperationPart(operation, "multihead")
+                || containsOperationPart(operation, "multi_head"))
+            return "Multi-head + Wᴼ"
+        return "Flujo de atención"
+    }
+
+    function locationForOperation(operation) {
+        if (operation === "linear_logits" || operation.indexOf("linear_logits_") === 0)
+            return "Salida · Capa Linear y logits"
+        if (operation === "output_softmax" || operation.indexOf("output_softmax_") === 0)
+            return "Salida · Softmax"
+
+        if (isEncoderOperation(operation)) {
+            if (isLayersOperation(operation))
+                return "Pila completa del encoder"
+            if (isAddNormOperation(operation))
+                return isFfnOperation(operation)
+                        ? "Encoder · Add & Norm de FFN"
+                        : "Encoder · Add & Norm de atención"
+            if (isFfnOperation(operation))
+                return "Encoder · Feed Forward"
+            if (isAttentionOperation(operation))
+                return "Encoder · Self-attention · " + attentionPhaseLabel(operation)
+            if (containsOperationPart(operation, "embedding") && isPositionOperation(operation))
+                return "Encoder · Embedding + posición"
+            if (isPositionOperation(operation))
+                return "Encoder · Codificación posicional"
+            return "Encoder · Embedding"
+        }
+
+        if (isDecoderOperation(operation)) {
+            if (isLayersOperation(operation))
+                return "Pila completa del decoder"
+            if (isAddNormOperation(operation)) {
+                if (containsOperationPart(operation, "masked")
+                        || containsOperationPart(operation, "causal"))
+                    return "Decoder · Add & Norm causal"
+                if (containsOperationPart(operation, "cross")
+                        || containsOperationPart(operation, "cruzada"))
+                    return "Decoder · Add & Norm de atención cruzada"
+                return "Decoder · Add & Norm de FFN"
+            }
+            if (isFfnOperation(operation))
+                return "Decoder · Feed Forward"
+            if (containsOperationPart(operation, "masked")
+                    || containsOperationPart(operation, "causal"))
+                return "Decoder · Atención causal · " + attentionPhaseLabel(operation)
+            if (containsOperationPart(operation, "cross")
+                    || containsOperationPart(operation, "cruzada"))
+                return "Decoder · Atención cruzada · " + attentionPhaseLabel(operation)
+            if (containsOperationPart(operation, "embedding") && isPositionOperation(operation))
+                return "Decoder · Embedding + posición"
+            if (isPositionOperation(operation))
+                return "Decoder · Codificación posicional"
+            return "Decoder · Embedding"
+        }
+        return locationForCurrentStage()
+    }
 
     function attentionBlockId() {
         if (branchIndex === 0)
@@ -243,10 +442,8 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.verticalCenterOffset: 17 * root.sy
                 text: "K,V →"
-                color: (root.stageIndex === 1 || root.stageIndex === 2)
-                       && root.branchIndex === 2 ? root.accent : "#94A3B8"
-                font.bold: (root.stageIndex === 1 || root.stageIndex === 2)
-                           && root.branchIndex === 2
+                color: root.crossOperationActive ? root.accent : "#94A3B8"
+                font.bold: root.crossOperationActive
                 font.pixelSize: 7.5 * Math.min(root.sx, root.sy)
             }
         }

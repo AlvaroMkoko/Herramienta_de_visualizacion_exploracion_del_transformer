@@ -91,8 +91,10 @@ class TestGeneracionBasica:
             assert "token_id" in paso
             assert "texto_parcial" in paso
             assert "logits" in paso
+            assert "logits_lineales" in paso
             assert "visualizacion" in paso
             assert paso["logits"].shape == (1, config.tamano_vocabulario)
+            assert torch.isfinite(paso["logits_lineales"]).all()
             assert len(paso["pesos_atencion_cruzada_por_capa"]) == config.num_capas
             assert len(paso["texto_parcial"].split(",")) == i + 1
 
@@ -114,6 +116,8 @@ class TestGeneracionBasica:
             assert detalle["metadata"]["architecture"] == "encoder_decoder"
             assert detalle["metadata"]["norm_order"] == "post-norm"
             assert detalle["metadata"]["position_encoding_type"] == "sinusoidal aditivo"
+            assert detalle["logits_lineales"]["sin_inf"] is True
+            assert detalle["logits_lineales"]["sin_nan"] is True
             assert detalle["global"]["embedding_encoder"]["shape"] == "1 × 4 × 32"
             assert detalle["global"]["embedding_encoder"]["matriz"]["valores"]
             proyeccion = detalle["global"]["proyeccion_posicional_encoder"]

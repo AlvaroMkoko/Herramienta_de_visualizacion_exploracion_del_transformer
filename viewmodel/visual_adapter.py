@@ -796,6 +796,18 @@ def _detalle_forward(modelo, paso: dict) -> dict:
         }
 
     logits = paso["logits"].detach().float()
+    logits_lineales = paso.get("logits_lineales", paso["logits"]).detach().float()
+
+    def resumen_logits(tensor: torch.Tensor) -> dict:
+        return {
+            "shape": _forma(tensor),
+            "dtype": str(tensor.dtype).replace("torch.", ""),
+            "histograma": _histograma(tensor),
+            "estadisticas": _estadisticas_tensor(tensor),
+            "sin_nan": not bool(torch.isnan(tensor).any().item()),
+            "sin_inf": not bool(torch.isinf(tensor).any().item()),
+        }
+
     return {
         "metadata": {
             "architecture": "encoder_decoder",
@@ -819,13 +831,11 @@ def _detalle_forward(modelo, paso: dict) -> dict:
         "encoder": encoder,
         "decoder": decoder,
         "trayectorias": trayectorias,
-        "logits": {
-            "shape": _forma(logits),
-            "dtype": str(paso["logits"].dtype).replace("torch.", ""),
-            "histograma": _histograma(logits),
-            "estadisticas": _estadisticas_tensor(logits),
-            "sin_nan": not bool(torch.isnan(logits).any().item()),
-        },
+        # `logits_lineales` es la salida intacta de Linear. `logits` conserva
+        # el nombre historico y representa los logits elegibles, despues de
+        # excluir los ids reservados pero antes de temperatura/top-k/top-p.
+        "logits_lineales": resumen_logits(logits_lineales),
+        "logits": resumen_logits(logits),
     }
 
 

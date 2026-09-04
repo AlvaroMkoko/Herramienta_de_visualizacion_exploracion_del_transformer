@@ -354,6 +354,9 @@ class TestGeneracion:
         assert len(pasos) == 5
         for paso in pasos:
             assert paso["logits"].shape == (1, config.tamano_vocabulario)
+            assert paso["logits_lineales"].shape == (1, config.tamano_vocabulario)
+            assert torch.isfinite(paso["logits_lineales"]).all()
+            assert torch.isneginf(paso["logits"][0, 1])
             assert isinstance(paso["token_id"], int)
 
     def test_valor_de_retorno_incluye_todos_los_tokens_generados(self, modelo, config):

@@ -274,14 +274,18 @@ class Transformer(nn.Module):
                     mascara_causal=mascara_causal, mascara_encoder=mascara_encoder,
                 )
 
-                logits_ultimo_paso = self.capa_salida(salida_decoder[:, -1, :])
+                # Conservamos por separado la salida cruda de la capa Linear.
+                # La copia posterior se modifica para el muestreo al excluir
+                # tokens reservados; ambas versiones son utiles en la vista de
+                # inferencia porque representan operaciones distintas.
+                logits_lineales = self.capa_salida(salida_decoder[:, -1, :])
 
                 # Los ids reservados (relleno, inicio) son válidos DENTRO
                 # del vocabulario del modelo, pero no tienen ningún
                 # significado como texto — nada les impide aparecer en el
                 # muestreo si no se excluyen explícitamente. id_token_fin
                 # SÍ se deja permitido: es la señal legítima de "terminar".
-                logits_ultimo_paso = logits_ultimo_paso.clone()
+                logits_ultimo_paso = logits_lineales.clone()
                 logits_ultimo_paso[:, id_token_inicio] = float("-inf")
                 if self.config.id_token_relleno is not None:
                     logits_ultimo_paso[:, self.config.id_token_relleno] = float("-inf")
@@ -296,6 +300,7 @@ class Transformer(nn.Module):
                 yield {
                     "paso": paso,
                     "token_id": token_nuevo.item(),
+                    "logits_lineales": logits_lineales.detach(),
                     "logits": logits_ultimo_paso.detach(),
                     "pesos_atencion_cruzada_por_capa": self.decoder.pesos_atencion_cruzada_por_capa(),
                     "pesos_autoatencion_por_capa": self.decoder.pesos_autoatencion_por_capa(),
