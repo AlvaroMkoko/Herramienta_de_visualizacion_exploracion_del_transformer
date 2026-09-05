@@ -30,8 +30,9 @@ python main.py
 La pantalla de inicio presenta la evolución prevista de la plataforma educativa:
 
 1. **Pre-test** — diagnóstico inicial; por ahora se muestra como módulo futuro.
-2. **Recorrido guiado** — disponible. Organiza 15 conceptos esenciales en cinco
-   unidades y combina lectura con el ciclo *predecir → observar → explicar*.
+2. **Recorrido guiado** — disponible. Organiza 18 conceptos esenciales en seis
+   unidades, incluida una guía del contrato de datasets, y combina lectura con
+   el ciclo *predecir → observar → explicar*.
 3. **Laboratorios** — entrenamiento, apertura de modelos y comparación siguen
    disponibles como accesos directos para experimentar libremente.
 4. **Post-test** — evaluación final; por ahora se muestra como módulo futuro.
@@ -51,8 +52,10 @@ El flujo de los laboratorios es:
    modelo, feed-forward, dropout, activación, máscara causal) con una
    estimación de parámetros y memoria que se actualiza en vivo.
 2. **Catálogo de datasets** — se agregan archivos `.jsonl`, `.json`, `.csv`,
-   `.txt` o `.pdf`. La herramienta analiza registros, tokens, vocabulario y
-   categorías. Se pueden seleccionar varios y se combinan en un solo corpus.
+   `.txt` o `.pdf`, o se crea un JSONL desde un formulario. La herramienta
+   analiza registros, palabras aproximadas, vocabulario, categorías y
+   compatibilidad de entrenamiento. Se pueden seleccionar varios y se combinan
+   en un solo corpus.
 3. **Entrenamiento** — métricas en vivo, controles de pausa/reanudación y de
    velocidad, y dos pestañas: el diagrama del Transformer y la nube 3D de
    embeddings.
@@ -60,6 +63,21 @@ El flujo de los laboratorios es:
    guardado.
 5. **Inferencia** — generación token a token con temperatura, top-k, top-p,
    muestreo codicioso y control de velocidad.
+
+## Formato de los datasets
+
+Los formatos estructurados usan campos exactos: `instruction` (entrada del
+encoder) y `response` (salida correcta del decoder) son obligatorios y no pueden
+estar vacíos; `context` añade información opcional a la entrada y `category`
+solo organiza los ejemplos. JSON contiene una lista de objetos, JSONL un objeto
+por línea y CSV una fila de encabezados. El creador integrado genera este
+contrato automáticamente y evita sobrescribir archivos existentes.
+
+TXT y PDF se tratan como corpus continuos: se convierten en pares de fragmentos
+consecutivos para aprender continuación de texto. Un PDF debe tener texto
+seleccionable. La guía completa, incluidos *teacher forcing*, BOS/EOS/PAD,
+calidad de datos y truncamiento por contexto, está disponible tanto en el
+recorrido guiado como en las dos pantallas del catálogo.
 
 ## Configuración de la arquitectura
 

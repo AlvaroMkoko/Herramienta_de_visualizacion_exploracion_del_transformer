@@ -99,7 +99,11 @@ def cargar_pares_desde_listas(origenes: list[str], destinos: list[str]) -> list[
 
 
 def cargar_pares_desde_csv(
-    ruta: str | Path, columna_origen: str, columna_destino: str, delimitador: str = ","
+    ruta: str | Path,
+    columna_origen: str,
+    columna_destino: str,
+    delimitador: str = ",",
+    columna_contexto: str | None = None,
 ) -> list[tuple[str, str]]:
     """Carga pares desde un CSV con encabezado.
 
@@ -107,10 +111,14 @@ def cargar_pares_desde_csv(
         ruta: archivo .csv.
         columna_origen, columna_destino: nombres de columna del encabezado.
         delimitador: separador de campos (',' por defecto, usar '\\t' para TSV).
+        columna_contexto: columna opcional que se concatena a la entrada cuando
+            contiene texto. No es obligatorio que exista en el archivo.
 
     Raises:
         FileNotFoundError: si `ruta` no existe.
         KeyError: si las columnas indicadas no están en el encabezado.
+        ValueError: si una fila no contiene texto en origen/destino o si el
+            contexto presente no es texto.
     """
     ruta = Path(ruta)
     if not ruta.exists():
@@ -126,14 +134,34 @@ def cargar_pares_desde_csv(
                 f"El CSV debe tener las columnas '{columna_origen}' y '{columna_destino}'. "
                 f"Columnas encontradas: {lector.fieldnames}"
             )
-        for fila in lector:
-            pares.append((fila[columna_origen], fila[columna_destino]))
+        for numero_fila, fila in enumerate(lector, start=2):
+            origen = fila[columna_origen]
+            destino = fila[columna_destino]
+            contexto = fila.get(columna_contexto, "") if columna_contexto else ""
+            if not isinstance(origen, str) or not origen.strip():
+                raise ValueError(
+                    f"Fila {numero_fila} de {ruta.name}: '{columna_origen}' debe contener texto."
+                )
+            if not isinstance(destino, str) or not destino.strip():
+                raise ValueError(
+                    f"Fila {numero_fila} de {ruta.name}: '{columna_destino}' debe contener texto."
+                )
+            if not isinstance(contexto, str):
+                raise ValueError(
+                    f"Fila {numero_fila} de {ruta.name}: el contexto debe ser texto."
+                )
+            if contexto.strip():
+                origen = f"{origen}\n{contexto}"
+            pares.append((origen, destino))
 
     return pares
 
 
 def cargar_pares_desde_json(
-    ruta: str | Path, clave_origen: str, clave_destino: str
+    ruta: str | Path,
+    clave_origen: str,
+    clave_destino: str,
+    clave_contexto: str | None = None,
 ) -> list[tuple[str, str]]:
     """Carga pares desde un JSON que contiene una lista de objetos, ej.:
 
@@ -142,6 +170,8 @@ def cargar_pares_desde_json(
     Args:
         ruta: archivo .json.
         clave_origen, clave_destino: claves de cada objeto de la lista.
+        clave_contexto: clave opcional que se concatena al origen cuando no
+            está vacía.
 
     Raises:
         FileNotFoundError: si `ruta` no existe.
@@ -157,7 +187,7 @@ def cargar_pares_desde_json(
     if not isinstance(datos, list):
         raise ValueError("El JSON debe ser una lista de objetos, ej. [{...}, {...}]")
 
-    return _pares_desde_objetos(datos, clave_origen, clave_destino)
+    return _pares_desde_objetos(datos, clave_origen, clave_destino, clave_contexto)
 
 
 def cargar_pares_desde_jsonl(
@@ -218,6 +248,8 @@ def _pares_desde_objetos(
     una lista de objetos, con concatenación opcional de contexto."""
     pares = []
     for i, objeto in enumerate(objetos):
+        if not isinstance(objeto, dict):
+            raise ValueError(f"El objeto en la posición {i} debe ser un objeto JSON.")
         if clave_origen not in objeto or clave_destino not in objeto:
             raise ValueError(
                 f"El objeto en la posición {i} no tiene las claves "
@@ -225,12 +257,25 @@ def _pares_desde_objetos(
             )
 
         origen = objeto[clave_origen]
+        destino = objeto[clave_destino]
+        if not isinstance(origen, str) or not origen.strip():
+            raise ValueError(
+                f"El campo '{clave_origen}' del objeto en la posición {i} debe contener texto."
+            )
+        if not isinstance(destino, str) or not destino.strip():
+            raise ValueError(
+                f"El campo '{clave_destino}' del objeto en la posición {i} debe contener texto."
+            )
         if clave_contexto is not None:
             contexto = objeto.get(clave_contexto, "")
-            if contexto:
+            if not isinstance(contexto, str):
+                raise ValueError(
+                    f"El campo '{clave_contexto}' del objeto en la posición {i} debe ser texto."
+                )
+            if contexto.strip():
                 origen = f"{origen}\n{contexto}"
 
-        pares.append((origen, objeto[clave_destino]))
+        pares.append((origen, destino))
 
     return pares
 
@@ -280,9 +325,18 @@ def cargar_pares_combinados(
                 cargar_pares_desde_jsonl(ruta, clave_origen, clave_destino, clave_contexto)
             )
         elif formato == ".json":
-            pares_combinados.extend(cargar_pares_desde_json(ruta, clave_origen, clave_destino))
+            pares_combinados.extend(
+                cargar_pares_desde_json(ruta, clave_origen, clave_destino, clave_contexto)
+            )
         elif formato == ".csv":
-            pares_combinados.extend(cargar_pares_desde_csv(ruta, clave_origen, clave_destino))
+            pares_combinados.extend(
+                cargar_pares_desde_csv(
+                    ruta,
+                    clave_origen,
+                    clave_destino,
+                    columna_contexto=clave_contexto,
+                )
+            )
         elif formato in (".txt", ".pdf"):
             if tokenizer is None:
                 raise ValueError(

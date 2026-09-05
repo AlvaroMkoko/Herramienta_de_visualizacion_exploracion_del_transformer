@@ -294,13 +294,25 @@
           "id": "dataset",
           "title": "Dataset",
           "order": 9,
-          "short_description": "Es la colección de ejemplos con la que el modelo aprende o se evalúa.",
-          "explanation": "Un dataset reúne pares o secuencias de texto que se transforman en tokens antes de entrar al Transformer. Durante el entrenamiento se divide en batches y el modelo ajusta sus parámetros para reducir el error sobre esos ejemplos. La cantidad no basta: datos duplicados, contradictorios, sesgados o mal limpiados pueden enseñar patrones indeseados. También conviene separar datos de entrenamiento, validación y prueba; evaluar con ejemplos que el modelo ya vio produce una impresión engañosa de su desempeño.",
-          "example": "Para traducción, un ejemplo puede contener una frase en español como entrada y su traducción al inglés como objetivo. Miles de pares forman el dataset.",
+          "short_description": "En esta aplicación, cada ejemplo estructurado relaciona una instruction con la response correcta que el modelo debe aprender.",
+          "explanation": "El dataset define la tarea. Para cada ejemplo supervisado, el encoder representa la entrada y el decoder intenta producir una salida; la salida real permite saber qué token era correcto en cada posición y calcular la cross entropy. Sin ese objetivo no existe una señal de error que indique cómo ajustar los parámetros.\n\nContrato de esta aplicación: los datasets estructurados deben usar los nombres exactos y sensibles a mayúsculas instruction y response, ambos con texto no vacío. En JSON, JSONL y CSV se admite además context: si contiene texto, se concatena a instruction como información de entrada; si está vacío o no existe, se usa solo instruction. category es una etiqueta opcional para describir y contar ejemplos, pero no es una respuesta ni interviene en el entrenamiento.\n\nFormatos: JSON debe ser una lista de objetos; JSONL debe contener un objeto JSON completo por línea, sin una lista exterior ni comas entre líneas; CSV debe tener una fila de encabezado con las columnas instruction y response, y puede incluir context. Los archivos TXT y PDF son una alternativa de corpus continuo: no llevan esos campos. La aplicación extrae el texto y empareja una ventana de 128 tokens con la ventana siguiente para enseñar continuación; con la configuración predeterminada, sin solapamiento, hacen falta al menos 256 tokens para obtener un par. El PDF debe contener texto seleccionable, porque no se aplica OCR a documentos escaneados.\n\nLa aplicación tokeniza el texto y agrega automáticamente PAD para igualar longitudes del batch, BOS para iniciar la entrada del decoder y EOS para marcar el final esperado. No escribas esos tokens especiales dentro de tus datos. La response se desplaza una posición: el decoder recibe BOS seguido de la respuesta previa y debe predecir la misma respuesta seguida de EOS. Si una entrada o salida supera el contexto del modelo activo, se trunca; por eso conviene usar ejemplos autocontenidos que quepan completos.\n\nUn dataset útil necesita ejemplos correctos, representativos y consistentes con la tarea y el idioma deseados. Revisa campos vacíos, duplicados, contradicciones, ruido, sesgos y datos personales. Más filas no compensan objetivos erróneos. También es buena práctica reservar datos distintos para validación y prueba; esta aplicación no hace esa separación automáticamente.",
+          "intuition": "instruction plantea lo que el modelo debe atender; response funciona como la respuesta del ejercicio. Al comparar su predicción con esa respuesta, el Transformer obtiene la señal que le permite aprender.",
+          "formula": "encoder = tokenize(instruction + context_opcional)\ndecoder_entrada = [BOS] + tokenize(response)\nobjetivo = tokenize(response) + [EOS]",
+          "steps": [
+            "Define una sola tarea y escribe una instruction clara por ejemplo.",
+            "Añade una response correcta, completa y no vacía; en JSON, JSONL o CSV puedes aportar context opcional.",
+            "Guarda los registros como lista JSON, un objeto por línea en JSONL o filas CSV con encabezados exactos.",
+            "La aplicación tokeniza, agrega BOS y EOS, y recorta secuencias que exceden el contexto del modelo.",
+            "Al formar cada batch, las secuencias cortas reciben PAD; esas posiciones se excluyen de la pérdida.",
+            "El decoder predice la response desplazada y la diferencia con el objetivo actualiza los parámetros."
+          ],
+          "example": "JSONL válido (un objeto por línea):\n{\"instruction\": \"Traduce al inglés: gato\", \"context\": \"\", \"response\": \"cat\", \"category\": \"traducción\"}\n{\"instruction\": \"Resume el texto\", \"context\": \"La Tierra orbita el Sol.\", \"response\": \"La Tierra gira alrededor del Sol.\"}\n\nJSON válido: una lista que contiene objetos con instruction y response, además de context cuando se necesite. CSV válido: la primera fila puede ser instruction,context,response.",
           "related_concepts": [
             "tokenizacion",
+            "teacher_forcing",
             "epoch_batch",
-            "generalization"
+            "generalization",
+            "context_window"
           ]
         },
         {

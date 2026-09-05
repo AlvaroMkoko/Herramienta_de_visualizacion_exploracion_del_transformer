@@ -12,6 +12,8 @@ Rectangle {
     property real scaleFactor: 1.0
 
     readonly property string accessibleSummary: {
+        if (visualType === "dataset_pairs")
+            return "Un registro aporta instruction y context al encoder; response entra al decoder desplazada entre los tokens BOS y EOS para convertirse en el objetivo."
         if (visualType === "token_position")
             return "Dos tokens iguales se combinan con posiciones distintas y producen vectores distintos."
         if (visualType === "attention")
@@ -57,7 +59,8 @@ Rectangle {
         Loader {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            sourceComponent: root.visualType === "token_position" ? tokenPositionDemo
+            sourceComponent: root.visualType === "dataset_pairs" ? datasetPairsDemo
+                             : root.visualType === "token_position" ? tokenPositionDemo
                              : root.visualType === "attention" ? attentionDemo
                              : root.visualType === "causal_mask" ? causalMaskDemo
                              : root.visualType === "training" ? trainingDemo
@@ -111,6 +114,74 @@ Rectangle {
                 DemoBlock { Layout.fillWidth: true; Layout.fillHeight: true; label: "Decoder"; detail: "genera"; fillColor: "#F8EDD9" }
                 Text { text: "→"; color: "#7563C7"; font.bold: true }
                 DemoBlock { Layout.fillWidth: true; Layout.fillHeight: true; label: "Salida"; detail: "The"; fillColor: "#E2F4EA" }
+            }
+        }
+    }
+
+    Component {
+        id: datasetPairsDemo
+        Item {
+            ColumnLayout {
+                anchors.fill: parent
+                spacing: 5 * root.scaleFactor
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    spacing: 4 * root.scaleFactor
+                    DemoBlock {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        label: "instruction"
+                        detail: "Resume el texto"
+                        fillColor: "#E7F0FA"
+                    }
+                    Text { text: "+"; color: "#7563C7"; font.bold: true }
+                    DemoBlock {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        label: "context (opcional)"
+                        detail: "Texto fuente"
+                        fillColor: "#F2EFFA"
+                    }
+                    Text { text: "→"; color: "#7563C7"; font.bold: true }
+                    DemoBlock {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        label: "Encoder"
+                        detail: "entrada"
+                        fillColor: "#E2F4EA"
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    spacing: 4 * root.scaleFactor
+                    DemoBlock {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        label: "response"
+                        detail: "Un resumen"
+                        fillColor: "#F8EDD9"
+                    }
+                    Text { text: "→"; color: "#7563C7"; font.bold: true }
+                    DemoBlock {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        label: "Decoder recibe"
+                        detail: "BOS · Un resumen"
+                        fillColor: "#EDE8FA"
+                    }
+                    Text { text: "→"; color: "#7563C7"; font.bold: true }
+                    DemoBlock {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        label: "Objetivo"
+                        detail: "Un resumen · EOS"
+                        fillColor: "#E2F4EA"
+                    }
+                }
             }
         }
     }

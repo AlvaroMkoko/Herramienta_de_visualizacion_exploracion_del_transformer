@@ -13,8 +13,8 @@ PagePrincipal {
     helpPanelObjectName: "guidedTheoryPanel"
 
     readonly property real uiScale: Math.max(0.82, Math.min(width / 1280, height / 820))
-    readonly property int totalUnits: 5
-    readonly property int totalCoreConcepts: 15
+    readonly property int totalUnits: units.length
+    readonly property int totalCoreConcepts: countCoreConcepts()
     readonly property int predictionOptionCount: currentUnit.activity
                                                  && currentUnit.activity.options
                                                  ? currentUnit.activity.options.length : 0
@@ -30,6 +30,8 @@ PagePrincipal {
     readonly property bool hasLearningController: typeof mainViewModel !== "undefined"
                                                   && mainViewModel.learningController !== null
     readonly property var currentUnit: units[currentUnitIndex] || ({})
+    readonly property int currentUnitConceptCount: currentUnit.conceptIds
+                                                    ? currentUnit.conceptIds.length : 0
     readonly property string currentConceptId: currentUnit.conceptIds
                                                 && currentUnit.conceptIds.length > currentConceptIndex
                                                 ? String(currentUnit.conceptIds[currentConceptIndex]) : ""
@@ -39,7 +41,8 @@ PagePrincipal {
     readonly property real overallProgress: totalUnits > 0
                                             ? completedUnitsCount / totalUnits : 0
     readonly property bool currentUnitCompleted: isUnitCompleted(String(currentUnit.id || ""))
-    readonly property int globalConceptNumber: currentUnitIndex * 3 + currentConceptIndex + 1
+    readonly property int globalConceptNumber: conceptOffset(currentUnitIndex)
+                                               + currentConceptIndex + 1
 
     readonly property var units: [
         {
@@ -141,11 +144,50 @@ PagePrincipal {
                 "explanationPrompt": "Explica la diferencia entre medir el error y modificar el modelo para reducirlo.",
                 "modelExplanation": "Cross entropy cuantifica el desacuerdo entre predicción y objetivo. Backpropagation deriva cómo influye cada parámetro y el optimizador usa esos gradientes para actualizarlo."
             }
+        },
+        {
+            "id": "unit_6",
+            "number": "06",
+            "title": "Del dataset al aprendizaje",
+            "shortTitle": "Dataset y ejemplos",
+            "objective": "Identifica el formato que convierte ejemplos de texto en una señal de aprendizaje para el encoder y el decoder.",
+            "conceptIds": ["dataset", "teacher_forcing", "epoch_batch"],
+            "activity": {
+                "visualType": "dataset_pairs",
+                "question": "¿Qué registro puede usar directamente esta aplicación como un par de entrenamiento estructurado?",
+                "options": ["instruction y response no vacíos; context es opcional", "Solo category y un número de fila", "Una lista de palabras sin salida esperada"],
+                "correctIndex": 0,
+                "trace": ["instruction y context forman la entrada", "response aporta la salida esperada", "La app tokeniza y agrega BOS, EOS y PAD", "El decoder predice response desplazada un token"],
+                "observation": "El par define tanto lo que el encoder debe representar como la respuesta correcta que permite calcular la pérdida del decoder.",
+                "correctFeedback": "Correcto: instruction y response son los campos obligatorios; context puede ampliar la entrada.",
+                "revisionFeedback": "Para aprender una tarea supervisada hacen falta una entrada y una salida correcta. En esta aplicación se llaman instruction y response.",
+                "explanationPrompt": "Explica por qué el Transformer necesita una salida esperada y cómo se usa durante el entrenamiento.",
+                "modelExplanation": "El encoder representa instruction y el context opcional. El decoder recibe la response desplazada y predice cada token siguiente; la response real indica el objetivo con el que se calcula la pérdida."
+            }
         }
     ]
 
     function bounded(value, minimum, maximum) {
         return Math.max(minimum, Math.min(maximum, Number(value)))
+    }
+
+    function countCoreConcepts() {
+        var total = 0
+        for (var i = 0; i < root.units.length; ++i) {
+            var conceptIds = root.units[i].conceptIds || []
+            total += conceptIds.length
+        }
+        return total
+    }
+
+    function conceptOffset(unitIndex) {
+        var total = 0
+        var limit = Math.min(Math.max(Number(unitIndex), 0), root.units.length)
+        for (var i = 0; i < limit; ++i) {
+            var conceptIds = root.units[i].conceptIds || []
+            total += conceptIds.length
+        }
+        return total
     }
 
     function isUnitCompleted(unitId) {
@@ -199,14 +241,14 @@ PagePrincipal {
 
     function selectConcept(index) {
         var target = Math.round(Number(index))
-        if (!isFinite(target) || target < 0 || target >= 3)
+        if (!isFinite(target) || target < 0 || target >= root.currentUnitConceptCount)
             return
         root.currentConceptIndex = target
         root.savePosition()
     }
 
     function nextConcept() {
-        if (root.currentConceptIndex < 2) {
+        if (root.currentConceptIndex < root.currentUnitConceptCount - 1) {
             root.currentConceptIndex += 1
             root.savePosition()
         } else if (root.currentUnitIndex < root.totalUnits - 1) {
@@ -220,7 +262,7 @@ PagePrincipal {
             root.savePosition()
         } else if (root.currentUnitIndex > 0) {
             root.currentUnitIndex -= 1
-            root.currentConceptIndex = 2
+            root.currentConceptIndex = Math.max(root.currentUnitConceptCount - 1, 0)
             root.restoreActivityState()
             root.savePosition()
         }
@@ -308,7 +350,7 @@ PagePrincipal {
             root.currentUnitIndex = root.bounded(mainViewModel.learningController.lastUnitIndex,
                                                  0, root.totalUnits - 1)
             root.currentConceptIndex = root.bounded(mainViewModel.learningController.lastConceptIndex,
-                                                    0, 2)
+                                                    0, Math.max(root.currentUnitConceptCount - 1, 0))
         }
         root.restoreActivityState()
         root.refreshConcept()
@@ -409,7 +451,8 @@ PagePrincipal {
 
                     Text {
                         Layout.fillWidth: true
-                        text: "Cinco unidades sobre la arquitectura Transformer encoder–decoder original."
+                        text: root.totalUnits + " unidades y " + root.totalCoreConcepts
+                              + " conceptos sobre el Transformer encoder–decoder y sus datos."
                         color: Style.Theme.texto_secundario
                         font.pixelSize: 11 * root.uiScale
                         elide: Text.ElideRight
@@ -517,7 +560,7 @@ PagePrincipal {
                             required property int index
                             objectName: "guidedUnitButton" + index
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 76 * root.uiScale
+                            Layout.preferredHeight: 70 * root.uiScale
                             activeFocusOnTab: true
                             Accessible.name: "Unidad " + (index + 1) + ": " + modelData.title
                             Accessible.description: root.isUnitCompleted(String(modelData.id))
@@ -572,8 +615,10 @@ PagePrincipal {
                                         Layout.fillWidth: true
                                         text: root.isUnitCompleted(String(unitDelegate.modelData.id))
                                               ? "Completada" : unitDelegate.index === root.currentUnitIndex
-                                                ? "En curso · concepto " + (root.currentConceptIndex + 1) + "/3"
-                                                : "3 conceptos · 1 actividad"
+                                              ? "En curso · concepto " + (root.currentConceptIndex + 1)
+                                                + "/" + (unitDelegate.modelData.conceptIds || []).length
+                                              : (unitDelegate.modelData.conceptIds || []).length
+                                                + " conceptos · 1 actividad"
                                         color: root.isUnitCompleted(String(unitDelegate.modelData.id))
                                                ? "#187455" : Style.Theme.texto_secundario
                                         font.pixelSize: 9 * root.uiScale
@@ -738,7 +783,8 @@ PagePrincipal {
                         Layout.preferredWidth: 170 * root.uiScale
                         Layout.fillHeight: true
                         enabled: root.globalConceptNumber < root.totalCoreConcepts
-                        text: root.currentConceptIndex < 2 ? "Siguiente concepto →" : "Siguiente unidad →"
+                        text: root.currentConceptIndex < root.currentUnitConceptCount - 1
+                              ? "Siguiente concepto →" : "Siguiente unidad →"
                         activeFocusOnTab: true
                         Accessible.name: text
                         onClicked: root.nextConcept()
@@ -777,7 +823,8 @@ PagePrincipal {
         standardButtons: Dialog.Yes | Dialog.No
 
         Text {
-            text: "Se borrará el progreso de las cinco unidades y volverás al primer concepto."
+            text: "Se borrará el progreso de las " + root.totalUnits
+                  + " unidades y volverás al primer concepto."
             color: Style.Theme.texto_primario
             font.pixelSize: 12 * root.uiScale
             wrapMode: Text.WordWrap

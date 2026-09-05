@@ -20,7 +20,7 @@ def test_marca_unidades_sin_duplicarlas_y_calcula_porcentaje(tmp_path):
 
     assert controller.completedUnitIds == ["unit_1"]
     assert controller.completedUnitsCount == 1
-    assert controller.progressPercent == 20
+    assert controller.progressPercent == 17
     assert controller.isUnitCompleted("unit_1") is True
 
 
@@ -46,15 +46,15 @@ def test_limita_posiciones_fuera_de_rango(tmp_path):
 
     controller.savePosition(99, -7)
 
-    assert controller.lastUnitIndex == 4
+    assert controller.lastUnitIndex == 5
     assert controller.lastConceptIndex == 0
 
 
 def test_reinicia_todo_el_progreso(tmp_path):
     controller = LearningController(settings=_settings_temporales(tmp_path))
     controller.markUnitCompleted("unit_1")
-    controller.markUnitCompleted("unit_5")
-    controller.savePosition(4, 2)
+    controller.markUnitCompleted("unit_6")
+    controller.savePosition(5, 2)
 
     controller.resetProgress()
 

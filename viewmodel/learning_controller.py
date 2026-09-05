@@ -16,8 +16,11 @@ class LearningController(QObject):
 
     progressChanged = Signal()
 
-    _TOTAL_UNITS = 5
-    _VALID_UNIT_IDS = tuple(f"unit_{numero}" for numero in range(1, 6))
+    _TOTAL_UNITS = 6
+    _CONCEPTS_PER_UNIT = 3
+    _VALID_UNIT_IDS = tuple(
+        f"unit_{numero}" for numero in range(1, _TOTAL_UNITS + 1)
+    )
 
     def __init__(self, parent: QObject | None = None, settings: QSettings | None = None):
         super().__init__(parent)
@@ -26,10 +29,14 @@ class LearningController(QObject):
         )
         self._completed_unit_ids = self._read_completed_units()
         self._last_unit_index = self._bounded_int(
-            self._settings.value("guided/last_unit_index", 0), 0, 4
+            self._settings.value("guided/last_unit_index", 0),
+            0,
+            self._TOTAL_UNITS - 1,
         )
         self._last_concept_index = self._bounded_int(
-            self._settings.value("guided/last_concept_index", 0), 0, 2
+            self._settings.value("guided/last_concept_index", 0),
+            0,
+            self._CONCEPTS_PER_UNIT - 1,
         )
 
     @staticmethod
@@ -103,7 +110,9 @@ class LearningController(QObject):
     @Slot(int, int)
     def savePosition(self, unit_index: int, concept_index: int) -> None:
         bounded_unit = self._bounded_int(unit_index, 0, self._TOTAL_UNITS - 1)
-        bounded_concept = self._bounded_int(concept_index, 0, 2)
+        bounded_concept = self._bounded_int(
+            concept_index, 0, self._CONCEPTS_PER_UNIT - 1
+        )
         if (
             bounded_unit == self._last_unit_index
             and bounded_concept == self._last_concept_index

@@ -202,12 +202,12 @@ def home_qml(qapp, qtbot, monkeypatch, tmp_path):
     qapp.processEvents()
 
 
-def test_recorrido_expone_cinco_unidades_y_quince_conceptos(guided_qml, qtbot):
+def test_recorrido_expone_seis_unidades_y_dieciocho_conceptos(guided_qml, qtbot):
     window, _ = guided_qml
     screen = _buscar(window, "guidedLearningScreen")
 
-    assert _propiedad(screen, "totalUnits") == 5
-    assert _propiedad(screen, "totalCoreConcepts") == 15
+    assert _propiedad(screen, "totalUnits") == 6
+    assert _propiedad(screen, "totalCoreConcepts") == 18
     assert _propiedad(screen, "predictionOptionCount") == 3
     assert _propiedad(screen, "currentUnitIndex") == 0
     assert _propiedad(screen, "currentConceptIndex") == 0
@@ -255,11 +255,12 @@ def test_navegacion_cambia_concepto_y_respeta_unidades(guided_qml, qapp):
     assert _propiedad(screen, "currentConceptIndex") == 0
     assert _propiedad(screen, "currentConceptId") == concepto_inicial
 
-    _invocar(screen, "selectUnit", 4)
+    _invocar(screen, "selectUnit", 5)
     qapp.processEvents()
-    assert _propiedad(screen, "currentUnitIndex") == 4
+    assert _propiedad(screen, "currentUnitIndex") == 5
     assert _propiedad(screen, "currentConceptIndex") == 0
-    assert _propiedad(screen, "currentConceptId") != concepto_inicial
+    assert _propiedad(screen, "currentConceptId") == "dataset"
+    assert _propiedad(_buscar(window, "guidedDemoVisualization"), "visualType") == "dataset_pairs"
 
     # Cada unidad contiene tres conceptos nucleares y la navegacion se acota.
     _invocar(screen, "nextConcept")
@@ -405,6 +406,6 @@ def test_home_expone_secuencia_y_abre_el_recorrido_guiado(home_qml, qapp, qtbot)
     qapp.processEvents()
 
     guided = _buscar(window, "guidedLearningScreen")
-    assert _propiedad(guided, "totalUnits") == 5
-    assert _propiedad(guided, "totalCoreConcepts") == 15
+    assert _propiedad(guided, "totalUnits") == 6
+    assert _propiedad(guided, "totalCoreConcepts") == 18
     assert _propiedad(guided, "currentConceptIndex") == 1

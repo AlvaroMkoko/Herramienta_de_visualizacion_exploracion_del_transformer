@@ -14,6 +14,7 @@ PagePrincipal {
 
     property alias datasetModel: datasetModel
     property alias markModel: markModel
+    readonly property int datasetCount: datasetModel.count
     readonly property var datasetController: mainViewModel.datasetController
     readonly property var estadoTrabajo: datasetController ? datasetController.progreso : ({})
     property string vistaPreviaPendienteId: ""
@@ -22,6 +23,18 @@ PagePrincipal {
 
     VerDatos {
         id: verDatos
+    }
+
+    DatasetCreatorDialog {
+        id: datasetCreatorDialog
+        datasetController: root.datasetController
+        onDatasetCreated: function(dataset) {
+            root.incorporarDataset(dataset)
+        }
+    }
+
+    DatasetRequirementsDialog {
+        id: datasetRequirementsDialog
     }
 
     ListModel {
@@ -67,7 +80,40 @@ PagePrincipal {
         if (!dataset || !dataset.id)
             return
         if (indexOfDataset(dataset.id) === -1)
-            datasetModel.append(dataset)
+            datasetModel.append(datasetParaModelo(dataset))
+    }
+
+    function datasetParaModelo(dataset) {
+        var compatibilidadConocida = dataset.compatible_entrenamiento !== undefined
+                && dataset.compatible_entrenamiento !== null
+        return {
+            "id": dataset.id || "",
+            "nombre": dataset.nombre || dataset.id || "Dataset",
+            "ruta": dataset.ruta || "",
+            "formato": dataset.formato || "",
+            "tamano_mb": Number(dataset.tamano_mb || 0),
+            "registros": Number(dataset.registros || 0),
+            "tokens": Number(dataset.tokens || 0),
+            "tokens_promedio": Number(dataset.tokens_promedio || 0),
+            "selected": Boolean(dataset.selected),
+            "vocabulario": Number(dataset.vocabulario || 0),
+            "campos": dataset.campos || [],
+            "campos_texto": dataset.campos_texto || "",
+            "categorias": dataset.categorias || ({}),
+            "longitud_maxima": Number(dataset.longitud_maxima || 0),
+            "longitud_minima": Number(dataset.longitud_minima || 0),
+            "ejemplos_vacios": Number(dataset.ejemplos_vacios || 0),
+            "pares_validos": Number(dataset.pares_validos || 0),
+            "compatible_entrenamiento": compatibilidadConocida
+                                            ? Boolean(dataset.compatible_entrenamiento)
+                                            : true,
+            "mensaje_compatibilidad": compatibilidadConocida
+                    ? String(dataset.mensaje_compatibilidad || "")
+                    : "Dataset anterior: la compatibilidad final se comprobará al preparar el entrenamiento.",
+            "checksum": dataset.checksum || "",
+            "estado": dataset.estado || "Pendiente de verificación",
+            "creado_por_app": Boolean(dataset.creado_por_app)
+        }
     }
 
     function solicitarVistaPrevia(datasetId, nombreDataset) {
@@ -86,9 +132,8 @@ PagePrincipal {
 
         datasetModel.clear()
 
-        for (var i = 0; i < datasets.length; ++i) {
-            datasetModel.append(datasets[i])
-        }
+        for (var i = 0; i < datasets.length; ++i)
+            datasetModel.append(datasetParaModelo(datasets[i]))
     }
 
     Connections {
@@ -188,12 +233,35 @@ PagePrincipal {
         }
 
         BotonPrincipal {
-            Layout.preferredWidth: 180 * root.sx
+            id: formatGuideButton
+            objectName: "datasetRequirementsButton"
+            Layout.preferredWidth: 170 * root.sx
             Layout.preferredHeight: 44 * root.sy
-            text: "+ Agregar dataset"
-            size_text: 0.24
+            text: "Guía de formato"
+            size_text: 0.22
+            onClicked: datasetRequirementsDialog.mostrar()
+        }
+
+        BotonPrincipal {
+            id: importDatasetButton
+            objectName: "datasetImportButton"
+            Layout.preferredWidth: 165 * root.sx
+            Layout.preferredHeight: 44 * root.sy
+            text: "Importar archivo"
+            size_text: 0.22
             enabled: !root.datasetController.ocupado
             onClicked: datasetDialog.open()
+        }
+
+        BotonPrincipal {
+            id: createDatasetButton
+            objectName: "datasetCreateButton"
+            Layout.preferredWidth: 185 * root.sx
+            Layout.preferredHeight: 44 * root.sy
+            text: "Crear mi dataset"
+            size_text: 0.22
+            enabled: !root.datasetController.ocupado
+            onClicked: datasetCreatorDialog.mostrar()
         }
     }
 
@@ -221,9 +289,10 @@ PagePrincipal {
             property var dsModel: root.datasetModel
             property var mkModel: root.markModel
             property int rowIndex: index
+            property bool puedeEntrenar: Boolean(compatible_entrenamiento)
 
             width: listaDatasets.width - 14 * root.sx
-            height: 154 * root.sy
+            height: 184 * root.sy
             sx: root.sx
             sy: root.sy
 
@@ -321,7 +390,7 @@ PagePrincipal {
                     RowLayout {
                         spacing: 4 * root.sx
                         Text {
-                            text: "Tokens  " + tokens
+                            text: "Palabras aprox.  " + tokens
                             color: Style.Theme.texto_primario
                             font.pixelSize: 13 * Math.min(root.sx, root.sy)
                         }
@@ -358,13 +427,19 @@ PagePrincipal {
                         Layout.preferredWidth: textoEstado.implicitWidth + 18 * root.sx
                         Layout.preferredHeight: 24 * root.sy
                         radius: height / 2
-                        color: Style.Theme.exito_fondo
+                        color: !tarjetaDataset.puedeEntrenar
+                               ? Style.Theme.error_fondo
+                               : String(formato) === ".txt" || String(formato) === ".pdf"
+                                 ? Style.Theme.aviso_fondo : Style.Theme.exito_fondo
 
                         Text {
                             id: textoEstado
                             anchors.centerIn: parent
                             text: estado
-                            color: Style.Theme.exito_texto
+                            color: !tarjetaDataset.puedeEntrenar
+                                   ? Style.Theme.error_texto
+                                   : String(formato) === ".txt" || String(formato) === ".pdf"
+                                     ? Style.Theme.aviso_texto : Style.Theme.exito_texto
                             font.bold: true
                             font.pixelSize: 10 * Math.min(root.sx, root.sy)
                         }
@@ -389,13 +464,36 @@ PagePrincipal {
                         elide: Text.ElideRight
                     }
                 }
+
+                Text {
+                    id: compatibilityText
+                    objectName: "datasetCompatibilityMessage"
+                    Layout.fillWidth: true
+                    text: mensaje_compatibilidad
+                    color: tarjetaDataset.puedeEntrenar
+                           ? Style.Theme.texto_secundario : Style.Theme.error_texto
+                    font.bold: !tarjetaDataset.puedeEntrenar
+                    font.pixelSize: 11 * Math.min(root.sx, root.sy)
+                    elide: Text.ElideRight
+
+                    ToolTip.visible: compatibilityHover.containsMouse
+                    ToolTip.text: compatibilityText.text
+                    ToolTip.delay: 350
+
+                    MouseArea {
+                        id: compatibilityHover
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        acceptedButtons: Qt.NoButton
+                    }
+                }
             }
         }
 
         Text {
             anchors.centerIn: parent
             visible: listaDatasets.count === 0
-            text: "Todav\u00eda no hay datasets en la biblioteca.\nAgrega un archivo JSON o JSONL para comenzar."
+            text: "Todavía no hay datasets en la biblioteca.\nImporta JSONL, JSON, CSV, TXT o PDF, o crea aquí tu primer dataset."
             color: Style.Theme.texto_secundario
             horizontalAlignment: Text.AlignHCenter
             font.pixelSize: 18 * Math.min(root.sx, root.sy)

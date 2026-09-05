@@ -574,6 +574,15 @@ class MainViewModel(QObject):
                     f"No se encontro el dataset {id_dataset} en el catalogo."
                 )
                 return
+            if metadata.get("compatible_entrenamiento") is False:
+                detalle = metadata.get(
+                    "mensaje_compatibilidad",
+                    "Debe contener instruction y response con texto en cada registro.",
+                )
+                self.errorDataset.emit(
+                    f"El dataset {metadata.get('nombre', id_dataset)} no está listo: {detalle}"
+                )
+                return
             metadatas.append(metadata)
 
         tokenizer = self._setup_controller.tokenizer
@@ -667,6 +676,15 @@ class MainViewModel(QObject):
                     if metadata is None:
                         raise ValueError(
                             f"No se encontro el dataset {id_dataset} en el catalogo."
+                        )
+                    if metadata.get("compatible_entrenamiento") is False:
+                        detalle = metadata.get(
+                            "mensaje_compatibilidad",
+                            "Debe contener instruction y response con texto en cada registro.",
+                        )
+                        raise ValueError(
+                            f"El dataset {metadata.get('nombre', id_dataset)} no está listo: "
+                            f"{detalle}"
                         )
                     metadatas.append(metadata)
 

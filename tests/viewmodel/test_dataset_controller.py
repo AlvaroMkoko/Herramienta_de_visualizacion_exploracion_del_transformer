@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import threading
 
+import pytest
 from PySide6.QtCore import QThread, QTimer, QUrl
 
 from viewmodel import dataset_controller as modulo_datasets
@@ -161,3 +162,206 @@ def test_vista_previa_async_entrega_registros_y_reporta_error(
         assert controlador.obtenerRegistrosAsync(dataset["id"], 2) is True
     assert "No se encontró el dataset" in errores[-1]
     assert controlador.ocupado is False
+
+
+def test_crear_dataset_manual_escribe_jsonl_utf8_y_actualiza_catalogo_y_preview(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    controlador = _crear_controlador(tmp_path, monkeypatch)
+    registros = [
+        {
+            "instruction": "  ¿Cómo estás?  ",
+            "context": "  Conversación en español. ",
+            "response": "  Muy bien, gracias. ",
+            "category": "  saludo ",
+        },
+        {
+            "instruction": "Resume el texto",
+            "context": "El pingüino nada.",
+            "response": "Un pingüino está nadando.",
+            "category": "",
+        },
+    ]
+    agregados: list[dict] = []
+    controlador.datasetAgregado.connect(agregados.append)
+
+    resultado = controlador.crearDatasetManual("Dataset español útil", registros)
+
+    assert resultado["ok"] is True
+    dataset = resultado["dataset"]
+    ruta = Path(dataset["ruta"])
+    assert ruta.parent == controlador.DATASET_FILE.parent / "creados"
+    assert ruta.suffix == ".jsonl"
+    assert dataset["nombre"] == "Dataset español útil"
+    assert dataset["creado_por_app"] is True
+    assert dataset["compatible_entrenamiento"] is True
+    assert dataset["pares_validos"] == 2
+    assert dataset["estado"] == "Listo para entrenar"
+
+    contenido = ruta.read_bytes().decode("utf8")
+    assert "¿Cómo estás?" in contenido
+    assert "pingüino" in contenido
+    registros_guardados = [
+        json.loads(linea) for linea in contenido.splitlines() if linea.strip()
+    ]
+    assert registros_guardados == [
+        {
+            "instruction": "¿Cómo estás?",
+            "context": "Conversación en español.",
+            "response": "Muy bien, gracias.",
+            "category": "saludo",
+        },
+        {
+            "instruction": "Resume el texto",
+            "context": "El pingüino nada.",
+            "response": "Un pingüino está nadando.",
+        },
+    ]
+    assert controlador.obtenerRegistros(dataset["id"], 10) == registros_guardados
+    assert controlador.obtenerDatasets() == [dataset]
+    assert agregados == [dataset]
+    assert json.loads(controlador.DATASET_FILE.read_text(encoding="utf8")) == [
+        dataset
+    ]
+
+
+@pytest.mark.parametrize(
+    ("nombre", "registros", "mensaje_esperado"),
+    [
+        ("", [{"instruction": "Pregunta", "response": "Respuesta"}], "nombre"),
+        ("demo", [], "al menos un ejemplo"),
+        ("demo", [{"response": "Respuesta"}], "'instruction'"),
+        (
+            "demo",
+            [{"instruction": "Pregunta", "response": "   "}],
+            "'response'",
+        ),
+        (
+            "demo",
+            [{"instruction": "Pregunta", "context": 42, "response": "Respuesta"}],
+            "debe ser texto",
+        ),
+    ],
+)
+def test_crear_dataset_manual_rechaza_datos_incompletos_sin_mutar_catalogo(
+    tmp_path: Path,
+    monkeypatch,
+    nombre: str,
+    registros: list,
+    mensaje_esperado: str,
+) -> None:
+    controlador = _crear_controlador(tmp_path, monkeypatch)
+
+    resultado = controlador.crearDatasetManual(nombre, registros)
+
+    assert resultado["ok"] is False
+    assert mensaje_esperado in resultado["mensaje"]
+    assert controlador.obtenerDatasets() == []
+    assert json.loads(controlador.DATASET_FILE.read_text(encoding="utf8")) == []
+    creados = controlador.DATASET_FILE.parent / "creados"
+    assert not creados.exists() or list(creados.iterdir()) == []
+
+
+def test_crear_dataset_manual_resuelve_colision_sin_sobrescribir(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    controlador = _crear_controlador(tmp_path, monkeypatch)
+    directorio = controlador.DATASET_FILE.parent / "creados"
+    directorio.mkdir(parents=True)
+    ruta_preexistente = directorio / "mi_dataset.jsonl"
+    contenido_preexistente = b'{"dato": "no reemplazar"}\n'
+    ruta_preexistente.write_bytes(contenido_preexistente)
+
+    resultado = controlador.crearDatasetManual(
+        "Mi dataset",
+        [{"instruction": "Entrada", "context": "", "response": "Salida"}],
+    )
+
+    assert resultado["ok"] is True
+    ruta_creada = Path(resultado["dataset"]["ruta"])
+    assert ruta_creada.name == "mi_dataset_2.jsonl"
+    assert ruta_creada != ruta_preexistente
+    assert ruta_preexistente.read_bytes() == contenido_preexistente
+    assert json.loads(ruta_creada.read_text(encoding="utf8")) == {
+        "instruction": "Entrada",
+        "context": "",
+        "response": "Salida",
+    }
+
+
+@pytest.mark.parametrize(
+    ("nombre_archivo", "contenido"),
+    [
+        (
+            "compatible.jsonl",
+            '{"instruction": "Entrada", "context": "", "response": "Salida"}\n',
+        ),
+        (
+            "compatible.json",
+            '[{"instruction": "Entrada", "context": "", "response": "Salida"}]',
+        ),
+        (
+            "compatible.csv",
+            "instruction,context,response\nEntrada,,Salida\n",
+        ),
+    ],
+)
+def test_importacion_estructurada_publica_metadatos_de_compatibilidad(
+    tmp_path: Path,
+    monkeypatch,
+    nombre_archivo: str,
+    contenido: str,
+) -> None:
+    controlador = _crear_controlador(tmp_path, monkeypatch)
+    ruta = tmp_path / nombre_archivo
+    ruta.write_text(contenido, encoding="utf8")
+
+    dataset = controlador.agregarDataset(str(ruta))
+
+    assert dataset["compatible_entrenamiento"] is True
+    assert dataset["pares_validos"] == 1
+    assert dataset["estado"] == "Listo para entrenar"
+    assert "instruction" in dataset["campos"]
+    assert "response" in dataset["campos"]
+    assert "pares instruction" in dataset["mensaje_compatibilidad"]
+
+
+@pytest.mark.parametrize(
+    ("nombre_archivo", "contenido", "mensaje_esperado"),
+    [
+        (
+            "sin_respuesta.jsonl",
+            '{"instruction": "Entrada", "context": ""}\n',
+            "Faltan los campos obligatorios: response",
+        ),
+        (
+            "respuesta_vacia.json",
+            '[{"instruction": "Entrada", "response": "   "}]',
+            "1 registro(s)",
+        ),
+        (
+            "entrada_vacia.csv",
+            "instruction,context,response\n,,Salida\n",
+            "1 registro(s)",
+        ),
+    ],
+)
+def test_importacion_estructurada_explica_por_que_no_es_compatible(
+    tmp_path: Path,
+    monkeypatch,
+    nombre_archivo: str,
+    contenido: str,
+    mensaje_esperado: str,
+) -> None:
+    controlador = _crear_controlador(tmp_path, monkeypatch)
+    ruta = tmp_path / nombre_archivo
+    ruta.write_text(contenido, encoding="utf8")
+
+    dataset = controlador.agregarDataset(str(ruta))
+
+    assert dataset["compatible_entrenamiento"] is False
+    assert dataset["pares_validos"] == 0
+    assert dataset["estado"] == "Revisar formato"
+    assert mensaje_esperado in dataset["mensaje_compatibilidad"]

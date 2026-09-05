@@ -13,13 +13,16 @@ import csv
 import hashlib
 import json
 from pathlib import Path
+import re
 import time
 from typing import Any
+import unicodedata
 
 from PySide6.QtCore import Property, QObject, QThread, QUrl, Signal, Slot
 
 
 FORMATOS_SOPORTADOS = {".jsonl", ".json", ".csv", ".txt", ".pdf"}
+_CAMPOS_PARES_REQUERIDOS = ("instruction", "response")
 _TAMANO_BLOQUE_HASH = 1024 * 1024
 _INTERVALO_PROGRESO_SEGUNDOS = 0.10
 
@@ -39,6 +42,57 @@ def _ruta_local(valor: str | Path) -> Path:
         if ruta:
             return Path(ruta)
     return Path(texto).expanduser()
+
+
+def _nombre_archivo_seguro(nombre: str) -> str:
+    """Convierte un nombre visible en un nombre de archivo corto y seguro."""
+    normalizado = unicodedata.normalize("NFKD", nombre)
+    sin_acentos = normalizado.encode("ascii", "ignore").decode("ascii")
+    base = re.sub(r"[^a-zA-Z0-9_-]+", "_", sin_acentos).strip("_-").lower()
+    base = base[:60] or "dataset_manual"
+    nombres_reservados_windows = {
+        "con",
+        "prn",
+        "aux",
+        "nul",
+        *(f"com{numero}" for numero in range(1, 10)),
+        *(f"lpt{numero}" for numero in range(1, 10)),
+    }
+    return f"dataset_{base}" if base in nombres_reservados_windows else base
+
+
+def _normalizar_registros_manuales(registros: list[Any]) -> list[dict[str, str]]:
+    """Valida el contrato que consumen ``cargar_pares_combinados`` y el modelo."""
+    if not isinstance(registros, list) or not registros:
+        raise ValueError("Agrega al menos un ejemplo antes de crear el dataset.")
+
+    normalizados: list[dict[str, str]] = []
+    for indice, registro in enumerate(registros, start=1):
+        if not isinstance(registro, dict):
+            raise ValueError(f"El ejemplo {indice} no es un registro válido.")
+
+        valores: dict[str, str] = {}
+        for campo in ("instruction", "context", "response", "category"):
+            valor = registro.get(campo, "")
+            if not isinstance(valor, str):
+                raise ValueError(f"El campo '{campo}' del ejemplo {indice} debe ser texto.")
+            valores[campo] = valor.strip()
+
+        faltantes = [campo for campo in _CAMPOS_PARES_REQUERIDOS if not valores[campo]]
+        if faltantes:
+            nombres = " y ".join(f"'{campo}'" for campo in faltantes)
+            raise ValueError(f"Completa {nombres} en el ejemplo {indice}.")
+
+        registro_limpio = {
+            "instruction": valores["instruction"],
+            "context": valores["context"],
+            "response": valores["response"],
+        }
+        if valores["category"]:
+            registro_limpio["category"] = valores["category"]
+        normalizados.append(registro_limpio)
+
+    return normalizados
 
 
 def _registros_desde_jsonl(ruta: Path) -> Iterator[dict[str, Any]]:
@@ -233,6 +287,7 @@ def _analizar_dataset(
     longitud_maxima = 0
     longitud_minima: int | None = None
     ejemplos_vacios = 0
+    pares_validos = 0
     ultimo_reporte = time.monotonic()
 
     for objeto in _GENERADORES_POR_FORMATO[extension](ruta):
@@ -242,6 +297,19 @@ def _analizar_dataset(
         categoria = objeto.get("category") or objeto.get("categoria")
         if categoria:
             categorias[str(categoria)] += 1
+
+        if extension in {".jsonl", ".json", ".csv"}:
+            instruccion = objeto.get("instruction")
+            respuesta = objeto.get("response")
+            contexto = objeto.get("context", "")
+            if (
+                isinstance(instruccion, str)
+                and instruccion.strip()
+                and isinstance(respuesta, str)
+                and respuesta.strip()
+                and isinstance(contexto, str)
+            ):
+                pares_validos += 1
 
         texto = " ".join(
             str(valor) for valor in objeto.values() if isinstance(valor, str)
@@ -279,6 +347,32 @@ def _analizar_dataset(
     tamano_mb = round(ruta.stat().st_size / (1024 * 1024), 2)
     checksum = _calcular_hash(ruta, reportar)
 
+    if extension in {".txt", ".pdf"}:
+        compatible_entrenamiento = total_tokens > 0
+        mensaje_compatibilidad = (
+            "Corpus legible: su tamaño útil se confirmará al tokenizarlo en fragmentos."
+            if compatible_entrenamiento
+            else "El corpus no contiene texto utilizable."
+        )
+    else:
+        compatible_entrenamiento = total_registros > 0 and pares_validos == total_registros
+        faltantes = [campo for campo in _CAMPOS_PARES_REQUERIDOS if campo not in campos]
+        if faltantes:
+            mensaje_compatibilidad = (
+                "Faltan los campos obligatorios: " + ", ".join(faltantes) + "."
+            )
+        elif total_registros == 0:
+            mensaje_compatibilidad = "El archivo no contiene registros."
+        elif pares_validos != total_registros:
+            mensaje_compatibilidad = (
+                f"{total_registros - pares_validos} registro(s) tienen instruction o response "
+                "vacíos, o un valor que no es texto."
+            )
+        else:
+            mensaje_compatibilidad = (
+                "Todos los registros contienen pares instruction → response válidos."
+            )
+
     return {
         "id": dataset_id,
         "nombre": ruta.stem,
@@ -296,8 +390,17 @@ def _analizar_dataset(
         "longitud_maxima": longitud_maxima,
         "longitud_minima": longitud_minima,
         "ejemplos_vacios": ejemplos_vacios,
+        "pares_validos": pares_validos,
+        "compatible_entrenamiento": compatible_entrenamiento,
+        "mensaje_compatibilidad": mensaje_compatibilidad,
         "checksum": checksum,
-        "estado": "Validado",
+        "estado": (
+            "Corpus para preparar"
+            if extension in {".txt", ".pdf"} and compatible_entrenamiento
+            else "Listo para entrenar"
+            if compatible_entrenamiento
+            else "Revisar formato"
+        ),
     }
 
 
@@ -462,6 +565,76 @@ class DatasetController(QObject):
         self.datasets.append(metadata)
         self.guardar_datasets()
         return metadata
+
+    @Slot(str, "QVariantList", result="QVariantMap")
+    def crearDatasetManual(
+        self, nombre: str, registros: list[Any]
+    ) -> dict[str, Any]:
+        """Crea un JSONL compatible con el entrenamiento y lo agrega al catálogo.
+
+        La interfaz entrega texto, no rutas: el nombre se normaliza y el archivo
+        siempre se guarda dentro de ``data/datasets/creados`` (o junto al
+        catálogo alternativo usado en pruebas). Nunca se sobrescribe un dataset
+        existente.
+        """
+        if self._operacion_en_curso():
+            return {
+                "ok": False,
+                "mensaje": "Espera a que termine la operación de dataset actual.",
+            }
+
+        nombre_visible = str(nombre).strip()
+        if not nombre_visible:
+            return {"ok": False, "mensaje": "Escribe un nombre para el dataset."}
+        if len(nombre_visible) > 80:
+            return {
+                "ok": False,
+                "mensaje": "El nombre del dataset no puede superar 80 caracteres.",
+            }
+
+        try:
+            registros_limpios = _normalizar_registros_manuales(registros)
+            directorio = self.DATASET_FILE.parent / "creados"
+            directorio.mkdir(parents=True, exist_ok=True)
+            base = _nombre_archivo_seguro(nombre_visible)
+            ruta = directorio / f"{base}.jsonl"
+            sufijo = 2
+            while ruta.exists():
+                ruta = directorio / f"{base}_{sufijo}.jsonl"
+                sufijo += 1
+
+            archivo_creado = False
+            try:
+                # El modo exclusivo protege de una colisión entre la
+                # comprobación anterior y la apertura, sin reemplazar datos.
+                with ruta.open("x", encoding="utf8", newline="\n") as archivo:
+                    archivo_creado = True
+                    for registro in registros_limpios:
+                        archivo.write(json.dumps(registro, ensure_ascii=False) + "\n")
+
+                metadata = _analizar_dataset(ruta, self.generar_id())
+                metadata["nombre"] = nombre_visible
+                metadata["creado_por_app"] = True
+                self.datasets.append(metadata)
+                try:
+                    self.guardar_datasets()
+                except Exception:
+                    self.datasets.pop()
+                    raise
+            except Exception:
+                if archivo_creado:
+                    ruta.unlink(missing_ok=True)
+                raise
+        except Exception as exc:  # noqa: BLE001 - el mensaje debe volver a QML
+            return {"ok": False, "mensaje": str(exc)}
+
+        dataset = dict(metadata)
+        self.datasetAgregado.emit(dataset)
+        return {
+            "ok": True,
+            "mensaje": f"Dataset creado con {len(registros_limpios)} ejemplo(s).",
+            "dataset": dataset,
+        }
 
     @Slot(str, result=bool)
     def agregarDatasetAsync(self, ruta: str) -> bool:
