@@ -25,6 +25,7 @@ os.environ["QSG_RHI_BACKEND"] = "opengl"
 
 from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterType
 from PySide6.QtQuickControls2 import QQuickStyle
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import QCoreApplication
 
@@ -36,6 +37,8 @@ def main() -> None:
     QQuickStyle.setStyle("Basic")
 
     app = QApplication(sys.argv)
+
+    app.setWindowIcon(QIcon("view/assets/icono.ico"))
 
     QCoreApplication.setOrganizationName("TT")
     QCoreApplication.setApplicationName("TransformerVisualizer")
