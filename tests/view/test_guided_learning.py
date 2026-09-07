@@ -286,6 +286,11 @@ def test_actividad_avanza_predecir_observar_explicar_y_actualiza_progreso(
     assert _propiedad(screen, "selectedPrediction") == -1
     assert _propiedad(screen, "completedUnitsCount") == 0
     assert _propiedad(demo, "visualType") == "pipeline"
+    assert "dataset aporta instruction" in _propiedad(demo, "accessibleSummary")
+    _buscar(window, "guidedPipelineDatasetBlock")
+    _buscar(window, "guidedPipelineTokenizationBlock")
+    _buscar(window, "guidedPipelineTransformerBlock")
+    _buscar(window, "guidedPipelineLearningBlock")
 
     _invocar(screen, "selectPrediction", 1)
     qapp.processEvents()

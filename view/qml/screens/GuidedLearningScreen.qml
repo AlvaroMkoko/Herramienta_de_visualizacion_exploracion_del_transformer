@@ -48,21 +48,21 @@ PagePrincipal {
         {
             "id": "unit_1",
             "number": "01",
-            "title": "Mapa mental del Transformer",
-            "shortTitle": "Mapa mental",
-            "objective": "Reconoce las piezas principales y sigue el viaje de la información.",
+            "title": "Mapa mental: del dataset al Transformer",
+            "shortTitle": "Flujo completo",
+            "objective": "Reconoce cómo un registro del dataset se convierte en tokens, atraviesa el encoder–decoder y produce una señal de aprendizaje.",
             "conceptIds": ["que_es_transformer", "encoder_decoder_general", "flujo_general"],
             "activity": {
                 "visualType": "pipeline",
-                "question": "En una traducción, ¿qué bloque crea primero una representación contextual de toda la oración de entrada?",
-                "options": ["El encoder", "El decoder", "La capa softmax"],
+                "question": "En el flujo de entrenamiento, ¿qué parte del registro aporta la salida correcta con la que se evalúa la predicción?",
+                "options": ["response", "context", "category"],
                 "correctIndex": 0,
-                "trace": ["Texto de entrada", "El encoder contextualiza", "El decoder usa ese contexto", "Aparece el siguiente token"],
-                "observation": "La traza separa comprender la entrada de producir la salida: primero el encoder representa; después el decoder genera.",
-                "correctFeedback": "Correcto: el encoder construye la representación contextual que consultará el decoder.",
-                "revisionFeedback": "La salida no se genera todavía: primero el encoder construye el contexto de la entrada.",
-                "explanationPrompt": "Explica por qué encoder y decoder cumplen papeles distintos dentro del mismo flujo.",
-                "modelExplanation": "El encoder procesa la entrada y produce representaciones contextualizadas. El decoder consulta esas representaciones y su salida previa para generar un token a la vez."
+                "trace": ["Dataset: instruction/context + response", "Tokenización: texto → IDs con BOS/EOS", "Encoder–decoder: representa y predice", "Pérdida: compara la predicción con response"],
+                "observation": "El dataset no es solo texto: instruction y context forman la entrada, mientras response aporta el objetivo. Tras tokenizar, el encoder representa la entrada y el decoder predice la respuesta; la comparación produce la pérdida que guía el aprendizaje.",
+                "correctFeedback": "Correcto: response contiene la salida esperada contra la que se compara la predicción del decoder.",
+                "revisionFeedback": "context puede ampliar la entrada y category solo clasifica el ejemplo; response es la salida correcta que permite calcular la pérdida.",
+                "explanationPrompt": "Explica cómo un registro con instruction, context y response se transforma en una señal para entrenar el Transformer.",
+                "modelExplanation": "La aplicación combina instruction con context opcional y tokeniza esa entrada. También tokeniza response, agrega BOS/EOS y la desplaza para el decoder. El encoder contextualiza la entrada, el decoder predice cada token y la pérdida compara esas predicciones con response para ajustar los parámetros."
             }
         },
         {

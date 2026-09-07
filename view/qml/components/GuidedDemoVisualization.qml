@@ -22,7 +22,7 @@ Rectangle {
             return "Matriz triangular: cada fila permite el pasado y bloquea el futuro."
         if (visualType === "training")
             return "La pérdida produce gradientes, el optimizador los aplica y los parámetros cambian."
-        return "La entrada pasa por encoder, decoder y produce el siguiente token."
+        return "Flujo de entrenamiento: el dataset aporta instruction, context y response; la aplicación tokeniza, el encoder y el decoder predicen, y la pérdida compara la predicción con la response esperada."
     }
 
     implicitHeight: 170 * scaleFactor
@@ -107,13 +107,40 @@ Rectangle {
             RowLayout {
                 anchors.fill: parent
                 spacing: 3 * root.scaleFactor
-                DemoBlock { Layout.fillWidth: true; Layout.fillHeight: true; label: "Entrada"; detail: "El gato duerme"; fillColor: "#E7F0FA" }
+                DemoBlock {
+                    objectName: "guidedPipelineDatasetBlock"
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    label: "Dataset"
+                    detail: "instruction\n+ context\n+ response"
+                    fillColor: "#E7F0FA"
+                }
                 Text { text: "→"; color: "#7563C7"; font.bold: true }
-                DemoBlock { Layout.fillWidth: true; Layout.fillHeight: true; label: "Encoder"; detail: "contextualiza" }
+                DemoBlock {
+                    objectName: "guidedPipelineTokenizationBlock"
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    label: "Tokenización"
+                    detail: "IDs +\nBOS / EOS"
+                }
                 Text { text: "→"; color: "#7563C7"; font.bold: true }
-                DemoBlock { Layout.fillWidth: true; Layout.fillHeight: true; label: "Decoder"; detail: "genera"; fillColor: "#F8EDD9" }
+                DemoBlock {
+                    objectName: "guidedPipelineTransformerBlock"
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    label: "Transformer"
+                    detail: "encoder\n+ decoder"
+                    fillColor: "#F8EDD9"
+                }
                 Text { text: "→"; color: "#7563C7"; font.bold: true }
-                DemoBlock { Layout.fillWidth: true; Layout.fillHeight: true; label: "Salida"; detail: "The"; fillColor: "#E2F4EA" }
+                DemoBlock {
+                    objectName: "guidedPipelineLearningBlock"
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    label: "Aprendizaje"
+                    detail: "predicción\nvs. objetivo"
+                    fillColor: "#E2F4EA"
+                }
             }
         }
     }

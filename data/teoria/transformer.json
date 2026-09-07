@@ -115,20 +115,22 @@
           "id": "flujo_general",
           "title": "Flujo general de la información",
           "order": 6,
-          "short_description": "Texto → tokens → vectores → capas de atención y feed-forward → probabilidades del siguiente token.",
-          "explanation": "El recorrido completo empieza con texto plano, que se corta en tokens y se convierte en números (ids). Cada id se traduce a un vector aprendido (embedding), al que se le suma información de posición. Esos vectores atraviesan las capas del encoder, donde se contextualizan. El decoder toma su propia secuencia, la contextualiza con sus dos tipos de atención, y su salida final se proyecta al tamaño del vocabulario para producir un puntaje por cada palabra posible. Softmax convierte esos puntajes en probabilidades, y de ahí se elige el siguiente token.",
+          "short_description": "Dataset → tokens → encoder y decoder → predicción → pérdida y aprendizaje.",
+          "explanation": "Durante el entrenamiento, el recorrido empieza en un registro del dataset. instruction y el context opcional forman la entrada que debe comprender el modelo; response contiene la salida correcta que debe aprender. La aplicación convierte ambos textos en tokens e ids, añade las marcas especiales necesarias y construye embeddings con información de posición. La entrada atraviesa el encoder y queda contextualizada. El decoder consulta esa representación y recibe la response desplazada para predecir cada token siguiente. La proyección lineal y softmax producen probabilidades; después, la pérdida compara esas predicciones con los tokens reales de response. Backpropagation usa ese error para ajustar los parámetros. Durante la inferencia no existe response ni se calcula pérdida: el decoder genera un token, lo añade a su entrada y repite el proceso.",
           "steps": [
-            "Texto de entrada",
-            "Tokenización a tokens y token ids",
+            "Dataset: instruction + context opcional como entrada; response como salida esperada",
+            "Tokenización de entrada y respuesta; incorporación automática de BOS, EOS y PAD",
             "Embeddings + Positional Encoding",
             "N bloques de Encoder",
-            "N bloques de Decoder (consultando la salida del encoder)",
+            "N bloques de Decoder (consultando el encoder y la response desplazada)",
             "Capa Linear final",
             "Softmax",
-            "Siguiente token"
+            "Predicción del siguiente token",
+            "Comparación con response, cálculo de pérdida y actualización de parámetros"
           ],
           "related_concepts": [
             "recorrido_completo",
+            "dataset",
             "tokenizacion",
             "softmax_final"
           ]
