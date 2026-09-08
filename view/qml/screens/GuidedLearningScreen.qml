@@ -640,21 +640,19 @@ PagePrincipal {
                             id: unitDelegate
                             required property var modelData
                             required property int index
+                            objectName: "guidedUnitButton" + index
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 70 * root.uiScale
+                            activeFocusOnTab: true
 
                             enabled: root.isUnitUnlocked(unitDelegate.index)
                             opacity: enabled ? 1.0 : 0.45
+
+                            Accessible.name: "Unidad " + (index + 1) + ": " + modelData.title
                             Accessible.description: root.isUnitUnlocked(unitDelegate.index)
                                                     ? (root.isUnitCompleted(String(unitDelegate.modelData.id))
                                                        ? "Unidad completada" : "Unidad pendiente")
                                                     : "Bloqueada: completa la unidad anterior"
-
-                            // objectName: "guidedUnitButton" + index
-                            // Layout.fillWidth: true
-                            // Layout.preferredHeight: 70 * root.uiScale
-                            // activeFocusOnTab: true
-                            // Accessible.name: "Unidad " + (index + 1) + ": " + modelData.title
-                            // Accessible.description: root.isUnitCompleted(String(modelData.id))
-                            //                         ? "Unidad completada" : "Unidad pendiente"
 
                             background: Rectangle {
                                 radius: 10 * root.uiScale
@@ -872,17 +870,15 @@ PagePrincipal {
                         objectName: "guidedNextConceptButton"
                         Layout.preferredWidth: 170 * root.uiScale
                         Layout.fillHeight: true
-                        enabled: root.globalConceptNumber < root.totalCoreConcepts
+                        enabled: root.globalConceptNumber < root.totalCoreConcepts || root.currentConceptIndex < root.currentUnitConceptCount - 1
+                                 || root.currentUnitCompleted
                         text: root.currentConceptIndex < root.currentUnitConceptCount - 1
                               ? "Siguiente concepto →" : "Siguiente unidad →"
                         activeFocusOnTab: true
                         Accessible.name: text
                         onClicked: root.nextConcept()
-
-                        // enabled: root.currentConceptIndex < root.currentUnitConceptCount - 1
-                        //          || root.currentUnitCompleted
-                        // ToolTip.visible: hovered && !enabled
-                        // ToolTip.text: "Completa la actividad de esta unidad para continuar"
+                        ToolTip.visible: hovered && !enabled
+                        ToolTip.text: "Completa la actividad de esta unidad para continuar"
 
                     }
 

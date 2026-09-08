@@ -51,7 +51,7 @@ Rectangle {
         function predictionFeedback() {
         if (root.selectedPrediction < 0)
             return ""
-        if (root.selectedPrediction === root.realIndex(index))
+        if (root.selectedPrediction === Number(root.value("correctIndex", -1)))
             return root.value("correctFeedback", "Tu predicción coincide con la observación.")
             
         var porOpcion = root.value("optionFeedback", null)
@@ -196,30 +196,43 @@ Rectangle {
                     Repeater {
                         model: root.options()
 
-                        delegate: Button {
+                                                delegate: Button {
                             id: optionDelegate
                             required property var modelData
                             required property int index
+
+                            // El índice REAL de esta posición visible. Se calcula
+                            // una vez y se reutiliza: `selectedPrediction` guarda
+                            // índices reales, así que todas las comparaciones
+                            // deben hacerse contra este valor, no contra `index`.
+                            readonly property int realOptionIndex: root.realIndex(optionDelegate.index)
+                            readonly property bool seleccionada: root.selectedPrediction === optionDelegate.realOptionIndex
+
                             objectName: "guidedPredictionOption" + optionDelegate.index
                             width: parent.width
                             height: Math.max(42 * root.scaleFactor,
                                              optionText.implicitHeight + 18 * root.scaleFactor)
                             activeFocusOnTab: true
-                            Accessible.name: "Opción " + (index + 1) + ": " + String(modelData)
+
+                            // `modelData` viene del modelo SIN barajar: usar
+                            // optionAt() para que texto y accesibilidad
+                            // coincidan con lo que registra el clic.
+                            text: root.optionAt(optionDelegate.index)
+
+                            Accessible.name: "Opción " + (optionDelegate.index + 1) + ": " + optionDelegate.text
                             Accessible.description: "Selecciona esta predicción"
 
                             background: Rectangle {
                                 radius: 8 * root.scaleFactor
-                                color: root.selectedPrediction === optionDelegate.index
+                                color: optionDelegate.seleccionada
                                        ? "#EDE8FA" : optionDelegate.hovered ? "#F7F5FC" : "#FFFFFF"
-                                border.width: root.selectedPrediction === optionDelegate.index ? 2 : 1
-                                border.color: root.selectedPrediction === optionDelegate.index
-                                              ? "#7462C8" : "#D8DCE5"
+                                border.width: optionDelegate.seleccionada ? 2 : 1
+                                border.color: optionDelegate.seleccionada ? "#7462C8" : "#D8DCE5"
                             }
 
                             contentItem: Text {
                                 id: optionText
-                                text: String(optionDelegate.modelData)
+                                text: optionDelegate.text
                                 color: Style.Theme.texto_primario
                                 font.pixelSize: 11 * root.scaleFactor
                                 wrapMode: Text.WordWrap
@@ -229,7 +242,7 @@ Rectangle {
                                 rightPadding: 8 * root.scaleFactor
                             }
 
-                            onClicked: root.predictionSelected(index)
+                            onClicked: root.predictionSelected(optionDelegate.realOptionIndex)
                         }
                     }
 
