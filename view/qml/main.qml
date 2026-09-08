@@ -16,17 +16,11 @@ ApplicationWindow {
         anchors.fill: parent
     }
 
-    BotonPrincipal {
-        id: botonTema
+    ThemeSwitch {
         z: 100
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.margins: 12
-        width: 150
-        height: 36
-        size_text: 0.30
-        text: Style.Theme.modoOscuro ? "☀ Modo claro" : "🌙 Modo oscuro"
-        onClicked: Style.Theme.alternarModo()
     }
 
     Component.onCompleted: {

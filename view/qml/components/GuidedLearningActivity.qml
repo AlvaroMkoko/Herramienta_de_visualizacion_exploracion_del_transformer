@@ -12,6 +12,7 @@ Rectangle {
     property var activity: ({})
     property int stage: 0
     property int selectedPrediction: -1
+    property var optionOrder: []
     property bool unitCompleted: false
     property real scaleFactor: 1.0
 
@@ -31,16 +32,35 @@ Rectangle {
         return root.value("options", [])
     }
 
+    function optionAt(visibleIndex) {
+        var opciones = root.options()
+        var real = root.optionOrder.length > visibleIndex
+                   ? root.optionOrder[visibleIndex] : visibleIndex
+        return opciones[real]
+    }
+
+    function realIndex(visibleIndex) {
+        return root.optionOrder.length > visibleIndex
+               ? root.optionOrder[visibleIndex] : visibleIndex
+    }
+
     function trace() {
         return root.value("trace", [])
     }
 
-    function predictionFeedback() {
+        function predictionFeedback() {
         if (root.selectedPrediction < 0)
             return ""
-        return root.selectedPrediction === Number(root.value("correctIndex", -1))
-                ? root.value("correctFeedback", "Tu predicción coincide con la observación.")
-                : root.value("revisionFeedback", "Contrasta tu predicción con la observación.")
+        if (root.selectedPrediction === root.realIndex(index))
+            return root.value("correctFeedback", "Tu predicción coincide con la observación.")
+            
+        var porOpcion = root.value("optionFeedback", null)
+        if (porOpcion && porOpcion.length > root.selectedPrediction) {
+            var especifico = porOpcion[root.selectedPrediction]
+            if (especifico)
+                return especifico
+        }
+        return root.value("revisionFeedback", "Contrasta tu predicción con la observación.")
     }
 
     radius: 14 * scaleFactor
@@ -48,6 +68,10 @@ Rectangle {
     border.width: 1
     border.color: stage === 3 ? "#86D1B4" : "#D8D2EC"
     clip: true
+
+    onActivityChanged: {
+        explanationInput.text = ""
+    }
 
     ColumnLayout {
         anchors.fill: parent

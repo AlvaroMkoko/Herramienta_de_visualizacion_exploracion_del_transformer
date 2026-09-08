@@ -14,7 +14,14 @@ PagePrincipal {
     readonly property real minimumFlowWidth: 1160
     readonly property int totalPlatformStages: 5
     readonly property var platformStageOrder: [1, 2, 3, 4, 5]
-    readonly property var platformStageAvailability: [true, true, true, true, true]
+    readonly property var platformStageAvailability: [
+        true,                                                   // 1 pre-test
+        true,                                                   // 2 recorrido guiado
+        !root.requireGuidedBeforeLabs || root.guidedCompleted,   // 3 laboratorios
+        true,                                                   // 4 post-test
+        true                                                    // 5 resultados
+    ]
+    
     readonly property var learningController: (typeof mainViewModel !== "undefined"
                                                && mainViewModel.learningController)
                                               ? mainViewModel.learningController
@@ -35,6 +42,28 @@ PagePrincipal {
     readonly property string guidedActionLabel: learningStarted
                                                    ? "Continuar recorrido"
                                                    : "Comenzar recorrido"
+
+    // ─────────────────────────────────────────────────────────────
+    // CONFIGURACIÓN: poner en false para desbloquear los laboratorios
+    // sin necesidad de completar el recorrido guiado (útil durante el
+    // desarrollo y para demostraciones).
+    readonly property bool requireGuidedBeforeLabs: true
+    // ─────────────────────────────────────────────────────────────
+
+    readonly property bool guidedCompleted: {
+        var dependency = guidedProgressRevision
+        if (typeof mainViewModel === "undefined" || !mainViewModel.learningController)
+            return false
+        return mainViewModel.learningController.completedUnitsCount
+               >= mainViewModel.learningController.totalUnits
+    }
+    property int guidedProgressRevision: 0
+
+    Connections {
+        target: typeof mainViewModel !== "undefined" ? mainViewModel.learningController : null
+        ignoreUnknownSignals: true
+        function onProgressChanged() { root.guidedProgressRevision += 1 }
+    }
 
     function isPlatformStageAvailable(stageOrder) {
         return stageOrder >= 1 && stageOrder <= totalPlatformStages

@@ -25,6 +25,7 @@
       "id": "introduccion",
       "title": "Introducción al Transformer",
       "order": 1,
+      "ambito":"aplicacion",
       "conceptos": [
         {
           "id": "que_es_transformer",
@@ -141,6 +142,7 @@
       "id": "entrada",
       "title": "Entrada al modelo",
       "order": 2,
+      "ambito": "transformer",
       "conceptos": [
         {
           "id": "texto_entrada",
@@ -349,6 +351,7 @@
       "id": "self_attention",
       "title": "Self-Attention",
       "order": 3,
+      "ambito": "transformer",
       "conceptos": [
         {
           "id": "que_es_self_attention",
@@ -449,6 +452,7 @@
       "id": "calculo_attention",
       "title": "Cálculo de Attention",
       "order": 4,
+      "ambito": "transformer",
       "conceptos": [
         {
           "id": "producto_qk",
@@ -616,6 +620,7 @@
       "id": "multi_head",
       "title": "Multi-Head Attention",
       "order": 5,
+      "ambito": "transformer",
       "conceptos": [
         {
           "id": "problema_multi_head",
@@ -733,6 +738,7 @@
       "id": "residual_norm",
       "title": "Residual Connections y Layer Normalization",
       "order": 6,
+      "ambito": "transformer",
       "conceptos": [
         {
           "id": "conexion_residual",
@@ -812,6 +818,7 @@
       "id": "feed_forward",
       "title": "Feed Forward Network",
       "order": 7,
+      "ambito": "transformer",
       "conceptos": [
         {
           "id": "que_es_ffn",
@@ -925,6 +932,7 @@
       "id": "encoder",
       "title": "Encoder",
       "order": 8,
+      "ambito": "transformer",
       "conceptos": [
         {
           "id": "estructura_encoder",
@@ -991,6 +999,7 @@
       "id": "decoder",
       "title": "Decoder",
       "order": 9,
+      "ambito": "transformer",
       "conceptos": [
         {
           "id": "estructura_decoder",
@@ -1128,6 +1137,7 @@
       "id": "encoder_decoder_attention",
       "title": "Encoder-Decoder Attention",
       "order": 11,
+      "ambito": "transformer",
       "conceptos": [
         {
           "id": "que_es_cross_attention",
@@ -1193,6 +1203,7 @@
       "id": "salida",
       "title": "Salida del Transformer",
       "order": 12,
+      "ambito": "transformer",
       "conceptos": [
         {
           "id": "salida_final_decoder",
@@ -1373,6 +1384,7 @@
       "id": "generacion_autoregresiva",
       "title": "Generación autoregresiva",
       "order": 13,
+      "ambito": "transformer",
       "conceptos": [
         {
           "id": "generacion_token_por_token",
@@ -1430,6 +1442,7 @@
       "id": "entrenamiento",
       "title": "Entrenamiento",
       "order": 14,
+      "ambito": "transformer",
       "conceptos": [
         {
           "id": "entrenamiento_vs_inferencia",
@@ -1659,6 +1672,7 @@
       "id": "evaluacion_persistencia",
       "title": "Evaluación, generalización y persistencia",
       "order": 15,
+      "ambito": "transformer",
       "conceptos": [
         {
           "id": "validation_loss",
@@ -1735,6 +1749,7 @@
       "id": "dimensiones",
       "title": "Dimensiones y flujo matemático",
       "order": 16,
+      "ambito": "transformer",
       "conceptos": [
         {
           "id": "tabla_dimensiones",
@@ -1836,6 +1851,7 @@
       "id": "flujo_completo",
       "title": "Flujo completo",
       "order": 17,
+      "ambito": "transformer",
       "conceptos": [
         {
           "id": "recorrido_completo",

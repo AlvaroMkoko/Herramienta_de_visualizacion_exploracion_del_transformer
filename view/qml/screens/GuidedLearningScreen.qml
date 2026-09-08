@@ -22,6 +22,7 @@ PagePrincipal {
     property int currentConceptIndex: 0
     property int activityStage: 0
     property int selectedPrediction: -1
+    property var optionOrder: []
     property var currentConcept: ({})
     property var currentRelatedConcepts: []
     property int progressRevision: 0
@@ -54,15 +55,20 @@ PagePrincipal {
             "conceptIds": ["que_es_transformer", "encoder_decoder_general", "flujo_general"],
             "activity": {
                 "visualType": "pipeline",
-                "question": "En el flujo de entrenamiento, ¿qué parte del registro aporta la salida correcta con la que se evalúa la predicción?",
-                "options": ["response", "context", "category"],
+                "question": "Mientras el decoder genera una respuesta de 10 tokens, ¿cuántas veces procesa el encoder la oración de entrada?",
+                "options": ["Una sola vez, al principio", "Una vez por cada token generado", "Dos veces: al empezar y al terminar"],
                 "correctIndex": 0,
-                "trace": ["Dataset: instruction/context + response", "Tokenización: texto → IDs con BOS/EOS", "Encoder–decoder: representa y predice", "Pérdida: compara la predicción con response"],
-                "observation": "El dataset no es solo texto: instruction y context forman la entrada, mientras response aporta el objetivo. Tras tokenizar, el encoder representa la entrada y el decoder predice la respuesta; la comparación produce la pérdida que guía el aprendizaje.",
-                "correctFeedback": "Correcto: response contiene la salida esperada contra la que se compara la predicción del decoder.",
-                "revisionFeedback": "context puede ampliar la entrada y category solo clasifica el ejemplo; response es la salida correcta que permite calcular la pérdida.",
-                "explanationPrompt": "Explica cómo un registro con instruction, context y response se transforma en una señal para entrenar el Transformer.",
-                "modelExplanation": "La aplicación combina instruction con context opcional y tokeniza esa entrada. También tokeniza response, agrega BOS/EOS y la desplaza para el decoder. El encoder contextualiza la entrada, el decoder predice cada token y la pérdida compara esas predicciones con response para ajustar los parámetros."
+                "trace": ["El encoder lee la entrada completa de una vez", "Produce una representación por cada token de entrada", "El decoder consulta esa representación en cada paso", "Cada token nuevo reutiliza la misma salida del encoder"],
+                "observation": "Observa que la salida del encoder no se recalcula: es la misma matriz la que el decoder consulta en el paso 1 y en el paso 10.",
+                "correctFeedback": "Coincide. Ahora contrasta tu explicación con esta: la entrada no cambia durante la generación, así que su representación se calcula una vez y se reutiliza. ¿Tu explicación menciona que la entrada permanece fija?",
+                "optionFeedback": [
+                    "",
+                    "Eso describiría una tubería que alterna encoder y decoder en cada paso. Pero la oración de entrada no cambia mientras se genera: recalcular su representación daría exactamente el mismo resultado. Lo que se repite es el decoder, no el encoder.",
+                    "No hay una segunda pasada de cierre. El encoder termina su trabajo antes de que el decoder empiece, y su salida queda disponible sin volver a calcularse."
+                ],
+                "revisionFeedback": "El encoder lee la entrada completa de una vez; lo que se repite en cada token es el decoder.",
+                "explanationPrompt": "¿Por qué el encoder puede ejecutarse una sola vez mientras el decoder debe ejecutarse muchas?",
+                "modelExplanation": "El encoder lee toda la secuencia de entrada de una vez y produce una representación contextualizada por token. Esa entrada no cambia durante la generación, así que su representación se calcula una sola vez. El decoder, en cambio, produce la salida de a un token por vez: en cada paso consulta la salida completa del encoder y los tokens que él mismo ya generó."
             }
         },
         {
@@ -74,15 +80,20 @@ PagePrincipal {
             "conceptIds": ["tokenizacion", "embeddings", "positional_encoding"],
             "activity": {
                 "visualType": "token_position",
-                "question": "Dos frases contienen exactamente los mismos tokens, pero en distinto orden. ¿Qué señal permite distinguir sus posiciones?",
-                "options": ["La tasa de aprendizaje", "El positional encoding", "El número de épocas"],
+                "question": "Dos frases tienen exactamente los mismos tokens en distinto orden. ¿Qué mecanismo permite que el modelo las distinga?",
+                "options": ["Cada token recibe un embedding distinto según dónde aparece", "A cada embedding se le suma un patrón fijo distinto por posición", "El orden queda codificado en el token id asignado al tokenizar"],
                 "correctIndex": 1,
-                "trace": ["La frase se divide en tokens", "Cada token obtiene un embedding", "Se agrega información de posición", "El modelo recibe vectores con identidad y orden"],
-                "observation": "Un embedding identifica contenido, pero no basta para conservar el orden. La codificación posicional aporta esa señal antes de la atención.",
-                "correctFeedback": "Correcto: la posición se combina con el embedding para que el orden sea observable.",
-                "revisionFeedback": "Los hiperparámetros de entrenamiento no indican dónde aparece cada token; esa tarea corresponde al positional encoding.",
-                "explanationPrompt": "Explica qué información aporta el embedding y qué información adicional aporta la posición.",
-                "modelExplanation": "El embedding representa la identidad y propiedades aprendidas del token. El positional encoding añade dónde aparece, permitiendo distinguir secuencias con los mismos tokens en órdenes diferentes."
+                "trace": ["La frase se divide en tokens", "Cada token obtiene su embedding de la tabla", "Se suma el positional encoding de su posición", "El vector resultante lleva identidad y orden"],
+                "observation": "Fíjate en que el mismo token en dos posiciones parte del mismo embedding: lo que difiere es el patrón que se le suma encima.",
+                "correctFeedback": "Coincide. Ahora contrasta tu explicación con esta: el embedding aporta identidad y el positional encoding aporta ubicación, y ambos se suman en el mismo vector. ¿Tu explicación distingue las dos señales?",
+                "optionFeedback": [
+                    "La tabla de embeddings se consulta por id de token, no por posición: la misma palabra devuelve siempre la misma fila, aparezca donde aparezca. La diferencia de posición se agrega después, sumando el positional encoding.",
+                    "",
+                    "El token id es el índice de ese token dentro del vocabulario, no su lugar en la frase. La misma palabra tiene el mismo id en cualquier posición; el orden se inyecta aparte."
+                ],
+                "revisionFeedback": "El embedding depende solo de qué token es; la posición se agrega sumando un patrón aparte.",
+                "explanationPrompt": "¿Por qué no alcanza con el embedding y hace falta sumar información de posición?",
+                "modelExplanation": "El embedding depende únicamente del token: la misma palabra devuelve la misma fila de la tabla sin importar dónde aparezca, y tampoco depende del contexto. El positional encoding es una matriz con un patrón único por posición, que se suma al embedding. El vector que entra a la primera capa lleva así identidad y ubicación superpuestas."
             }
         },
         {
@@ -94,15 +105,20 @@ PagePrincipal {
             "conceptIds": ["query_key_value", "formula_attention_completa", "problema_multi_head"],
             "activity": {
                 "visualType": "attention",
-                "question": "Cuando un token busca contexto relevante, ¿qué descripción de Query, Key y Value es la más adecuada?",
-                "options": ["Query busca, Key indica compatibilidad y Value aporta información", "Value busca, Query almacena y Key genera", "Los tres vectores siempre son idénticos"],
-                "correctIndex": 0,
-                "trace": ["La Query del token formula una búsqueda", "Se compara con las Keys", "Softmax convierte scores en pesos", "La suma ponderada reúne Values"],
-                "observation": "La atención no copia un único token: distribuye pesos y combina información. Varias cabezas pueden aprender relaciones distintas.",
-                "correctFeedback": "Correcto: Query y Key determinan relevancia; Value transporta la información que se combinará.",
-                "revisionFeedback": "Recuerda la analogía de búsqueda: Query pregunta, Key permite comparar y Value entrega contenido.",
-                "explanationPrompt": "Explica cómo una Query termina produciendo una combinación contextual de Values.",
-                "modelExplanation": "La Query se compara con todas las Keys para producir scores; tras escalar y aplicar softmax, esos pesos ponderan los Values. Multi-head repite el proceso en distintos subespacios."
+                "question": "Cuando un token decide cuánta atención prestar a otro, ¿qué determina ese peso?",
+                "options": ["La distancia entre ambos tokens dentro de la frase", "La comparación entre la Query de uno y la Key del otro", "El contenido del Value del token consultado"],
+                "correctIndex": 1,
+                "trace": ["Cada token produce su Query, Key y Value", "La Query se compara con todas las Keys", "Softmax convierte esos scores en pesos", "Los Values se promedian con esos pesos"],
+                "observation": "Observa que dos tokens vecinos pueden recibir pesos muy distintos, y que un token lejano puede recibir el peso más alto de la fila.",
+                "correctFeedback": "Coincide. Ahora contrasta tu explicación con esta: Query y Key deciden la relevancia, y el Value solo transporta lo que se transmite una vez decidida. ¿Tu explicación separa esos dos roles?",
+                "optionFeedback": [
+                    "La distancia no interviene en el cálculo: el peso sale de comparar Query con Key, y esa comparación no sabe dónde está cada token. Justamente por eso hace falta el positional encoding para que el orden influya de algún modo.",
+                    "",
+                    "El Value no participa en decidir el peso: entra recién después, cuando ya se calcularon los pesos y hay que promediar. Quien determina la relevancia es la comparación entre Query y Key."
+                ],
+                "revisionFeedback": "El peso sale de comparar la Query de un token con las Keys de los demás; el Value solo aporta el contenido que se transmite.",
+                "explanationPrompt": "¿Por qué hacen falta tres vectores distintos y no alcanza con comparar los tokens directamente?",
+                "modelExplanation": "Cada token genera tres vectores. La Query representa lo que busca, la Key lo que ofrece para ser encontrado, y el Value la información que entrega si resulta seleccionado. La atención compara la Query de un token con las Keys de todos los demás para decidir cuánto de cada Value tomar. Separar los roles permite que buscar, ser encontrado y transmitir se optimicen por separado."
             }
         },
         {
@@ -112,17 +128,22 @@ PagePrincipal {
             "shortTitle": "Máscara y generación",
             "objective": "Comprende la máscara causal y la generación autoregresiva token por token.",
             "conceptIds": ["por_que_mascara", "generacion_token_por_token", "seleccion_token"],
-            "activity": {
+                        "activity": {
                 "visualType": "causal_mask",
                 "question": "Al entrenar la predicción de la posición t, ¿qué información debe ocultar la máscara causal?",
                 "options": ["Todos los tokens anteriores", "Los tokens posteriores a t", "La representación del encoder completa"],
                 "correctIndex": 1,
                 "trace": ["El decoder recibe el prefijo disponible", "La máscara bloquea posiciones futuras", "Se obtiene una distribución de probabilidad", "Se elige y agrega un nuevo token"],
-                "observation": "La misma restricción causal evita hacer trampa al entrenar y hace posible repetir el ciclo durante la inferencia.",
-                "correctFeedback": "Correcto: cada posición solo puede usar su pasado y la información permitida, nunca los tokens futuros de la salida.",
-                "revisionFeedback": "La máscara conserva el pasado visible y bloquea las posiciones que todavía no deberían conocerse.",
-                "explanationPrompt": "Explica por qué ocultar el futuro durante entrenamiento es necesario para generar después token por token.",
-                "modelExplanation": "Si el decoder viera tokens futuros durante entrenamiento, aprendería con información ausente en inferencia. La máscara causal iguala esa restricción y permite la generación autoregresiva."
+                "observation": "Fíjate en el triángulo superior de la matriz: está en cero, mientras la diagonal y todo lo que queda debajo conservan peso.",
+                "correctFeedback": "Coincide. Ahora contrasta tu explicación con esta: el objetivo en la posición t es el token t+1, que está presente en la entrada durante el entrenamiento; sin máscara el modelo lo copiaría en vez de predecirlo. ¿Tu explicación menciona esa copia?",
+                "optionFeedback": [
+                    "Ocultar el pasado dejaría a cada token sin contexto alguno para predecir. El pasado es justamente lo único que estará disponible al generar, así que debe permanecer visible.",
+                    "",
+                    "La atención cruzada no lleva máscara causal: la secuencia de entrada está completa desde el principio y no contiene ningún futuro que ocultar. La restricción aplica solo a la autoatención del decoder."
+                ],
+                "revisionFeedback": "Cada posición conserva su pasado visible; lo que se bloquea son las posiciones que todavía no deberían conocerse.",
+                "explanationPrompt": "¿Por qué ocultar el futuro durante el entrenamiento es lo que hace posible generar después token por token?",
+                "modelExplanation": "Durante el entrenamiento se entrega la secuencia objetivo completa por eficiencia, pero el objetivo en la posición t es el token que aparece en t+1 de la entrada. Sin máscara, el modelo copiaría ese token por atención en lugar de aprender a predecirlo: la pérdida bajaría rápido y el fallo aparecería recién al generar, cuando no hay futuro que copiar."
             }
         },
         {
@@ -132,17 +153,22 @@ PagePrincipal {
             "shortTitle": "Aprendizaje",
             "objective": "Conecta predicción, pérdida, gradientes y actualización de parámetros.",
             "conceptIds": ["entrenamiento_vs_inferencia", "cross_entropy", "actualizacion_parametros"],
-            "activity": {
+                        "activity": {
                 "visualType": "training",
-                "question": "¿Qué proceso ocurre después de calcular la cross entropy durante un paso de entrenamiento?",
-                "options": ["Se borran los embeddings", "Se calculan gradientes y se actualizan parámetros", "El modelo entra automáticamente en inferencia"],
-                "correctIndex": 1,
-                "trace": ["El modelo predice probabilidades", "Cross entropy mide el error", "Backpropagation calcula gradientes", "El optimizador ajusta parámetros"],
-                "observation": "La pérdida es una señal numérica; el aprendizaje sucede cuando sus gradientes guían una actualización de los parámetros.",
-                "correctFeedback": "Correcto: backpropagation obtiene gradientes y el optimizador aplica la actualización.",
-                "revisionFeedback": "Calcular la pérdida solo mide el error; todavía hacen falta gradientes y una actualización para aprender.",
-                "explanationPrompt": "Explica la diferencia entre medir el error y modificar el modelo para reducirlo.",
-                "modelExplanation": "Cross entropy cuantifica el desacuerdo entre predicción y objetivo. Backpropagation deriva cómo influye cada parámetro y el optimizador usa esos gradientes para actualizarlo."
+                "question": "Un modelo ya entrenado responde diez preguntas seguidas. ¿Sus parámetros cambian durante ese uso?",
+                "options": ["Sí, cada respuesta ajusta un poco los parámetros", "Solo cambian cuando la respuesta generada es incorrecta", "No cambian: solo se modifican durante el entrenamiento"],
+                "correctIndex": 2,
+                "trace": ["En entrenamiento hay una respuesta correcta disponible", "La cross entropy compara predicción y objetivo", "Los gradientes indican cómo ajustar cada parámetro", "En inferencia no hay objetivo, así que no hay gradiente"],
+                "observation": "Observa que la cadena pérdida → gradiente → actualización arranca en la comparación con la respuesta correcta. Sin ese objetivo, la cadena no puede iniciarse.",
+                "correctFeedback": "Coincide. Ahora contrasta tu explicación con esta: actualizar un parámetro requiere un gradiente, y un gradiente requiere una pérdida, que a su vez requiere conocer la respuesta correcta. ¿Tu explicación recorre esa cadena completa?",
+                "optionFeedback": [
+                    "Para ajustar un parámetro hace falta un gradiente, y para calcularlo hace falta una pérdida que compare la salida con la respuesta correcta. En inferencia no hay respuesta correcta disponible, así que esa cadena nunca arranca.",
+                    "Eso supondría que el modelo sabe que se equivocó, pero durante la inferencia no dispone de la respuesta correcta con la cual compararse. Sin objetivo no hay pérdida, y sin pérdida no hay ni detección del error ni actualización.",
+                    ""
+                ],
+                "revisionFeedback": "Sin respuesta correcta no hay pérdida, sin pérdida no hay gradiente y sin gradiente no hay actualización.",
+                "explanationPrompt": "¿Por qué el modelo no puede seguir aprendiendo mientras se lo usa?",
+                "modelExplanation": "Entrenamiento e inferencia son modos distintos. En entrenamiento se dispone de la secuencia objetivo, la cross entropy mide el desacuerdo entre la predicción y el token correcto, backpropagation obtiene los gradientes y el optimizador actualiza cada parámetro. En inferencia no hay respuesta disponible: no puede calcularse la pérdida ni, por lo tanto, ningún gradiente."
             }
         },
         {
@@ -152,17 +178,22 @@ PagePrincipal {
             "shortTitle": "Dataset y ejemplos",
             "objective": "Identifica el formato que convierte ejemplos de texto en una señal de aprendizaje para el encoder y el decoder.",
             "conceptIds": ["dataset", "teacher_forcing", "epoch_batch"],
-            "activity": {
+                        "activity": {
                 "visualType": "dataset_pairs",
-                "question": "¿Qué registro puede usar directamente esta aplicación como un par de entrenamiento estructurado?",
-                "options": ["instruction y response no vacíos; context es opcional", "Solo category y un número de fila", "Una lista de palabras sin salida esperada"],
-                "correctIndex": 0,
-                "trace": ["instruction y context forman la entrada", "response aporta la salida esperada", "La app tokeniza y agrega BOS, EOS y PAD", "El decoder predice response desplazada un token"],
-                "observation": "El par define tanto lo que el encoder debe representar como la respuesta correcta que permite calcular la pérdida del decoder.",
-                "correctFeedback": "Correcto: instruction y response son los campos obligatorios; context puede ampliar la entrada.",
-                "revisionFeedback": "Para aprender una tarea supervisada hacen falta una entrada y una salida correcta. En esta aplicación se llaman instruction y response.",
-                "explanationPrompt": "Explica por qué el Transformer necesita una salida esperada y cómo se usa durante el entrenamiento.",
-                "modelExplanation": "El encoder representa instruction y el context opcional. El decoder recibe la response desplazada y predice cada token siguiente; la response real indica el objetivo con el que se calcula la pérdida."
+                "question": "Durante el entrenamiento, el decoder predice mal el tercer token de la response. ¿Qué recibe como entrada para predecir el cuarto?",
+                "options": ["Su propia predicción equivocada del tercer token", "El tercer token correcto, tomado de la response", "Nada: el ejemplo se descarta y se pasa al siguiente"],
+                "correctIndex": 1,
+                "trace": ["instruction y context forman la entrada del encoder", "response aporta la salida esperada", "El decoder recibe la response desplazada una posición", "Cada posición se predice a partir del texto correcto anterior"],
+                "observation": "Fíjate en que la entrada del decoder proviene siempre de la response real, no de lo que el modelo produjo en el paso anterior.",
+                "correctFeedback": "Coincide. Ahora contrasta tu explicación con esta: alimentar el contexto correcto permite evaluar todas las posiciones en una sola pasada y evita que un error temprano contamine el resto. ¿Tu explicación menciona alguna de esas dos ventajas?",
+                "optionFeedback": [
+                    "Eso ocurre al generar, no al entrenar. Con teacher forcing el decoder recibe la secuencia objetivo real desplazada una posición, en vez de lo que él mismo predijo; así un error temprano no arrastra a todas las predicciones siguientes.",
+                    "",
+                    "El ejemplo no se descarta: todas las posiciones se evalúan en la misma pasada y cada una aporta su propia pérdida. Un error en una posición no invalida las demás."
+                ],
+                "revisionFeedback": "Durante el entrenamiento el decoder recibe la response real desplazada, no sus propias predicciones.",
+                "explanationPrompt": "¿Por qué conviene alimentar al decoder con la respuesta correcta durante el entrenamiento, si al generar no la tendrá?",
+                "modelExplanation": "Teacher forcing consiste en dar al decoder la secuencia objetivo real desplazada una posición, en lugar de lo que él mismo predijo. Permite paralelizar todas las posiciones y evita que un error temprano arrastre a las predicciones siguientes. La contrapartida es el exposure bias: el modelo se entrena viendo siempre contexto perfecto, pero al generar debe apoyarse en su propia salida."
             }
         }
     ]
@@ -205,6 +236,20 @@ PagePrincipal {
                                                           root.currentConceptIndex)
     }
 
+    function repeatCurrentUnit() {
+        var unitId = String(root.currentUnit.id || "")
+        if (!unitId)
+            return
+        if (root.hasLearningController)
+            mainViewModel.learningController.unmarkUnitCompleted(unitId)
+        else
+            root.fallbackCompletedUnitIds = root.fallbackCompletedUnitIds.filter(
+                function(id) { return id !== unitId })
+        root.currentConceptIndex = 0
+        root.restoreActivityState()
+        root.savePosition()
+    }
+
     function refreshConcept() {
         if (!root.currentConceptId) {
             root.currentConcept = ({})
@@ -226,17 +271,30 @@ PagePrincipal {
 
     function restoreActivityState() {
         root.selectedPrediction = -1
+        root.shuffleOptionOrder()
         root.activityStage = root.currentUnitCompleted ? 3 : 0
     }
 
-    function selectUnit(index) {
+        function selectUnit(index) {
         var target = Math.round(Number(index))
         if (!isFinite(target) || target < 0 || target >= root.totalUnits)
+            return
+        if (!root.isUnitUnlocked(target))
             return
         root.currentUnitIndex = target
         root.currentConceptIndex = 0
         root.restoreActivityState()
         root.savePosition()
+    }
+
+    function nextConcept() {
+        if (root.currentConceptIndex < root.currentUnitConceptCount - 1) {
+            root.currentConceptIndex += 1
+            root.savePosition()
+        } else if (root.currentUnitIndex < root.totalUnits - 1
+                   && root.currentUnitCompleted) {
+            root.selectUnit(root.currentUnitIndex + 1)
+        }
     }
 
     function selectConcept(index) {
@@ -245,15 +303,6 @@ PagePrincipal {
             return
         root.currentConceptIndex = target
         root.savePosition()
-    }
-
-    function nextConcept() {
-        if (root.currentConceptIndex < root.currentUnitConceptCount - 1) {
-            root.currentConceptIndex += 1
-            root.savePosition()
-        } else if (root.currentUnitIndex < root.totalUnits - 1) {
-            root.selectUnit(root.currentUnitIndex + 1)
-        }
     }
 
     function previousConcept() {
@@ -277,8 +326,9 @@ PagePrincipal {
     }
 
     function showObservation() {
-        if (root.activityStage === 0 && root.selectedPrediction >= 0)
-            root.activityStage = 1
+        if (root.selectedPrediction < 0 || root.activityStage !== 0)
+            return
+        root.activityStage = 1
     }
 
     function startExplanation() {
@@ -323,6 +373,38 @@ PagePrincipal {
     function leaveScreen() {
         root.savePosition()
         root.stackView.pop()
+    }
+
+        function shuffleOptionOrder() {
+        var total = root.predictionOptionCount
+        var order = []
+        for (var i = 0; i < total; ++i)
+            order.push(i)
+        
+        for (var j = order.length - 1; j > 0; --j) {
+            var k = Math.floor(Math.random() * (j + 1))
+            var t = order[j]; order[j] = order[k]; order[k] = t
+        }
+        root.optionOrder = order
+    }
+
+    function realOptionIndex(visibleIndex) {
+        if (root.optionOrder.length > visibleIndex)
+            return root.optionOrder[visibleIndex]
+        return visibleIndex
+    }
+
+        function isUnitUnlocked(index) {
+        var dependency = root.progressRevision
+        if (index <= 0)
+            return true
+        // Una unidad se desbloquea cuando TODAS las anteriores están
+        // completas. Permite volver a repasar unidades ya hechas.
+        for (var i = 0; i < index; ++i) {
+            if (!root.isUnitCompleted(String(root.units[i].id || "")))
+                return false
+        }
+        return true
     }
 
     onCurrentConceptIdChanged: refreshConcept()
@@ -558,13 +640,21 @@ PagePrincipal {
                             id: unitDelegate
                             required property var modelData
                             required property int index
-                            objectName: "guidedUnitButton" + index
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 70 * root.uiScale
-                            activeFocusOnTab: true
-                            Accessible.name: "Unidad " + (index + 1) + ": " + modelData.title
-                            Accessible.description: root.isUnitCompleted(String(modelData.id))
-                                                    ? "Unidad completada" : "Unidad pendiente"
+
+                            enabled: root.isUnitUnlocked(unitDelegate.index)
+                            opacity: enabled ? 1.0 : 0.45
+                            Accessible.description: root.isUnitUnlocked(unitDelegate.index)
+                                                    ? (root.isUnitCompleted(String(unitDelegate.modelData.id))
+                                                       ? "Unidad completada" : "Unidad pendiente")
+                                                    : "Bloqueada: completa la unidad anterior"
+
+                            // objectName: "guidedUnitButton" + index
+                            // Layout.fillWidth: true
+                            // Layout.preferredHeight: 70 * root.uiScale
+                            // activeFocusOnTab: true
+                            // Accessible.name: "Unidad " + (index + 1) + ": " + modelData.title
+                            // Accessible.description: root.isUnitCompleted(String(modelData.id))
+                            //                         ? "Unidad completada" : "Unidad pendiente"
 
                             background: Rectangle {
                                 radius: 10 * root.uiScale
@@ -788,6 +878,26 @@ PagePrincipal {
                         activeFocusOnTab: true
                         Accessible.name: text
                         onClicked: root.nextConcept()
+
+                        // enabled: root.currentConceptIndex < root.currentUnitConceptCount - 1
+                        //          || root.currentUnitCompleted
+                        // ToolTip.visible: hovered && !enabled
+                        // ToolTip.text: "Completa la actividad de esta unidad para continuar"
+
+                    }
+
+                    Button {
+                        id: repeatUnitButton
+                        objectName: "guidedRepeatUnitButton"
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 34 * root.uiScale
+                        visible: root.currentUnitCompleted
+                        text: "Repetir esta unidad"
+                        flat: true
+                        activeFocusOnTab: true
+                        Accessible.name: text
+                        Accessible.description: "Vuelve a habilitar la actividad de la unidad actual sin borrar el resto del avance"
+                        onClicked: root.repeatCurrentUnit()
                     }
                 }
             }
@@ -809,6 +919,7 @@ PagePrincipal {
                 onCompletionRequested: function(explanation) {
                     root.completeActivity(explanation)
                 }
+                optionOrder: root.optionOrder
             }
         }
     }

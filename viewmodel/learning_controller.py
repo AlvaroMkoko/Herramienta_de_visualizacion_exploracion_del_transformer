@@ -107,6 +107,22 @@ class LearningController(QObject):
         self._persist()
         self.progressChanged.emit()
 
+    @Slot(str)
+    def unmarkUnitCompleted(self, unit_id: str) -> None:
+        """Quita una unidad de las completadas para poder repetirla sin
+        perder el avance de las demás. `markUnitCompleted` solo agrega, así
+        que sin este método la única forma de rehacer una unidad era
+        reiniciar el recorrido entero.
+
+        Es idempotente y tolera ids inexistentes: llamarlo dos veces, o con
+        una unidad que nunca se completó, no cambia nada ni emite señal.
+        """
+        if unit_id not in self._completed_unit_ids:
+            return
+        self._completed_unit_ids.remove(unit_id)
+        self._persist()
+        self.progressChanged.emit()
+
     @Slot(int, int)
     def savePosition(self, unit_index: int, concept_index: int) -> None:
         bounded_unit = self._bounded_int(unit_index, 0, self._TOTAL_UNITS - 1)
