@@ -324,9 +324,9 @@ PagePrincipal {
 
                         BotonPrincipal {
                             visible: root.pasosVisualizacion.length > 0
-                            Layout.preferredWidth: 190 * root.sx
+                            Layout.preferredWidth: 230 * root.sx
                             Layout.preferredHeight: 34 * root.sy
-                            text: "◎ Explorar proceso"
+                            text: "◎ Entender cómo se generó"
                             size_text: 0.22
                             onClicked: flujoInferencia.open()
                         }
@@ -685,6 +685,12 @@ PagePrincipal {
         focus: true
         closePolicy: Popup.CloseOnEscape
 
+        onOpened: explorationPanel.resetPedagogicalReading()
+        onClosed: {
+            explorationPanel.sequencePlaying = false
+            explorationPanel.resetPedagogicalReading()
+        }
+
         Overlay.modal: Rectangle {
             color: "#990F172A"
         }
@@ -694,6 +700,7 @@ PagePrincipal {
         }
 
         contentItem: InferenceExplorationPanel {
+            id: explorationPanel
             snapshots: root.pasosVisualizacion
             detailForward: root.detalleForwardActual
             selectedIndex: root.indicePasoVisualizado

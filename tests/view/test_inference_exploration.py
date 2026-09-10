@@ -96,6 +96,78 @@ def test_explorador_conserva_siete_animaciones_y_agrega_recorrido(qapp):
     qapp.processEvents()
 
 
+def test_explorador_prioriza_mapa_y_resumen_con_detalle_bajo_demanda(qapp):
+    engine = QQmlEngine()
+    _, window, panel = _crear_panel(engine, qapp)
+
+    process_map = window.findChild(QObject, "inferenceProcessMap")
+    essential = window.findChild(QObject, "inferenceEssentialExplanation")
+    visual_guide = window.findChild(QObject, "inferenceVisualGuide")
+    next_step = window.findChild(QObject, "inferenceNextStepText")
+    advanced = window.findChild(QObject, "inferenceAdvancedDetails")
+    technical_map = window.findChild(QObject, "inferenceTransformerMiniMap")
+    reduced_motion = window.findChild(QObject, "inferenceReducedMotionToggle")
+
+    assert process_map is not None
+    assert process_map.property("visible") is True
+    assert process_map.property("keyboardNavigationEnabled") is True
+    chapters = _como_python(panel.property("processChapters"))
+    assert [chapter["id"] for chapter in chapters] == [
+        "encoder",
+        "decoder_causal",
+        "cross_attention",
+        "output",
+    ]
+
+    # La primera lectura contiene solo lo necesario para interpretar la escena.
+    assert panel.property("detailsExpanded") is False
+    assert advanced is not None and advanced.property("visible") is False
+    assert technical_map is not None and technical_map.property("visible") is False
+    assert reduced_motion is not None and reduced_motion.property("visible") is True
+    for item in (essential, visual_guide, next_step):
+        assert item is not None
+        assert str(item.property("text")).strip()
+
+    # Formula, evidencia, matiz y mapa tecnico se conservan al profundizar.
+    panel.setProperty("detailsExpanded", True)
+    qapp.processEvents()
+    assert advanced.property("visible") is True
+    assert technical_map.property("visible") is True
+    for object_name in (
+        "inferenceFormulaText",
+        "inferencePurposeText",
+        "inferenceEvidenceText",
+        "inferenceCaveatText",
+    ):
+        text_item = window.findChild(QObject, object_name)
+        assert text_item is not None
+        assert str(text_item.property("text")).strip()
+
+    panel.setProperty("operationIndex", 11)
+    qapp.processEvents()
+    assert panel.property("detailsExpanded") is False
+
+    # La posicion macro cambia en los limites sin alterar los 31 pasos reales.
+    for operation_index, chapter_index, local_step, chapter_size in (
+        (0, 0, 1, 11),
+        (11, 1, 1, 9),
+        (20, 2, 1, 9),
+        (29, 3, 1, 2),
+        (30, 3, 2, 2),
+    ):
+        panel.setProperty("operationIndex", operation_index)
+        qapp.processEvents()
+        assert panel.property("processChapterIndex") == chapter_index
+        assert panel.property("chapterStep") == local_step
+        assert panel.property("chapterStepCount") == chapter_size
+        assert process_map.property("currentIndex") == chapter_index
+        assert process_map.property("currentStep") == local_step
+
+    window.deleteLater()
+    engine.deleteLater()
+    qapp.processEvents()
+
+
 def test_minimapa_pasivo_sigue_cada_operacion_semantica(qapp):
     engine = QQmlEngine()
     _, window, panel = _crear_panel(engine, qapp)

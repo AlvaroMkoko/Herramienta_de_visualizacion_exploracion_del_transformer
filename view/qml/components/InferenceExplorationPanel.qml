@@ -24,6 +24,42 @@ Item {
     property bool residualUsesFfn: false
     property bool reducedMotion: false
     property bool sequencePlaying: false
+    property bool detailsExpanded: false
+
+    // Las 31 operaciones siguen disponibles, pero la orientacion principal
+    // se resume en cuatro etapas que corresponden al recorrido completo.
+    readonly property var processChapters: [
+        {
+            id: "encoder",
+            label: "Encoder",
+            caption: "comprende el prompt",
+            accent: "#2563EB"
+        },
+        {
+            id: "decoder_causal",
+            label: "Decoder causal",
+            caption: "usa lo ya generado",
+            accent: "#7C3AED"
+        },
+        {
+            id: "cross_attention",
+            label: "Decoder + contexto",
+            caption: "consulta el prompt y refina",
+            accent: "#B45309"
+        },
+        {
+            id: "output",
+            label: "Salida",
+            caption: "elige el próximo token",
+            accent: "#DC2626"
+        }
+    ]
+    readonly property int processChapterIndex: chapterForOperation(operationIndex)
+    readonly property var currentProcessChapter: processChapters[
+        Math.max(0, Math.min(processChapters.length - 1, processChapterIndex))]
+    readonly property int chapterStep: chapterStepForOperation(operationIndex)
+    readonly property int chapterStepCount: chapterStepCountForOperation(operationIndex)
+    readonly property color processAccent: currentProcessChapter.accent || "#4F46E5"
 
     readonly property var currentSnapshot: selectedIndex >= 0 && selectedIndex < snapshots.length
                                                    ? snapshots[selectedIndex] : null
@@ -219,6 +255,84 @@ Item {
         }
     }
 
+    function chapterForStep(flowStep) {
+        var operationId = String(flowStep && flowStep.id || "")
+        if (operationId.indexOf("encoder_") === 0)
+            return 0
+        if (operationId.indexOf("linear_") === 0
+                || operationId.indexOf("output_") === 0)
+            return 3
+        if (operationId.indexOf("decoder_cross_") === 0
+                || operationId.indexOf("decoder_addnorm_cross") === 0
+                || operationId === "decoder_ffn"
+                || operationId === "decoder_addnorm_ffn"
+                || operationId === "decoder_layers")
+            return 2
+        return 1
+    }
+
+    function chapterForOperation(index) {
+        if (!flowSteps.length)
+            return 0
+        var bounded = Math.max(0, Math.min(flowSteps.length - 1, index))
+        return chapterForStep(flowSteps[bounded])
+    }
+
+    function chapterStepForOperation(index) {
+        if (!flowSteps.length)
+            return 0
+        var bounded = Math.max(0, Math.min(flowSteps.length - 1, index))
+        var chapter = chapterForOperation(bounded)
+        var count = 0
+        for (var stepIndex = 0; stepIndex <= bounded; ++stepIndex) {
+            if (chapterForStep(flowSteps[stepIndex]) === chapter)
+                count += 1
+        }
+        return count
+    }
+
+    function chapterStepCountForOperation(index) {
+        var chapter = chapterForOperation(index)
+        var count = 0
+        for (var stepIndex = 0; stepIndex < flowSteps.length; ++stepIndex) {
+            if (chapterForStep(flowSteps[stepIndex]) === chapter)
+                count += 1
+        }
+        return count
+    }
+
+    function firstOperationForChapter(chapter) {
+        for (var stepIndex = 0; stepIndex < flowSteps.length; ++stepIndex) {
+            if (chapterForStep(flowSteps[stepIndex]) === chapter)
+                return stepIndex
+        }
+        return -1
+    }
+
+    function selectChapter(index) {
+        var bounded = Math.max(0, Math.min(processChapters.length - 1, index))
+        var firstOperation = firstOperationForChapter(bounded)
+        if (firstOperation >= 0)
+            selectOperation(firstOperation)
+    }
+
+    function selectSnapshot(index) {
+        stepSelected(index)
+        // Los snapshots historicos conservan la distribucion de salida, no
+        // todos los tensores. Abrirlos directamente en Softmax evita una
+        // pantalla de bloqueo que podia parecer un error del usuario.
+        if (index >= 0 && index < snapshots.length - 1)
+            selectOperation(flowSteps.length - 1)
+    }
+
+    function resetPedagogicalReading() {
+        detailsExpanded = false
+        Qt.callLater(function() {
+            if (pedagogicalScroll.contentItem)
+                pedagogicalScroll.contentItem.contentY = 0
+        })
+    }
+
     function setBranch(index) {
         var bounded = Math.max(0, Math.min(2, index))
         var kind = operationKind(operation.id || "")
@@ -265,7 +379,6 @@ Item {
         branchIndex = Number(selectedOperation.branchIndex || 0)
         residualUsesFfn = Boolean(selectedOperation.residualUsesFfn)
         clampSelections()
-        timelinePositionTimer.restart()
     }
 
     function setOperation(index) {
@@ -411,7 +524,10 @@ Item {
     }
 
     onMetadataChanged: clampSelections()
-    onOperationIndexChanged: synchronizeOperation()
+    onOperationIndexChanged: {
+        synchronizeOperation()
+        resetPedagogicalReading()
+    }
 
     InferenceFlowSteps {
         id: flowModel
@@ -432,14 +548,6 @@ Item {
         }
     }
 
-    Timer {
-        id: timelinePositionTimer
-        interval: 0
-        repeat: false
-        onTriggered: operationTimeline.positionViewAtIndex(root.operationIndex,
-                                                           ListView.Contain)
-    }
-
     Component.onCompleted: synchronizeOperation()
 
     Rectangle {
@@ -456,7 +564,7 @@ Item {
 
             RowLayout {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 54 * root.sy
+                Layout.preferredHeight: 50 * root.sy
                 spacing: 10 * root.sx
 
                 Rectangle {
@@ -476,15 +584,15 @@ Item {
                     Layout.fillWidth: true
                     spacing: 1 * root.sy
                     Text {
-                        text: "Exploración visual de la inferencia"
+                        text: "Cómo se genera el siguiente token"
                         color: "#0F172A"
                         font.bold: true
                         font.pixelSize: 23 * Math.min(root.sx, root.sy)
                     }
                     Text {
                         text: root.currentSnapshot
-                              ? "Forward real · token " + root.currentSnapshot.paso + "/" + root.snapshots.length
-                                + " · elegido “" + root.currentSnapshot.token_elegido.texto + "”"
+                              ? "Explicando el token " + root.currentSnapshot.paso + "/" + root.snapshots.length
+                                + ": “" + root.currentSnapshot.token_elegido.texto + "”"
                               : "Genera un token para capturar su recorrido"
                         color: "#64748B"
                         font.pixelSize: 11 * Math.min(root.sx, root.sy)
@@ -508,6 +616,8 @@ Item {
                 }
 
                 ActionPill {
+                    objectName: "inferenceNextTokenButton"
+                    visible: root.canGenerateNext || root.tokenProcessing
                     Layout.preferredWidth: 150 * root.sx
                     Layout.preferredHeight: 36 * root.sy
                     label: root.tokenProcessing ? "Calculando…" : "+ Siguiente token"
@@ -515,21 +625,36 @@ Item {
                     accent: "#4F46E5"
                     onClicked: root.nextTokenRequested()
                 }
-                ActionPill {
-                    Layout.preferredWidth: 126 * root.sx
-                    Layout.preferredHeight: 36 * root.sy
-                    label: root.reducedMotion ? "Movimiento: no" : "Movimiento: sí"
-                    selected: !root.reducedMotion
-                    accent: "#64748B"
-                    onClicked: root.reducedMotion = !root.reducedMotion
+                CheckBox {
+                    objectName: "inferenceReducedMotionToggle"
+                    Layout.preferredWidth: Math.max(142, 166 * root.sx)
+                    text: "Reducir movimiento"
+                    checked: root.reducedMotion
+                    font.pixelSize: Math.max(10, 10 * root.sx)
+                    onToggled: root.reducedMotion = checked
+                    Accessible.description: "Detiene las transiciones decorativas de las escenas"
                 }
                 ActionPill {
+                    objectName: "inferenceCloseButton"
                     Layout.preferredWidth: 42 * root.sx
                     Layout.preferredHeight: 36 * root.sy
                     label: "✕"
                     accent: "#DC2626"
                     onClicked: root.closeRequested()
                 }
+            }
+
+            InferenceProcessMap {
+                Layout.fillWidth: true
+                Layout.preferredHeight: Math.max(64, 96 * root.sy)
+                chapters: root.processChapters
+                currentIndex: root.processChapterIndex
+                currentStep: root.chapterStep
+                currentStepCount: root.chapterStepCount
+                accent: root.processAccent
+                sx: root.sx
+                sy: root.sy
+                onChapterSelected: function(index) { root.selectChapter(index) }
             }
 
             Rectangle {
@@ -586,10 +711,11 @@ Item {
                             required property int index
                             token: modelData.token_elegido
                             selected: index === root.selectedIndex
+                            interactive: true
                             accent: root.stage.accent
                             sx: root.sx
                             sy: root.sy
-                            onClicked: root.stepSelected(index)
+                            onClicked: root.selectSnapshot(index)
                         }
                     }
                 }
@@ -597,7 +723,8 @@ Item {
 
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 48 * root.sy
+                Layout.preferredHeight: visible ? 48 * root.sy : 0
+                visible: root.stageIndex >= 1 && root.stageIndex <= 4
                 radius: 11 * root.sx
                 color: "#FFFFFF"
                 border.color: "#D8E0EA"
@@ -608,25 +735,26 @@ Item {
                     spacing: 7 * root.sx
 
                     Text {
-                        text: "CONTROLES SINCRONIZADOS"
+                        text: "AJUSTA LA ANIMACIÓN"
                         color: "#64748B"
                         font.bold: true
-                        font.pixelSize: 9 * root.sx
+                        font.pixelSize: Math.max(9, 9 * root.sx)
                     }
 
-                    Repeater {
-                        model: root.stageIndex === 1 || root.stageIndex === 2 || root.stageIndex === 4
-                               ? ["Encoder", "Decoder causal", "Cruzada"]
-                               : (root.stageIndex < 6 ? ["Encoder", "Decoder"] : [])
-                        delegate: ActionPill {
-                            required property string modelData
-                            required property int index
-                            Layout.preferredWidth: Math.max(88 * root.sx, implicitWidth)
-                            Layout.preferredHeight: 32 * root.sy
-                            label: modelData
-                            selected: root.branchIndex === index
-                            accent: root.stage.accent
-                            onClicked: root.setBranch(index)
+                    Rectangle {
+                        Layout.preferredWidth: branchText.implicitWidth + 20 * root.sx
+                        Layout.preferredHeight: 30 * root.sy
+                        radius: height / 2
+                        color: Qt.alpha(root.stage.accent, 0.10)
+                        border.color: Qt.alpha(root.stage.accent, 0.45)
+
+                        Text {
+                            id: branchText
+                            anchors.centerIn: parent
+                            text: root.branchLabel()
+                            color: root.stage.accent
+                            font.bold: true
+                            font.pixelSize: Math.max(9, 9 * root.sx)
                         }
                     }
 
@@ -834,147 +962,261 @@ Item {
                 }
 
                 Rectangle {
-                    Layout.preferredWidth: 350 * root.sx
-                    Layout.minimumWidth: 320 * root.sx
-                    Layout.maximumWidth: 370 * root.sx
+                    id: guidePanel
+                    objectName: "inferencePedagogicalGuide"
+                    Layout.preferredWidth: Math.max(300, 370 * root.sx)
+                    Layout.minimumWidth: Math.max(280, 330 * root.sx)
+                    Layout.maximumWidth: Math.max(320, 410 * root.sx)
                     Layout.fillHeight: true
                     radius: 14 * root.sx
                     color: "#FFFFFF"
                     border.color: root.stage.accent
                     border.width: 1
 
-                    ColumnLayout {
-                        anchors.fill: parent
-                        anchors.margins: 14 * root.sx
-                        spacing: 10 * root.sy
-
-                        TransformerMiniMap {
-                            objectName: "inferenceTransformerMiniMap"
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 272 * root.sy
-                            stageIndex: root.stageIndex
-                            branchIndex: root.branchIndex
-                            residualUsesFfn: root.residualUsesFfn
-                            operationId: String(root.operation.id || "")
-                            accent: root.stage.accent
-                            reducedMotion: root.reducedMotion
-                            sx: root.sx
-                            sy: root.sy
-                        }
-
                     ScrollView {
                         id: pedagogicalScroll
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
+                        anchors.fill: parent
+                        anchors.margins: 14 * root.sx
                         clip: true
                         contentWidth: availableWidth
+                        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
                         ColumnLayout {
                             width: pedagogicalScroll.availableWidth
-                            spacing: 12 * root.sy
+                            spacing: 10 * root.sy
 
-                            Text {
+                            RowLayout {
                                 Layout.fillWidth: true
-                                text: root.sectionLabel(root.operation.section)
-                                      + " · PASO " + (root.operationIndex + 1)
-                                      + " DE " + root.flowSteps.length
-                                color: root.stage.accent
-                                font.bold: true
-                                font.letterSpacing: 0.7
-                                font.pixelSize: 10 * root.sx
+                                spacing: 6 * root.sx
+
+                                Rectangle {
+                                    Layout.preferredWidth: chapterLabel.implicitWidth + 18 * root.sx
+                                    Layout.preferredHeight: Math.max(25, 27 * root.sy)
+                                    radius: height / 2
+                                    color: Qt.alpha(root.stage.accent, 0.11)
+                                    border.color: Qt.alpha(root.stage.accent, 0.48)
+
+                                    Text {
+                                        id: chapterLabel
+                                        anchors.centerIn: parent
+                                        text: root.currentProcessChapter.label
+                                        color: root.stage.accent
+                                        font.bold: true
+                                        font.pixelSize: Math.max(9, 9 * root.sx)
+                                    }
+                                }
+
+                                Item { Layout.fillWidth: true }
                             }
+
                             Text {
                                 Layout.fillWidth: true
                                 text: root.operation.title || root.stage.title
                                 color: "#0F172A"
                                 font.bold: true
                                 wrapMode: Text.WordWrap
-                                font.pixelSize: 23 * Math.min(root.sx, root.sy)
+                                font.pixelSize: Math.max(18, 21 * Math.min(root.sx, root.sy))
                             }
-                            Text {
-                                Layout.fillWidth: true
-                                text: "QUÉ OCURRE\n" + (root.operation.operation || root.stage.concept)
-                                color: "#334155"
-                                wrapMode: Text.WordWrap
-                                lineHeight: 1.22
-                                font.pixelSize: 12 * root.sx
-                            }
-                            Button {
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: Math.max(38, 44 * root.sy)
-                                text: "ⓘ  Abrir explicación completa"
-                                font.bold: true
-                                font.pixelSize: Math.max(12, 12 * root.sx)
-                                onClicked: root.theoryRequested(root.operation.conceptId || root.stage.conceptId)
-                                ToolTip.visible: hovered
-                                ToolTip.text: "Leer este concepto en una ventana amplia"
-                                Accessible.name: "Abrir explicación completa de "
-                                                 + (root.operation.title || root.stage.title)
-                            }
-                            InfoCard {
-                                Layout.fillWidth: true
-                                eyebrow: "FÓRMULA DE ESTA OPERACIÓN"
-                                body: root.operation.formula || root.stage.formula
-                                accent: root.stage.accent
-                                monospace: true
-                                sx: root.sx
-                            }
-                            InfoCard {
-                                Layout.fillWidth: true
-                                eyebrow: "QUÉ REPRESENTA LA ANIMACIÓN"
-                                body: root.operation.visualMeaning || root.stage.hint
-                                accent: "#0284C7"
-                                sx: root.sx
-                            }
-                            InfoCard {
-                                Layout.fillWidth: true
-                                eyebrow: "POR QUÉ SE NECESITA"
-                                body: root.operation.purpose || "—"
-                                accent: "#7C3AED"
-                                sx: root.sx
-                            }
-                            InfoCard {
-                                Layout.fillWidth: true
-                                eyebrow: "CÓMO SE USA EN EL SIGUIENTE PASO"
-                                body: root.operation.nextStep || "—"
-                                accent: "#D97706"
-                                sx: root.sx
-                            }
-                            InfoCard {
-                                Layout.fillWidth: true
-                                eyebrow: "DATOS DE ESTA CAPTURA"
-                                body: root.operationEvidenceText()
-                                accent: "#059669"
-                                sx: root.sx
-                            }
+
                             Rectangle {
                                 Layout.fillWidth: true
-                                implicitHeight: caveatText.implicitHeight + 22 * root.sy
+                                implicitHeight: essentialColumn.implicitHeight + 22 * root.sy
                                 radius: 10 * root.sx
-                                color: "#FFF7ED"
-                                border.color: "#FDBA74"
-                                Text {
-                                    id: caveatText
+                                color: "#F8FAFC"
+                                border.color: "#CBD5E1"
+
+                                ColumnLayout {
+                                    id: essentialColumn
                                     anchors.left: parent.left
                                     anchors.right: parent.right
                                     anchors.top: parent.top
                                     anchors.margins: 11 * root.sx
-                                    text: "⚠  " + (root.operation.caveat || root.stage.caveat)
-                                    color: "#9A3412"
+                                    spacing: 5 * root.sy
+
+                                    Text {
+                                        text: "IDEA CLAVE"
+                                        color: root.stage.accent
+                                        font.bold: true
+                                        font.pixelSize: Math.max(9, 9 * root.sx)
+                                    }
+                                    Text {
+                                        objectName: "inferenceEssentialExplanation"
+                                        Layout.fillWidth: true
+                                        text: root.operation.operation || root.stage.concept
+                                        color: "#334155"
+                                        wrapMode: Text.WordWrap
+                                        lineHeight: 1.18
+                                        font.pixelSize: Math.max(11, 11 * root.sx)
+                                    }
+                                }
+                            }
+
+                            Rectangle {
+                                Layout.fillWidth: true
+                                implicitHeight: visualColumn.implicitHeight + 22 * root.sy
+                                radius: 10 * root.sx
+                                color: "#EFF6FF"
+                                border.color: "#93C5FD"
+
+                                ColumnLayout {
+                                    id: visualColumn
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.top: parent.top
+                                    anchors.margins: 11 * root.sx
+                                    spacing: 5 * root.sy
+
+                                    Text {
+                                        text: "QUÉ OBSERVAR EN LA ANIMACIÓN"
+                                        color: "#1D4ED8"
+                                        font.bold: true
+                                        font.pixelSize: Math.max(9, 9 * root.sx)
+                                    }
+                                    Text {
+                                        objectName: "inferenceVisualGuide"
+                                        Layout.fillWidth: true
+                                        text: root.operation.visualMeaning || root.stage.hint
+                                        color: "#1E3A5F"
+                                        wrapMode: Text.WordWrap
+                                        lineHeight: 1.18
+                                        font.pixelSize: Math.max(11, 11 * root.sx)
+                                    }
+                                }
+                            }
+
+                            Rectangle {
+                                Layout.fillWidth: true
+                                implicitHeight: nextStepText.implicitHeight + 18 * root.sy
+                                radius: 9 * root.sx
+                                color: "#FFFBEB"
+                                border.color: "#FCD34D"
+
+                                Text {
+                                    id: nextStepText
+                                    objectName: "inferenceNextStepText"
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.top: parent.top
+                                    anchors.margins: 9 * root.sx
+                                    text: "DESPUÉS  →  " + (root.operation.nextStep || "—")
+                                    color: "#92400E"
                                     wrapMode: Text.WordWrap
-                                    lineHeight: 1.18
-                                    font.pixelSize: 10 * root.sx
+                                    lineHeight: 1.16
+                                    font.pixelSize: Math.max(10, 10 * root.sx)
+                                }
+                            }
+
+                            Button {
+                                objectName: "inferenceDetailsToggle"
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: Math.max(38, 42 * root.sy)
+                                text: root.detailsExpanded
+                                      ? "Ocultar detalle técnico  ▴"
+                                      : "Profundizar: fórmula y datos  ▾"
+                                font.bold: true
+                                font.pixelSize: Math.max(11, 11 * root.sx)
+                                onClicked: root.detailsExpanded = !root.detailsExpanded
+                                Accessible.name: root.detailsExpanded
+                                                 ? "Ocultar detalle técnico"
+                                                 : "Mostrar fórmula, datos y mapa técnico"
+                            }
+
+                            ColumnLayout {
+                                id: advancedDetails
+                                objectName: "inferenceAdvancedDetails"
+                                Layout.fillWidth: true
+                                visible: root.detailsExpanded
+                                spacing: 10 * root.sy
+
+                                InfoCard {
+                                    Layout.fillWidth: true
+                                    eyebrow: "FÓRMULA"
+                                    body: root.operation.formula || root.stage.formula
+                                    bodyObjectName: "inferenceFormulaText"
+                                    accent: root.stage.accent
+                                    monospace: true
+                                    sx: root.sx
+                                }
+                                InfoCard {
+                                    Layout.fillWidth: true
+                                    eyebrow: "POR QUÉ SE NECESITA"
+                                    body: root.operation.purpose || "—"
+                                    bodyObjectName: "inferencePurposeText"
+                                    accent: "#7C3AED"
+                                    sx: root.sx
+                                }
+                                InfoCard {
+                                    Layout.fillWidth: true
+                                    eyebrow: "DATOS DE ESTA CAPTURA"
+                                    body: root.operationEvidenceText()
+                                    bodyObjectName: "inferenceEvidenceText"
+                                    accent: "#059669"
+                                    sx: root.sx
+                                }
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    implicitHeight: caveatText.implicitHeight + 22 * root.sy
+                                    radius: 10 * root.sx
+                                    color: "#FFF7ED"
+                                    border.color: "#FDBA74"
+                                    Text {
+                                        id: caveatText
+                                        objectName: "inferenceCaveatText"
+                                        anchors.left: parent.left
+                                        anchors.right: parent.right
+                                        anchors.top: parent.top
+                                        anchors.margins: 11 * root.sx
+                                        text: "⚠  " + (root.operation.caveat || root.stage.caveat)
+                                        color: "#9A3412"
+                                        wrapMode: Text.WordWrap
+                                        lineHeight: 1.18
+                                        font.pixelSize: Math.max(10, 10 * root.sx)
+                                    }
+                                }
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: "UBICACIÓN TÉCNICA"
+                                    color: "#475569"
+                                    font.bold: true
+                                    font.pixelSize: Math.max(9, 9 * root.sx)
+                                }
+                                TransformerMiniMap {
+                                    objectName: "inferenceTransformerMiniMap"
+                                    visible: root.detailsExpanded
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 272 * root.sy
+                                    stageIndex: root.stageIndex
+                                    branchIndex: root.branchIndex
+                                    residualUsesFfn: root.residualUsesFfn
+                                    operationId: String(root.operation.id || "")
+                                    accent: root.stage.accent
+                                    reducedMotion: root.reducedMotion
+                                    sx: root.sx
+                                    sy: root.sy
+                                }
+
+                                Button {
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: Math.max(38, 44 * root.sy)
+                                    text: "ⓘ  Abrir explicación completa"
+                                    font.bold: true
+                                    font.pixelSize: Math.max(11, 11 * root.sx)
+                                    onClicked: root.theoryRequested(root.operation.conceptId || root.stage.conceptId)
+                                    ToolTip.visible: hovered
+                                    ToolTip.text: "Leer este concepto en una ventana amplia"
+                                    Accessible.name: "Abrir explicación completa de "
+                                                     + (root.operation.title || root.stage.title)
                                 }
                             }
                         }
-                    }
                     }
                 }
             }
 
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 96 * root.sy
+                Layout.preferredHeight: Math.max(56, 76 * root.sy)
                 radius: 12 * root.sx
                 color: "#FFFFFF"
                 border.color: "#D8E0EA"
@@ -985,6 +1227,7 @@ Item {
                     spacing: 8 * root.sx
 
                     ActionPill {
+                        objectName: "inferencePreviousOperationButton"
                         Layout.preferredWidth: 96 * root.sx
                         Layout.preferredHeight: 38 * root.sy
                         label: "\u2190 Anterior"
@@ -993,10 +1236,44 @@ Item {
                         onClicked: root.previousOperation()
                     }
 
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        spacing: 5 * root.sy
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Text {
+                                text: root.operation.short || ""
+                                color: root.stage.accent
+                                font.bold: true
+                                font.pixelSize: Math.max(10, 10 * root.sx)
+                            }
+                            Item { Layout.fillWidth: true }
+                            Text {
+                                text: "  " + (root.operationIndex + 1) + "/" + root.flowSteps.length
+                                color: "#334155"
+                                font.bold: true
+                                font.pixelSize: Math.max(10, 10 * root.sx)
+                            }
+                        }
+
+                        ProgressBar {
+                            objectName: "inferenceOperationProgress"
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: Math.max(7, 8 * root.sy)
+                            from: 0
+                            to: Math.max(1, root.flowSteps.length - 1)
+                            value: root.operationIndex
+                            Accessible.name: "Progreso del recorrido de inferencia"
+                        }
+                    }
+
                     ActionPill {
-                        Layout.preferredWidth: 126 * root.sx
+                        objectName: "inferencePlaySequenceButton"
+                        Layout.preferredWidth: 116 * root.sx
                         Layout.preferredHeight: 38 * root.sy
-                        label: root.sequencePlaying ? "\u23f8 Pausar" : "\u25b6 Recorrido"
+                        label: root.sequencePlaying ? "\u23f8 Pausar" : "\u25b6 Reproducir"
                         selected: root.sequencePlaying
                         accent: "#4F46E5"
                         onClicked: {
@@ -1011,105 +1288,22 @@ Item {
                         }
                     }
 
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        spacing: 3 * root.sy
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 19 * root.sy
-                            Text {
-                                text: root.sectionLabel(root.operation.section)
-                                      + "  " + root.sectionProgress()
-                                color: root.stage.accent
-                                font.bold: true
-                                font.pixelSize: 9 * root.sx
-                            }
-                            Text {
-                                Layout.fillWidth: true
-                                text: "Recorrido real: encoder \u2192 decoder causal \u2192 atencion cruzada \u2192 salida"
-                                color: "#64748B"
-                                horizontalAlignment: Text.AlignHCenter
-                                elide: Text.ElideRight
-                                font.pixelSize: 8.5 * root.sx
-                            }
-                            Text {
-                                text: (root.operationIndex + 1) + "/" + root.flowSteps.length
-                                color: "#334155"
-                                font.bold: true
-                                font.pixelSize: 9 * root.sx
-                            }
-                        }
-
-                        ListView {
-                            id: operationTimeline
-                            objectName: "inferenceOperationTimeline"
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            orientation: ListView.Horizontal
-                            spacing: 5 * root.sx
-                            clip: true
-                            currentIndex: root.operationIndex
-                            boundsBehavior: Flickable.StopAtBounds
-                            model: root.flowSteps
-
-                            delegate: Rectangle {
-                                id: operationButton
-                                required property var modelData
-                                required property int index
-                                readonly property color stepAccent: root.stages[Number(modelData.stageIndex)].accent
-                                objectName: "inferenceOperationButton" + index
-                                width: Math.max(124 * root.sx, operationLabel.implicitWidth + 44 * root.sx)
-                                height: ListView.view.height
-                                radius: 8 * root.sx
-                                color: root.operationIndex === index ? stepAccent : "#F8FAFC"
-                                border.color: root.operationIndex === index ? stepAccent : "#CBD5E1"
-                                border.width: root.operationIndex === index ? 2 : 1
-
-                                RowLayout {
-                                    anchors.fill: parent
-                                    anchors.margins: 6 * root.sx
-                                    spacing: 6 * root.sx
-                                    Rectangle {
-                                        Layout.preferredWidth: 24 * root.sx
-                                        Layout.preferredHeight: 24 * root.sy
-                                        radius: height / 2
-                                        color: root.operationIndex === operationButton.index
-                                               ? "#33FFFFFF" : operationButton.stepAccent
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: operationButton.index + 1
-                                            color: "white"
-                                            font.bold: true
-                                            font.pixelSize: 8 * root.sx
-                                        }
-                                    }
-                                    Text {
-                                        id: operationLabel
-                                        Layout.fillWidth: true
-                                        text: operationButton.modelData.short
-                                        color: root.operationIndex === operationButton.index
-                                               ? "white" : "#334155"
-                                        font.bold: root.operationIndex === operationButton.index
-                                        elide: Text.ElideRight
-                                        font.pixelSize: 8.5 * root.sx
-                                    }
-                                }
-                                MouseArea {
-                                    anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: root.selectOperation(operationButton.index)
-                                }
-                            }
-
-                            ScrollBar.horizontal: ScrollBar {
-                                policy: ScrollBar.AsNeeded
-                            }
-                        }
+                    ComboBox {
+                        id: operationSelector
+                        objectName: "inferenceOperationSelector"
+                        Layout.preferredWidth: Math.max(180, 240 * root.sx)
+                        Layout.preferredHeight: Math.max(38, 40 * root.sy)
+                        model: root.flowSteps
+                        textRole: "short"
+                        currentIndex: root.operationIndex
+                        displayText: "Ir al paso " + (root.operationIndex + 1)
+                        font.pixelSize: Math.max(10, 10 * root.sx)
+                        onActivated: function(index) { root.selectOperation(index) }
+                        Accessible.name: "Elegir cualquiera de las 31 operaciones"
                     }
 
                     ActionPill {
+                        objectName: "inferenceNextOperationButton"
                         Layout.preferredWidth: 96 * root.sx
                         Layout.preferredHeight: 38 * root.sy
                         label: "Siguiente \u2192"
@@ -1128,25 +1322,42 @@ Item {
         property bool selected: false
         property color accent: "#4F46E5"
         signal clicked()
+        activeFocusOnTab: enabled && visible
         implicitWidth: pillText.implicitWidth + 24 * root.sx
         implicitHeight: 32 * root.sy
         radius: height / 2
         color: !enabled ? "#F1F5F9" : (selected ? accent : "#FFFFFF")
         border.color: !enabled ? "#CBD5E1" : accent
+        border.width: activeFocus ? 2 : 1
         opacity: enabled ? 1 : 0.55
+        Accessible.role: Accessible.Button
+        Accessible.name: label
+        Accessible.ignored: !visible
+        Accessible.onPressAction: if (pill.enabled) pill.clicked()
+        Keys.onPressed: function(event) {
+            if (pill.enabled && (event.key === Qt.Key_Return
+                                 || event.key === Qt.Key_Enter
+                                 || event.key === Qt.Key_Space)) {
+                pill.clicked()
+                event.accepted = true
+            }
+        }
         Text {
             id: pillText
             anchors.centerIn: parent
             text: pill.label
             color: pill.selected ? "white" : (pill.enabled ? pill.accent : "#94A3B8")
             font.bold: true
-            font.pixelSize: 10 * Math.min(root.sx, root.sy)
+            font.pixelSize: Math.max(10, 10 * Math.min(root.sx, root.sy))
         }
         MouseArea {
             anchors.fill: parent
             enabled: pill.enabled
             cursorShape: Qt.PointingHandCursor
-            onClicked: pill.clicked()
+            onClicked: {
+                pill.forceActiveFocus()
+                pill.clicked()
+            }
         }
     }
 
@@ -1154,16 +1365,31 @@ Item {
         id: tokenChip
         required property var token
         property bool selected: false
+        property bool interactive: false
         property color accent: "#4F46E5"
         property real sx: 1
         property real sy: 1
         signal clicked()
+        activeFocusOnTab: interactive
         width: Math.max(42 * sx, tokenText.implicitWidth + 16 * sx)
         height: 34 * sy
         radius: 8 * sx
         color: selected ? accent : "#F8FAFC"
         border.color: selected ? accent : "#CBD5E1"
-        border.width: selected ? 2 : 1
+        border.width: activeFocus || selected ? 2 : 1
+        Accessible.role: Accessible.Button
+        Accessible.name: "Seleccionar token " + (token && token.texto !== undefined
+                                                   ? token.texto : "")
+        Accessible.ignored: !interactive
+        Accessible.onPressAction: if (tokenChip.interactive) tokenChip.clicked()
+        Keys.onPressed: function(event) {
+            if (tokenChip.interactive && (event.key === Qt.Key_Return
+                                          || event.key === Qt.Key_Enter
+                                          || event.key === Qt.Key_Space)) {
+                tokenChip.clicked()
+                event.accepted = true
+            }
+        }
         Text {
             id: tokenText
             anchors.centerIn: parent
@@ -1171,12 +1397,16 @@ Item {
                   ? tokenChip.token.texto : "—"
             color: tokenChip.selected ? "white" : "#1E293B"
             font.bold: tokenChip.selected
-            font.pixelSize: 10 * Math.min(tokenChip.sx, tokenChip.sy)
+            font.pixelSize: Math.max(9, 10 * Math.min(tokenChip.sx, tokenChip.sy))
         }
         MouseArea {
             anchors.fill: parent
+            enabled: tokenChip.interactive
             cursorShape: Qt.PointingHandCursor
-            onClicked: tokenChip.clicked()
+            onClicked: {
+                tokenChip.forceActiveFocus()
+                tokenChip.clicked()
+            }
         }
     }
 
@@ -1191,21 +1421,67 @@ Item {
         signal valueRequested(int value)
         spacing: 3 * sx
         Rectangle {
-            width: 28 * stepper.sx; height: 28 * stepper.sy; radius: 7 * stepper.sx
+            id: decrementButton
+            width: Math.max(26, 28 * stepper.sx); height: Math.max(26, 28 * stepper.sy); radius: 7 * stepper.sx
             color: "#F8FAFC"; border.color: stepper.accent
-            Text { anchors.centerIn: parent; text: "−"; color: stepper.accent; font.bold: true; font.pixelSize: 15 * stepper.sx }
-            MouseArea { anchors.fill: parent; enabled: stepper.value > stepper.minimum; onClicked: stepper.valueRequested(stepper.value - 1); cursorShape: Qt.PointingHandCursor }
+            border.width: activeFocus ? 2 : 1
+            opacity: enabled ? 1 : 0.45
+            enabled: stepper.value > stepper.minimum
+            activeFocusOnTab: enabled
+            Accessible.role: Accessible.Button
+            Accessible.name: "Valor anterior"
+            Accessible.onPressAction: if (decrementButton.enabled) stepper.valueRequested(stepper.value - 1)
+            Keys.onPressed: function(event) {
+                if (decrementButton.enabled && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter
+                                || event.key === Qt.Key_Space)) {
+                    stepper.valueRequested(stepper.value - 1)
+                    event.accepted = true
+                }
+            }
+            Text { anchors.centerIn: parent; text: "−"; color: stepper.accent; font.bold: true; font.pixelSize: Math.max(13, 15 * stepper.sx) }
+            MouseArea {
+                anchors.fill: parent
+                enabled: decrementButton.enabled
+                onClicked: {
+                    decrementButton.forceActiveFocus()
+                    stepper.valueRequested(stepper.value - 1)
+                }
+                cursorShape: Qt.PointingHandCursor
+            }
         }
         Rectangle {
-            width: 38 * stepper.sx; height: 28 * stepper.sy; radius: 7 * stepper.sx
+            width: Math.max(34, 38 * stepper.sx); height: Math.max(26, 28 * stepper.sy); radius: 7 * stepper.sx
             color: stepper.accent
-            Text { anchors.centerIn: parent; text: stepper.value; color: "white"; font.bold: true; font.pixelSize: 10 * stepper.sx }
+            Text { anchors.centerIn: parent; text: stepper.value; color: "white"; font.bold: true; font.pixelSize: Math.max(9, 10 * stepper.sx) }
         }
         Rectangle {
-            width: 28 * stepper.sx; height: 28 * stepper.sy; radius: 7 * stepper.sx
+            id: incrementButton
+            width: Math.max(26, 28 * stepper.sx); height: Math.max(26, 28 * stepper.sy); radius: 7 * stepper.sx
             color: "#F8FAFC"; border.color: stepper.accent
-            Text { anchors.centerIn: parent; text: "+"; color: stepper.accent; font.bold: true; font.pixelSize: 13 * stepper.sx }
-            MouseArea { anchors.fill: parent; enabled: stepper.value < stepper.maximum; onClicked: stepper.valueRequested(stepper.value + 1); cursorShape: Qt.PointingHandCursor }
+            border.width: activeFocus ? 2 : 1
+            opacity: enabled ? 1 : 0.45
+            enabled: stepper.value < stepper.maximum
+            activeFocusOnTab: enabled
+            Accessible.role: Accessible.Button
+            Accessible.name: "Valor siguiente"
+            Accessible.onPressAction: if (incrementButton.enabled) stepper.valueRequested(stepper.value + 1)
+            Keys.onPressed: function(event) {
+                if (incrementButton.enabled && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter
+                                || event.key === Qt.Key_Space)) {
+                    stepper.valueRequested(stepper.value + 1)
+                    event.accepted = true
+                }
+            }
+            Text { anchors.centerIn: parent; text: "+"; color: stepper.accent; font.bold: true; font.pixelSize: Math.max(12, 13 * stepper.sx) }
+            MouseArea {
+                anchors.fill: parent
+                enabled: incrementButton.enabled
+                onClicked: {
+                    incrementButton.forceActiveFocus()
+                    stepper.valueRequested(stepper.value + 1)
+                }
+                cursorShape: Qt.PointingHandCursor
+            }
         }
     }
 
@@ -1213,6 +1489,7 @@ Item {
         id: infoCard
         property string eyebrow: ""
         property string body: ""
+        property string bodyObjectName: ""
         property color accent: "#4F46E5"
         property bool monospace: false
         property real sx: 1
@@ -1227,14 +1504,20 @@ Item {
             anchors.top: parent.top
             anchors.margins: 10 * infoCard.sx
             spacing: 5 * infoCard.sx
-            Text { text: infoCard.eyebrow; color: infoCard.accent; font.bold: true; font.pixelSize: 9 * infoCard.sx }
             Text {
+                text: infoCard.eyebrow
+                color: infoCard.accent
+                font.bold: true
+                font.pixelSize: Math.max(9, 9 * infoCard.sx)
+            }
+            Text {
+                objectName: infoCard.bodyObjectName
                 width: parent.width
                 text: infoCard.body
                 color: "#1E293B"
                 wrapMode: Text.WordWrap
                 font.family: infoCard.monospace ? "monospace" : "sans-serif"
-                font.pixelSize: 10 * infoCard.sx
+                font.pixelSize: Math.max(10, 10 * infoCard.sx)
             }
         }
     }
