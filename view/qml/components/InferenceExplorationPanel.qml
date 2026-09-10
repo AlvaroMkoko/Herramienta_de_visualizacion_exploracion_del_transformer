@@ -25,6 +25,7 @@ Item {
     property bool reducedMotion: false
     property bool sequencePlaying: false
     property bool detailsExpanded: false
+    property bool guideVisible: true
 
     // Las 31 operaciones siguen disponibles, pero la orientacion principal
     // se resume en cuatro etapas que corresponden al recorrido completo.
@@ -528,6 +529,10 @@ Item {
         synchronizeOperation()
         resetPedagogicalReading()
     }
+    onGuideVisibleChanged: {
+        if (!guideVisible)
+            resetPedagogicalReading()
+    }
 
     InferenceFlowSteps {
         id: flowModel
@@ -633,6 +638,16 @@ Item {
                     font.pixelSize: Math.max(10, 10 * root.sx)
                     onToggled: root.reducedMotion = checked
                     Accessible.description: "Detiene las transiciones decorativas de las escenas"
+                }
+                ActionPill {
+                    objectName: "inferenceGuideToggle"
+                    Layout.preferredWidth: Math.max(145, 190 * root.sx)
+                    Layout.preferredHeight: 36 * root.sy
+                    label: root.guideVisible
+                           ? "Ocultar explicación"
+                           : "Mostrar explicación"
+                    accent: "#475569"
+                    onClicked: root.guideVisible = !root.guideVisible
                 }
                 ActionPill {
                     objectName: "inferenceCloseButton"
@@ -815,6 +830,7 @@ Item {
                 spacing: 10 * root.sx
 
                 Rectangle {
+                    objectName: "inferenceAnimationViewport"
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     Layout.minimumWidth: 1120 * root.sx
@@ -964,9 +980,10 @@ Item {
                 Rectangle {
                     id: guidePanel
                     objectName: "inferencePedagogicalGuide"
-                    Layout.preferredWidth: Math.max(300, 370 * root.sx)
-                    Layout.minimumWidth: Math.max(280, 330 * root.sx)
-                    Layout.maximumWidth: Math.max(320, 410 * root.sx)
+                    visible: root.guideVisible
+                    Layout.preferredWidth: visible ? Math.max(300, 370 * root.sx) : 0
+                    Layout.minimumWidth: visible ? Math.max(280, 330 * root.sx) : 0
+                    Layout.maximumWidth: visible ? Math.max(320, 410 * root.sx) : 0
                     Layout.fillHeight: true
                     radius: 14 * root.sx
                     color: "#FFFFFF"

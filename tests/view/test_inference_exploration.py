@@ -11,6 +11,7 @@ os.environ.setdefault("QT_QUICK_CONTROLS_STYLE", "Basic")
 
 from PySide6.QtCore import QObject, QUrl
 from PySide6.QtQml import QJSValue, QQmlComponent, QQmlEngine
+from PySide6.QtTest import QTest
 import torch
 
 from model.motor_llm.config import ConfiguracionTransformer
@@ -162,6 +163,44 @@ def test_explorador_prioriza_mapa_y_resumen_con_detalle_bajo_demanda(qapp):
         assert panel.property("chapterStepCount") == chapter_size
         assert process_map.property("currentIndex") == chapter_index
         assert process_map.property("currentStep") == local_step
+
+    window.deleteLater()
+    engine.deleteLater()
+    qapp.processEvents()
+
+
+def test_panel_de_explicacion_se_puede_ocultar_para_ampliar_la_animacion(qapp):
+    engine = QQmlEngine()
+    _, window, panel = _crear_panel(engine, qapp)
+    window.setProperty("visible", True)
+    qapp.processEvents()
+    animation = window.findChild(QObject, "inferenceAnimationViewport")
+    guide = window.findChild(QObject, "inferencePedagogicalGuide")
+    toggle = window.findChild(QObject, "inferenceGuideToggle")
+
+    assert animation is not None
+    assert guide is not None and guide.property("visible") is True
+    assert toggle is not None and toggle.property("visible") is True
+    assert panel.property("guideVisible") is True
+    original_width = float(animation.property("width"))
+
+    panel.setProperty("detailsExpanded", True)
+    panel.setProperty("guideVisible", False)
+    QTest.qWait(50)
+    qapp.processEvents()
+
+    assert guide.property("visible") is False
+    assert panel.property("detailsExpanded") is False
+    assert toggle.property("label") == "Mostrar explicación"
+    assert float(animation.property("width")) > original_width
+
+    panel.setProperty("guideVisible", True)
+    QTest.qWait(50)
+    qapp.processEvents()
+
+    assert guide.property("visible") is True
+    assert toggle.property("label") == "Ocultar explicación"
+    assert float(animation.property("width")) < original_width + 1
 
     window.deleteLater()
     engine.deleteLater()
