@@ -16,6 +16,9 @@ import "../styles" as Style
         }
         */
         property real size_text: 0.30
+        // Permite que las pantallas con mucho contenido conserven una
+        // tipografía legible aunque el alto del botón se reduzca al escalar.
+        property real minimum_text_size: 0
 
         id: button
         
@@ -66,7 +69,8 @@ import "../styles" as Style
             text: button.text
             color: Style.Theme.texto_primario
             // font.pixelSize: Math.min(button.width, button.height) * button.size_text
-            font.pixelSize: button.height * button.size_text
+            font.pixelSize: Math.max(button.minimum_text_size,
+                                     button.height * button.size_text)
             font.bold: true
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter

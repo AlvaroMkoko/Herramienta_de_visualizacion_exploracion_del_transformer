@@ -20,6 +20,12 @@ PagePrincipal {
     property bool mensajeEsError: false
     property string accionTrasCarga: ""
     property var modelosVisibles: []
+    readonly property real escalaTexto: Math.min(root.sx, root.sy)
+    readonly property real tamanoTituloModelo: Math.max(18, 21 * root.escalaTexto)
+    readonly property real tamanoMetricaDestacada: Math.max(14, 14 * root.escalaTexto)
+    readonly property real tamanoMetrica: Math.max(13, 13 * root.escalaTexto)
+    readonly property real tamanoTextoSecundario: Math.max(12, 12 * root.escalaTexto)
+    readonly property real tamanoTextoAuxiliar: Math.max(11, 11 * root.escalaTexto)
     readonly property bool operacionModeloEnCurso: Boolean(
         (root.controller && root.controller.ocupado)
         || (root.accionTrasCarga !== "" && mainViewModel.activandoModelo))
@@ -401,6 +407,7 @@ PagePrincipal {
             Layout.preferredHeight: 44 * root.sy
             text: "↶ Volver al inicio"
             size_text: 0.27
+            minimum_text_size: 12
             onClicked: root.stackView.pop()
         }
 
@@ -412,7 +419,7 @@ PagePrincipal {
                 text: "Biblioteca de modelos"
                 color: Style.Theme.texto_primario
                 font.bold: true
-                font.pixelSize: 27 * Math.min(root.sx, root.sy)
+                font.pixelSize: Math.max(22, 27 * root.escalaTexto)
             }
 
             Text {
@@ -423,7 +430,7 @@ PagePrincipal {
                         + ((root.controller && root.controller.modelos.length !== root.modelosVisibles.length)
                            ? " de " + root.controller.modelos.length : "")
                 color: Style.Theme.texto_secundario
-                font.pixelSize: 14 * Math.min(root.sx, root.sy)
+                font.pixelSize: Math.max(13, 14 * root.escalaTexto)
             }
         }
 
@@ -439,6 +446,7 @@ PagePrincipal {
             Layout.preferredHeight: 44 * root.sy
             text: "Actualizar"
             size_text: 0.26
+            minimum_text_size: 12
             enabled: root.controller && !root.operacionModeloEnCurso
             onClicked: root.llamar(function() { root.controller.refrescar() })
         }
@@ -448,6 +456,7 @@ PagePrincipal {
             Layout.preferredHeight: 44 * root.sy
             text: "Importar archivo"
             size_text: 0.24
+            minimum_text_size: 12
             enabled: root.controller && !root.operacionModeloEnCurso
             onClicked: dialogoImportar.open()
         }
@@ -457,6 +466,7 @@ PagePrincipal {
             Layout.preferredHeight: 44 * root.sy
             text: "Pegar modelo"
             size_text: 0.25
+            minimum_text_size: 12
             enabled: root.controller && !root.operacionModeloEnCurso
             ToolTip.visible: hovered
             ToolTip.text: "Importa un archivo de modelo copiado al portapapeles"
@@ -487,7 +497,7 @@ PagePrincipal {
             color: root.mensajeEsError ? Style.Theme.error_texto : Style.Theme.exito_texto
             elide: Text.ElideRight
             horizontalAlignment: Text.AlignHCenter
-            font.pixelSize: 13 * Math.min(root.sx, root.sy)
+            font.pixelSize: Math.max(12, 13 * root.escalaTexto)
         }
     }
 
@@ -525,6 +535,7 @@ PagePrincipal {
             Layout.preferredHeight: 39 * root.sy
             text: "Limpiar"
             size_text: 0.26
+            minimum_text_size: 12
             enabled: campoBusqueda.text.length > 0 || selectorOrden.currentIndex !== 0
             opacity: enabled ? 1 : 0.5
             onClicked: {
@@ -561,7 +572,7 @@ PagePrincipal {
             property bool compatible: root.booleano(info, ["compatible"], true)
 
             width: listaModelos.width - 14 * root.sx
-            height: Math.max(360, 390 * root.sy)
+            height: Math.max(400, 410 * root.sy)
             sx: root.sx
             sy: root.sy
             opacity: compatible ? 1.0 : 0.82
@@ -576,37 +587,40 @@ PagePrincipal {
                     spacing: 10 * root.sx
 
                     Text {
+                        objectName: "modelLibraryModelName"
                         Layout.fillWidth: true
                         text: root.nombre(tarjeta.info)
                         color: Style.Theme.texto_primario
                         font.bold: true
-                        font.pixelSize: 21 * Math.min(root.sx, root.sy)
+                        font.pixelSize: root.tamanoTituloModelo
                         elide: Text.ElideRight
                     }
 
                     Rectangle {
                         Layout.preferredWidth: etiquetaFormato.implicitWidth + 18 * root.sx
-                        Layout.preferredHeight: 25 * root.sy
+                        Layout.preferredHeight: Math.max(27, 27 * root.sy)
                         radius: height / 2
                         color: Style.Theme.chip_fondo
                         border.color: Style.Theme.borde_suave
 
                         Text {
                             id: etiquetaFormato
+                            objectName: "modelLibraryFormatBadge"
                             anchors.centerIn: parent
                             text: String(root.valor(tarjeta.info, ["formato", "format"], root.esLegado(tarjeta.info) ? "PT" : "TVISMODEL")).toUpperCase()
                             color: Style.Theme.chip_texto
                             font.bold: true
-                            font.pixelSize: 11 * Math.min(root.sx, root.sy)
+                            font.pixelSize: root.tamanoTextoAuxiliar
                         }
                     }
                 }
 
                 Text {
+                    objectName: "modelLibraryModelPath"
                     Layout.fillWidth: true
                     text: root.ruta(tarjeta.info)
                     color: Style.Theme.texto_secundario
-                    font.pixelSize: 12 * Math.min(root.sx, root.sy)
+                    font.pixelSize: root.tamanoTextoSecundario
                     elide: Text.ElideMiddle
                 }
 
@@ -641,7 +655,7 @@ PagePrincipal {
                                       + architectureValue.modelData.value
                                 color: "#312E81"
                                 font.bold: true
-                                font.pixelSize: 14 * Math.min(root.sx, root.sy)
+                                font.pixelSize: root.tamanoMetricaDestacada
                                 elide: Text.ElideRight
                             }
                             ConceptHelpButton {
@@ -684,7 +698,7 @@ PagePrincipal {
                                 text: dimensionValue.modelData.label + " "
                                       + dimensionValue.modelData.value
                                 color: Style.Theme.texto_primario
-                                font.pixelSize: 13 * Math.min(root.sx, root.sy)
+                                font.pixelSize: root.tamanoMetrica
                                 elide: Text.ElideRight
                             }
                             ConceptHelpButton {
@@ -725,8 +739,8 @@ PagePrincipal {
                                 Layout.maximumWidth: implicitWidth
                                 text: storageValue.modelData.label + " "
                                       + storageValue.modelData.value
-                                color: Style.Theme.texto_secundario
-                                font.pixelSize: 12 * Math.min(root.sx, root.sy)
+                                color: Style.Theme.texto_primario
+                                font.pixelSize: root.tamanoMetrica
                                 elide: Text.ElideRight
                             }
                             ConceptHelpButton {
@@ -768,8 +782,8 @@ PagePrincipal {
                                 Layout.maximumWidth: implicitWidth
                                 text: trainingValue.modelData.label + " "
                                       + trainingValue.modelData.value
-                                color: Style.Theme.texto_secundario
-                                font.pixelSize: 12 * Math.min(root.sx, root.sy)
+                                color: Style.Theme.texto_primario
+                                font.pixelSize: root.tamanoMetrica
                                 elide: Text.ElideRight
                             }
                             ConceptHelpButton {
@@ -804,7 +818,7 @@ PagePrincipal {
                               ? "Máscara causal activada"
                               : "⚠ Sin máscara causal — modelo experimental"
                         color: parent.mascaraActiva ? Style.Theme.texto_secundario : Style.Theme.aviso_texto
-                        font.pixelSize: 11 * root.sy
+                        font.pixelSize: root.tamanoTextoSecundario
                         elide: Text.ElideRight
                         maximumLineCount: 1
                     }
@@ -823,7 +837,7 @@ PagePrincipal {
 
                 Flow {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 28 * root.sy
+                    Layout.preferredHeight: Math.max(29, 29 * root.sy)
                     spacing: 6 * root.sx
 
                     Repeater {
@@ -833,17 +847,18 @@ PagePrincipal {
                             id: insigniaModelo
                             required property var modelData
                             width: textoInsignia.implicitWidth + 16 * root.sx
-                            height: 24 * root.sy
+                            height: Math.max(26, 26 * root.sy)
                             radius: height / 2
                             color: insigniaModelo.modelData.fondo
 
                             Text {
                                 id: textoInsignia
+                                objectName: "modelLibraryCapabilityBadge"
                                 anchors.centerIn: parent
                                 text: insigniaModelo.modelData.texto
                                 color: insigniaModelo.modelData.tinta
                                 font.bold: true
-                                font.pixelSize: 10 * Math.min(root.sx, root.sy)
+                                font.pixelSize: root.tamanoTextoAuxiliar
                             }
                         }
                     }
@@ -854,7 +869,7 @@ PagePrincipal {
                     visible: !tarjeta.compatible
                     text: root.valor(tarjeta.info, ["error", "motivo_incompatibilidad"], "Este formato no es compatible con esta versión.")
                     color: Style.Theme.error
-                    font.pixelSize: 11 * Math.min(root.sx, root.sy)
+                    font.pixelSize: root.tamanoTextoSecundario
                     elide: Text.ElideRight
                 }
 
@@ -870,6 +885,7 @@ PagePrincipal {
                         Layout.preferredHeight: 39 * root.sy
                         text: "Ver detalles"
                         size_text: 0.24
+                        minimum_text_size: 12
                         enabled: root.ruta(tarjeta.info) !== ""
                         ToolTip.visible: hovered
                         ToolTip.text: "Inspeccionar arquitectura, procedencia, historial e integridad sin cargar los pesos"
@@ -877,10 +893,12 @@ PagePrincipal {
                     }
 
                     BotonPrincipal {
+                        objectName: "modelLibraryInferenceButton"
                         Layout.fillWidth: true
                         Layout.preferredHeight: 39 * root.sy
                         text: "Abrir en inferencia"
                         size_text: 0.21
+                        minimum_text_size: 12
                         enabled: tarjeta.compatible && root.controller && !root.operacionModeloEnCurso
                         ToolTip.visible: hovered
                         ToolTip.text: "Cargar los pesos y comenzar una sesión de inferencia"
@@ -892,6 +910,7 @@ PagePrincipal {
                         Layout.preferredHeight: 39 * root.sy
                         text: "Continuar entrenamiento"
                         size_text: 0.19
+                        minimum_text_size: 12
                         enabled: tarjeta.compatible && root.controller && !root.operacionModeloEnCurso
                         ToolTip.visible: hovered
                         ToolTip.text: "Cargar pesos y seleccionar datasets para continuar"
@@ -909,6 +928,7 @@ PagePrincipal {
                         Layout.preferredHeight: 36 * root.sy
                         text: "Exportar"
                         size_text: 0.24
+                        minimum_text_size: 11
                         enabled: tarjeta.compatible && root.controller && !root.operacionModeloEnCurso
                         onClicked: root.exportar(tarjeta.info)
                     }
@@ -918,6 +938,7 @@ PagePrincipal {
                         Layout.preferredHeight: 36 * root.sy
                         text: "Copiar archivo"
                         size_text: 0.20
+                        minimum_text_size: 11
                         enabled: root.controller && !root.operacionModeloEnCurso
                         onClicked: root.llamar(function() { root.controller.copiarModelo(root.ruta(tarjeta.info)) })
                     }
@@ -927,6 +948,7 @@ PagePrincipal {
                         Layout.preferredHeight: 36 * root.sy
                         text: "Copiar ficha"
                         size_text: 0.21
+                        minimum_text_size: 11
                         enabled: root.controller && !root.operacionModeloEnCurso
                         onClicked: root.llamar(function() { root.controller.copiarFicha(root.ruta(tarjeta.info)) })
                     }
@@ -936,6 +958,7 @@ PagePrincipal {
                         Layout.preferredHeight: 36 * root.sy
                         text: "Código"
                         size_text: 0.24
+                        minimum_text_size: 11
                         enabled: tarjeta.compatible && root.controller && !root.operacionModeloEnCurso
                         ToolTip.visible: hovered
                         ToolTip.text: "Generar texto para compartir modelos pequeños"
@@ -947,6 +970,7 @@ PagePrincipal {
                         Layout.preferredHeight: 36 * root.sy
                         text: "Eliminar"
                         size_text: 0.23
+                        minimum_text_size: 11
                         enabled: tarjeta.compatible && root.controller && !root.operacionModeloEnCurso
                         ToolTip.visible: hovered
                         ToolTip.text: "Eliminar el modelo de la biblioteca"
@@ -966,7 +990,7 @@ PagePrincipal {
             color: Style.Theme.texto_secundario
             horizontalAlignment: Text.AlignHCenter
             wrapMode: Text.WordWrap
-            font.pixelSize: 18 * Math.min(root.sx, root.sy)
+            font.pixelSize: Math.max(16, 18 * root.escalaTexto)
         }
     }
 

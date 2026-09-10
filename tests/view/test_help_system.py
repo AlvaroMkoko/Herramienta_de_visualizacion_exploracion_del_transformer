@@ -304,6 +304,35 @@ ApplicationWindow {
     # Todas las métricas salvo "Tamaño" tienen ayuda contextual.
     assert adjacent_help_count == 13
 
+    # La biblioteca se prueba en una ventana de 960x640, donde el escalado
+    # anterior reducía varias etiquetas a 6-8 px. Los mínimos mantienen
+    # legibles tanto la identidad del modelo como sus datos de comparación.
+    minimum_font_sizes = {
+        "modelLibraryModelName": 18,
+        "modelLibraryFormatBadge": 11,
+        "modelLibraryModelPath": 12,
+        "modelLibraryArchitectureMetric": 14,
+        "modelLibraryDimensionMetric": 13,
+        "modelLibraryStorageMetric": 13,
+        "modelLibraryTrainingMetric": 13,
+        "modelLibraryMaskMetric": 12,
+        "modelLibraryCapabilityBadge": 11,
+    }
+    for object_name, minimum_size in minimum_font_sizes.items():
+        labels = [
+            item for item in visual_items if item.objectName() == object_name
+        ]
+        assert labels, object_name
+        for label in labels:
+            assert label.property("font").pixelSize() >= minimum_size
+
+    inference_button = next(
+        item
+        for item in visual_items
+        if item.objectName() == "modelLibraryInferenceButton"
+    )
+    assert inference_button.property("contentItem").property("font").pixelSize() >= 12
+
     window.close()
     window.deleteLater()
     engine.deleteLater()
