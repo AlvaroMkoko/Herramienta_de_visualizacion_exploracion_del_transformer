@@ -518,7 +518,7 @@ PagePrincipal {
             height: 190 * root.sy
             radius: 16 * Math.min(root.sx, root.sy)
             color: Style.Theme.surface
-            border.color: "#D8D5F5"
+            border.color: Style.Theme.acento_fondo
             border.width: 1
 
             ColumnLayout {

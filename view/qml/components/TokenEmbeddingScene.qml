@@ -201,7 +201,7 @@ Item {
                 eyebrow: "TOKEN / ID"
                 title: root.tokenText(root.tokenAt(root.safeRow))
                 detail: "id " + root.tokenIdText(root.tokenAt(root.safeRow))
-                accent: "#7C3AED"
+                accent: Style.Theme.acento
                 emphasized: true
                 sx: root.sx
                 sy: root.sy
@@ -261,7 +261,7 @@ Item {
                 Layout.fillHeight: true
                 radius: 12 * root.sx
                 color: Style.Theme.superficie_alterna
-                border.color: "#D8E0EA"
+                border.color: Style.Theme.borde_medio
                 clip: true
 
                 ColumnLayout {
@@ -294,8 +294,8 @@ Item {
                             width: ListView.view.width
                             height: 43 * root.sy
                             radius: 8 * root.sx
-                            color: index === root.safeRow ? "#EDE9FE" : "#FFFFFF"
-                            border.color: index === root.safeRow ? "#7C3AED" : Style.Theme.borde_medio
+                            color: index === root.safeRow ? Style.Theme.acento_fondo : "#FFFFFF"
+                            border.color: index === root.safeRow ? Style.Theme.acento : Style.Theme.borde_medio
                             border.width: index === root.safeRow ? 2 : 1
 
                             RowLayout {
@@ -307,7 +307,7 @@ Item {
                                     Layout.preferredWidth: 34 * root.sx
                                     Layout.preferredHeight: 28 * root.sy
                                     radius: 7 * root.sx
-                                    color: tokenRow.index === root.safeRow ? "#7C3AED" : Style.Theme.borde_suave
+                                    color: tokenRow.index === root.safeRow ? Style.Theme.acento : Style.Theme.borde_suave
                                     Text {
                                         anchors.centerIn: parent
                                         text: tokenRow.rowToken
@@ -341,7 +341,7 @@ Item {
                                 Text {
                                     text: Number.isFinite(tokenRow.rowNorm)
                                           ? "‖x‖ " + root.formatNumber(tokenRow.rowNorm) : "—"
-                                    color: "#5B21B6"
+                                    color: Style.Theme.acento_fuerte
                                     font.bold: true
                                     font.pixelSize: 8 * root.sx
                                 }
@@ -377,8 +377,8 @@ Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 radius: 12 * root.sx
-                color: "#FAFAFF"
-                border.color: "#C4B5FD"
+                color: Style.Theme.superficie_alterna
+                border.color: Style.Theme.acento_alt
                 clip: true
 
                 ColumnLayout {
@@ -392,7 +392,7 @@ Item {
                             Layout.fillWidth: true
                             text: "VECTOR CAPTURADO · "
                                   + root.tokenText(root.tokenAt(root.safeRow))
-                            color: "#312E81"
+                            color: Style.Theme.acento_fuerte
                             font.bold: true
                             elide: Text.ElideRight
                             font.pixelSize: 10 * root.sx
@@ -400,7 +400,7 @@ Item {
                         Text {
                             text: root.matrixData && root.matrixData.displayed_shape
                                   ? String(root.matrixData.displayed_shape) : "—"
-                            color: "#6D28D9"
+                            color: Style.Theme.acento_fuerte
                             font.bold: true
                             font.pixelSize: 9 * root.sx
                         }
@@ -504,15 +504,15 @@ Item {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 36 * root.sy
                         radius: 8 * root.sx
-                        color: "#EFF6FF"
-                        border.color: "#BFDBFE"
+                        color: Style.Theme.chip_fondo
+                        border.color: Style.Theme.info_fondo
                         RowLayout {
                             anchors.fill: parent
                             anchors.margins: 8 * root.sx
                             spacing: 8 * root.sx
                             Text {
                                 text: "NORMA DEL TOKEN"
-                                color: "#1D4ED8"
+                                color: Style.Theme.info_texto
                                 font.bold: true
                                 font.pixelSize: 8 * root.sx
                             }
@@ -520,7 +520,7 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 7 * root.sy
                                 radius: height / 2
-                                color: "#DBEAFE"
+                                color: Style.Theme.info_fondo
                                 Rectangle {
                                     width: parent.width
                                            * (root.maximumNorm() > 0
@@ -555,7 +555,7 @@ Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 38 * root.sy
             radius: 9 * root.sx
-            color: "#FFF7ED"
+            color: Style.Theme.aviso_fondo
             border.color: "#FDBA74"
             Text {
                 anchors.centerIn: parent
@@ -565,7 +565,7 @@ Item {
                         + String(root.matrixData.level_of_detail || "ventana capturada")
                         + " · los valores no visibles permanecen en Python."
                       : "Aún no hay una captura tensorial para este paso de inferencia."
-                color: "#9A3412"
+                color: Style.Theme.aviso_texto
                 horizontalAlignment: Text.AlignHCenter
                 elide: Text.ElideRight
                 font.pixelSize: 9 * root.sx
@@ -582,8 +582,8 @@ Item {
         implicitWidth: buttonText.implicitWidth + 22 * sx
         implicitHeight: 32 * sy
         radius: 8 * sx
-        color: "#7C3AED"
-        border.color: "#6D28D9"
+        color: Style.Theme.acento
+        border.color: Style.Theme.acento_fuerte
         Text {
             id: buttonText
             anchors.centerIn: parent
@@ -605,7 +605,7 @@ Item {
         property string eyebrow: ""
         property string title: ""
         property string detail: ""
-        property color accent: "#7C3AED"
+        property color accent: Style.Theme.acento
         property bool emphasized: false
         property real sx: 1
         property real sy: 1
@@ -675,20 +675,20 @@ Item {
             width: parent.width - 8 * flowArrow.sx
             height: 3 * flowArrow.sy
             radius: height / 2
-            color: "#C4B5FD"
+            color: Style.Theme.acento_alt
             opacity: 0.35 + flowArrow.progress * 0.65
             Rectangle {
                 width: parent.width * flowArrow.progress
                 height: parent.height
                 radius: parent.radius
-                color: "#7C3AED"
+                color: Style.Theme.acento
             }
         }
         Text {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             text: "›"
-            color: "#7C3AED"
+            color: Style.Theme.acento
             opacity: 0.35 + flowArrow.progress * 0.65
             font.bold: true
             font.pixelSize: 23 * flowArrow.sx
@@ -703,7 +703,7 @@ Item {
         property real sy: 1
         radius: 8 * sx
         color: "#FFFFFF"
-        border.color: "#DDD6FE"
+        border.color: Style.Theme.acento_alt
         Column {
             anchors.centerIn: parent
             width: parent.width - 8 * metricChip.sx
@@ -711,7 +711,7 @@ Item {
             Text {
                 width: parent.width
                 text: metricChip.value
-                color: "#312E81"
+                color: Style.Theme.acento_fuerte
                 font.bold: true
                 horizontalAlignment: Text.AlignHCenter
                 elide: Text.ElideRight

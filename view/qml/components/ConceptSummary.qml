@@ -38,8 +38,8 @@ Rectangle {
 
     implicitHeight: summaryLayout.implicitHeight + 24 * root.contentScale
     radius: 10 * root.contentScale
-    color: "#F8F6FC"
-    border.color: "#D7D0EB"
+    color: Style.Theme.acento_fondo
+    border.color: Style.Theme.acento_fondo
     border.width: 1
 
     ColumnLayout {
@@ -103,14 +103,14 @@ Rectangle {
 
             background: Rectangle {
                 radius: 7 * root.contentScale
-                color: openButton.down ? "#DED7F4"
-                                      : openButton.hovered ? "#EDE8F8" : "#F4F1FA"
-                border.color: "#BFB5DF"
+                color: openButton.down ? Style.Theme.acento_fondo
+                                      : openButton.hovered ? Style.Theme.acento_fondo : Style.Theme.acento_fondo
+                border.color: Style.Theme.acento_alt
             }
 
             contentItem: Text {
                 text: openButton.text
-                color: "#5B4AA5"
+                color: Style.Theme.acento_fuerte
                 font.bold: true
                 font.pixelSize: 11 * root.contentScale
                 horizontalAlignment: Text.AlignHCenter

@@ -328,7 +328,7 @@ PagePrincipal {
 
                     var datos = root.submuestrear(root.historialPerdidas, 200)
                     if (datos.length < 2) {
-                        ctx.fillStyle = "#888888"
+                        ctx.fillStyle = Style.Theme.texto_terciario
                         ctx.font = "12px sans-serif"
                         ctx.fillText("Sin datos suficientes para graficar", 10, height / 2)
                         return
@@ -343,7 +343,7 @@ PagePrincipal {
                     var altoUtil = height - margen * 2
 
                     // Rejilla horizontal de referencia
-                    ctx.strokeStyle = "#3A3A55"
+                    ctx.strokeStyle = Style.Theme.texto_secundario_fuerte
                     ctx.lineWidth = 1
                     for (var g = 0; g <= 4; ++g) {
                         var yg = margen + (altoUtil / 4) * g
@@ -364,7 +364,7 @@ PagePrincipal {
                     }
                     ctx.stroke()
 
-                    ctx.fillStyle = "#888888"
+                    ctx.fillStyle = Style.Theme.texto_terciario
                     ctx.font = "10px sans-serif"
                     ctx.fillText(maximo.toFixed(3), margen + 2, margen + 10)
                     ctx.fillText(minimo.toFixed(3), margen + 2, height - margen - 2)

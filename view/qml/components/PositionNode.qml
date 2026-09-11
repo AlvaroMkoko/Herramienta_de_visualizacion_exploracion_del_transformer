@@ -8,7 +8,7 @@ Item {
     property string componentId: ""
     property bool selected: false
     property bool hovered: hitArea.containsMouse
-    property color accentColor: "#6d5bd0"
+    property color accentColor: Style.Theme.acento
     signal clicked(string componentId)
 
     width: 48

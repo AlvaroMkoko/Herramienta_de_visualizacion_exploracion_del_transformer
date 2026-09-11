@@ -60,8 +60,8 @@ PagePrincipal {
                 Layout.preferredWidth: 158
                 Layout.preferredHeight: 32
                 radius: height / 2
-                color: "#FEF3C7"
-                border.color: "#F59E0B"
+                color: Style.Theme.aviso_fondo
+                border.color: Style.Theme.warning
 
                 Text {
                     anchors.centerIn: parent
@@ -95,7 +95,7 @@ PagePrincipal {
                     Layout.preferredWidth: 68
                     Layout.preferredHeight: 68
                     radius: 34
-                    color: "#FEF3C7"
+                    color: Style.Theme.aviso_fondo
 
                     Text {
                         anchors.centerIn: parent
@@ -129,7 +129,7 @@ PagePrincipal {
                     Layout.fillWidth: true
                     Layout.preferredHeight: testMessage.implicitHeight + 24
                     radius: 10
-                    color: "#FFF7E6"
+                    color: Style.Theme.aviso_fondo
                     border.color: "#F6D48A"
 
                     Text {
@@ -137,7 +137,7 @@ PagePrincipal {
                         anchors.fill: parent
                         anchors.margins: 12
                         text: "El acceso está habilitado sin requisitos de progreso para probar el flujo. La lógica y el contenido definitivo de este módulo se implementarán después."
-                        color: "#7C4A12"
+                        color: Style.Theme.aviso_texto
                         font.pixelSize: 13
                         wrapMode: Text.WordWrap
                         horizontalAlignment: Text.AlignHCenter

@@ -2,6 +2,7 @@
 
 import QtQuick
 import QtQuick.Layouts
+import "../styles" as Style
 
 /*
     FlujoLista.qml
@@ -63,22 +64,22 @@ Item {
 
                 readonly property color indicatorColor: {
                     switch (stepState) {
-                    case "done":    return "#5A56C9"
+                    case "done":    return Style.Theme.acento_fuerte
                     case "running": return "#C58B2B"
-                    case "error":   return "#E53935"
-                    default:        return "#F4F3FF"
+                    case "error":   return Style.Theme.error
+                    default:        return Style.Theme.acento_fondo
                     }
                 }
 
                 readonly property color borderColor:
-                    stepState === "pending" ? "#C9C5F5" : "transparent"
+                    stepState === "pending" ? Style.Theme.acento_alt : "transparent"
 
                 readonly property color textColor: {
                     switch (stepState) {
                     case "running": return "#C58B2B"
-                    case "pending": return "#B0B0B0"
-                    case "error":   return "#E53935"
-                    default:        return "#555555"
+                    case "pending": return Style.Theme.texto_terciario
+                    case "error":   return Style.Theme.error
+                    default:        return Style.Theme.chip_texto
                     }
                 }
 
@@ -111,7 +112,7 @@ Item {
                     Text {
                         anchors.centerIn: parent
                         text: stepItem.icon
-                        color: stepItem.stepState === "pending" ? "#B0A8EE" : "white"
+                        color: stepItem.stepState === "pending" ? Style.Theme.acento_alt : "white"
                         font.bold: true
                         font.pixelSize: parent.width * 0.55
                     }

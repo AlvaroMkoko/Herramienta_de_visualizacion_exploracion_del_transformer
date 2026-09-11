@@ -82,7 +82,7 @@ Item {
                 Text {
                     anchors.centerIn: parent
                     text: root.useShortcut ? "✓ Con atajo residual" : "Sin atajo · comparar"
-                    color: root.useShortcut ? "white" : "#047857"
+                    color: root.useShortcut ? "white" : Style.Theme.exito_texto
                     font.bold: true
                     font.pixelSize: 9 * root.sx
                 }
@@ -94,7 +94,7 @@ Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 205 * root.sy
             radius: 12 * root.sx
-            color: "#F0FDF4"
+            color: Style.Theme.surface
             border.color: "#86EFAC"
 
             Canvas {
@@ -126,7 +126,7 @@ Item {
                     ctx.stroke()
                     ctx.globalAlpha = 1
 
-                    ctx.strokeStyle = "#D97706"
+                    ctx.strokeStyle = Style.Theme.warning
                     ctx.beginPath(); ctx.moveTo(splitX, middleY)
                     ctx.bezierCurveTo(splitX + 35 * root.sx, middleY,
                                       splitX + 45 * root.sx, lowerY, splitX + 82 * root.sx, lowerY)
@@ -135,7 +135,7 @@ Item {
                                       mergeX - 22 * root.sx, middleY, mergeX, middleY)
                     ctx.stroke()
 
-                    ctx.strokeStyle = "#4F46E5"
+                    ctx.strokeStyle = Style.Theme.acento
                     ctx.beginPath(); ctx.moveTo(mergeX + 18 * root.sx, middleY)
                     ctx.lineTo(normX - 62 * root.sx, middleY); ctx.stroke()
                     ctx.beginPath(); ctx.moveTo(normX + 46 * root.sx, middleY)
@@ -154,26 +154,26 @@ Item {
                         particle(splitX + 82 * root.sx, upperY, mergeX - 42 * root.sx, upperY,
                                  root.particleProgress, "#059669", root.useShortcut ? 1 : 0.12)
                         particle(splitX + 82 * root.sx, lowerY, mergeX - 42 * root.sx, lowerY,
-                                 root.particleProgress, "#D97706", 1)
+                                 root.particleProgress, Style.Theme.warning, 1)
                     }
 
                     ctx.fillStyle = Style.Theme.texto_primario
                     ctx.font = "bold " + Math.max(9, 10 * root.sx) + "px sans-serif"
                     ctx.textAlign = "center"
                     ctx.fillText("x", startX, middleY - 14 * root.sy)
-                    ctx.fillStyle = root.useShortcut ? "#047857" : Style.Theme.texto_terciario
+                    ctx.fillStyle = root.useShortcut ? Style.Theme.exito_texto : Style.Theme.texto_terciario
                     ctx.fillText(root.useShortcut ? "RUTA IDENTIDAD · x intacto" : "RUTA IDENTIDAD APAGADA",
                                  (splitX + mergeX) / 2, upperY - 14 * root.sy)
-                    ctx.fillStyle = "#B45309"
+                    ctx.fillStyle = Style.Theme.aviso_texto
                     ctx.fillText("SUBCAPA " + root.sublayerLabel.toUpperCase() + " · Δx",
                                  (splitX + mergeX) / 2, lowerY + 24 * root.sy)
 
                     ctx.beginPath(); ctx.arc(mergeX + 9 * root.sx, middleY, 19 * root.sx, 0, Math.PI * 2)
-                    ctx.fillStyle = root.useShortcut ? "#059669" : "#D97706"; ctx.fill()
+                    ctx.fillStyle = root.useShortcut ? "#059669" : Style.Theme.warning; ctx.fill()
                     ctx.fillStyle = "#FFFFFF"; ctx.font = "bold " + Math.max(15, 20 * root.sx) + "px sans-serif"
                     ctx.fillText(root.useShortcut ? "+" : "→", mergeX + 9 * root.sx, middleY + 7 * root.sy)
 
-                    ctx.fillStyle = "#4F46E5"
+                    ctx.fillStyle = Style.Theme.acento
                     ctx.fillRect(normX - 56 * root.sx, middleY - 27 * root.sy,
                                  112 * root.sx, 54 * root.sy)
                     ctx.fillStyle = "#FFFFFF"
@@ -200,7 +200,7 @@ Item {
                     text: "‖x‖ " + Number(root.sceneData.norma_entrada || 0).toFixed(3)
                           + "   ·   ‖Δx‖ " + Number(root.sceneData.norma_actualizacion || 0).toFixed(3)
                           + "   ·   ratio " + Number(root.sceneData.ratio_actualizacion || 0).toFixed(3)
-                    color: "#166534"
+                    color: Style.Theme.exito_texto
                     font.bold: true
                     font.pixelSize: 8 * root.sx
                 }
@@ -210,7 +210,7 @@ Item {
         RowLayout {
             Layout.fillWidth: true
             Layout.preferredHeight: 34 * root.sy
-            Text { text: "LAYER NORM · CUATRO FASES REALES"; color: "#4F46E5"; font.bold: true; font.pixelSize: 9 * root.sx }
+            Text { text: "LAYER NORM · CUATRO FASES REALES"; color: Style.Theme.acento; font.bold: true; font.pixelSize: 9 * root.sx }
             Item { Layout.fillWidth: true }
             Text {
                 text: "γ media " + Number(root.layerNorm.gamma_media || 0).toFixed(4)
@@ -235,8 +235,8 @@ Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     radius: 11 * root.sx
-                    color: root.selectedPhase === index ? "#EEF2FF" : Style.Theme.superficie_alterna
-                    border.color: root.selectedPhase === index ? "#4F46E5" : Style.Theme.borde_suave
+                    color: root.selectedPhase === index ? Style.Theme.acento_fondo : Style.Theme.superficie_alterna
+                    border.color: root.selectedPhase === index ? Style.Theme.acento : Style.Theme.borde_suave
                     border.width: root.selectedPhase === index ? 2 : 1
 
                     ColumnLayout {
@@ -247,10 +247,10 @@ Item {
                             Layout.fillWidth: true
                             Rectangle {
                                 Layout.preferredWidth: 23 * root.sx; Layout.preferredHeight: 23 * root.sy
-                                radius: height / 2; color: "#4F46E5"
+                                radius: height / 2; color: Style.Theme.acento
                                 Text { anchors.centerIn: parent; text: phaseCard.index + 1; color: "white"; font.bold: true; font.pixelSize: 8 * root.sx }
                             }
-                            Text { Layout.fillWidth: true; text: phaseCard.modelData.nombre; color: "#312E81"; font.bold: true; elide: Text.ElideRight; font.pixelSize: 9 * root.sx }
+                            Text { Layout.fillWidth: true; text: phaseCard.modelData.nombre; color: Style.Theme.acento_fuerte; font.bold: true; elide: Text.ElideRight; font.pixelSize: 9 * root.sx }
                         }
 
                         Canvas {
@@ -277,7 +277,7 @@ Item {
                                             * (width - 12 * root.sx)
                                     var jitter = ((i * 37) % 11 - 5) / 5 * Math.min(18 * root.sy, height * 0.28)
                                     ctx.beginPath(); ctx.arc(x, height / 2 + jitter, 2.7 * root.sx, 0, Math.PI * 2)
-                                    ctx.fillStyle = Qt.alpha("#4F46E5", 0.62); ctx.fill()
+                                    ctx.fillStyle = Qt.alpha(Style.Theme.acento, 0.62); ctx.fill()
                                 }
                             }
                         }
@@ -308,14 +308,14 @@ Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 38 * root.sy
             radius: 9 * root.sx
-            color: root.useShortcut ? "#ECFDF5" : "#FFF7ED"
+            color: root.useShortcut ? Style.Theme.superficie_alterna : Style.Theme.aviso_fondo
             border.color: root.useShortcut ? "#6EE7B7" : "#FDBA74"
             Text {
                 anchors.centerIn: parent
                 text: root.useShortcut
                       ? "Con atajo, la información original x sigue disponible en x + Δx antes de normalizar."
                       : "Sin atajo, solo quedaría Δx: la ruta identidad y su información original desaparecen."
-                color: root.useShortcut ? "#047857" : "#9A3412"
+                color: root.useShortcut ? Style.Theme.exito_texto : Style.Theme.aviso_texto
                 font.bold: true
                 font.pixelSize: 9 * root.sx
             }

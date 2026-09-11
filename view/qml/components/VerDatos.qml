@@ -50,7 +50,7 @@ Popup {
         color: "#FFFFFF"
         radius: 16
         border.width: 1
-        border.color: "#D9DEE8"
+        border.color: Style.Theme.borde_medio
     }
 
     contentItem: ColumnLayout {
@@ -71,7 +71,7 @@ Popup {
                 Label {
                     Layout.fillWidth: true
                     text: "Vista previa de datos"
-                    color: "#111827"
+                    color: Style.Theme.texto_primario
                     font.bold: true
                     font.pixelSize: popup.width < 520 ? 19 : 23
                     wrapMode: Text.Wrap
@@ -81,7 +81,7 @@ Popup {
                     Layout.fillWidth: true
                     text: popup.datasetNombre !== ""
                           ? popup.datasetNombre : "Dataset sin nombre"
-                    color: "#4B5563"
+                    color: Style.Theme.chip_texto
                     font.pixelSize: popup.width < 520 ? 13 : 15
                     elide: Text.ElideRight
                     maximumLineCount: 2
@@ -108,17 +108,17 @@ Popup {
 
                 background: Rectangle {
                     color: closeButton.down
-                           ? "#E5E7EB"
+                           ? Style.Theme.divisor
                            : (closeButton.hovered || closeButton.activeFocus
-                              ? "#F3F4F6" : "transparent")
+                              ? Style.Theme.chip_fondo : "transparent")
                     radius: 9
                     border.width: closeButton.activeFocus ? 2 : 0
-                    border.color: "#6A63E8"
+                    border.color: Style.Theme.acento
                 }
 
                 contentItem: Text {
                     text: closeButton.text
-                    color: "#374151"
+                    color: Style.Theme.texto_secundario_fuerte
                     font.pixelSize: 26
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
@@ -131,7 +131,7 @@ Popup {
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 1
-            color: "#E5E7EB"
+            color: Style.Theme.divisor
         }
 
         RowLayout {
@@ -141,14 +141,14 @@ Popup {
             Rectangle {
                 Layout.preferredWidth: recordCount.implicitWidth + 20
                 Layout.preferredHeight: 30
-                color: "#F0EEFF"
+                color: Style.Theme.acento_fondo
                 radius: 15
 
                 Label {
                     id: recordCount
                     anchors.centerIn: parent
                     text: popup.registros.length + " registros mostrados"
-                    color: "#514BC2"
+                    color: Style.Theme.acento_fuerte
                     font.bold: true
                     font.pixelSize: 12
                 }
@@ -161,7 +161,7 @@ Popup {
             Label {
                 visible: popup.width >= 560
                 text: "Desplázate para explorar los registros"
-                color: "#6B7280"
+                color: Style.Theme.texto_secundario
                 font.pixelSize: 12
             }
         }
@@ -172,7 +172,7 @@ Popup {
             color: Style.Theme.superficie_alterna
             radius: 11
             border.width: 1
-            border.color: "#E1E6EF"
+            border.color: Style.Theme.borde_medio
             clip: true
 
             ScrollView {
@@ -220,10 +220,10 @@ Popup {
                         height: Math.max(54, contenido.implicitHeight + 24)
                         x: 8
                         color: recordDelegate.index % 2 === 0
-                               ? "#FFFFFF" : "#F3F5F9"
+                               ? "#FFFFFF" : Style.Theme.chip_fondo
                         radius: 8
                         border.width: 1
-                        border.color: "#E2E7F0"
+                        border.color: Style.Theme.borde_medio
 
                         Text {
                             id: contenido
@@ -242,7 +242,7 @@ Popup {
                                 }
                             }
                             textFormat: Text.PlainText
-                            color: "#273142"
+                            color: Style.Theme.texto_secundario_fuerte
                             wrapMode: Text.Wrap
                             font.family: Qt.platform.os === "windows"
                                          ? "Consolas" : "monospace"
@@ -256,7 +256,7 @@ Popup {
                 anchors.centerIn: parent
                 visible: listView.count === 0
                 text: "No hay registros para mostrar."
-                color: "#6B7280"
+                color: Style.Theme.texto_secundario
                 font.pixelSize: 14
             }
         }
@@ -269,7 +269,7 @@ Popup {
                 Layout.fillWidth: true
                 visible: popup.width >= 420
                 text: "También puedes presionar Esc para cerrar"
-                color: "#6B7280"
+                color: Style.Theme.texto_secundario
                 font.pixelSize: 12
             }
 

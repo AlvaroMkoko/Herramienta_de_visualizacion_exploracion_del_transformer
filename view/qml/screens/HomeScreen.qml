@@ -139,12 +139,12 @@ PagePrincipal {
                     radius: height / 2
                     color: Style.Theme.acento_fondo
                     border.width: 1
-                    border.color: "#D8B4FE"
+                    border.color: Style.Theme.acento_alt
 
                     Text {
                         anchors.centerIn: parent
                         text: "PLATAFORMA EDUCATIVA"
-                        color: "#6B21A8"
+                        color: Style.Theme.acento_fuerte
                         font.pixelSize: 11
                         font.bold: true
                         font.letterSpacing: 0.6
@@ -160,7 +160,7 @@ PagePrincipal {
                 radius: Style.Theme.radius
                 color: Style.Theme.acento_fondo
                 border.width: 1
-                border.color: "#DDD6FE"
+                border.color: Style.Theme.acento_alt
 
                 RowLayout {
                     anchors.fill: parent
@@ -258,8 +258,8 @@ PagePrincipal {
                                 border.color: stageContainer.kind === "guided"
                                               ? stageContainer.accentColor
                                               : (stageContainer.stageAvailable
-                                                 ? "#C7C3D1"
-                                                 : "#D9DCE3")
+                                                 ? Style.Theme.borde_suave
+                                                 : Style.Theme.chip_borde)
 
                                 ColumnLayout {
                                     anchors.fill: parent
@@ -296,7 +296,7 @@ PagePrincipal {
                                             radius: 12
                                             color: stageContainer.stageAvailable ? Style.Theme.exito_fondo : Style.Theme.chip_fondo
                                             border.width: 1
-                                            border.color: stageContainer.stageAvailable ? "#BBF7D0" : Style.Theme.divisor
+                                            border.color: stageContainer.stageAvailable ? Style.Theme.exito_fondo : Style.Theme.divisor
 
                                             Text {
                                                 id: statusLabel
@@ -447,7 +447,7 @@ PagePrincipal {
                                             radius: 8
                                             color: placeholderButton.down
                                                    ? Style.Theme.aviso_texto
-                                                   : (placeholderButton.hovered ? "#D97706" : "#F59E0B")
+                                                   : (placeholderButton.hovered ? Style.Theme.warning : Style.Theme.warning)
                                         }
 
                                         contentItem: Text {
@@ -588,7 +588,7 @@ PagePrincipal {
                                     width: 13
                                     height: 2
                                     radius: 1
-                                    color: "#B8B1C6"
+                                    color: Style.Theme.texto_terciario
                                     anchors.left: parent.left
                                     anchors.verticalCenter: parent.verticalCenter
                                 }
@@ -603,7 +603,7 @@ PagePrincipal {
                                         width: 8
                                         height: 2
                                         radius: 1
-                                        color: "#776F86"
+                                        color: Style.Theme.texto_secundario
                                         x: 0
                                         y: 4
                                         rotation: 45
@@ -613,7 +613,7 @@ PagePrincipal {
                                         width: 8
                                         height: 2
                                         radius: 1
-                                        color: "#776F86"
+                                        color: Style.Theme.texto_secundario
                                         x: 0
                                         y: 10
                                         rotation: -45
@@ -633,7 +633,7 @@ PagePrincipal {
                         property bool stageAvailable: true
                         property string stageRoute: "ModulePlaceholderScreen.qml"
                         property string kind: "placeholder"
-                        property string accentColor: "#D97706"
+                        property string accentColor: Style.Theme.warning
                         property string note: "Funcionalidad pendiente; navegación habilitada."
                         property bool stagePlaceholder: true
                         property string testButtonName: "pretestOpenButton"
@@ -675,7 +675,7 @@ PagePrincipal {
                         property bool stageAvailable: true
                         property string stageRoute: ""
                         property string kind: "labs"
-                        property string accentColor: "#4F46E5"
+                        property string accentColor: Style.Theme.acento
                         property string note: "Elige un laboratorio."
                         property bool stagePlaceholder: false
                         property string testButtonName: ""
@@ -696,7 +696,7 @@ PagePrincipal {
                         property bool stageAvailable: true
                         property string stageRoute: "ModulePlaceholderScreen.qml"
                         property string kind: "placeholder"
-                        property string accentColor: "#D97706"
+                        property string accentColor: Style.Theme.warning
                         property string note: "Funcionalidad pendiente; navegación habilitada."
                         property bool stagePlaceholder: true
                         property string testButtonName: "posttestOpenButton"
@@ -717,7 +717,7 @@ PagePrincipal {
                         property bool stageAvailable: true
                         property string stageRoute: "ModulePlaceholderScreen.qml"
                         property string kind: "placeholder"
-                        property string accentColor: "#D97706"
+                        property string accentColor: Style.Theme.warning
                         property string note: "Funcionalidad pendiente; navegación habilitada."
                         property bool stagePlaceholder: true
                         property string testButtonName: "resultsOpenButton"
@@ -738,7 +738,7 @@ PagePrincipal {
                 radius: Style.Theme.radius
                 color: Style.Theme.surface
                 border.width: 1
-                border.color: "#D7D3DE"
+                border.color: Style.Theme.chip_borde
 
                 RowLayout {
                     anchors.fill: parent

@@ -676,7 +676,7 @@ PagePrincipal {
         height: root.errorDetalle === "" ? 0 : 48 * root.sy
         visible: height > 0
         radius: 8 * root.sx
-        color: "#FEF2F2"
+        color: Style.Theme.chip_fondo
         border.color: "#FCA5A5"
         clip: true
         RowLayout {
@@ -1274,7 +1274,7 @@ PagePrincipal {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
                                 radius: 7 * root.sx
-                                color: "#FAFAFA"
+                                color: Style.Theme.superficie_alterna
                                 border.color: Style.Theme.divisor
                                 Canvas {
                                     id: lossCanvas
@@ -1400,13 +1400,13 @@ PagePrincipal {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 58 * root.sy
                     radius: 8 * root.sx
-                    color: "#FFFBEB"
+                    color: Style.Theme.aviso_fondo
                     border.color: "#FDE68A"
                     Text {
                         anchors.fill: parent
                         anchors.margins: 12 * root.sx
                         text: "Una pérdida final aislada no mide generalización. Validación, perplexity y precisión sólo aparecen si fueron calculadas y guardadas; no se deducen de la pérdida de entrenamiento."
-                        color: "#78350F"
+                        color: Style.Theme.aviso_texto
                         wrapMode: Text.WordWrap
                         verticalAlignment: Text.AlignVCenter
                         font.pixelSize: 11 * Math.min(root.sx, root.sy)
@@ -1611,7 +1611,7 @@ PagePrincipal {
                     Layout.preferredHeight: 47 * root.sy
                     visible: root.especialesComoTexto() !== ""
                     radius: 7 * root.sx
-                    color: "#FFFBEB"
+                    color: Style.Theme.aviso_fondo
                     border.color: "#FDE68A"
                     RowLayout {
                         anchors.fill: parent
@@ -1626,7 +1626,7 @@ PagePrincipal {
                         Text {
                             Layout.fillWidth: true
                             text: root.especialesComoTexto()
-                            color: "#78350F"
+                            color: Style.Theme.aviso_texto
                             font.family: "monospace"
                             font.pixelSize: 11 * Math.min(root.sx, root.sy)
                             elide: Text.ElideRight
@@ -1670,7 +1670,7 @@ PagePrincipal {
                                 Layout.preferredHeight: 35 * root.sy
                                 radius: 5 * root.sx
                                 color: root.campo(tokenItem.modelData, ["esEspecial", "special"], false)
-                                       ? "#FEF3C7" : (index % 2 === 0 ? Style.Theme.superficie_alterna : "transparent")
+                                       ? Style.Theme.aviso_fondo : (index % 2 === 0 ? Style.Theme.superficie_alterna : "transparent")
                                 RowLayout {
                                     anchors.fill: parent
                                     anchors.leftMargin: 7 * root.sx
@@ -1756,7 +1756,7 @@ PagePrincipal {
                             Layout.preferredWidth: 70 * root.sy
                             Layout.preferredHeight: 70 * root.sy
                             radius: width / 2
-                            color: "#ECFDF5"
+                            color: Style.Theme.superficie_alterna
                             Text { anchors.centerIn: parent; text: "♥"; color: "#059669"; font.pixelSize: 30 * root.sy }
                         }
                         ColumnLayout {
@@ -1845,12 +1845,12 @@ PagePrincipal {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 68 * root.sy
                     radius: 8 * root.sx
-                    color: "#EFF6FF"
-                    border.color: "#BFDBFE"
+                    color: Style.Theme.chip_fondo
+                    border.color: Style.Theme.info_fondo
                     RowLayout {
                         anchors.fill: parent
                         anchors.margins: 12 * root.sx
-                        Text { text: "ⓘ"; color: "#1D4ED8"; font.pixelSize: 20 * root.sy }
+                        Text { text: "ⓘ"; color: Style.Theme.info_texto; font.pixelSize: 20 * root.sy }
                         ColumnLayout {
                             Layout.fillWidth: true
                             Text { text: "Coherencia"; color: Style.Theme.info_texto; font.bold: true; font.pixelSize: 11 * Math.min(root.sx, root.sy) }
@@ -1979,7 +1979,7 @@ PagePrincipal {
                                           ? root.campo(advertenciaSalud.modelData,
                                                        ["mensaje", "message"], "Advertencia")
                                           : advertenciaSalud.modelData)
-                            color: "#9A3412"
+                            color: Style.Theme.aviso_texto
                             elide: Text.ElideRight
                             font.pixelSize: 11 * Math.min(root.sx, root.sy)
                         }
@@ -2024,7 +2024,7 @@ PagePrincipal {
                                 }
                                 Text {
                                     text: root.esModeloActivo() ? "● Activo" : "○ No activo"
-                                    color: root.esModeloActivo() ? "#15803D" : Style.Theme.texto_secundario
+                                    color: root.esModeloActivo() ? Style.Theme.exito_texto : Style.Theme.texto_secundario
                                     font.bold: true
                                     font.pixelSize: 11 * Math.min(root.sx, root.sy)
                                 }
@@ -2371,14 +2371,14 @@ PagePrincipal {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 76 * root.sy
                     radius: 8 * root.sx
-                    color: root.compatible() ? "#ECFDF5" : "#FEF2F2"
-                    border.color: root.compatible() ? "#A7F3D0" : "#FCA5A5"
+                    color: root.compatible() ? Style.Theme.superficie_alterna : Style.Theme.chip_fondo
+                    border.color: root.compatible() ? Style.Theme.exito_fondo : "#FCA5A5"
                     RowLayout {
                         anchors.fill: parent
                         anchors.margins: 14 * root.sx
                         Text {
                             text: root.compatible() ? "✓" : "!"
-                            color: root.compatible() ? "#047857" : "#B91C1C"
+                            color: root.compatible() ? Style.Theme.exito_texto : Style.Theme.error_texto
                             font.bold: true
                             font.pixelSize: 24 * root.sy
                         }
@@ -2386,7 +2386,7 @@ PagePrincipal {
                             Layout.fillWidth: true
                             Text {
                                 text: root.compatible() ? "Compatible con esta aplicación" : "Modelo incompatible"
-                                color: root.compatible() ? "#065F46" : Style.Theme.error_texto
+                                color: root.compatible() ? Style.Theme.exito_texto : Style.Theme.error_texto
                                 font.bold: true
                                 font.pixelSize: 13 * Math.min(root.sx, root.sy)
                             }
@@ -2397,7 +2397,7 @@ PagePrincipal {
                                                  root.compatible()
                                                  ? "El formato y el tokenizador declarados pueden cargarse."
                                                  : "Consulta el motivo de incompatibilidad antes de intentar cargarlo.")
-                                color: root.compatible() ? "#065F46" : Style.Theme.error_texto
+                                color: root.compatible() ? Style.Theme.exito_texto : Style.Theme.error_texto
                                 elide: Text.ElideRight
                                 font.pixelSize: 11 * Math.min(root.sx, root.sy)
                             }

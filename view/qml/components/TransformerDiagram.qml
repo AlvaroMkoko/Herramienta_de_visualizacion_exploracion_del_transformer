@@ -1,5 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
+import "../styles" as Style
 
 Item {
     id: root
@@ -9,9 +10,9 @@ Item {
     // highlightedComponentId is transient training state; selectedComponentId
     // is the persistent component chosen by the user.
     property string highlightedComponentId: ""
-    property color flowColor: "#666577"
+    property color flowColor: Style.Theme.texto_secundario
     property color attentionColor: "#9a641b"
-    property color residualColor: "#6c5fc3"
+    property color residualColor: Style.Theme.acento
 
     readonly property string selectedComponentId: {
         if (root.bridge === null || root.bridge === undefined)
@@ -223,19 +224,19 @@ Item {
 
         Repeater {
             model: [
-                { id: "encoder_add_norm_ffn", x: 82, y: 310, h: 36, title: "Add & Norm", sub: "click → ε, γ, β", color: "#7664dd" },
+                { id: "encoder_add_norm_ffn", x: 82, y: 310, h: 36, title: "Add & Norm", sub: "click → ε, γ, β", color: Style.Theme.acento },
                 { id: "encoder_feed_forward", x: 82, y: 400, h: 50, title: "Feed Forward", sub: "click → dimension, activation", color: "#258f6f" },
-                { id: "encoder_add_norm_attention", x: 82, y: 490, h: 36, title: "Add & Norm", sub: "", color: "#7664dd" },
+                { id: "encoder_add_norm_attention", x: 82, y: 490, h: 36, title: "Add & Norm", sub: "", color: Style.Theme.acento },
                 { id: "encoder_self_attention", x: 82, y: 580, h: 60, title: "Multi-Head Attention", sub: "click → heads, dropout", color: "#9a641b" },
                 { id: "input_embedding", x: 82, y: 775, h: 52, title: "Input Embedding", sub: "click → vocabulary, max length", color: "#b64b59" },
 
                 { id: "softmax", x: 478, y: 55, h: 36, title: "Softmax", sub: "", color: "#258f6f" },
                 { id: "linear", x: 478, y: 120, h: 36, title: "Linear", sub: "", color: "#3979b7" },
-                { id: "decoder_add_norm_ffn", x: 478, y: 190, h: 36, title: "Add & Norm", sub: "", color: "#7664dd" },
+                { id: "decoder_add_norm_ffn", x: 478, y: 190, h: 36, title: "Add & Norm", sub: "", color: Style.Theme.acento },
                 { id: "decoder_feed_forward", x: 478, y: 260, h: 50, title: "Feed Forward", sub: "click → dimension, activation", color: "#258f6f" },
-                { id: "decoder_add_norm_cross", x: 478, y: 340, h: 36, title: "Add & Norm", sub: "", color: "#7664dd" },
+                { id: "decoder_add_norm_cross", x: 478, y: 340, h: 36, title: "Add & Norm", sub: "", color: Style.Theme.acento },
                 { id: "decoder_cross_attention", x: 478, y: 410, h: 50, title: "Multi-Head Attention (cross)", sub: "click → heads, dropout", color: "#9a641b" },
-                { id: "decoder_add_norm_masked", x: 478, y: 520, h: 36, title: "Add & Norm", sub: "", color: "#7664dd" },
+                { id: "decoder_add_norm_masked", x: 478, y: 520, h: 36, title: "Add & Norm", sub: "", color: Style.Theme.acento },
                 { id: "decoder_masked_attention", x: 478, y: 590, h: 60, title: "Masked Multi-Head Attention", sub: "click → causal mask, heads", color: "#a53f62" },
                 { id: "output_embedding", x: 478, y: 775, h: 52, title: "Output Embedding", sub: "click → vocabulary, max length", color: "#b64b59" }
             ]
@@ -276,7 +277,7 @@ Item {
                 root.selectComponent(componentId)
             }
         }
-        Text { x: 67; y: 748; text: "Positional Encoding"; color: "#77758b"; font.pixelSize: 10 }
+        Text { x: 67; y: 748; text: "Positional Encoding"; color: Style.Theme.texto_secundario; font.pixelSize: 10 }
 
         AddNode {
             x: 578; y: 700
@@ -294,10 +295,10 @@ Item {
                 root.selectComponent(componentId)
             }
         }
-        Text { x: 654; y: 748; text: "Positional Encoding"; color: "#77758b"; font.pixelSize: 10 }
+        Text { x: 654; y: 748; text: "Positional Encoding"; color: Style.Theme.texto_secundario; font.pixelSize: 10 }
 
-        Text { x: 178; y: 860; text: "Inputs"; color: "#77758b"; font.pixelSize: 12 }
-        Text { x: 536; y: 860; text: "Outputs (shifted right)"; color: "#77758b"; font.pixelSize: 12 }
-        Text { x: 542; y: 0; text: "Output probabilities ↑"; color: "#77758b"; font.pixelSize: 12 }
+        Text { x: 178; y: 860; text: "Inputs"; color: Style.Theme.texto_secundario; font.pixelSize: 12 }
+        Text { x: 536; y: 860; text: "Outputs (shifted right)"; color: Style.Theme.texto_secundario; font.pixelSize: 12 }
+        Text { x: 542; y: 0; text: "Output probabilities ↑"; color: Style.Theme.texto_secundario; font.pixelSize: 12 }
     }
 }

@@ -413,7 +413,7 @@ PagePrincipal {
                                 Layout.fillHeight: true
                                 radius: 8 * root.sx
                                 color: Style.Theme.acento_fondo
-                                border.color: "#DDD6FE"
+                                border.color: Style.Theme.acento_alt
 
                                 Column {
                                     anchors.centerIn: parent

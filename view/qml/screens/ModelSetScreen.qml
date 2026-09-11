@@ -96,7 +96,7 @@ PagePrincipal {
             Layout.preferredHeight: 36 * root.sy
             radius: height / 2
             color: markedModel.count > 0 ? Style.Theme.acento_fondo : Style.Theme.chip_fondo
-            border.color: markedModel.count > 0 ? "#C4B5FD" : Style.Theme.borde_suave
+            border.color: markedModel.count > 0 ? Style.Theme.acento_alt : Style.Theme.borde_suave
 
             Text {
                 id: selectedText
@@ -375,7 +375,7 @@ PagePrincipal {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 54 * root.sy
                             radius: 8 * root.sx
-                            color: "#F9FAFB"
+                            color: Style.Theme.superficie_alterna
                             border.color: Style.Theme.divisor
 
                             RowLayout {

@@ -54,7 +54,7 @@ Item {
 
             var datos = nube.puntos
             if (!datos || datos.length === 0) {
-                ctx.fillStyle = "#8A8A9A"
+                ctx.fillStyle = Style.Theme.texto_terciario
                 ctx.font = "13px sans-serif"
                 ctx.textAlign = "center"
                 ctx.fillText("Esperando datos del entrenamiento…", width/2, height/2)
@@ -101,7 +101,7 @@ Item {
 
             // --- Ejes de referencia ---
             var ejes = [[[0.5,0,0],"X"], [[0,0.5,0],"Y"], [[0,0,0.5],"Z"]]
-            ctx.strokeStyle = "#C9C6DE"
+            ctx.strokeStyle = Style.Theme.borde_suave
             ctx.lineWidth = 1
             ctx.font = "10px sans-serif"
             ctx.textAlign = "center"
@@ -109,7 +109,7 @@ Item {
                 var re = nube.rotar(ejes[k][0], nube.yaw, nube.pitch)
                 var ex = cx + re[0]*escala, ey = cy - re[1]*escala
                 ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(ex, ey); ctx.stroke()
-                ctx.fillStyle = "#9A97B5"
+                ctx.fillStyle = Style.Theme.texto_terciario
                 ctx.fillText(ejes[k][1], ex, ey - 4)
             }
 
@@ -122,13 +122,13 @@ Item {
                 t = Math.max(0, Math.min(1, t))
                 var radio = (3 + t*4) * nube.zoom
                 ctx.globalAlpha = 0.45 + t*0.55
-                ctx.fillStyle = "#6A63E8"
+                ctx.fillStyle = Style.Theme.acento
                 ctx.beginPath()
                 ctx.arc(pt.x, pt.y, radio, 0, Math.PI*2)
                 ctx.fill()
 
                 if (pt.etiqueta !== "" && t > 0.35) {
-                    ctx.fillStyle = "#3A3752"
+                    ctx.fillStyle = Style.Theme.texto_secundario_fuerte
                     ctx.font = "11px sans-serif"
                     ctx.fillText(pt.etiqueta, pt.x, pt.y - radio - 3)
                 }
@@ -185,7 +185,7 @@ Item {
             Text {
                 anchors.verticalCenter: parent.verticalCenter
                 text: "Varianza conservada: " + Math.round(nube.varianzaConservada * 1000)/10 + "%"
-                color: nube.varianzaConservada < 0.25 ? "#C77B21" : "#4A7C4E"
+                color: nube.varianzaConservada < 0.25 ? "#C77B21" : Style.Theme.exito_texto
                 font.pixelSize: 11
             }
             ConceptHelpButton {
@@ -204,7 +204,7 @@ Item {
         }
         Text {
             text: nube.puntos.length + " tokens"
-            color: "#8A8A9A"
+            color: Style.Theme.texto_terciario
             font.pixelSize: 10
         }
     }
@@ -214,7 +214,7 @@ Item {
         anchors.bottom: parent.bottom
         anchors.margins: 8
         text: "Arrastrar: rotar · Rueda: zoom"
-        color: "#A5A2BB"
+        color: Style.Theme.texto_terciario
         font.pixelSize: 9
     }
 }

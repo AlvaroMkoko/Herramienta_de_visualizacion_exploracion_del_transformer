@@ -176,7 +176,7 @@ Item {
                 detail: root.finalHidden.length
                         ? root.finalHidden.length + " dimensiones visibles"
                         : "La última posición alimenta Linear"
-                accent: "#4F46E5"
+                accent: Style.Theme.acento
                 emphasized: true
                 sx: root.sx
                 sy: root.sy
@@ -185,7 +185,7 @@ Item {
             FlowArrow {
                 Layout.preferredWidth: 44 * root.sx
                 progress: root.reveal(0.10, 0.20)
-                accent: "#4F46E5"
+                accent: Style.Theme.acento
                 sx: root.sx
                 sy: root.sy
             }
@@ -220,7 +220,7 @@ Item {
                        ? String(root.logitsData.shape) : "Sin captura"
                 detail: root.histogram && root.histogram.total !== undefined
                         ? root.histogram.total + " valores resumidos" : "Puntajes sin normalizar"
-                accent: "#DC2626"
+                accent: Style.Theme.error
                 emphasized: root.progress >= 0.58
                 sx: root.sx
                 sy: root.sy
@@ -241,8 +241,8 @@ Item {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 92 * root.sy
                     radius: 12 * root.sx
-                    color: "#EEF2FF"
-                    border.color: "#C7D2FE"
+                    color: Style.Theme.acento_fondo
+                    border.color: Style.Theme.acento_alt
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -253,14 +253,14 @@ Item {
                             Text {
                                 Layout.fillWidth: true
                                 text: "h FINAL · MUESTRA EXACTA"
-                                color: "#4338CA"
+                                color: Style.Theme.acento_fuerte
                                 font.bold: true
                                 font.pixelSize: 8 * root.sx
                             }
                             Text {
                                 text: root.hiddenMatrix && root.hiddenMatrix.displayed_shape
                                       ? String(root.hiddenMatrix.displayed_shape) : "—"
-                                color: "#6366F1"
+                                color: Style.Theme.acento
                                 font.pixelSize: 8 * root.sx
                             }
                         }
@@ -281,7 +281,7 @@ Item {
                                 height: hiddenStrip.height
                                 radius: 6 * root.sx
                                 color: root.hiddenColor(modelData)
-                                border.color: Number(modelData) >= 0 ? "#818CF8" : "#FB7185"
+                                border.color: Number(modelData) >= 0 ? Style.Theme.acento_alt : "#FB7185"
                                 opacity: root.reveal(Math.min(index, 18) * 0.012, 0.30)
                                 Column {
                                     anchors.centerIn: parent
@@ -319,7 +319,7 @@ Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     radius: 12 * root.sx
-                    color: "#FFF7F7"
+                    color: Style.Theme.fondo
                     border.color: "#FCA5A5"
 
                     ColumnLayout {
@@ -332,14 +332,14 @@ Item {
                             Text {
                                 Layout.fillWidth: true
                                 text: "DISTRIBUCIÓN DE LOGITS"
-                                color: "#991B1B"
+                                color: Style.Theme.error_texto
                                 font.bold: true
                                 font.pixelSize: 9 * root.sx
                             }
                             Text {
                                 text: root.logitsData && root.logitsData.dtype
                                       ? String(root.logitsData.dtype) : "—"
-                                color: "#B91C1C"
+                                color: Style.Theme.error_texto
                                 font.pixelSize: 8 * root.sx
                             }
                         }
@@ -382,7 +382,7 @@ Item {
                                                          + Math.min(index, 16) * 0.012,
                                                          0.28))
                                     radius: 3 * root.sx
-                                    color: "#DC2626"
+                                    color: Style.Theme.error
                                     opacity: 0.82
                                 }
                             }
@@ -393,7 +393,7 @@ Item {
                                 anchors.bottomMargin: 2 * root.sy
                                 text: root.histogramEdges.length
                                       ? root.formatNumber(root.histogramEdges[0]) : "—"
-                                color: "#7F1D1D"
+                                color: Style.Theme.error_texto
                                 font.pixelSize: 7 * root.sx
                             }
                             Text {
@@ -403,7 +403,7 @@ Item {
                                 text: root.histogramEdges.length
                                       ? root.formatNumber(root.histogramEdges[
                                           root.histogramEdges.length - 1]) : "—"
-                                color: "#7F1D1D"
+                                color: Style.Theme.error_texto
                                 font.pixelSize: 7 * root.sx
                             }
                             Text {
@@ -461,7 +461,7 @@ Item {
                 Layout.fillHeight: true
                 radius: 12 * root.sx
                 color: Style.Theme.superficie_alterna
-                border.color: "#D8E0EA"
+                border.color: Style.Theme.borde_medio
                 clip: true
 
                 ColumnLayout {
@@ -504,8 +504,8 @@ Item {
                             width: ListView.view.width
                             height: 51 * root.sy
                             radius: 8 * root.sx
-                            color: chosen ? "#DCFCE7" : "#FFFFFF"
-                            border.color: chosen ? "#22C55E" : Style.Theme.borde_medio
+                            color: chosen ? Style.Theme.exito_fondo : "#FFFFFF"
+                            border.color: chosen ? Style.Theme.success : Style.Theme.borde_medio
                             border.width: chosen ? 2 : 1
                             opacity: root.reveal(0.64 + Math.min(index, 8) * 0.025, 0.22)
 
@@ -518,7 +518,7 @@ Item {
                                     Layout.preferredWidth: 36 * root.sx
                                     Layout.preferredHeight: 28 * root.sy
                                     radius: 7 * root.sx
-                                    color: candidateRow.chosen ? "#16A34A" : "#DC2626"
+                                    color: candidateRow.chosen ? Style.Theme.success : Style.Theme.error
                                     Text {
                                         anchors.centerIn: parent
                                         text: candidateRow.modelData.rango !== undefined
@@ -559,7 +559,7 @@ Item {
                                         Layout.fillWidth: true
                                         Text {
                                             text: "logit " + root.formatNumber(candidateRow.logit)
-                                            color: candidateRow.logit >= 0 ? "#1D4ED8" : "#BE123C"
+                                            color: candidateRow.logit >= 0 ? Style.Theme.info_texto : "#BE123C"
                                             font.bold: true
                                             font.pixelSize: 8 * root.sx
                                         }
@@ -567,7 +567,7 @@ Item {
                                         Text {
                                             text: (candidateRow.probability * 100).toFixed(
                                                       candidateRow.probability < 0.01 ? 2 : 1) + "%"
-                                            color: candidateRow.chosen ? "#047857" : Style.Theme.texto_secundario
+                                            color: candidateRow.chosen ? Style.Theme.exito_texto : Style.Theme.texto_secundario
                                             font.bold: true
                                             font.pixelSize: 8 * root.sx
                                         }
@@ -589,7 +589,7 @@ Item {
                                                          / root.candidateMaximumProbability) : 0)
                                             height: parent.height
                                             radius: height / 2
-                                            color: candidateRow.chosen ? "#16A34A" : "#2563EB"
+                                            color: candidateRow.chosen ? Style.Theme.success : "#2563EB"
                                             Behavior on width {
                                                 NumberAnimation {
                                                     duration: root.reducedMotion ? 0 : 400
@@ -621,7 +621,7 @@ Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 40 * root.sy
             radius: 9 * root.sx
-            color: root.hasData ? "#FFF7ED" : Style.Theme.superficie_alterna
+            color: root.hasData ? Style.Theme.aviso_fondo : Style.Theme.superficie_alterna
             border.color: root.hasData ? "#FDBA74" : Style.Theme.borde_suave
             Text {
                 anchors.centerIn: parent
@@ -629,7 +629,7 @@ Item {
                 text: root.hasData
                       ? "El histograma resume todos los logits; el top conserva logits reales y probabilidades posteriores. Linear aún no elige el token."
                       : "Aún no hay una captura de salida para este paso de inferencia."
-                color: root.hasData ? "#9A3412" : Style.Theme.texto_secundario
+                color: root.hasData ? Style.Theme.aviso_texto : Style.Theme.texto_secundario
                 horizontalAlignment: Text.AlignHCenter
                 elide: Text.ElideRight
                 font.pixelSize: 9 * root.sx
@@ -646,8 +646,8 @@ Item {
         implicitWidth: buttonText.implicitWidth + 22 * sx
         implicitHeight: 32 * sy
         radius: 8 * sx
-        color: "#DC2626"
-        border.color: "#B91C1C"
+        color: Style.Theme.error
+        border.color: Style.Theme.error_texto
         Text {
             id: buttonText
             anchors.centerIn: parent
@@ -767,7 +767,7 @@ Item {
         property real sy: 1
         radius: 7 * sx
         color: "#FFFFFF"
-        border.color: "#FECACA"
+        border.color: Style.Theme.error_fondo
         Column {
             anchors.centerIn: parent
             width: parent.width - 6 * metricChip.sx
@@ -775,7 +775,7 @@ Item {
             Text {
                 width: parent.width
                 text: metricChip.value
-                color: "#7F1D1D"
+                color: Style.Theme.error_texto
                 font.bold: true
                 horizontalAlignment: Text.AlignHCenter
                 elide: Text.ElideRight

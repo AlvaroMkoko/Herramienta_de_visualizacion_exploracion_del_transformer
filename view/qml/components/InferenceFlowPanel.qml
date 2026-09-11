@@ -349,7 +349,7 @@ Item {
                     Layout.fillHeight: true
                     radius: 9 * root.sx
                     color: "#FFFFFF"
-                    border.color: "#D7DEE8"
+                    border.color: Style.Theme.borde_suave
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -378,7 +378,7 @@ Item {
                                     width: Math.max(46 * root.sx, promptTokenText.implicitWidth + 14 * root.sx)
                                     height: 36 * root.sy
                                     radius: 6 * root.sx
-                                    color: ["#FFF3D6", "#DFF3FF", "#DCF7EE", "#FCE4F2"][promptToken.modelData.posicion % 4]
+                                    color: [Style.Theme.aviso_fondo, Style.Theme.info_fondo, Style.Theme.exito_fondo, Style.Theme.error_fondo][promptToken.modelData.posicion % 4]
                                     border.color: Style.Theme.texto_secundario
                                     Text {
                                         id: promptTokenText
@@ -412,7 +412,7 @@ Item {
                                     width: Math.max(43 * root.sx, generatedText.implicitWidth + 13 * root.sx)
                                     height: 36 * root.sy
                                     radius: 6 * root.sx
-                                    color: generatedToken.index === root.selectedIndex ? "#BFE3F6" : "#E8F5FC"
+                                    color: generatedToken.index === root.selectedIndex ? Style.Theme.info_fondo : Style.Theme.borde_medio
                                     border.color: generatedToken.index === root.selectedIndex ? "#0072B2" : "#56B4E9"
                                     border.width: generatedToken.index === root.selectedIndex ? 2 : 1
                                     Text {
@@ -444,7 +444,7 @@ Item {
                     Layout.fillHeight: true
                     radius: 9 * root.sx
                     color: "#FFFFFF"
-                    border.color: "#D7DEE8"
+                    border.color: Style.Theme.borde_suave
                     RowLayout {
                         anchors.fill: parent
                         anchors.margins: 7 * root.sx
@@ -587,12 +587,12 @@ Item {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 45 * root.sy
                             radius: 7 * root.sx
-                            color: "#FFF7ED"
+                            color: Style.Theme.aviso_fondo
                             border.color: "#E69F00"
                             Text {
                                 anchors.centerIn: parent
                                 text: "El detalle tensorial se conserva para el token más reciente. Selecciónalo para inspeccionar el forward real."
-                                color: "#7C2D12"; font.bold: true
+                                color: Style.Theme.aviso_texto; font.bold: true
                                 font.pixelSize: 10 * Math.min(root.sx, root.sy)
                             }
                         }
@@ -614,7 +614,7 @@ Item {
                                             id: tokenCard
                                             required property var modelData
                                             width: 145 * root.sx; height: 88 * root.sy; radius: 9 * root.sx
-                                            color: ["#FFF3D6", "#DFF3FF", "#DCF7EE", "#FCE4F2"][tokenCard.modelData.posicion % 4]
+                                            color: [Style.Theme.aviso_fondo, Style.Theme.info_fondo, Style.Theme.exito_fondo, Style.Theme.error_fondo][tokenCard.modelData.posicion % 4]
                                             border.color: Style.Theme.texto_secundario
                                             Column {
                                                 anchors.centerIn: parent; spacing: 3 * root.sy
@@ -892,14 +892,14 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 72 * root.sy
                                 radius: 8 * root.sx
-                                color: "#FFF7ED"
+                                color: Style.Theme.aviso_fondo
                                 border.color: "#E69F00"
                                 Text {
                                     anchors.fill: parent; anchors.margins: 8 * root.sx
                                     text: root.sceneIndex === 6 || root.sceneIndex === 7
                                           ? "⚠ Atención y ‖AᵢⱼVⱼ‖ son estados internos distintos. Ninguno prueba por sí solo una relación causal con la predicción."
                                           : "Datos reales capturados del forward pass. No se muestran gradientes: pertenecen a un modo de atribución/backward separado."
-                                    color: "#7C2D12"; wrapMode: Text.WordWrap
+                                    color: Style.Theme.aviso_texto; wrapMode: Text.WordWrap
                                     font.pixelSize: 9 * root.sx
                                 }
                             }
@@ -913,7 +913,7 @@ Item {
                             Text {
                                 visible: root.exportStatus.length > 0
                                 Layout.fillWidth: true
-                                text: root.exportStatus; color: "#047857"; wrapMode: Text.WordWrap
+                                text: root.exportStatus; color: Style.Theme.exito_texto; wrapMode: Text.WordWrap
                                 font.pixelSize: 9 * root.sx
                             }
                         }
@@ -1492,7 +1492,7 @@ Item {
                         id: predictionRow
                         required property var modelData
                         width: ListView.view.width; height: 38 * logitsScene.sy; radius: 6 * logitsScene.sx
-                        color: predictionRow.modelData.elegido ? "#DCF7EE" : Style.Theme.superficie_alterna; border.color: predictionRow.modelData.elegido ? "#009E73" : Style.Theme.borde_suave
+                        color: predictionRow.modelData.elegido ? Style.Theme.exito_fondo : Style.Theme.superficie_alterna; border.color: predictionRow.modelData.elegido ? "#009E73" : Style.Theme.borde_suave
                         RowLayout { anchors.fill: parent; anchors.margins: 6
                             Text { Layout.preferredWidth: 80 * logitsScene.sx; text: "#" + predictionRow.modelData.rango + "  “" + predictionRow.modelData.texto + "”"; color: Style.Theme.texto_primario; font.bold: true; elide: Text.ElideRight; font.pixelSize: 9 * logitsScene.sx }
                             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 10 * logitsScene.sy; radius: height / 2; color: Style.Theme.borde_medio; Rectangle { width: parent.width * Number(predictionRow.modelData.probabilidad); height: parent.height; radius: parent.radius; color: predictionRow.modelData.elegido ? "#009E73" : "#0072B2" } }
@@ -1503,8 +1503,8 @@ Item {
             }
             Rectangle {
                 Layout.preferredWidth: 280 * logitsScene.sx; Layout.fillHeight: true; radius: 9 * logitsScene.sx
-                color: "#F0FDF4"; border.color: "#009E73"
-                Text { anchors.centerIn: parent; width: parent.width - 24; text: logitsScene.snapshot ? "TOKEN ELEGIDO\n“" + logitsScene.snapshot.token_elegido.texto + "”\nID " + logitsScene.snapshot.token_elegido.token_id + " · rango #" + logitsScene.snapshot.token_elegido.rango + "\n" + root.percentage(logitsScene.snapshot.token_elegido.probabilidad) + "\n\n" + logitsScene.snapshot.modo_muestreo + "\n" + logitsScene.snapshot.filtros : "—"; color: "#065F46"; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap; font.bold: true; font.pixelSize: 11 * logitsScene.sx }
+                color: Style.Theme.surface; border.color: "#009E73"
+                Text { anchors.centerIn: parent; width: parent.width - 24; text: logitsScene.snapshot ? "TOKEN ELEGIDO\n“" + logitsScene.snapshot.token_elegido.texto + "”\nID " + logitsScene.snapshot.token_elegido.token_id + " · rango #" + logitsScene.snapshot.token_elegido.rango + "\n" + root.percentage(logitsScene.snapshot.token_elegido.probabilidad) + "\n\n" + logitsScene.snapshot.modo_muestreo + "\n" + logitsScene.snapshot.filtros : "—"; color: Style.Theme.exito_texto; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap; font.bold: true; font.pixelSize: 11 * logitsScene.sx }
             }
         }
     }

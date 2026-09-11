@@ -63,7 +63,7 @@ Rectangle {
     implicitHeight: (root.expanded ? 620 : 390) * root.contentScale
     radius: (root.expanded ? 16 : 10) * root.contentScale
     color: "#FFFFFF"
-    border.color: "#D8D2EC"
+    border.color: Style.Theme.acento_fondo
     border.width: 1
     clip: true
 
@@ -123,7 +123,7 @@ Rectangle {
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 1
-            color: "#E4E0F0"
+            color: Style.Theme.acento_fondo
         }
 
         ScrollView {
@@ -143,7 +143,7 @@ Rectangle {
                     height: visible ? errorText.implicitHeight
                                       + (root.expanded ? 24 : 18) * root.contentScale : 0
                     radius: (root.expanded ? 9 : 7) * root.contentScale
-                    color: "#FEF2F2"
+                    color: Style.Theme.chip_fondo
                     border.color: "#FCA5A5"
 
                     Text {
@@ -151,7 +151,7 @@ Rectangle {
                         anchors.fill: parent
                         anchors.margins: (root.expanded ? 12 : 9) * root.contentScale
                         text: root.errorCarga
-                        color: "#991B1B"
+                        color: Style.Theme.error_texto
                         font.pixelSize: (root.expanded ? 14 : 10) * root.contentScale
                         wrapMode: Text.WordWrap
                     }
@@ -180,7 +180,7 @@ Rectangle {
                     width: parent.width
                     visible: root.texto("intuition") !== ""
                     text: "INTUICIÓN"
-                    color: "#6C5FC3"
+                    color: Style.Theme.acento
                     font.bold: true
                     font.pixelSize: (root.expanded ? 12 : 10) * root.contentScale
                 }
@@ -188,7 +188,7 @@ Rectangle {
                     width: parent.width
                     visible: root.texto("intuition") !== ""
                     text: root.texto("intuition")
-                    color: "#514978"
+                    color: Style.Theme.acento_fuerte
                     font.italic: true
                     font.pixelSize: (root.expanded ? 14 : 11) * root.contentScale
                     lineHeight: root.expanded ? 1.25 : 1.0
@@ -201,8 +201,8 @@ Rectangle {
                     height: visible ? formulaColumn.implicitHeight
                                       + (root.expanded ? 28 : 20) * root.contentScale : 0
                     radius: (root.expanded ? 10 : 7) * root.contentScale
-                    color: "#F5F3FB"
-                    border.color: "#DDD7F1"
+                    color: Style.Theme.acento_fondo
+                    border.color: Style.Theme.acento_fondo
 
                     Column {
                         id: formulaColumn
@@ -216,7 +216,7 @@ Rectangle {
                             width: parent.width
                             visible: root.texto("formula") !== ""
                             text: root.texto("formula")
-                            color: "#433879"
+                            color: Style.Theme.acento_fuerte
                             font.family: "monospace"
                             font.pixelSize: (root.expanded ? 14 : 11) * root.contentScale
                             wrapMode: Text.WrapAnywhere
@@ -245,7 +245,7 @@ Rectangle {
                     width: parent.width
                     visible: root.texto("example") !== ""
                     text: root.texto("example")
-                    color: "#315F88"
+                    color: Style.Theme.texto_secundario
                     font.pixelSize: (root.expanded ? 14 : 11) * root.contentScale
                     lineHeight: root.expanded ? 1.25 : 1.0
                     wrapMode: Text.WordWrap
@@ -326,7 +326,7 @@ Rectangle {
                     Text {
                         width: parent.width
                         text: "PARA PROFUNDIZAR"
-                        color: "#6C5FC3"
+                        color: Style.Theme.acento
                         font.bold: true
                         font.pixelSize: (root.expanded ? 12 : 10) * root.contentScale
                     }
@@ -345,11 +345,11 @@ Rectangle {
 
                             background: Rectangle {
                                 radius: (root.expanded ? 8 : 6) * root.contentScale
-                                color: relatedDelegate.down ? "#E5DFF5"
+                                color: relatedDelegate.down ? Style.Theme.acento_fondo
                                       : relatedDelegate.hovered || relatedDelegate.activeFocus
-                                        ? "#EEEAF8" : "#F8F7FC"
+                                        ? Style.Theme.acento_fondo : Style.Theme.acento_fondo
                                 border.color: relatedDelegate.activeFocus
-                                              ? "#7B68C8" : "#DED8F0"
+                                              ? Style.Theme.acento : Style.Theme.acento_fondo
                                 border.width: relatedDelegate.activeFocus ? 2 : 1
                             }
 
@@ -359,7 +359,7 @@ Rectangle {
                                 Text {
                                     width: parent.width
                                     text: relatedDelegate.modelData.title || relatedDelegate.modelData.id
-                                    color: "#51458D"
+                                    color: Style.Theme.acento_fuerte
                                     font.bold: true
                                     font.pixelSize: (root.expanded ? 14 : 10) * root.contentScale
                                     wrapMode: Text.WordWrap

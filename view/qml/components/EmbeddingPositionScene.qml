@@ -152,13 +152,13 @@ Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 50 * root.sy
             radius: 10 * root.sx
-            color: "#F5F3FF"
-            border.color: "#C4B5FD"
+            color: Style.Theme.acento_fondo
+            border.color: Style.Theme.acento_alt
             RowLayout {
                 anchors.fill: parent
                 anchors.margins: 9 * root.sx
                 spacing: 10 * root.sx
-                Text { text: "E · √d"; color: "#6D28D9"; font.bold: true; font.pixelSize: 10 * root.sx }
+                Text { text: "E · √d"; color: Style.Theme.acento_fuerte; font.bold: true; font.pixelSize: 10 * root.sx }
                 Slider {
                     id: progressSlider
                     Layout.fillWidth: true
@@ -173,12 +173,12 @@ Item {
                         width: progressSlider.availableWidth
                         height: 7 * root.sy
                         radius: height / 2
-                        color: "#DDD6FE"
+                        color: Style.Theme.acento_alt
                         Rectangle {
                             width: progressSlider.visualPosition * parent.width
                             height: parent.height
                             radius: parent.radius
-                            color: "#7C3AED"
+                            color: Style.Theme.acento
                         }
                     }
                     handle: Rectangle {
@@ -188,17 +188,17 @@ Item {
                         width: 20 * root.sx; height: 20 * root.sy
                         radius: width / 2
                         color: "#FFFFFF"
-                        border.color: "#7C3AED"
+                        border.color: Style.Theme.acento
                         border.width: 3
                     }
                 }
                 Text {
                     text: "+ " + Math.round(root.progress * 100) + "% PE"
-                    color: "#7C3AED"
+                    color: Style.Theme.acento
                     font.bold: true
                     font.pixelSize: 10 * root.sx
                 }
-                Text { text: "X₀"; color: "#5B21B6"; font.bold: true; font.pixelSize: 10 * root.sx }
+                Text { text: "X₀"; color: Style.Theme.acento_fuerte; font.bold: true; font.pixelSize: 10 * root.sx }
             }
         }
 
@@ -206,8 +206,8 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             radius: 12 * root.sx
-            color: "#FAFAFF"
-            border.color: "#DDD6FE"
+            color: Style.Theme.superficie_alterna
+            border.color: Style.Theme.acento_alt
             clip: true
 
             Canvas {
@@ -345,14 +345,14 @@ Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 38 * root.sy
             radius: 9 * root.sx
-            color: "#FFF7ED"
+            color: Style.Theme.aviso_fondo
             border.color: "#FDBA74"
             Text {
                 anchors.centerIn: parent
                 width: parent.width - 20 * root.sx
                 text: "Proyección PCA 2D · las distancias pueden distorsionarse; no son distancias exactas del espacio de "
                       + Number(root.projection.dimension_original || 0) + " dimensiones."
-                color: "#9A3412"
+                color: Style.Theme.aviso_texto
                 horizontalAlignment: Text.AlignHCenter
                 font.pixelSize: 9 * root.sx
             }
@@ -370,9 +370,9 @@ Item {
         implicitWidth: buttonText.implicitWidth + 22 * sx
         implicitHeight: 32 * sy
         radius: 8 * sx
-        color: primary || selected ? "#7C3AED" : "#FFFFFF"
-        border.color: "#7C3AED"
-        Text { id: buttonText; anchors.centerIn: parent; text: sceneButton.label; color: sceneButton.primary || sceneButton.selected ? "white" : "#6D28D9"; font.bold: true; font.pixelSize: 9 * sceneButton.sx }
+        color: primary || selected ? Style.Theme.acento : "#FFFFFF"
+        border.color: Style.Theme.acento
+        Text { id: buttonText; anchors.centerIn: parent; text: sceneButton.label; color: sceneButton.primary || sceneButton.selected ? "white" : Style.Theme.acento_fuerte; font.bold: true; font.pixelSize: 9 * sceneButton.sx }
         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: sceneButton.clicked() }
     }
 
@@ -385,7 +385,7 @@ Item {
         Canvas {
             width: 13 * legend.sx; height: 13 * legend.sx
             onPaint: {
-                var ctx = getContext("2d"); ctx.reset(); ctx.strokeStyle = "#7C3AED"; ctx.fillStyle = "#337C3AED"; ctx.lineWidth = 1.5
+                var ctx = getContext("2d"); ctx.reset(); ctx.strokeStyle = Style.Theme.acento; ctx.fillStyle = "#337C3AED"; ctx.lineWidth = 1.5
                 if (legend.square) { ctx.fillRect(2, 2, width - 4, height - 4); ctx.strokeRect(2, 2, width - 4, height - 4) }
                 else { ctx.beginPath(); ctx.arc(width / 2, height / 2, width / 2 - 2, 0, Math.PI * 2); ctx.fill(); ctx.stroke() }
             }

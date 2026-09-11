@@ -66,7 +66,7 @@ Rectangle {
     radius: 14 * scaleFactor
     color: Style.Theme.surface
     border.width: 1
-    border.color: stage === 3 ? "#86D1B4" : "#D8D2EC"
+    border.color: stage === 3 ? "#86D1B4" : Style.Theme.acento_fondo
     clip: true
 
     onActivityChanged: {
@@ -108,12 +108,12 @@ Rectangle {
                 Layout.preferredWidth: 28 * root.scaleFactor
                 Layout.preferredHeight: 28 * root.scaleFactor
                 radius: width / 2
-                color: root.unitCompleted ? "#E5F7EF" : "#F0ECFA"
+                color: root.unitCompleted ? Style.Theme.chip_fondo : Style.Theme.acento_fondo
 
                 Text {
                     anchors.centerIn: parent
                     text: root.unitCompleted ? "✓" : "?"
-                    color: root.unitCompleted ? "#187455" : "#6254B8"
+                    color: root.unitCompleted ? Style.Theme.exito_texto : Style.Theme.acento_fuerte
                     font.bold: true
                     font.pixelSize: 13 * root.scaleFactor
                 }
@@ -135,16 +135,16 @@ Rectangle {
                     Layout.preferredHeight: 25 * root.scaleFactor
                     radius: height / 2
                     color: root.stage > stageDelegate.index || root.stage === 3
-                           ? "#E5F7EF"
-                           : root.stage === stageDelegate.index ? "#EDE8FA" : "#F3F4F6"
-                    border.color: root.stage === stageDelegate.index ? "#A99BDD" : "transparent"
+                           ? Style.Theme.chip_fondo
+                           : root.stage === stageDelegate.index ? Style.Theme.acento_fondo : Style.Theme.chip_fondo
+                    border.color: root.stage === stageDelegate.index ? Style.Theme.acento_alt : "transparent"
 
                     Text {
                         anchors.centerIn: parent
                         text: stageDelegate.modelData
                         color: root.stage > stageDelegate.index || root.stage === 3
-                               ? "#187455"
-                               : root.stage === stageDelegate.index ? "#5946A3" : "#7A8290"
+                               ? Style.Theme.exito_texto
+                               : root.stage === stageDelegate.index ? Style.Theme.acento_fuerte : Style.Theme.texto_secundario
                         font.bold: root.stage === stageDelegate.index
                         font.pixelSize: 9 * root.scaleFactor
                     }
@@ -155,7 +155,7 @@ Rectangle {
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 1
-            color: "#E8E4F1"
+            color: Style.Theme.acento_fondo
         }
 
         ScrollView {
@@ -225,9 +225,9 @@ Rectangle {
                             background: Rectangle {
                                 radius: 8 * root.scaleFactor
                                 color: optionDelegate.seleccionada
-                                       ? "#EDE8FA" : optionDelegate.hovered ? "#F7F5FC" : "#FFFFFF"
+                                       ? Style.Theme.acento_fondo : optionDelegate.hovered ? Style.Theme.acento_fondo : "#FFFFFF"
                                 border.width: optionDelegate.seleccionada ? 2 : 1
-                                border.color: optionDelegate.seleccionada ? "#7462C8" : "#D8DCE5"
+                                border.color: optionDelegate.seleccionada ? Style.Theme.acento : Style.Theme.chip_borde
                             }
 
                             contentItem: Text {
@@ -261,13 +261,13 @@ Rectangle {
 
                         background: Rectangle {
                             radius: 8 * root.scaleFactor
-                            color: !revealButton.enabled ? "#ECEEF2"
-                                   : revealButton.down ? "#51429D" : "#6856BA"
+                            color: !revealButton.enabled ? Style.Theme.chip_fondo
+                                   : revealButton.down ? Style.Theme.acento_fuerte : Style.Theme.acento
                         }
 
                         contentItem: Text {
                             text: revealButton.text
-                            color: revealButton.enabled ? "#FFFFFF" : "#9399A5"
+                            color: revealButton.enabled ? "#FFFFFF" : Style.Theme.texto_terciario
                             font.bold: true
                             font.pixelSize: 11 * root.scaleFactor
                             horizontalAlignment: Text.AlignHCenter
@@ -289,8 +289,8 @@ Rectangle {
                         width: parent.width
                         height: observationColumn.implicitHeight + 22 * root.scaleFactor
                         radius: 9 * root.scaleFactor
-                        color: "#F1F8FC"
-                        border.color: "#B9D9EA"
+                        color: Style.Theme.superficie_alterna
+                        border.color: Style.Theme.borde_suave
 
                         Column {
                             id: observationColumn
@@ -303,7 +303,7 @@ Rectangle {
                             Text {
                                 width: parent.width
                                 text: "OBSERVACIÓN SIN MODELO NI DATASET"
-                                color: "#2F7194"
+                                color: Style.Theme.texto_secundario
                                 font.bold: true
                                 font.pixelSize: 9 * root.scaleFactor
                             }
@@ -329,12 +329,12 @@ Rectangle {
                                         Layout.preferredHeight: 21 * root.scaleFactor
                                         radius: 6 * root.scaleFactor
                                         color: traceDelegate.index === root.trace().length - 1
-                                               ? "#DDF3EA" : "#E3EEF7"
+                                               ? Style.Theme.exito_fondo : Style.Theme.borde_medio
 
                                         Text {
                                             anchors.centerIn: parent
                                             text: String(traceDelegate.index + 1)
-                                            color: "#2C6786"
+                                            color: Style.Theme.texto_secundario
                                             font.bold: true
                                             font.pixelSize: 9 * root.scaleFactor
                                         }
@@ -353,7 +353,7 @@ Rectangle {
                             Text {
                                 width: parent.width
                                 text: String(root.value("observation", ""))
-                                color: "#315F78"
+                                color: Style.Theme.chip_texto
                                 font.pixelSize: 11 * root.scaleFactor
                                 wrapMode: Text.WordWrap
                             }
@@ -364,7 +364,7 @@ Rectangle {
                         width: parent.width
                         text: root.predictionFeedback()
                         color: root.selectedPrediction === Number(root.value("correctIndex", -1))
-                               ? "#187455" : "#8B651D"
+                               ? Style.Theme.exito_texto : "#8B651D"
                         font.pixelSize: 11 * root.scaleFactor
                         font.bold: true
                         wrapMode: Text.WordWrap
@@ -390,7 +390,7 @@ Rectangle {
                     Text {
                         width: parent.width
                         text: "EXPLICA LO OBSERVADO"
-                        color: "#5F4BAA"
+                        color: Style.Theme.acento_fuerte
                         font.bold: true
                         font.pixelSize: 10 * root.scaleFactor
                     }
@@ -417,7 +417,7 @@ Rectangle {
                         background: Rectangle {
                             radius: 8 * root.scaleFactor
                             color: "#FFFFFF"
-                            border.color: explanationInput.activeFocus ? "#7968CA" : "#C9CED8"
+                            border.color: explanationInput.activeFocus ? Style.Theme.acento : Style.Theme.borde_suave
                             border.width: explanationInput.activeFocus ? 2 : 1
                         }
                     }
@@ -428,7 +428,7 @@ Rectangle {
                               ? "Escribe al menos 12 caracteres para continuar."
                               : "Tu explicación está lista para revisar."
                         color: explanationInput.text.trim().length < 12
-                               ? Style.Theme.texto_secundario : "#187455"
+                               ? Style.Theme.texto_secundario : Style.Theme.exito_texto
                         font.pixelSize: 9 * root.scaleFactor
                         wrapMode: Text.WordWrap
                     }
@@ -453,7 +453,7 @@ Rectangle {
                     width: parent.width
                     height: visible ? feedbackColumn.implicitHeight + 24 * root.scaleFactor : 0
                     radius: 10 * root.scaleFactor
-                    color: "#ECF8F2"
+                    color: Style.Theme.superficie_alterna
                     border.color: "#9BD5BD"
 
                     Column {
@@ -467,7 +467,7 @@ Rectangle {
                         Text {
                             width: parent.width
                             text: "UNIDAD COMPLETADA"
-                            color: "#187455"
+                            color: Style.Theme.exito_texto
                             font.bold: true
                             font.pixelSize: 10 * root.scaleFactor
                         }

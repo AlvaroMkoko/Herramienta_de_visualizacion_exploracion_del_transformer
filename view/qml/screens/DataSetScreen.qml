@@ -329,8 +329,8 @@ PagePrincipal {
                                     textoChip.implicitWidth + 54 * root.sx))
                     height: 40 * root.sy
                     radius: height / 2
-                    color: "#E0E7FF"
-                    border.color: "#C7D2FE"
+                    color: Style.Theme.acento_fondo
+                    border.color: Style.Theme.acento_alt
 
                     RowLayout {
                         anchors.fill: parent
@@ -342,7 +342,7 @@ PagePrincipal {
                             id: textoChip
                             Layout.fillWidth: true
                             text: nombre
-                            color: "#3730A3"
+                            color: Style.Theme.acento_fuerte
                             font.bold: true
                             font.pixelSize: 12 * Math.min(root.sx, root.sy)
                             elide: Text.ElideRight
@@ -705,7 +705,7 @@ PagePrincipal {
                 Layout.fillWidth: true
                 text: root.markModel.count
                       + (root.markModel.count === 1 ? " dataset seleccionado" : " datasets seleccionados")
-                color: root.markModel.count > 0 ? "#3730A3" : Style.Theme.texto_secundario
+                color: root.markModel.count > 0 ? Style.Theme.acento_fuerte : Style.Theme.texto_secundario
                 font.bold: true
                 font.pixelSize: 13 * Math.min(root.sx, root.sy)
             }
@@ -758,7 +758,7 @@ PagePrincipal {
             height: 190 * root.sy
             radius: 16 * Math.min(root.sx, root.sy)
             color: Style.Theme.surface
-            border.color: "#D8D5F5"
+            border.color: Style.Theme.acento_fondo
             border.width: 1
 
             ColumnLayout {

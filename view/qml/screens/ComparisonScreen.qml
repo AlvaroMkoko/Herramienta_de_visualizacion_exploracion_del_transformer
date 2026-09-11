@@ -318,7 +318,7 @@ PagePrincipal {
             Layout.preferredHeight: 38 * root.sy
             radius: height / 2
             color: root.mensajeEsError ? Style.Theme.error_fondo : Style.Theme.acento_fondo
-            border.color: root.mensajeEsError ? "#FCA5A5" : "#C4B5FD"
+            border.color: root.mensajeEsError ? "#FCA5A5" : Style.Theme.acento_alt
             Text {
                 id: mensajeCabecera
                 anchors.centerIn: parent
@@ -519,8 +519,8 @@ PagePrincipal {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         radius: 9 * root.sx
-                        color: modelData.item ? Style.Theme.acento_fondo : "#F9FAFB"
-                        border.color: modelData.item ? "#C4B5FD" : Style.Theme.borde_suave
+                        color: modelData.item ? Style.Theme.acento_fondo : Style.Theme.superficie_alterna
+                        border.color: modelData.item ? Style.Theme.acento_alt : Style.Theme.borde_suave
                         ColumnLayout {
                             anchors.fill: parent
                             anchors.margins: 12 * root.sx
@@ -831,7 +831,7 @@ PagePrincipal {
                         duracion: root.duracionB,
                         estado: root.estadoB,
                         acento: "#2563EB",
-                        fondo: "#EFF6FF"
+                        fondo: Style.Theme.chip_fondo
                     }
                 ]
 
@@ -887,7 +887,7 @@ PagePrincipal {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
                             radius: 8 * root.sx
-                            color: "#FAFAFA"
+                            color: Style.Theme.superficie_alterna
                             border.color: Style.Theme.divisor
 
                             ScrollView {

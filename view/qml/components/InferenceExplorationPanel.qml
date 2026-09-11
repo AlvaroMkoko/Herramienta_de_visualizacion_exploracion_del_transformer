@@ -41,19 +41,19 @@ Item {
             id: "decoder_causal",
             label: "Decoder causal",
             caption: "usa lo ya generado",
-            accent: "#7C3AED"
+            accent: Style.Theme.acento
         },
         {
             id: "cross_attention",
             label: "Decoder + contexto",
             caption: "consulta el prompt y refina",
-            accent: "#B45309"
+            accent: Style.Theme.aviso_texto
         },
         {
             id: "output",
             label: "Salida",
             caption: "elige el próximo token",
-            accent: "#DC2626"
+            accent: Style.Theme.error
         }
     ]
     readonly property int processChapterIndex: chapterForOperation(operationIndex)
@@ -61,7 +61,7 @@ Item {
         Math.max(0, Math.min(processChapters.length - 1, processChapterIndex))]
     readonly property int chapterStep: chapterStepForOperation(operationIndex)
     readonly property int chapterStepCount: chapterStepCountForOperation(operationIndex)
-    readonly property color processAccent: currentProcessChapter.accent || "#4F46E5"
+    readonly property color processAccent: currentProcessChapter.accent || Style.Theme.acento
 
     readonly property var currentSnapshot: selectedIndex >= 0 && selectedIndex < snapshots.length
                                                    ? snapshots[selectedIndex] : null
@@ -145,7 +145,7 @@ Item {
             conceptId: "combinacion_embedding_pe",
             eyebrow: "01 · DEL ID AL VECTOR",
             title: "El orden deforma el significado",
-            accent: "#7C3AED",
+            accent: Style.Theme.acento,
             concept: "Cada token parte de su embedding escalado. Al sumar el encoding posicional, el vector se desplaza de verdad: no recibe una etiqueta aparte.",
             formula: "X₀ = E · √d_model + PE",
             hint: "Reproduce la transición o arrastra el control. El color sigue el índice posicional.",
@@ -167,7 +167,7 @@ Item {
             conceptId: "problema_multi_head",
             eyebrow: "03 · MULTI-HEAD",
             title: "Una partición, no varias copias",
-            accent: "#D97706",
+            accent: Style.Theme.warning,
             concept: "d_model se divide en h subespacios de d_head dimensiones. Las cabezas trabajan en paralelo, se concatenan y Wᴼ vuelve a mezclar sus resultados.",
             formula: "MHA = Concat(head₁ … headₕ) Wᴼ",
             hint: "Sigue un color desde el segmento original hasta concat; la malla final representa Wᴼ.",
@@ -200,7 +200,7 @@ Item {
             conceptId: "contextualizacion",
             eyebrow: "06 · TRAYECTORIA POR CAPAS",
             title: "El contexto reorganiza cada piso",
-            accent: "#4F46E5",
+            accent: Style.Theme.acento,
             concept: "Cada piso proyecta los hidden states de una capa. Selecciona un token y síguelo mientras cambia su vecindario a través del Transformer.",
             formula: "X₀ → bloque₁(X₀) → … → bloque_L(X)",
             hint: "Desplázate verticalmente; el token resaltado conserva identidad y color en todos los pisos.",
@@ -211,7 +211,7 @@ Item {
             conceptId: "seleccion_token",
             eyebrow: "07 · SIGUIENTE TOKEN",
             title: "El contexto cambia la clasificación",
-            accent: "#DC2626",
+            accent: Style.Theme.error,
             concept: "Cada vuelta autoregresiva produce una nueva distribución. Las barras cambian de longitud y rango cuando el contexto favorece candidatos distintos.",
             formula: "p(token | contexto) = softmax(logits filtrados)",
             hint: "Reproduce el historial o avanza contexto por contexto para seguir a cada candidato.",
@@ -559,7 +559,7 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: 18 * root.sx
-        color: "#F5F7FB"
+        color: Style.Theme.superficie_alterna
         border.color: Style.Theme.borde_suave
         border.width: 1
 
@@ -609,13 +609,13 @@ Item {
                     Layout.preferredWidth: dataChipText.implicitWidth + 24 * root.sx
                     Layout.preferredHeight: 32 * root.sy
                     radius: height / 2
-                    color: root.operationDataAvailable ? "#DCFCE7" : "#FEF3C7"
+                    color: root.operationDataAvailable ? Style.Theme.exito_fondo : Style.Theme.aviso_fondo
                     border.color: root.operationDataAvailable ? "#86EFAC" : "#FCD34D"
                     Text {
                         id: dataChipText
                         anchors.centerIn: parent
                         text: root.operationDataAvailable ? "● Datos reales" : "Captura no disponible"
-                        color: root.operationDataAvailable ? "#166534" : "#92400E"
+                        color: root.operationDataAvailable ? Style.Theme.exito_texto : Style.Theme.aviso_texto
                         font.bold: true
                         font.pixelSize: 10 * Math.min(root.sx, root.sy)
                     }
@@ -628,7 +628,7 @@ Item {
                     Layout.preferredHeight: 36 * root.sy
                     label: root.tokenProcessing ? "Calculando…" : "+ Siguiente token"
                     enabled: root.canGenerateNext && !root.tokenProcessing
-                    accent: "#4F46E5"
+                    accent: Style.Theme.acento
                     onClicked: root.nextTokenRequested()
                 }
                 CheckBox {
@@ -655,7 +655,7 @@ Item {
                     Layout.preferredWidth: 42 * root.sx
                     Layout.preferredHeight: 36 * root.sy
                     label: "✕"
-                    accent: "#DC2626"
+                    accent: Style.Theme.error
                     onClicked: root.closeRequested()
                 }
             }
@@ -678,7 +678,7 @@ Item {
                 Layout.preferredHeight: 58 * root.sy
                 radius: 11 * root.sx
                 color: "#FFFFFF"
-                border.color: "#D8E0EA"
+                border.color: Style.Theme.borde_medio
 
                 RowLayout {
                     anchors.fill: parent
@@ -707,7 +707,7 @@ Item {
                             sy: root.sy
                         }
                     }
-                    Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: "#D8E0EA" }
+                    Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: Style.Theme.borde_medio }
                     Text {
                         text: "SALIDA"
                         color: Style.Theme.texto_secundario
@@ -743,7 +743,7 @@ Item {
                 visible: root.stageIndex >= 1 && root.stageIndex <= 4
                 radius: 11 * root.sx
                 color: "#FFFFFF"
-                border.color: "#D8E0EA"
+                border.color: Style.Theme.borde_medio
 
                 RowLayout {
                     anchors.fill: parent
@@ -837,7 +837,7 @@ Item {
                     Layout.minimumWidth: 1120 * root.sx
                     radius: 14 * root.sx
                     color: "#FFFFFF"
-                    border.color: "#D8E0EA"
+                    border.color: Style.Theme.borde_medio
                     clip: true
 
                     StackLayout {
@@ -946,7 +946,7 @@ Item {
                         visible: Boolean(root.operation.requiresDetail) && !root.detailAvailable
                         radius: 12 * root.sx
                         color: Style.Theme.superficie_alterna
-                        border.color: "#F59E0B"
+                        border.color: Style.Theme.warning
                         Column {
                             anchors.centerIn: parent
                             width: Math.min(parent.width - 40 * root.sx, 520 * root.sx)
@@ -954,7 +954,7 @@ Item {
                             Text {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 text: "◷"
-                                color: "#D97706"
+                                color: Style.Theme.warning
                                 font.pixelSize: 42 * Math.min(root.sx, root.sy)
                             }
                             Text {
@@ -1073,7 +1073,7 @@ Item {
                                 Layout.fillWidth: true
                                 implicitHeight: visualColumn.implicitHeight + 22 * root.sy
                                 radius: 10 * root.sx
-                                color: "#EFF6FF"
+                                color: Style.Theme.chip_fondo
                                 border.color: "#93C5FD"
 
                                 ColumnLayout {
@@ -1086,7 +1086,7 @@ Item {
 
                                     Text {
                                         text: "QUÉ OBSERVAR EN LA ANIMACIÓN"
-                                        color: "#1D4ED8"
+                                        color: Style.Theme.info_texto
                                         font.bold: true
                                         font.pixelSize: Math.max(9, 9 * root.sx)
                                     }
@@ -1094,7 +1094,7 @@ Item {
                                         objectName: "inferenceVisualGuide"
                                         Layout.fillWidth: true
                                         text: root.operation.visualMeaning || root.stage.hint
-                                        color: "#1E3A5F"
+                                        color: Style.Theme.texto_secundario_fuerte
                                         wrapMode: Text.WordWrap
                                         lineHeight: 1.18
                                         font.pixelSize: Math.max(11, 11 * root.sx)
@@ -1106,7 +1106,7 @@ Item {
                                 Layout.fillWidth: true
                                 implicitHeight: nextStepText.implicitHeight + 18 * root.sy
                                 radius: 9 * root.sx
-                                color: "#FFFBEB"
+                                color: Style.Theme.aviso_fondo
                                 border.color: "#FCD34D"
 
                                 Text {
@@ -1117,7 +1117,7 @@ Item {
                                     anchors.top: parent.top
                                     anchors.margins: 9 * root.sx
                                     text: "DESPUÉS  →  " + (root.operation.nextStep || "—")
-                                    color: "#92400E"
+                                    color: Style.Theme.aviso_texto
                                     wrapMode: Text.WordWrap
                                     lineHeight: 1.16
                                     font.pixelSize: Math.max(10, 10 * root.sx)
@@ -1160,7 +1160,7 @@ Item {
                                     eyebrow: "POR QUÉ SE NECESITA"
                                     body: root.operation.purpose || "—"
                                     bodyObjectName: "inferencePurposeText"
-                                    accent: "#7C3AED"
+                                    accent: Style.Theme.acento
                                     sx: root.sx
                                 }
                                 InfoCard {
@@ -1175,7 +1175,7 @@ Item {
                                     Layout.fillWidth: true
                                     implicitHeight: caveatText.implicitHeight + 22 * root.sy
                                     radius: 10 * root.sx
-                                    color: "#FFF7ED"
+                                    color: Style.Theme.aviso_fondo
                                     border.color: "#FDBA74"
                                     Text {
                                         id: caveatText
@@ -1185,7 +1185,7 @@ Item {
                                         anchors.top: parent.top
                                         anchors.margins: 11 * root.sx
                                         text: "⚠  " + (root.operation.caveat || root.stage.caveat)
-                                        color: "#9A3412"
+                                        color: Style.Theme.aviso_texto
                                         wrapMode: Text.WordWrap
                                         lineHeight: 1.18
                                         font.pixelSize: Math.max(10, 10 * root.sx)
@@ -1237,7 +1237,7 @@ Item {
                 Layout.preferredHeight: Math.max(56, 76 * root.sy)
                 radius: 12 * root.sx
                 color: "#FFFFFF"
-                border.color: "#D8E0EA"
+                border.color: Style.Theme.borde_medio
 
                 RowLayout {
                     anchors.fill: parent
@@ -1293,7 +1293,7 @@ Item {
                         Layout.preferredHeight: 38 * root.sy
                         label: root.sequencePlaying ? "\u23f8 Pausar" : "\u25b6 Reproducir"
                         selected: root.sequencePlaying
-                        accent: "#4F46E5"
+                        accent: Style.Theme.acento
                         onClicked: {
                             if (root.sequencePlaying) {
                                 root.sequencePlaying = false
@@ -1338,7 +1338,7 @@ Item {
         id: pill
         property string label: ""
         property bool selected: false
-        property color accent: "#4F46E5"
+        property color accent: Style.Theme.acento
         signal clicked()
         activeFocusOnTab: enabled && visible
         implicitWidth: pillText.implicitWidth + 24 * root.sx
@@ -1384,7 +1384,7 @@ Item {
         required property var token
         property bool selected: false
         property bool interactive: false
-        property color accent: "#4F46E5"
+        property color accent: Style.Theme.acento
         property real sx: 1
         property real sy: 1
         signal clicked()
@@ -1433,7 +1433,7 @@ Item {
         property int value: 1
         property int minimum: 1
         property int maximum: 1
-        property color accent: "#4F46E5"
+        property color accent: Style.Theme.acento
         property real sx: 1
         property real sy: 1
         signal valueRequested(int value)
@@ -1508,7 +1508,7 @@ Item {
         property string eyebrow: ""
         property string body: ""
         property string bodyObjectName: ""
-        property color accent: "#4F46E5"
+        property color accent: Style.Theme.acento
         property bool monospace: false
         property real sx: 1
         implicitHeight: infoColumn.implicitHeight + 20 * sx

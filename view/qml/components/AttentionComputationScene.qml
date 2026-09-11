@@ -125,7 +125,7 @@ Item {
                     local: true,
                     valueLabel: "K",
                     columnOffset: 0,
-                    accent: "#D97706"
+                    accent: Style.Theme.warning
                 },
                 {
                     id: "v",
@@ -136,7 +136,7 @@ Item {
                     local: true,
                     valueLabel: "V",
                     columnOffset: 0,
-                    accent: "#7C3AED"
+                    accent: Style.Theme.acento
                 }
             ]
         }
@@ -182,7 +182,7 @@ Item {
                     local: false,
                     valueLabel: "permitido",
                     columnOffset: branchIndex === 1 ? 0 : keyOffset,
-                    accent: "#DC2626"
+                    accent: Style.Theme.error
                 },
                 {
                     id: "masked_scores",
@@ -193,7 +193,7 @@ Item {
                     local: true,
                     valueLabel: "score S'",
                     columnOffset: keyOffset,
-                    accent: "#B45309"
+                    accent: Style.Theme.aviso_texto
                 }
             ]
         }
@@ -230,7 +230,7 @@ Item {
                 local: true,
                 valueLabel: "Z",
                 columnOffset: 0,
-                accent: "#4F46E5"
+                accent: Style.Theme.acento
             }
         ]
     }
@@ -307,7 +307,7 @@ Item {
                 Layout.preferredWidth: branchText.implicitWidth + 24 * root.sx
                 Layout.preferredHeight: 30 * root.sy
                 radius: 8 * root.sx
-                color: "#EFF6FF"
+                color: Style.Theme.chip_fondo
                 border.color: "#93C5FD"
 
                 Text {
@@ -315,7 +315,7 @@ Item {
                     anchors.centerIn: parent
                     text: root.branchLabel + " · capa " + (Number(root.layerIndex || 0) + 1)
                           + " · H" + String(root.selectedHead + 1).padStart(2, "0")
-                    color: "#1D4ED8"
+                    color: Style.Theme.info_texto
                     font.bold: true
                     font.pixelSize: 9 * root.sx
                 }
@@ -362,13 +362,13 @@ Item {
                     Layout.preferredWidth: truthText.implicitWidth + 18 * root.sx
                     Layout.preferredHeight: 24 * root.sy
                     radius: height / 2
-                    color: root.hasAnyData ? "#DCFCE7" : "#FEF3C7"
+                    color: root.hasAnyData ? Style.Theme.exito_fondo : Style.Theme.aviso_fondo
                     border.color: root.hasAnyData ? "#86EFAC" : "#FCD34D"
                     Text {
                         id: truthText
                         anchors.centerIn: parent
                         text: root.hasAnyData ? "● Captura real" : "Sin captura"
-                        color: root.hasAnyData ? "#166534" : "#92400E"
+                        color: root.hasAnyData ? Style.Theme.exito_texto : Style.Theme.aviso_texto
                         font.bold: true
                         font.pixelSize: 8 * root.sx
                     }
@@ -569,7 +569,7 @@ Item {
             }
             Text {
                 text: root.hasAnyData ? "Sin valores sintéticos" : "Esperando forward"
-                color: root.hasAnyData ? "#047857" : "#92400E"
+                color: root.hasAnyData ? Style.Theme.exito_texto : Style.Theme.aviso_texto
                 font.bold: true
                 font.pixelSize: 8 * root.sx
             }

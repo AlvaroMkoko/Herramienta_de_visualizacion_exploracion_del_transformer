@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import "../styles" as Style
 
 // Boton pequeno para solicitar una explicacion contextual. No consulta datos
 // ni abre ventanas por su cuenta: el padre decide como atender la senal.
@@ -48,10 +49,10 @@ ToolButton {
             width: root.iconDiameter
             height: root.iconDiameter
             radius: width / 2
-            color: root.down ? "#DED7F4"
-                             : root.hovered || root.activeFocus ? "#F1EDF9" : "transparent"
-            border.color: root.activeFocus ? "#6C5FC3"
-                                           : root.hovered ? "#AAA0CF" : "#D4CEE5"
+            color: root.down ? Style.Theme.acento_fondo
+                             : root.hovered || root.activeFocus ? Style.Theme.acento_fondo : "transparent"
+            border.color: root.activeFocus ? Style.Theme.acento
+                                           : root.hovered ? Style.Theme.acento_alt : Style.Theme.acento_fondo
             border.width: root.activeFocus ? 1.5 : 1
             opacity: root.hovered || root.activeFocus ? 1.0 : 0.52
         }
@@ -59,7 +60,7 @@ ToolButton {
 
     contentItem: Text {
         text: "?"
-        color: root.enabled ? "#5B4AA5" : "#9CA3AF"
+        color: root.enabled ? Style.Theme.acento_fuerte : Style.Theme.texto_terciario
         font.bold: true
         font.pixelSize: Math.max(10, root.iconDiameter * 0.64)
         opacity: root.hovered || root.activeFocus ? 1.0 : 0.58

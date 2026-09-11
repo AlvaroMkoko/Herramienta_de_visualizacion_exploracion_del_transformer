@@ -12,7 +12,7 @@ Rectangle {
     property int currentIndex: 0
     property int currentStep: 1
     property int currentStepCount: 1
-    property color accent: "#4F46E5"
+    property color accent: Style.Theme.acento
     property real sx: 1
     property real sy: 1
     readonly property bool keyboardNavigationEnabled: true
@@ -21,7 +21,7 @@ Rectangle {
 
     radius: 12 * Math.min(sx, sy)
     color: "#FFFFFF"
-    border.color: "#D8E0EA"
+    border.color: Style.Theme.borde_medio
 
     ColumnLayout {
         anchors.fill: parent
@@ -112,7 +112,7 @@ Rectangle {
                         radius: 9 * Math.min(root.sx, root.sy)
                         color: chapterDelegate.current
                                ? Qt.alpha(root.accent, 0.12)
-                               : (chapterDelegate.completed ? "#F0FDF4" : Style.Theme.superficie_alterna)
+                               : (chapterDelegate.completed ? Style.Theme.surface : Style.Theme.superficie_alterna)
                         border.color: chapterDelegate.current
                                       ? root.accent
                                       : (chapterDelegate.completed ? "#86EFAC" : Style.Theme.borde_suave)
@@ -144,7 +144,7 @@ Rectangle {
                                 radius: width / 2
                                 color: chapterDelegate.current
                                        ? root.accent
-                                       : (chapterDelegate.completed ? "#16A34A" : Style.Theme.borde_medio)
+                                       : (chapterDelegate.completed ? Style.Theme.success : Style.Theme.borde_medio)
 
                                 Text {
                                     anchors.centerIn: parent
@@ -193,7 +193,7 @@ Rectangle {
                         visible: chapterDelegate.index < root.chapters.length - 1
                         Layout.preferredWidth: visible ? Math.max(12, 14 * root.sx) : 0
                         text: "\u2192"
-                        color: chapterDelegate.completed ? "#16A34A" : Style.Theme.texto_terciario
+                        color: chapterDelegate.completed ? Style.Theme.success : Style.Theme.texto_terciario
                         font.bold: true
                         font.pixelSize: Math.max(12, 14 * root.sx)
                     }
@@ -226,7 +226,7 @@ Rectangle {
         property string caption: ""
         property string symbol: ""
         property bool highlighted: false
-        property color accent: "#4F46E5"
+        property color accent: Style.Theme.acento
         property real sx: 1
 
         radius: 9 * endpoint.sx

@@ -105,7 +105,7 @@ Item {
 
             Text {
                 text: "SIGUE UN TOKEN"
-                color: "#4F46E5"
+                color: Style.Theme.acento
                 font.bold: true
                 font.pixelSize: 9 * root.sx
             }
@@ -147,23 +147,23 @@ Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 38 * root.sy
             radius: 9 * root.sx
-            color: "#EEF2FF"
-            border.color: "#A5B4FC"
+            color: Style.Theme.acento_fondo
+            border.color: Style.Theme.acento_alt
             RowLayout {
                 anchors.fill: parent
                 anchors.margins: 8 * root.sx
-                Text { text: "↕"; color: "#4F46E5"; font.bold: true; font.pixelSize: 15 * root.sx }
+                Text { text: "↕"; color: Style.Theme.acento; font.bold: true; font.pixelSize: 15 * root.sx }
                 Text {
                     Layout.fillWidth: true
                     text: "Desplázate para subir de capa. El halo identifica “"
                           + (root.tokenForPoint(root.selectedToken).texto || "token") + "” en todos los pisos."
-                    color: "#3730A3"
+                    color: Style.Theme.acento_fuerte
                     font.pixelSize: 10 * root.sx
                 }
                 Text {
                     text: "varianza conservada "
                           + (Number(root.trajectory.varianza_conservada || 0) * 100).toFixed(1) + "%"
-                    color: "#4F46E5"
+                    color: Style.Theme.acento
                     font.bold: true
                     font.pixelSize: 9 * root.sx
                 }
@@ -191,8 +191,8 @@ Item {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 154 * root.sy
                         radius: 12 * root.sx
-                        color: floorCard.index === 0 ? "#EEF2FF" : Style.Theme.superficie_alterna
-                        border.color: floorCard.index === 0 ? "#6366F1" : Style.Theme.borde_suave
+                        color: floorCard.index === 0 ? Style.Theme.acento_fondo : Style.Theme.superficie_alterna
+                        border.color: floorCard.index === 0 ? Style.Theme.acento : Style.Theme.borde_suave
                         border.width: floorCard.index === 0 ? 2 : 1
 
                         RowLayout {
@@ -204,28 +204,28 @@ Item {
                                 Layout.preferredWidth: 104 * root.sx
                                 Layout.fillHeight: true
                                 radius: 10 * root.sx
-                                color: floorCard.index === 0 ? "#4F46E5" : "#E0E7FF"
+                                color: floorCard.index === 0 ? Style.Theme.acento : Style.Theme.acento_fondo
                                 Column {
                                     anchors.centerIn: parent
                                     spacing: 4 * root.sy
                                     Text {
                                         anchors.horizontalCenter: parent.horizontalCenter
                                         text: floorCard.modelData.capa === 0 ? "ENTRADA" : "CAPA"
-                                        color: floorCard.index === 0 ? "#C7D2FE" : "#6366F1"
+                                        color: floorCard.index === 0 ? Style.Theme.acento_alt : Style.Theme.acento
                                         font.bold: true
                                         font.pixelSize: 9 * root.sx
                                     }
                                     Text {
                                         anchors.horizontalCenter: parent.horizontalCenter
                                         text: floorCard.modelData.capa === 0 ? "X₀" : floorCard.modelData.capa
-                                        color: floorCard.index === 0 ? "white" : "#3730A3"
+                                        color: floorCard.index === 0 ? "white" : Style.Theme.acento_fuerte
                                         font.bold: true
                                         font.pixelSize: 30 * Math.min(root.sx, root.sy)
                                     }
                                     Text {
                                         anchors.horizontalCenter: parent.horizontalCenter
                                         text: (floorCard.modelData.puntos || []).length + " tokens"
-                                        color: floorCard.index === 0 ? "#E0E7FF" : "#4F46E5"
+                                        color: floorCard.index === 0 ? Style.Theme.acento_fondo : Style.Theme.acento
                                         font.pixelSize: 9 * root.sx
                                     }
                                 }
@@ -236,7 +236,7 @@ Item {
                                 Layout.fillHeight: true
                                 radius: 9 * root.sx
                                 color: "#FFFFFF"
-                                border.color: "#D8E0EA"
+                                border.color: Style.Theme.borde_medio
                                 Canvas {
                                     id: scatterCanvas
                                     anchors.fill: parent
@@ -269,7 +269,7 @@ Item {
                                                 ctx.arc(x, y, 10 * root.sx, 0, Math.PI * 2)
                                                 ctx.fillStyle = "#334F46E5"
                                                 ctx.fill()
-                                                ctx.strokeStyle = "#4F46E5"
+                                                ctx.strokeStyle = Style.Theme.acento
                                                 ctx.lineWidth = 2.5 * root.sx
                                                 ctx.stroke()
                                             }
@@ -309,7 +309,7 @@ Item {
                                 }
                                 Text {
                                     text: "PCA conjunto · ejes fijos"
-                                    color: "#4F46E5"
+                                    color: Style.Theme.acento
                                     font.bold: true
                                     font.pixelSize: 9 * root.sx
                                 }

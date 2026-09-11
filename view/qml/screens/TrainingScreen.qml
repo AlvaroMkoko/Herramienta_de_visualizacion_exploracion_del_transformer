@@ -391,7 +391,7 @@ PagePrincipal {
             radius: height / 2
             color: root.trainingController.estaEntrenando
                    ? (root.trainingController.estaPausado ? Style.Theme.aviso_fondo : Style.Theme.exito_fondo)
-                   : "#EEF0F5"
+                   : Style.Theme.chip_fondo
 
             Text {
                 id: estadoTexto
@@ -406,7 +406,7 @@ PagePrincipal {
                             : (root.entrenamientoTerminado
                                ? "✓ Finalizado" : "○ Preparado")))
                 color: root.trainingController.detencionSolicitada
-                       ? "#B25D35"
+                       ? Style.Theme.aviso_texto
                        : (root.trainingController.estaEntrenando
                           ? (root.trainingController.estaPausado
                              ? Style.Theme.aviso_texto : "#258F6F")
@@ -449,10 +449,10 @@ PagePrincipal {
 
                     Repeater {
                         model: [
-                            { label: "ÉPOCA", value: (root.epocaSesionActual || 0) + " / " + (root.epocasSesionActual || root.epocasIniciales), color: "#6C5FC3", help: "epoch_batch" },
+                            { label: "ÉPOCA", value: (root.epocaSesionActual || 0) + " / " + (root.epocasSesionActual || root.epocasIniciales), color: Style.Theme.acento, help: "epoch_batch" },
                             { label: "PASO GLOBAL", value: String(root.pasoGlobalActual), color: Style.Theme.info_texto, help: "training_step" },
                             { label: "PÉRDIDA", value: root.numero(root.perdidaActual, 4), color: "#258F6F", help: "cross_entropy" },
-                            { label: "Δ PÉRDIDA", value: (root.deltaPerdida > 0 ? "+" : "") + root.numero(root.deltaPerdida, 4), color: root.deltaPerdida <= 0 ? "#258F6F" : "#B25D35", help: "loss_delta" },
+                            { label: "Δ PÉRDIDA", value: (root.deltaPerdida > 0 ? "+" : "") + root.numero(root.deltaPerdida, 4), color: root.deltaPerdida <= 0 ? "#258F6F" : Style.Theme.aviso_texto, help: "loss_delta" },
                             { label: "GRADIENTE L2", value: root.numero(root.normaGradiente, 3), color: Style.Theme.aviso_texto, help: "gradient_norm_l2" }
                         ]
 
@@ -635,7 +635,7 @@ PagePrincipal {
                             width: parent.width
                             height: vacioLayout.implicitHeight + 30 * root.sy
                             radius: 9 * root.sx
-                            color: "#F5F3FB"
+                            color: Style.Theme.acento_fondo
 
                             Column {
                                 id: vacioLayout
@@ -700,8 +700,8 @@ PagePrincipal {
                                 width: parent.width
                                 height: metricaLayout.implicitHeight + 16 * root.sy
                                 radius: 7 * root.sx
-                                color: "#FAFBFC"
-                                border.color: "#E3E6EA"
+                                color: Style.Theme.superficie_alterna
+                                border.color: Style.Theme.divisor
 
                                 RowLayout {
                                     id: metricaLayout
@@ -724,7 +724,7 @@ PagePrincipal {
                                             visible: metricDelegate.modelData.detalle !== ""
                                             Layout.fillWidth: true
                                             text: metricDelegate.modelData.detalle
-                                            color: "#9297A1"
+                                            color: Style.Theme.texto_terciario
                                             font.pixelSize: 9 * root.sx
                                             wrapMode: Text.WordWrap
                                         }
@@ -843,7 +843,7 @@ PagePrincipal {
                             objectName: "trainingGlobalProgressText"
                             text: root.textoProgresoEntrenamiento
                             color: root.trainingController.detencionSolicitada
-                                   ? "#B25D35" : Style.Theme.texto_secundario
+                                   ? Style.Theme.aviso_texto : Style.Theme.texto_secundario
                             horizontalAlignment: Text.AlignHCenter
                             wrapMode: Text.WordWrap
                             font.pixelSize: 10 * root.sx

@@ -43,24 +43,24 @@ Item {
     property var model: []
 
     // Colores - "done"
-    property color doneColor: "#6c4cf5"
+    property color doneColor: Style.Theme.acento
     property color doneCheckColor: "white"
-    property color doneLabelColor: "#555555"
+    property color doneLabelColor: Style.Theme.chip_texto
 
     // Colores - "running" (paso activo: circulo mas grande y oscuro)
-    property color runningColor: "#4b2fc9"
+    property color runningColor: Style.Theme.acento_fuerte
     property color runningCheckColor: "white"
-    property color runningLabelColor: "#4b2fc9"
+    property color runningLabelColor: Style.Theme.acento_fuerte
 
     // Colores - "pending"
-    property color pendingBg: "#e6e1fb"
-    property color pendingBorder: "#c3b9f7"
-    property color pendingCheckColor: "#b6a8ef"
-    property color pendingLabelColor: "#999999"
+    property color pendingBg: Style.Theme.acento_fondo
+    property color pendingBorder: Style.Theme.acento_alt
+    property color pendingCheckColor: Style.Theme.acento_alt
+    property color pendingLabelColor: Style.Theme.texto_terciario
 
     // Conectores
-    property color connectorDoneColor: "#6c4cf5"
-    property color connectorPendingColor: "#d8d3f5"
+    property color connectorDoneColor: Style.Theme.acento
+    property color connectorPendingColor: Style.Theme.acento_fondo
 
     // ---- Escala ----
     property real sx: 1

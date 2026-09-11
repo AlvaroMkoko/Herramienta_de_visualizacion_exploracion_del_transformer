@@ -32,9 +32,9 @@ Item {
     readonly property int keyCount: queryCount && matrix[0] ? matrix[0].length : 0
     readonly property int queryOffset: Number(flow.inicio_queries || 0)
     readonly property int keyOffset: Number(flow.inicio_keys || 0)
-    readonly property var palettes: ["#0284C7", "#7C3AED", "#D97706", "#059669",
-                                     "#DB2777", "#4F46E5", "#DC2626", "#0891B2",
-                                     "#9333EA", "#65A30D", "#EA580C", "#0F766E"]
+    readonly property var palettes: ["#0284C7", Style.Theme.acento, Style.Theme.warning, "#059669",
+                                     "#DB2777", Style.Theme.acento, Style.Theme.error, "#0891B2",
+                                     Style.Theme.acento, "#65A30D", "#EA580C", "#0F766E"]
 
     signal headSelected(int index)
 
@@ -143,8 +143,8 @@ Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 48 * root.sy
             radius: 10 * root.sx
-            color: "#EFF6FF"
-            border.color: "#BAE6FD"
+            color: Style.Theme.chip_fondo
+            border.color: Style.Theme.info_fondo
             RowLayout {
                 anchors.fill: parent
                 anchors.margins: 8 * root.sx
@@ -162,7 +162,7 @@ Item {
                         width: thresholdSlider.availableWidth
                         height: 6 * root.sy
                         radius: height / 2
-                        color: "#BAE6FD"
+                        color: Style.Theme.info_fondo
                         Rectangle { width: thresholdSlider.visualPosition * parent.width; height: parent.height; radius: parent.radius; color: "#0284C7" }
                     }
                     handle: Rectangle {
@@ -173,14 +173,14 @@ Item {
                     }
                 }
                 Text { text: "≥ " + root.threshold.toFixed(3); color: "#075985"; font.bold: true; font.pixelSize: 10 * root.sx }
-                Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: "#BAE6FD" }
+                Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: Style.Theme.info_fondo }
                 Text {
                     Layout.fillWidth: true
                     text: root.focusedQuery >= 0
                           ? "🔦 Linterna: “" + (root.queryToken(root.focusedQuery).texto || "token")
                             + "” → destino principal “" + (root.keyToken(root.strongestTarget(root.focusedQuery)).texto || "token") + "”"
                           : "Pasa el cursor sobre una query para apagar las demás conexiones."
-                    color: root.focusedQuery >= 0 ? "#0C4A6E" : Style.Theme.texto_secundario
+                    color: root.focusedQuery >= 0 ? Style.Theme.texto_secundario_fuerte : Style.Theme.texto_secundario
                     font.bold: root.focusedQuery >= 0
                     elide: Text.ElideRight
                     font.pixelSize: 9 * root.sx
@@ -196,7 +196,7 @@ Item {
             Rectangle {
                 radius: 12 * root.sx
                 color: Style.Theme.superficie_alterna
-                border.color: "#D8E0EA"
+                border.color: Style.Theme.borde_medio
                 clip: true
 
                 Canvas {
@@ -404,12 +404,12 @@ Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 38 * root.sy
             radius: 9 * root.sx
-            color: "#FFF7ED"
+            color: Style.Theme.aviso_fondo
             border.color: "#FDBA74"
             Text {
                 anchors.centerIn: parent
                 text: "Las conexiones bajo el umbral se ocultan para evitar saturación · la dirección es query → key."
-                color: "#9A3412"
+                color: Style.Theme.aviso_texto
                 font.pixelSize: 9 * root.sx
             }
         }

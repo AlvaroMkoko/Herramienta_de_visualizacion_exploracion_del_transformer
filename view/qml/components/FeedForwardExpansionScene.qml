@@ -98,7 +98,7 @@ Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 54 * root.sy
             radius: 10 * root.sx
-            color: "#FDF2F8"
+            color: Style.Theme.chip_fondo
             border.color: "#F9A8D4"
             RowLayout {
                 anchors.fill: parent
@@ -107,7 +107,7 @@ Item {
                 StageLabel { Layout.preferredWidth: 154 * root.sx; title: "ENTRADA"; subtitle: "d_model = " + root.inputDimension; accent: "#0284C7"; sx: root.sx }
                 Text { text: "→"; color: Style.Theme.texto_terciario; font.bold: true; font.pixelSize: 18 * root.sx }
                 StageLabel { Layout.fillWidth: true; title: "EXPANSIÓN W₁"; subtitle: "d_ff = " + root.hiddenDimension; accent: "#DB2777"; sx: root.sx }
-                StageLabel { Layout.preferredWidth: 150 * root.sx; title: root.activationName.toUpperCase(); subtitle: root.activationName.toLowerCase().indexOf("relu") >= 0 ? "negativos → 0" : "atenuación suave"; accent: "#D97706"; sx: root.sx }
+                StageLabel { Layout.preferredWidth: 150 * root.sx; title: root.activationName.toUpperCase(); subtitle: root.activationName.toLowerCase().indexOf("relu") >= 0 ? "negativos → 0" : "atenuación suave"; accent: Style.Theme.warning; sx: root.sx }
                 Text { text: "→"; color: Style.Theme.texto_terciario; font.bold: true; font.pixelSize: 18 * root.sx }
                 StageLabel { Layout.preferredWidth: 154 * root.sx; title: "PROYECCIÓN W₂"; subtitle: "d_model = " + root.outputDimension; accent: "#059669"; sx: root.sx }
             }
@@ -117,7 +117,7 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             radius: 12 * root.sx
-            color: "#FAFAFC"
+            color: Style.Theme.superficie_alterna
             border.color: Style.Theme.borde_medio
 
             ColumnLayout {
@@ -129,7 +129,7 @@ Item {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 28 * root.sy
                     radius: 7 * root.sx
-                    color: "#FCE7F3"
+                    color: Style.Theme.error_fondo
                     Text {
                         anchors.centerIn: parent
                         text: "PESOS COMPARTIDOS · W₁, b₁, " + root.activationName + ", W₂, b₂"
@@ -161,7 +161,7 @@ Item {
                                 Layout.preferredWidth: 92 * root.sx
                                 Layout.fillHeight: true
                                 radius: 8 * root.sx
-                                color: ["#E0F2FE", "#FCE7F3", "#DCFCE7"][tokenRow.index % 3]
+                                color: [Style.Theme.info_fondo, Style.Theme.error_fondo, Style.Theme.exito_fondo][tokenRow.index % 3]
                                 Column {
                                     anchors.centerIn: parent
                                     width: parent.width - 10 * root.sx
@@ -249,14 +249,14 @@ Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 38 * root.sy
             radius: 9 * root.sx
-            color: "#FFF7ED"
+            color: Style.Theme.aviso_fondo
             border.color: "#FDBA74"
             Text {
                 anchors.centerIn: parent
                 text: root.activationName.toLowerCase().indexOf("relu") >= 0
                       ? "ReLU recorta exactamente a cero las preactivaciones negativas."
                       : "GELU atenúa de forma suave: una entrada negativa pequeña puede conservar una salida negativa pequeña."
-                color: "#9A3412"
+                color: Style.Theme.aviso_texto
                 font.pixelSize: 9 * root.sx
             }
         }
@@ -328,12 +328,12 @@ Item {
         property real sx: 1
         property real sy: 1
         radius: 8 * sx
-        color: "#FFFBEB"
-        border.color: "#D97706"
+        color: Style.Theme.aviso_fondo
+        border.color: Style.Theme.warning
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: 5 * gate.sx
-            Text { Layout.fillWidth: true; text: gate.activation; color: "#B45309"; font.bold: true; horizontalAlignment: Text.AlignHCenter; font.pixelSize: 8 * gate.sx }
+            Text { Layout.fillWidth: true; text: gate.activation; color: Style.Theme.aviso_texto; font.bold: true; horizontalAlignment: Text.AlignHCenter; font.pixelSize: 8 * gate.sx }
             Canvas {
                 Layout.fillWidth: true; Layout.fillHeight: true
                 onPaint: {
@@ -342,7 +342,7 @@ Item {
                     ctx.strokeStyle = Style.Theme.borde_suave; ctx.lineWidth = 1
                     ctx.beginPath(); ctx.moveTo(0, midY); ctx.lineTo(width, midY); ctx.stroke()
                     ctx.beginPath(); ctx.moveTo(midX, 0); ctx.lineTo(midX, height); ctx.stroke()
-                    ctx.strokeStyle = "#D97706"; ctx.lineWidth = 2 * gate.sx; ctx.beginPath()
+                    ctx.strokeStyle = Style.Theme.warning; ctx.lineWidth = 2 * gate.sx; ctx.beginPath()
                     for (var i = 0; i <= 48; ++i) {
                         var x = -3 + i / 48 * 6
                         var y
@@ -362,7 +362,7 @@ Item {
                 text: gate.activation.toLowerCase().indexOf("relu") >= 0
                       ? (gate.zeroFraction * 100).toFixed(1) + "% → 0"
                       : (gate.negativeFraction * 100).toFixed(1) + "% preactivación < 0"
-                color: "#92400E"
+                color: Style.Theme.aviso_texto
                 horizontalAlignment: Text.AlignHCenter
                 font.pixelSize: 7 * gate.sx
             }

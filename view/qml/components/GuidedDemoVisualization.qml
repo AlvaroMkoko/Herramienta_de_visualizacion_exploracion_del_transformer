@@ -27,8 +27,8 @@ Rectangle {
 
     implicitHeight: 170 * scaleFactor
     radius: 9 * scaleFactor
-    color: "#FCFCFE"
-    border.color: "#D9DDE8"
+    color: Style.Theme.fondo
+    border.color: Style.Theme.borde_suave
     Accessible.name: "Demostración didáctica con datos precalculados"
     Accessible.description: accessibleSummary
 
@@ -50,7 +50,7 @@ Rectangle {
             Text {
                 Layout.fillWidth: true
                 text: "TRAZA DIDÁCTICA · DATOS PRECALCULADOS"
-                color: "#356E8B"
+                color: Style.Theme.texto_secundario
                 font.bold: true
                 font.pixelSize: 8 * root.scaleFactor
             }
@@ -72,7 +72,7 @@ Rectangle {
         id: demoBlock
         property string label: ""
         property string detail: ""
-        property color fillColor: "#EDE8FA"
+        property color fillColor: Style.Theme.acento_fondo
         radius: 7 * root.scaleFactor
         color: fillColor
         border.color: Qt.darker(fillColor, 1.1)
@@ -93,7 +93,7 @@ Rectangle {
             Text {
                 width: parent.width
                 text: demoBlock.detail
-                color: "#5946A3"
+                color: Style.Theme.acento_fuerte
                 font.pixelSize: 8 * root.scaleFactor
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.WordWrap
@@ -113,9 +113,9 @@ Rectangle {
                     Layout.fillHeight: true
                     label: "Dataset"
                     detail: "instruction\n+ context\n+ response"
-                    fillColor: "#E7F0FA"
+                    fillColor: Style.Theme.borde_medio
                 }
-                Text { text: "→"; color: "#7563C7"; font.bold: true }
+                Text { text: "→"; color: Style.Theme.acento; font.bold: true }
                 DemoBlock {
                     objectName: "guidedPipelineTokenizationBlock"
                     Layout.fillWidth: true
@@ -123,23 +123,23 @@ Rectangle {
                     label: "Tokenización"
                     detail: "IDs +\nBOS / EOS"
                 }
-                Text { text: "→"; color: "#7563C7"; font.bold: true }
+                Text { text: "→"; color: Style.Theme.acento; font.bold: true }
                 DemoBlock {
                     objectName: "guidedPipelineTransformerBlock"
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     label: "Transformer"
                     detail: "encoder\n+ decoder"
-                    fillColor: "#F8EDD9"
+                    fillColor: Style.Theme.aviso_fondo
                 }
-                Text { text: "→"; color: "#7563C7"; font.bold: true }
+                Text { text: "→"; color: Style.Theme.acento; font.bold: true }
                 DemoBlock {
                     objectName: "guidedPipelineLearningBlock"
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     label: "Aprendizaje"
                     detail: "predicción\nvs. objetivo"
-                    fillColor: "#E2F4EA"
+                    fillColor: Style.Theme.exito_fondo
                 }
             }
         }
@@ -161,23 +161,23 @@ Rectangle {
                         Layout.fillHeight: true
                         label: "instruction"
                         detail: "Resume el texto"
-                        fillColor: "#E7F0FA"
+                        fillColor: Style.Theme.borde_medio
                     }
-                    Text { text: "+"; color: "#7563C7"; font.bold: true }
+                    Text { text: "+"; color: Style.Theme.acento; font.bold: true }
                     DemoBlock {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         label: "context (opcional)"
                         detail: "Texto fuente"
-                        fillColor: "#F2EFFA"
+                        fillColor: Style.Theme.acento_fondo
                     }
-                    Text { text: "→"; color: "#7563C7"; font.bold: true }
+                    Text { text: "→"; color: Style.Theme.acento; font.bold: true }
                     DemoBlock {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         label: "Encoder"
                         detail: "entrada"
-                        fillColor: "#E2F4EA"
+                        fillColor: Style.Theme.exito_fondo
                     }
                 }
 
@@ -190,23 +190,23 @@ Rectangle {
                         Layout.fillHeight: true
                         label: "response"
                         detail: "Un resumen"
-                        fillColor: "#F8EDD9"
+                        fillColor: Style.Theme.aviso_fondo
                     }
-                    Text { text: "→"; color: "#7563C7"; font.bold: true }
+                    Text { text: "→"; color: Style.Theme.acento; font.bold: true }
                     DemoBlock {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         label: "Decoder recibe"
                         detail: "BOS · Un resumen"
-                        fillColor: "#EDE8FA"
+                        fillColor: Style.Theme.acento_fondo
                     }
-                    Text { text: "→"; color: "#7563C7"; font.bold: true }
+                    Text { text: "→"; color: Style.Theme.acento; font.bold: true }
                     DemoBlock {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         label: "Objetivo"
                         detail: "Un resumen · EOS"
-                        fillColor: "#E2F4EA"
+                        fillColor: Style.Theme.exito_fondo
                     }
                 }
             }
@@ -236,11 +236,11 @@ Rectangle {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         spacing: 4 * root.scaleFactor
-                        DemoBlock { Layout.preferredWidth: 55 * root.scaleFactor; Layout.fillHeight: true; label: "Token"; detail: "banco"; fillColor: "#E7F0FA" }
-                        Text { text: "+"; color: "#697180" }
+                        DemoBlock { Layout.preferredWidth: 55 * root.scaleFactor; Layout.fillHeight: true; label: "Token"; detail: "banco"; fillColor: Style.Theme.borde_medio }
+                        Text { text: "+"; color: Style.Theme.texto_secundario }
                         DemoBlock { Layout.preferredWidth: 42 * root.scaleFactor; Layout.fillHeight: true; label: "Pos."; detail: positionDelegate.modelData.position }
-                        Text { text: "→"; color: "#7563C7" }
-                        DemoBlock { Layout.fillWidth: true; Layout.fillHeight: true; label: "Vector"; detail: positionDelegate.modelData.vector; fillColor: "#E2F4EA" }
+                        Text { text: "→"; color: Style.Theme.acento }
+                        DemoBlock { Layout.fillWidth: true; Layout.fillHeight: true; label: "Vector"; detail: positionDelegate.modelData.vector; fillColor: Style.Theme.exito_fondo }
                     }
                 }
             }
@@ -271,7 +271,7 @@ Rectangle {
                                 Layout.preferredHeight: 28 * root.scaleFactor
                                 radius: 4 * root.scaleFactor
                                 color: Qt.rgba(0.40, 0.33, 0.73, 0.14 + modelData * 0.75)
-                                Text { anchors.centerIn: parent; text: attentionCell.modelData.toFixed(2); color: attentionCell.modelData > 0.5 ? "white" : "#433879"; font.pixelSize: 7 * root.scaleFactor }
+                                Text { anchors.centerIn: parent; text: attentionCell.modelData.toFixed(2); color: attentionCell.modelData > 0.5 ? "white" : Style.Theme.acento_fuerte; font.pixelSize: 7 * root.scaleFactor }
                             }
                         }
                     }
@@ -290,14 +290,14 @@ Rectangle {
                             RowLayout {
                                 Layout.fillWidth: true
                                 Text { Layout.fillWidth: true; text: barDelegate.modelData.label; color: Style.Theme.texto_primario; font.pixelSize: 8 * root.scaleFactor }
-                                Text { text: Math.round(barDelegate.modelData.value * 100) + "%"; color: "#5946A3"; font.bold: true; font.pixelSize: 8 * root.scaleFactor }
+                                Text { text: Math.round(barDelegate.modelData.value * 100) + "%"; color: Style.Theme.acento_fuerte; font.bold: true; font.pixelSize: 8 * root.scaleFactor }
                             }
                             Rectangle {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 7 * root.scaleFactor
                                 radius: height / 2
-                                color: "#EBE9F1"
-                                Rectangle { width: parent.width * barDelegate.modelData.value; height: parent.height; radius: height / 2; color: "#7563C7" }
+                                color: Style.Theme.divisor
+                                Rectangle { width: parent.width * barDelegate.modelData.value; height: parent.height; radius: height / 2; color: Style.Theme.acento }
                             }
                         }
                     }
@@ -327,9 +327,9 @@ Rectangle {
                             Layout.preferredWidth: 27 * root.scaleFactor
                             Layout.preferredHeight: 27 * root.scaleFactor
                             radius: 4 * root.scaleFactor
-                            color: allowed ? "#DDF3EA" : "#F2E7E7"
-                            border.color: allowed ? "#9BD5BD" : "#E1BFC0"
-                            Text { anchors.centerIn: parent; text: maskCell.allowed ? "✓" : "×"; color: maskCell.allowed ? "#187455" : "#A45D60"; font.bold: true; font.pixelSize: 10 * root.scaleFactor }
+                            color: allowed ? Style.Theme.exito_fondo : Style.Theme.acento_fondo
+                            border.color: allowed ? "#9BD5BD" : Style.Theme.error_fondo
+                            Text { anchors.centerIn: parent; text: maskCell.allowed ? "✓" : "×"; color: maskCell.allowed ? Style.Theme.exito_texto : "#A45D60"; font.bold: true; font.pixelSize: 10 * root.scaleFactor }
                         }
                     }
                 }
@@ -337,7 +337,7 @@ Rectangle {
                     Layout.fillWidth: true
                     Text { Layout.fillWidth: true; text: "Máscara causal"; color: Style.Theme.texto_primario; font.bold: true; font.pixelSize: 10 * root.scaleFactor }
                     Text { Layout.fillWidth: true; text: "✓ pasado visible\n× futuro bloqueado"; color: Style.Theme.texto_secundario; font.pixelSize: 9 * root.scaleFactor; lineHeight: 1.3 }
-                    Text { Layout.fillWidth: true; text: "La fila crece un token en cada paso."; color: "#5A4B8F"; font.pixelSize: 8 * root.scaleFactor; wrapMode: Text.WordWrap }
+                    Text { Layout.fillWidth: true; text: "La fila crece un token en cada paso."; color: Style.Theme.acento_fuerte; font.pixelSize: 8 * root.scaleFactor; wrapMode: Text.WordWrap }
                 }
             }
         }
@@ -353,13 +353,13 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     spacing: 3 * root.scaleFactor
-                    DemoBlock { Layout.fillWidth: true; Layout.fillHeight: true; label: "Pérdida"; detail: "1.84"; fillColor: "#F8EDD9" }
-                    Text { text: "→"; color: "#7563C7" }
+                    DemoBlock { Layout.fillWidth: true; Layout.fillHeight: true; label: "Pérdida"; detail: "1.84"; fillColor: Style.Theme.aviso_fondo }
+                    Text { text: "→"; color: Style.Theme.acento }
                     DemoBlock { Layout.fillWidth: true; Layout.fillHeight: true; label: "Gradiente"; detail: "∂L/∂θ" }
-                    Text { text: "→"; color: "#7563C7" }
-                    DemoBlock { Layout.fillWidth: true; Layout.fillHeight: true; label: "Optimizador"; detail: "−η · g"; fillColor: "#E7F0FA" }
-                    Text { text: "→"; color: "#7563C7" }
-                    DemoBlock { Layout.fillWidth: true; Layout.fillHeight: true; label: "Parámetros"; detail: "θ nuevo"; fillColor: "#E2F4EA" }
+                    Text { text: "→"; color: Style.Theme.acento }
+                    DemoBlock { Layout.fillWidth: true; Layout.fillHeight: true; label: "Optimizador"; detail: "−η · g"; fillColor: Style.Theme.borde_medio }
+                    Text { text: "→"; color: Style.Theme.acento }
+                    DemoBlock { Layout.fillWidth: true; Layout.fillHeight: true; label: "Parámetros"; detail: "θ nuevo"; fillColor: Style.Theme.exito_fondo }
                 }
                 Text { Layout.fillWidth: true; text: "Ejemplo fijo: η = 0.001 · no ejecuta entrenamiento real"; color: Style.Theme.texto_secundario; font.pixelSize: 7 * root.scaleFactor; horizontalAlignment: Text.AlignHCenter }
             }

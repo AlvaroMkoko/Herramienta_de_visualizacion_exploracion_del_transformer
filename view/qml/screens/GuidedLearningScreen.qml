@@ -461,7 +461,7 @@ PagePrincipal {
             Layout.preferredHeight: 88 * root.uiScale
             radius: 14 * root.uiScale
             color: Style.Theme.surface
-            border.color: "#D8D2EC"
+            border.color: Style.Theme.acento_fondo
 
             RowLayout {
                 anchors.fill: parent
@@ -480,14 +480,14 @@ PagePrincipal {
 
                     background: Rectangle {
                         radius: 9 * root.uiScale
-                        color: backButton.down ? "#E4DDF5"
-                                               : backButton.hovered ? "#F2EEFA" : "#F8F6FC"
-                        border.color: "#CFC7E9"
+                        color: backButton.down ? Style.Theme.acento_fondo
+                                               : backButton.hovered ? Style.Theme.acento_fondo : Style.Theme.acento_fondo
+                        border.color: Style.Theme.acento_fondo
                     }
 
                     contentItem: Text {
                         text: backButton.text
-                        color: "#54449B"
+                        color: Style.Theme.info_texto
                         font.bold: true
                         font.pixelSize: 12 * root.uiScale
                         horizontalAlignment: Text.AlignHCenter
@@ -518,7 +518,7 @@ PagePrincipal {
                             Layout.preferredWidth: learningModeLabel.implicitWidth + 16 * root.uiScale
                             Layout.preferredHeight: 24 * root.uiScale
                             radius: height / 2
-                            color: "#EAF7F2"
+                            color: Style.Theme.chip_fondo
 
                             Text {
                                 id: learningModeLabel
@@ -557,7 +557,7 @@ PagePrincipal {
 
                         Text {
                             text: root.completedUnitsCount + " / " + root.totalUnits + " unidades"
-                            color: "#5946A3"
+                            color: Style.Theme.acento_fuerte
                             font.bold: true
                             font.pixelSize: 10 * root.uiScale
                         }
@@ -576,7 +576,7 @@ PagePrincipal {
 
                         background: Rectangle {
                             radius: height / 2
-                            color: "#ECEAF2"
+                            color: Style.Theme.divisor
                         }
 
                         contentItem: Item {
@@ -585,7 +585,7 @@ PagePrincipal {
                                 height: parent.height
                                 radius: height / 2
                                 color: root.completedUnitsCount === root.totalUnits
-                                       ? "#2C9A73" : "#7563C7"
+                                       ? "#2C9A73" : Style.Theme.acento
                                 Behavior on width { NumberAnimation { duration: 180 } }
                             }
                         }
@@ -604,7 +604,7 @@ PagePrincipal {
                 Layout.fillHeight: true
                 radius: 14 * root.uiScale
                 color: Style.Theme.surface
-                border.color: "#D8D2EC"
+                border.color: Style.Theme.acento_fondo
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -630,7 +630,7 @@ PagePrincipal {
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 1
-                        color: "#E8E4F1"
+                        color: Style.Theme.acento_fondo
                     }
 
                     Repeater {
@@ -657,11 +657,11 @@ PagePrincipal {
                             background: Rectangle {
                                 radius: 10 * root.uiScale
                                 color: root.currentUnitIndex === unitDelegate.index
-                                       ? "#F0ECFA"
-                                       : unitDelegate.hovered ? "#F8F6FC" : Style.Theme.surface
+                                       ? Style.Theme.acento_fondo
+                                       : unitDelegate.hovered ? Style.Theme.acento_fondo : Style.Theme.surface
                                 border.width: root.currentUnitIndex === unitDelegate.index ? 2 : 1
                                 border.color: root.currentUnitIndex === unitDelegate.index
-                                              ? "#7968CA" : "#E0DCEB"
+                                              ? Style.Theme.acento : Style.Theme.acento_fondo
                             }
 
                             contentItem: RowLayout {
@@ -672,15 +672,15 @@ PagePrincipal {
                                     Layout.preferredHeight: 34 * root.uiScale
                                     radius: 9 * root.uiScale
                                     color: root.isUnitCompleted(String(unitDelegate.modelData.id))
-                                           ? "#DFF4EA" : root.currentUnitIndex === unitDelegate.index
-                                             ? "#DED6F4" : "#F0F1F4"
+                                           ? Style.Theme.exito_fondo : root.currentUnitIndex === unitDelegate.index
+                                             ? Style.Theme.acento_fondo : Style.Theme.chip_fondo
 
                                     Text {
                                         anchors.centerIn: parent
                                         text: root.isUnitCompleted(String(unitDelegate.modelData.id))
                                               ? "✓" : unitDelegate.modelData.number
                                         color: root.isUnitCompleted(String(unitDelegate.modelData.id))
-                                               ? "#187455" : "#5D50A5"
+                                               ? Style.Theme.exito_texto : "#5D50A5"
                                         font.bold: true
                                         font.pixelSize: 10 * root.uiScale
                                     }
@@ -708,14 +708,14 @@ PagePrincipal {
                                               : (unitDelegate.modelData.conceptIds || []).length
                                                 + " conceptos · 1 actividad"
                                         color: root.isUnitCompleted(String(unitDelegate.modelData.id))
-                                               ? "#187455" : Style.Theme.texto_secundario
+                                               ? Style.Theme.exito_texto : Style.Theme.texto_secundario
                                         font.pixelSize: 9 * root.uiScale
                                     }
                                 }
 
                                 Text {
                                     text: "›"
-                                    color: "#7968CA"
+                                    color: Style.Theme.acento
                                     font.pixelSize: 19 * root.uiScale
                                 }
                             }
@@ -751,7 +751,7 @@ PagePrincipal {
                     Layout.preferredHeight: 82 * root.uiScale
                     radius: 12 * root.uiScale
                     color: Style.Theme.surface
-                    border.color: "#D8D2EC"
+                    border.color: Style.Theme.acento_fondo
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -764,7 +764,7 @@ PagePrincipal {
                             Text {
                                 Layout.fillWidth: true
                                 text: "UNIDAD " + (root.currentUnitIndex + 1) + " · " + root.currentUnit.title
-                                color: "#5F4BAA"
+                                color: Style.Theme.acento_fuerte
                                 font.bold: true
                                 font.pixelSize: 11 * root.uiScale
                                 elide: Text.ElideRight
@@ -800,15 +800,15 @@ PagePrincipal {
                                     background: Rectangle {
                                         radius: 8 * root.uiScale
                                         color: root.currentConceptIndex === conceptDelegate.index
-                                               ? "#EDE8FA" : conceptDelegate.hovered ? "#F7F5FC" : Style.Theme.chip_fondo
+                                               ? Style.Theme.acento_fondo : conceptDelegate.hovered ? Style.Theme.acento_fondo : Style.Theme.chip_fondo
                                         border.color: root.currentConceptIndex === conceptDelegate.index
-                                                      ? "#7968CA" : "transparent"
+                                                      ? Style.Theme.acento : "transparent"
                                     }
 
                                     contentItem: Text {
                                         text: conceptDelegate.text
                                         color: root.currentConceptIndex === conceptDelegate.index
-                                               ? "#5946A3" : "#626A76"
+                                               ? Style.Theme.acento_fuerte : Style.Theme.texto_secundario
                                         font.bold: root.currentConceptIndex === conceptDelegate.index
                                         font.pixelSize: 9 * root.uiScale
                                         horizontalAlignment: Text.AlignHCenter

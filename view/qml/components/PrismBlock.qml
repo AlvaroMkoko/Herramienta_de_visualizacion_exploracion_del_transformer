@@ -8,7 +8,7 @@ Item {
     property string componentId: ""
     property string title: ""
     property string subtitle: ""
-    property color accentColor: "#6d5bd0"
+    property color accentColor: Style.Theme.acento
     property bool selected: false
     property bool emphasized: false
     property real blockWidth: 224

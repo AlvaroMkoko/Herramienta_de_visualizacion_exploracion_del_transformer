@@ -24,7 +24,7 @@
 
 //         Layout.fillWidth: true
 
-//         color: "#555555"
+//         color: Style.Theme.chip_texto
 //         font.pixelSize: 14 * sy
 //     }
 
@@ -53,14 +53,14 @@
 //                 height: 6 * root.sy
 
 //                 radius: height / 2
-//                 color: "#E0E0E0"
+//                 color: Style.Theme.divisor
 
 //                 Rectangle {
 //                     width: slider.visualPosition * parent.width
 //                     height: parent.height
 
 //                     radius: parent.radius
-//                     color: "#5A4FCF"
+//                     color: Style.Theme.acento_fuerte
 //                 }
 //             }
 
@@ -76,7 +76,7 @@
 
 //                 radius: width / 2
 
-//                 color: "#5A4FCF"
+//                 color: Style.Theme.acento_fuerte
 
 //                 border.width: 2
 //                 border.color: "white"
@@ -92,7 +92,7 @@
 //                     ? Math.round(slider.value)
 //                     : slider.value.toFixed(3)
 
-//             color: "#5A4FCF"
+//             color: Style.Theme.acento_fuerte
 //             font.pixelSize: 22 * root.sy
 //             font.bold: true
 //         }
@@ -135,7 +135,7 @@ ColumnLayout {
         Text {
             id: titulo
             Layout.fillWidth: true
-            color: "#555555"
+            color: Style.Theme.chip_texto
             font.pixelSize: 14 * root.sy
             wrapMode: Text.WordWrap
         }
@@ -178,7 +178,7 @@ ColumnLayout {
 
                 radius: height / 2
 
-                color: "#E5E5E5"
+                color: Style.Theme.divisor
 
                 Rectangle {
 
@@ -187,7 +187,7 @@ ColumnLayout {
 
                     radius: parent.radius
 
-                    color: "#5A4FCF"
+                    color: Style.Theme.acento_fuerte
                 }
             }
 
@@ -204,7 +204,7 @@ ColumnLayout {
 
                 radius: width / 2
 
-                color: "#5A4FCF"
+                color: Style.Theme.acento_fuerte
 
                 border.width: 2
                 border.color: "white"
@@ -226,7 +226,7 @@ ColumnLayout {
                     ? Math.round(slider.value)
                     : Number(slider.value).toFixed(3)
 
-            color: "#5A4FCF"
+            color: Style.Theme.acento_fuerte
 
             font.bold: true
             font.pixelSize: 18 * sy

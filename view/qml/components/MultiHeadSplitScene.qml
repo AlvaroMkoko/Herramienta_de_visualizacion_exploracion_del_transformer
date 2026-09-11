@@ -22,9 +22,9 @@ Item {
     readonly property var headOutputs: attentionData.salida_cabezas || []
     readonly property var concatenated: attentionData.salida_concatenada || []
     readonly property var projected: attentionData.salida_proyectada || []
-    readonly property var palettes: ["#0284C7", "#7C3AED", "#D97706", "#059669",
-                                     "#DB2777", "#4F46E5", "#DC2626", "#0891B2",
-                                     "#9333EA", "#65A30D", "#EA580C", "#0F766E"]
+    readonly property var palettes: ["#0284C7", Style.Theme.acento, Style.Theme.warning, "#059669",
+                                     "#DB2777", Style.Theme.acento, Style.Theme.error, "#0891B2",
+                                     Style.Theme.acento, "#65A30D", "#EA580C", "#0F766E"]
 
     function colorAt(index) { return palettes[index % palettes.length] }
     function norm(values) {
@@ -84,7 +84,7 @@ Item {
                 }
                 Text {
                     text: root.dModel + " dimensiones = " + root.numHeads + " cabezas × " + root.dHead + " dimensiones"
-                    color: "#D97706"
+                    color: Style.Theme.warning
                     font.bold: true
                     font.pixelSize: 10 * root.sx
                 }
@@ -96,7 +96,7 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             radius: 12 * root.sx
-            color: "#FFFBEB"
+            color: Style.Theme.aviso_fondo
             border.color: "#FCD34D"
 
             ColumnLayout {
@@ -106,7 +106,7 @@ Item {
 
                 Text {
                     text: "1 · VECTOR COMPLETO · d_model = " + root.dModel
-                    color: "#92400E"
+                    color: Style.Theme.aviso_texto
                     font.bold: true
                     font.pixelSize: 9 * root.sx
                 }
@@ -137,7 +137,7 @@ Item {
                     Layout.fillWidth: true
                     text: "Los segmentos forman una partición contigua. Ninguna cabeza recibe una copia de las "
                           + root.dModel + " dimensiones."
-                    color: "#78350F"
+                    color: Style.Theme.aviso_texto
                     horizontalAlignment: Text.AlignHCenter
                     font.pixelSize: 9 * root.sx
                 }
@@ -168,7 +168,7 @@ Item {
 
                 Text {
                     text: "2 · CABEZAS EN PARALELO · salida real de la query actual"
-                    color: "#92400E"
+                    color: Style.Theme.aviso_texto
                     font.bold: true
                     font.pixelSize: 9 * root.sx
                     opacity: root.reveal(0.18, 0.18)
@@ -235,7 +235,7 @@ Item {
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 4 * root.sy
-                        Text { text: "3 · CONCAT · vuelve a d_model = " + root.dModel; color: "#92400E"; font.bold: true; font.pixelSize: 9 * root.sx }
+                        Text { text: "3 · CONCAT · vuelve a d_model = " + root.dModel; color: Style.Theme.aviso_texto; font.bold: true; font.pixelSize: 9 * root.sx }
                         Row {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 34 * root.sy
@@ -251,14 +251,14 @@ Item {
                         Text { text: "‖concat real‖ " + root.norm(root.concatenated).toFixed(4); color: Style.Theme.texto_secundario; font.pixelSize: 8 * root.sx }
                     }
 
-                    Text { text: "→"; color: "#D97706"; font.bold: true; font.pixelSize: 24 * root.sx }
+                    Text { text: "→"; color: Style.Theme.warning; font.bold: true; font.pixelSize: 24 * root.sx }
 
                     Rectangle {
                         Layout.preferredWidth: 150 * root.sx
                         Layout.fillHeight: true
                         radius: 9 * root.sx
                         color: "#FFFFFF"
-                        border.color: "#D97706"
+                        border.color: Style.Theme.warning
                         Canvas {
                             anchors.fill: parent
                             anchors.margins: 8 * root.sx
@@ -273,21 +273,21 @@ Item {
                                 ctx.globalAlpha = 1
                             }
                         }
-                        Text { anchors.centerIn: parent; text: "Wᴼ\nmezcla"; color: "#92400E"; font.bold: true; horizontalAlignment: Text.AlignHCenter; font.pixelSize: 10 * root.sx }
+                        Text { anchors.centerIn: parent; text: "Wᴼ\nmezcla"; color: Style.Theme.aviso_texto; font.bold: true; horizontalAlignment: Text.AlignHCenter; font.pixelSize: 10 * root.sx }
                     }
 
-                    Text { text: "→"; color: "#D97706"; font.bold: true; font.pixelSize: 24 * root.sx }
+                    Text { text: "→"; color: Style.Theme.warning; font.bold: true; font.pixelSize: 24 * root.sx }
 
                     ColumnLayout {
                         Layout.preferredWidth: 215 * root.sx
                         spacing: 4 * root.sy
-                        Text { text: "4 · SALIDA PROYECTADA"; color: "#92400E"; font.bold: true; font.pixelSize: 9 * root.sx }
+                        Text { text: "4 · SALIDA PROYECTADA"; color: Style.Theme.aviso_texto; font.bold: true; font.pixelSize: 9 * root.sx }
                         Rectangle {
                             Layout.fillWidth: true; Layout.preferredHeight: 34 * root.sy; radius: 7 * root.sx
                             gradient: Gradient {
                                 orientation: Gradient.Horizontal
-                                GradientStop { position: 0; color: "#7C3AED" }
-                                GradientStop { position: 0.45; color: "#D97706" }
+                                GradientStop { position: 0; color: Style.Theme.acento }
+                                GradientStop { position: 0.45; color: Style.Theme.warning }
                                 GradientStop { position: 1; color: "#059669" }
                             }
                             Text { anchors.centerIn: parent; text: root.dModel + " dims mezcladas"; color: "white"; font.bold: true; font.pixelSize: 9 * root.sx }
@@ -302,12 +302,12 @@ Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 38 * root.sy
             radius: 9 * root.sx
-            color: "#FFF7ED"
+            color: Style.Theme.aviso_fondo
             border.color: "#FDBA74"
             Text {
                 anchors.centerIn: parent
                 text: "Los colores identifican particiones durante split y concat; Wᴼ puede mezclar información entre todas ellas."
-                color: "#9A3412"
+                color: Style.Theme.aviso_texto
                 font.pixelSize: 9 * root.sx
             }
         }
@@ -319,7 +319,7 @@ Item {
         property real sy: 1
         signal clicked()
         implicitWidth: 112 * sx; implicitHeight: 32 * sy; radius: 8 * sx
-        color: "#D97706"
+        color: Style.Theme.warning
         Text { anchors.centerIn: parent; text: "↺ Reproducir"; color: "white"; font.bold: true; font.pixelSize: 9 * button.sx }
         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: button.clicked() }
     }

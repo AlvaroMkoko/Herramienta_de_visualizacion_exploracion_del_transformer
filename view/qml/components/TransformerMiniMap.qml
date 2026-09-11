@@ -10,7 +10,7 @@ Item {
     property int branchIndex: 0
     property bool residualUsesFfn: false
     property string operationId: ""
-    property color accent: "#4F46E5"
+    property color accent: Style.Theme.acento
     property bool reducedMotion: false
     property real sx: 1
     property real sy: 1
@@ -34,20 +34,20 @@ Item {
                                                             && branchIndex === 2)
 
     readonly property var encoderBlocks: [
-        { ids: ["encoder_add_norm_ffn"], title: "Add & Norm · FFN", color: "#7664DD" },
+        { ids: ["encoder_add_norm_ffn"], title: "Add & Norm · FFN", color: Style.Theme.acento },
         { ids: ["encoder_feed_forward"], title: "Feed Forward", color: "#258F6F" },
-        { ids: ["encoder_add_norm_attention"], title: "Add & Norm · atención", color: "#7664DD" },
+        { ids: ["encoder_add_norm_attention"], title: "Add & Norm · atención", color: Style.Theme.acento },
         { ids: ["encoder_self_attention"], title: "Self-attention", color: "#9A641B" },
         { ids: ["input_embedding", "encoder_positional_encoding"], title: "Embedding + posición", color: "#B64B59" }
     ]
     readonly property var decoderBlocks: [
         { ids: ["softmax"], title: "Softmax", color: "#258F6F" },
         { ids: ["linear"], title: "Linear", color: "#3979B7" },
-        { ids: ["decoder_add_norm_ffn"], title: "Add & Norm · FFN", color: "#7664DD" },
+        { ids: ["decoder_add_norm_ffn"], title: "Add & Norm · FFN", color: Style.Theme.acento },
         { ids: ["decoder_feed_forward"], title: "Feed Forward", color: "#258F6F" },
-        { ids: ["decoder_add_norm_cross"], title: "Add & Norm · cruzada", color: "#7664DD" },
+        { ids: ["decoder_add_norm_cross"], title: "Add & Norm · cruzada", color: Style.Theme.acento },
         { ids: ["decoder_cross_attention"], title: "Atención cruzada", color: "#9A641B" },
-        { ids: ["decoder_add_norm_masked"], title: "Add & Norm · causal", color: "#7664DD" },
+        { ids: ["decoder_add_norm_masked"], title: "Add & Norm · causal", color: Style.Theme.acento },
         { ids: ["decoder_masked_attention"], title: "Atención causal", color: "#A53F62" },
         { ids: ["output_embedding", "decoder_positional_encoding"], title: "Embedding + posición", color: "#B64B59" }
     ]
@@ -481,7 +481,7 @@ Item {
         property string title: ""
         property color baseColor: Style.Theme.texto_secundario
         property bool active: false
-        property color accent: "#4F46E5"
+        property color accent: Style.Theme.acento
         property bool reducedMotion: false
         property real textScale: 1
 

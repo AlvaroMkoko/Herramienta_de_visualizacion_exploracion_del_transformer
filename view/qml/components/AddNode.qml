@@ -8,7 +8,7 @@ Item {
     property string componentId: ""
     property bool selected: false
     property bool hovered: hitArea.containsMouse
-    property color accentColor: "#6d5bd0"
+    property color accentColor: Style.Theme.acento
     signal clicked(string componentId)
 
     width: 40
@@ -19,7 +19,7 @@ Item {
         width: root.selected ? 38 : 34
         height: width
         radius: width / 2
-        color: root.selected ? Qt.alpha(root.accentColor, 0.20) : "#f8f8fd"
+        color: root.selected ? Qt.alpha(root.accentColor, 0.20) : Style.Theme.superficie_alterna
         border.color: root.accentColor
         border.width: root.selected ? 2.2 : 1.4
 

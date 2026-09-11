@@ -32,7 +32,7 @@ Rectangle {
     radius: 14 * scaleFactor
     color: Style.Theme.surface
     border.width: 1
-    border.color: "#D8D2EC"
+    border.color: Style.Theme.acento_fondo
     clip: true
 
     ColumnLayout {
@@ -48,12 +48,12 @@ Rectangle {
                 Layout.preferredWidth: 36 * root.scaleFactor
                 Layout.preferredHeight: 36 * root.scaleFactor
                 radius: 10 * root.scaleFactor
-                color: "#EEEAFB"
+                color: Style.Theme.acento_fondo
 
                 Text {
                     anchors.centerIn: parent
                     text: "Aa"
-                    color: "#6254B8"
+                    color: Style.Theme.acento_fuerte
                     font.bold: true
                     font.pixelSize: 13 * root.scaleFactor
                 }
@@ -88,7 +88,7 @@ Rectangle {
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 1
-            color: "#E8E4F1"
+            color: Style.Theme.acento_fondo
         }
 
         ScrollView {
@@ -108,7 +108,7 @@ Rectangle {
                     width: parent.width
                     height: visible ? errorLabel.implicitHeight + 22 * root.scaleFactor : 0
                     radius: 8 * root.scaleFactor
-                    color: "#FEF2F2"
+                    color: Style.Theme.chip_fondo
                     border.color: "#FCA5A5"
 
                     Text {
@@ -116,7 +116,7 @@ Rectangle {
                         anchors.fill: parent
                         anchors.margins: 11 * root.scaleFactor
                         text: root.loadError
-                        color: "#991B1B"
+                        color: Style.Theme.error_texto
                         font.pixelSize: 11 * root.scaleFactor
                         wrapMode: Text.WordWrap
                     }
@@ -136,8 +136,8 @@ Rectangle {
                     width: parent.width
                     height: visible ? intuitionColumn.implicitHeight + 22 * root.scaleFactor : 0
                     radius: 9 * root.scaleFactor
-                    color: "#F6F3FC"
-                    border.color: "#DDD7F1"
+                    color: Style.Theme.acento_fondo
+                    border.color: Style.Theme.acento_fondo
 
                     Column {
                         id: intuitionColumn
@@ -150,7 +150,7 @@ Rectangle {
                         Text {
                             width: parent.width
                             text: "IDEA CLAVE"
-                            color: "#6959B8"
+                            color: Style.Theme.acento
                             font.bold: true
                             font.pixelSize: 10 * root.scaleFactor
                         }
@@ -158,7 +158,7 @@ Rectangle {
                         Text {
                             width: parent.width
                             text: root.textFor("intuition")
-                            color: "#514978"
+                            color: Style.Theme.acento_fuerte
                             font.italic: true
                             font.pixelSize: 12 * root.scaleFactor
                             wrapMode: Text.WordWrap
@@ -172,8 +172,8 @@ Rectangle {
                     width: parent.width
                     height: visible ? formulaColumn.implicitHeight + 22 * root.scaleFactor : 0
                     radius: 9 * root.scaleFactor
-                    color: "#F7F8FC"
-                    border.color: "#DCE1EB"
+                    color: Style.Theme.superficie_alterna
+                    border.color: Style.Theme.borde_medio
 
                     Column {
                         id: formulaColumn
@@ -187,7 +187,7 @@ Rectangle {
                             width: parent.width
                             visible: root.textFor("formula") !== ""
                             text: root.textFor("formula")
-                            color: "#433879"
+                            color: Style.Theme.acento_fuerte
                             font.family: "monospace"
                             font.pixelSize: 12 * root.scaleFactor
                             wrapMode: Text.WrapAnywhere
@@ -231,7 +231,7 @@ Rectangle {
                                 Layout.preferredWidth: 22 * root.scaleFactor
                                 Layout.preferredHeight: 22 * root.scaleFactor
                                 radius: width / 2
-                                color: "#E8F5F0"
+                                color: Style.Theme.chip_fondo
 
                                 Text {
                                     anchors.centerIn: parent
@@ -269,7 +269,7 @@ Rectangle {
                     Text {
                         width: parent.width
                         text: root.textFor("example")
-                        color: "#315F88"
+                        color: Style.Theme.texto_secundario
                         font.pixelSize: 11 * root.scaleFactor
                         wrapMode: Text.WordWrap
                     }
@@ -289,14 +289,14 @@ Rectangle {
 
                     background: Rectangle {
                         radius: 8 * root.scaleFactor
-                        color: deepDiveButton.down ? "#E3DDF6"
-                                                   : deepDiveButton.hovered ? "#F0ECFA" : "#F8F6FC"
-                        border.color: "#CFC7E9"
+                        color: deepDiveButton.down ? Style.Theme.acento_fondo
+                                                   : deepDiveButton.hovered ? Style.Theme.acento_fondo : Style.Theme.acento_fondo
+                        border.color: Style.Theme.acento_fondo
                     }
 
                     contentItem: Text {
                         text: deepDiveButton.text
-                        color: "#5B4AA5"
+                        color: Style.Theme.acento_fuerte
                         font.bold: true
                         font.pixelSize: 11 * root.scaleFactor
                         horizontalAlignment: Text.AlignHCenter

@@ -172,13 +172,13 @@ PagePrincipal {
         if (inferencia)
             resultado.push({ texto: "Inferencia lista", fondo: Style.Theme.info_fondo, tinta: Style.Theme.info_texto })
         if (entrenable)
-            resultado.push({ texto: "Entrenable", fondo: Style.Theme.acento_fondo, tinta: "#6B21A8" })
+            resultado.push({ texto: "Entrenable", fondo: Style.Theme.acento_fondo, tinta: Style.Theme.acento_fuerte })
         if (reanudable)
-            resultado.push({ texto: "Reanudable", fondo: "#FEF3C7", tinta: Style.Theme.aviso_texto })
+            resultado.push({ texto: "Reanudable", fondo: Style.Theme.aviso_fondo, tinta: Style.Theme.aviso_texto })
         if (tokenizer)
-            resultado.push({ texto: "Tokenizador incluido", fondo: "#CCFBF1", tinta: "#115E59" })
+            resultado.push({ texto: "Tokenizador incluido", fondo: Style.Theme.exito_fondo, tinta: "#115E59" })
         if (portable)
-            resultado.push({ texto: "Portable", fondo: "#E0E7FF", tinta: "#3730A3" })
+            resultado.push({ texto: "Portable", fondo: Style.Theme.acento_fondo, tinta: Style.Theme.acento_fuerte })
         if (esLegado(item))
             resultado.push({ texto: "Legado .pt", fondo: Style.Theme.chip_fondo, tinta: Style.Theme.chip_texto })
         return resultado
@@ -653,7 +653,7 @@ PagePrincipal {
                                 Layout.maximumWidth: implicitWidth
                                 text: architectureValue.modelData.label + ": "
                                       + architectureValue.modelData.value
-                                color: "#312E81"
+                                color: Style.Theme.acento_fuerte
                                 font.bold: true
                                 font.pixelSize: root.tamanoMetricaDestacada
                                 elide: Text.ElideRight

@@ -231,29 +231,29 @@ Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 44 * root.sy
             radius: 10 * root.sx
-            color: "#FEF2F2"
+            color: Style.Theme.chip_fondo
             border.color: "#FCA5A5"
             RowLayout {
                 anchors.fill: parent
                 anchors.margins: 8 * root.sx
                 Text {
                     text: "CONTEXTO " + (root.stepIndex + 1) + " / " + root.snapshots.length
-                    color: "#B91C1C"
+                    color: Style.Theme.error_texto
                     font.bold: true
                     font.pixelSize: 10 * root.sx
                 }
-                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 6 * root.sy; radius: height / 2; color: "#FEE2E2"
+                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 6 * root.sy; radius: height / 2; color: Style.Theme.error_fondo
                     Rectangle {
                         width: parent.width * (root.snapshots.length ? (root.stepIndex + 1) / root.snapshots.length : 0)
                         height: parent.height
                         radius: parent.radius
-                        color: "#DC2626"
+                        color: Style.Theme.error
                         Behavior on width { NumberAnimation { duration: root.reducedMotion ? 0 : 360; easing.type: Easing.InOutCubic } }
                     }
                 }
                 Text {
                     text: root.snapshot ? root.snapshot.modo_muestreo + " · " + root.snapshot.filtros : "—"
-                    color: "#7F1D1D"
+                    color: Style.Theme.error_texto
                     font.pixelSize: 9 * root.sx
                 }
             }
@@ -269,7 +269,7 @@ Item {
                 Layout.fillHeight: true
                 radius: 12 * root.sx
                 color: Style.Theme.superficie_alterna
-                border.color: "#D8E0EA"
+                border.color: Style.Theme.borde_medio
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -311,8 +311,8 @@ Item {
                             width: ListView.view.width
                             height: 42 * root.sy
                             radius: 8 * root.sx
-                            color: horseRow.chosen ? "#DCFCE7" : "#FFFFFF"
-                            border.color: horseRow.chosen ? "#22C55E" : Style.Theme.borde_medio
+                            color: horseRow.chosen ? Style.Theme.exito_fondo : "#FFFFFF"
+                            border.color: horseRow.chosen ? Style.Theme.success : Style.Theme.borde_medio
 
                             RowLayout {
                                 anchors.fill: parent
@@ -322,7 +322,7 @@ Item {
                                     Layout.preferredWidth: 42 * root.sx
                                     Layout.preferredHeight: 27 * root.sy
                                     radius: 7 * root.sx
-                                    color: horseRow.captured ? "#DC2626" : Style.Theme.borde_suave
+                                    color: horseRow.captured ? Style.Theme.error : Style.Theme.borde_suave
                                     Text {
                                         anchors.centerIn: parent
                                         text: horseRow.captured ? "#" + horseRow.rank : "—"
@@ -351,7 +351,7 @@ Item {
                                         width: parent.width * Math.min(1, horseRow.probability / root.maxProbability)
                                         height: parent.height
                                         radius: height / 2
-                                        color: horseRow.chosen ? "#16A34A" : "#DC2626"
+                                        color: horseRow.chosen ? Style.Theme.success : Style.Theme.error
                                         Behavior on width {
                                             NumberAnimation {
                                                 duration: root.reducedMotion ? 0 : 620
@@ -383,17 +383,17 @@ Item {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 142 * root.sy
                     radius: 12 * root.sx
-                    color: "#ECFDF5"
+                    color: Style.Theme.superficie_alterna
                     border.color: "#6EE7B7"
                     Column {
                         anchors.centerIn: parent
                         width: parent.width - 24 * root.sx
                         spacing: 5 * root.sy
-                        Text { anchors.horizontalCenter: parent.horizontalCenter; text: "TOKEN ELEGIDO"; color: "#047857"; font.bold: true; font.pixelSize: 9 * root.sx }
+                        Text { anchors.horizontalCenter: parent.horizontalCenter; text: "TOKEN ELEGIDO"; color: Style.Theme.exito_texto; font.bold: true; font.pixelSize: 9 * root.sx }
                         Text {
                             width: parent.width
                             text: root.snapshot ? "“" + root.snapshot.token_elegido.texto + "”" : "—"
-                            color: "#065F46"
+                            color: Style.Theme.exito_texto
                             font.bold: true
                             horizontalAlignment: Text.AlignHCenter
                             elide: Text.ElideRight
@@ -405,7 +405,7 @@ Item {
                                   ? "rango #" + root.snapshot.token_elegido.rango + " · "
                                     + (Number(root.snapshot.token_elegido.probabilidad || 0) * 100).toFixed(2) + "%"
                                   : ""
-                            color: "#047857"
+                            color: Style.Theme.exito_texto
                             horizontalAlignment: Text.AlignHCenter
                             font.pixelSize: 10 * root.sx
                         }
@@ -416,15 +416,15 @@ Item {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 104 * root.sy
                     radius: 12 * root.sx
-                    color: "#FFF7ED"
+                    color: Style.Theme.aviso_fondo
                     border.color: "#FDBA74"
                     Column {
                         anchors.centerIn: parent
                         width: parent.width - 22 * root.sx
                         spacing: 4 * root.sy
                         Text { text: "MASA FUERA DEL TOP"; color: "#C2410C"; font.bold: true; font.pixelSize: 9 * root.sx }
-                        Text { text: ((1 - root.topSum) * 100).toFixed(2) + "%"; color: "#9A3412"; font.bold: true; font.pixelSize: 24 * root.sx }
-                        Text { width: parent.width; text: "Completa la distribución hasta Σp = 1."; color: "#9A3412"; wrapMode: Text.WordWrap; font.pixelSize: 9 * root.sx }
+                        Text { text: ((1 - root.topSum) * 100).toFixed(2) + "%"; color: Style.Theme.aviso_texto; font.bold: true; font.pixelSize: 24 * root.sx }
+                        Text { width: parent.width; text: "Completa la distribución hasta Σp = 1."; color: Style.Theme.aviso_texto; wrapMode: Text.WordWrap; font.pixelSize: 9 * root.sx }
                     }
                 }
 
@@ -458,13 +458,13 @@ Item {
         implicitWidth: primary ? 98 * sx : 38 * sx
         implicitHeight: 32 * sy
         radius: 8 * sx
-        color: !enabled ? Style.Theme.superficie_alterna : (primary ? "#DC2626" : "#FFFFFF")
-        border.color: !enabled ? Style.Theme.borde_suave : "#DC2626"
+        color: !enabled ? Style.Theme.superficie_alterna : (primary ? Style.Theme.error : "#FFFFFF")
+        border.color: !enabled ? Style.Theme.borde_suave : Style.Theme.error
         opacity: enabled ? 1 : 0.55
         Text {
             anchors.centerIn: parent
             text: raceButton.label
-            color: raceButton.primary && raceButton.enabled ? "white" : (raceButton.enabled ? "#B91C1C" : Style.Theme.texto_terciario)
+            color: raceButton.primary && raceButton.enabled ? "white" : (raceButton.enabled ? Style.Theme.error_texto : Style.Theme.texto_terciario)
             font.bold: true
             font.pixelSize: 9 * raceButton.sx
         }
