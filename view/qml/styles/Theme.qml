@@ -142,6 +142,7 @@ QtObject {
         "acento_fondo":  "#2A2342",  "acento_texto":  "#A78BFA",
         "chip_fondo":    "#2A2938",  "chip_texto":    "#C3C0D4",
         "chip_borde":    "#3F3E52",
+        "superficie_alterna": "#282734",
 
         // ===== Acentos de marca =====
         "acento":        "#A78BFA",

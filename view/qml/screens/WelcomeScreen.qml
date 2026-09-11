@@ -315,6 +315,17 @@ PagePrincipal {
                                     border.width: 1
                                     border.color: Style.Theme.borde_boton
                                 }
+
+                                
+                                contentItem: Text {
+                                    text: botonEntrenar.text
+                                    color: Style.Theme.texto_primario
+                                    font.pixelSize: 13
+                                    font.bold: true
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                    elide: Text.ElideRight
+                                }
                             }
 
                             Button {
@@ -335,6 +346,16 @@ PagePrincipal {
                                     border.width: 1
                                     border.color: Style.Theme.borde_boton
                                 }
+
+                                contentItem: Text {
+                                    text: botonAbrir.text
+                                    color: Style.Theme.texto_primario
+                                    font.pixelSize: 13
+                                    font.bold: true
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                    elide: Text.ElideRight
+                                }
                             }
 
                             Button {
@@ -354,6 +375,15 @@ PagePrincipal {
                                            : (botonComparar.hovered ? Style.Theme.acento_fondo : Style.Theme.boton)
                                     border.width: 1
                                     border.color: Style.Theme.borde_boton
+                                }
+                                contentItem: Text {
+                                    text: botonComparar.text
+                                    color: Style.Theme.texto_primario
+                                    font.pixelSize: 13
+                                    font.bold: true
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                    elide: Text.ElideRight
                                 }
                             }
                         }

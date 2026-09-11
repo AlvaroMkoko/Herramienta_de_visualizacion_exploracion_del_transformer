@@ -102,6 +102,46 @@ PagePrincipal {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 18
             }
+            // Antes: Item { Layout.fillWidth: true; Layout.preferredHeight: 18 }
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.leftMargin: root.pageMargin
+                Layout.rightMargin: root.pageMargin
+                Layout.topMargin: 14
+                spacing: 8
+
+                Button {
+                    id: backToWelcomeButton
+                    objectName: "homeBackToWelcomeButton"
+                    Layout.preferredWidth: 150
+                    Layout.preferredHeight: 34
+                    focusPolicy: Qt.StrongFocus
+                    text: "↶  Volver al inicio"
+
+                    visible: root.stackView && root.stackView.depth > 1
+                    Accessible.description: "Regresa a la pantalla de inicio"
+                    onClicked: root.stackView.pop()
+
+                    background: Rectangle {
+                        radius: 8
+                        color: backToWelcomeButton.down
+                               ? Style.Theme.boton_presionado
+                               : (backToWelcomeButton.hovered ? Style.Theme.acento_fondo : Style.Theme.boton)
+                        border.width: 1
+                        border.color: Style.Theme.borde_boton
+                    }
+
+                    contentItem: Text {
+                        text: backToWelcomeButton.text
+                        color: Style.Theme.texto_primario
+                        font.pixelSize: 12
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                }
+
+                Item { Layout.fillWidth: true }
+            }
 
             RowLayout {
                 Layout.fillWidth: true
@@ -481,17 +521,38 @@ PagePrincipal {
                                             implicitWidth: 0
                                             text: "Entrenar / configurar"
                                             focusPolicy: Qt.StrongFocus
+
+                                            enabled: stageContainer.stageAvailable
+                                            opacity: enabled ? 1 : 0.45
+                                            ToolTip.visible: hovered && !enabled
+                                            ToolTip.text: "Este laboratorio está bloqueado. Completa el recorrido guiado para desbloquearlo."
+
                                             Accessible.description: "Abre el laboratorio de configuración y entrenamiento"
                                             onClicked: root.stackView.push("SetupScreen.qml", {
                                                 "stackView": root.stackView
                                             })
+
                                             background: Rectangle {
-                                                radius: 7
+                                                radius: 8
                                                 color: trainingButton.down
-                                                       ? Style.Theme.boton_presionado
-                                                       : (trainingButton.hovered ? Style.Theme.acento_fondo : Style.Theme.boton)
-                                                border.width: 1
-                                                border.color: Style.Theme.borde_boton
+                                                       ? Style.Theme.acento_fondo
+                                                       : (trainingButton.hovered
+                                                          ? Style.Theme.acento_fondo
+                                                          : Style.Theme.superficie_alterna)
+                                                border.width: trainingButton.hovered ? 2 : 1
+                                                border.color: trainingButton.hovered
+                                                              ? Style.Theme.acento
+                                                              : Style.Theme.borde_suave
+                                            }
+
+                                            contentItem: Text {
+                                                text: trainingButton.text
+                                                color: Style.Theme.texto_primario
+                                                font.pixelSize: 12
+                                                font.bold: true
+                                                horizontalAlignment: Text.AlignHCenter
+                                                verticalAlignment: Text.AlignVCenter
+                                                elide: Text.ElideRight
                                             }
                                         }
 
@@ -506,17 +567,38 @@ PagePrincipal {
                                             implicitWidth: 0
                                             text: "Abrir modelo"
                                             focusPolicy: Qt.StrongFocus
+
+                                            enabled: stageContainer.stageAvailable
+                                            opacity: enabled ? 1 : 0.45
+                                            ToolTip.visible: hovered && !enabled
+                                            ToolTip.text: "Este laboratorio está bloqueado. Completa el recorrido guiado para desbloquearlo."
+
                                             Accessible.description: "Abre la biblioteca de modelos"
                                             onClicked: root.stackView.push("ModelLibraryScreen.qml", {
                                                 "stackView": root.stackView
                                             })
+
                                             background: Rectangle {
-                                                radius: 7
+                                                radius: 8
                                                 color: libraryButton.down
-                                                       ? Style.Theme.boton_presionado
-                                                       : (libraryButton.hovered ? Style.Theme.acento_fondo : Style.Theme.boton)
-                                                border.width: 1
-                                                border.color: Style.Theme.borde_boton
+                                                       ? Style.Theme.acento_fondo
+                                                       : (libraryButton.hovered
+                                                          ? Style.Theme.acento_fondo
+                                                          : Style.Theme.superficie_alterna)
+                                                border.width: libraryButton.hovered ? 2 : 1
+                                                border.color: libraryButton.hovered
+                                                              ? Style.Theme.acento
+                                                              : Style.Theme.borde_suave
+                                            }
+
+                                            contentItem: Text {
+                                                text: libraryButton.text
+                                                color: Style.Theme.texto_primario
+                                                font.pixelSize: 12
+                                                font.bold: true
+                                                horizontalAlignment: Text.AlignHCenter
+                                                verticalAlignment: Text.AlignVCenter
+                                                elide: Text.ElideRight
                                             }
                                         }
 
@@ -531,17 +613,38 @@ PagePrincipal {
                                             implicitWidth: 0
                                             text: "Comparar modelos"
                                             focusPolicy: Qt.StrongFocus
+
+                                            enabled: stageContainer.stageAvailable
+                                            opacity: enabled ? 1 : 0.45
+                                            ToolTip.visible: hovered && !enabled
+                                            ToolTip.text: "Este laboratorio está bloqueado. Completa el recorrido guiado para desbloquearlo."
+
                                             Accessible.description: "Abre el laboratorio de comparación"
                                             onClicked: root.stackView.push("ComparisonScreen.qml", {
                                                 "stackView": root.stackView
                                             })
+                                            
                                             background: Rectangle {
-                                                radius: 7
+                                                radius: 8
                                                 color: comparisonButton.down
-                                                       ? Style.Theme.boton_presionado
-                                                       : (comparisonButton.hovered ? Style.Theme.acento_fondo : Style.Theme.boton)
-                                                border.width: 1
-                                                border.color: Style.Theme.borde_boton
+                                                       ? Style.Theme.acento_fondo
+                                                       : (comparisonButton.hovered
+                                                          ? Style.Theme.acento_fondo
+                                                          : Style.Theme.superficie_alterna)
+                                                border.width: comparisonButton.hovered ? 2 : 1
+                                                border.color: comparisonButton.hovered
+                                                              ? Style.Theme.acento
+                                                              : Style.Theme.borde_suave
+                                            }
+
+                                            contentItem: Text {
+                                                text: comparisonButton.text
+                                                color: Style.Theme.texto_primario
+                                                font.pixelSize: 12
+                                                font.bold: true
+                                                horizontalAlignment: Text.AlignHCenter
+                                                verticalAlignment: Text.AlignVCenter
+                                                elide: Text.ElideRight
                                             }
                                         }
                                     }
@@ -671,12 +774,12 @@ PagePrincipal {
                         property string eyebrow: "PRÁCTICA"
                         property string title: "Laboratorios"
                         property string description: "Aplica lo aprendido con datos, modelos y generaciones reales."
-                        property string stageStatus: "Disponible"
-                        property bool stageAvailable: true
+                        property bool stageAvailable: root.isPlatformStageAvailable(3)
+                        property string stageStatus: stageAvailable ? "Disponible" : "Bloqueado"
                         property string stageRoute: ""
                         property string kind: "labs"
                         property string accentColor: Style.Theme.acento
-                        property string note: "Elige un laboratorio."
+                        property string note: stageAvailable ? "Elige un laboratorio." : "Completa el recorrdio guiado para desploquearlo."
                         property bool stagePlaceholder: false
                         property string testButtonName: ""
                         Layout.fillWidth: true
@@ -800,6 +903,15 @@ PagePrincipal {
                                    : (datasetButton.hovered ? Style.Theme.acento_fondo : Style.Theme.boton)
                             border.width: 1
                             border.color: Style.Theme.borde_boton
+                        }
+
+                        contentItem: Text {
+                            text: datasetButton.text
+                            color: Style.Theme.texto_primario
+                            font.pixelSize: 12
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                            elide: Text.ElideRight
                         }
                     }
                 }
