@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../styles" as Style
 
 Item {
     id: root
@@ -77,7 +78,7 @@ Item {
                 spacing: 1 * root.sy
                 Text {
                     text: "Split → procesamiento independiente → concat → Wᴼ"
-                    color: "#0F172A"
+                    color: Style.Theme.texto_primario
                     font.bold: true
                     font.pixelSize: 17 * Math.min(root.sx, root.sy)
                 }
@@ -202,18 +203,18 @@ Item {
                                     width: parent.width - 12 * root.sx
                                     spacing: 3 * root.sy
                                     Text { anchors.horizontalCenter: parent.horizontalCenter; text: "H" + String(headCard.index + 1).padStart(2, "0"); color: root.colorAt(headCard.index); font.bold: true; font.pixelSize: 12 * root.sx }
-                                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: root.dHead + " dims"; color: "#475569"; font.pixelSize: 8 * root.sx }
+                                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: root.dHead + " dims"; color: Style.Theme.texto_secundario; font.pixelSize: 8 * root.sx }
                                     Text {
                                         anchors.horizontalCenter: parent.horizontalCenter
                                         text: "‖z‖ " + root.norm(root.headOutputs.length > headCard.index ? root.headOutputs[headCard.index] : []).toFixed(3)
-                                        color: "#0F172A"
+                                        color: Style.Theme.texto_primario
                                         font.bold: true
                                         font.pixelSize: 9 * root.sx
                                     }
                                     Rectangle {
                                         anchors.horizontalCenter: parent.horizontalCenter
                                         width: parent.width - 8 * root.sx; height: 7 * root.sy; radius: height / 2
-                                        color: "#E2E8F0"
+                                        color: Style.Theme.borde_medio
                                         Rectangle {
                                             width: parent.width * Math.min(1, root.norm(root.headOutputs.length > headCard.index ? root.headOutputs[headCard.index] : []) / 5)
                                             height: parent.height; radius: parent.radius; color: root.colorAt(headCard.index)
@@ -247,7 +248,7 @@ Item {
                                 }
                             }
                         }
-                        Text { text: "‖concat real‖ " + root.norm(root.concatenated).toFixed(4); color: "#475569"; font.pixelSize: 8 * root.sx }
+                        Text { text: "‖concat real‖ " + root.norm(root.concatenated).toFixed(4); color: Style.Theme.texto_secundario; font.pixelSize: 8 * root.sx }
                     }
 
                     Text { text: "→"; color: "#D97706"; font.bold: true; font.pixelSize: 24 * root.sx }
@@ -291,7 +292,7 @@ Item {
                             }
                             Text { anchors.centerIn: parent; text: root.dModel + " dims mezcladas"; color: "white"; font.bold: true; font.pixelSize: 9 * root.sx }
                         }
-                        Text { text: "‖Wᴼz‖ " + root.norm(root.projected).toFixed(4); color: "#475569"; font.pixelSize: 8 * root.sx }
+                        Text { text: "‖Wᴼz‖ " + root.norm(root.projected).toFixed(4); color: Style.Theme.texto_secundario; font.pixelSize: 8 * root.sx }
                     }
                 }
             }

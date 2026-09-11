@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls
+import "../styles" as Style
 
 // Lector modal reutilizable para la teoría contextual del proyecto.
 //

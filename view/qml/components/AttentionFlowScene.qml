@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../styles" as Style
 
 Item {
     id: root
@@ -116,7 +117,7 @@ Item {
                 spacing: 1 * root.sy
                 Text {
                     text: root.crossAttention ? "Flujo de atención cruzada" : "Self-attention como flujo de información"
-                    color: "#0F172A"
+                    color: Style.Theme.texto_primario
                     font.bold: true
                     font.pixelSize: 17 * Math.min(root.sx, root.sy)
                 }
@@ -179,7 +180,7 @@ Item {
                           ? "🔦 Linterna: “" + (root.queryToken(root.focusedQuery).texto || "token")
                             + "” → destino principal “" + (root.keyToken(root.strongestTarget(root.focusedQuery)).texto || "token") + "”"
                           : "Pasa el cursor sobre una query para apagar las demás conexiones."
-                    color: root.focusedQuery >= 0 ? "#0C4A6E" : "#475569"
+                    color: root.focusedQuery >= 0 ? "#0C4A6E" : Style.Theme.texto_secundario
                     font.bold: root.focusedQuery >= 0
                     elide: Text.ElideRight
                     font.pixelSize: 9 * root.sx
@@ -194,7 +195,7 @@ Item {
 
             Rectangle {
                 radius: 12 * root.sx
-                color: "#F8FAFC"
+                color: Style.Theme.superficie_alterna
                 border.color: "#D8E0EA"
                 clip: true
 
@@ -235,7 +236,7 @@ Item {
                         var kY = keyY()
 
                         if (root.crossAttention) {
-                            ctx.fillStyle = "#64748B"
+                            ctx.fillStyle = Style.Theme.texto_secundario
                             ctx.font = "bold " + Math.max(8, 9 * root.sx) + "px sans-serif"
                             ctx.fillText("KEYS · prompt", 12 * root.sx, 14 * root.sy)
                             ctx.fillText("QUERIES · decoder", 12 * root.sx, height - 6 * root.sy)
@@ -295,7 +296,7 @@ Item {
                         }
 
                         if (!root.queryCount) {
-                            ctx.fillStyle = "#64748B"
+                            ctx.fillStyle = Style.Theme.texto_secundario
                             ctx.textAlign = "center"
                             ctx.font = "bold " + Math.max(12, 14 * root.sx) + "px sans-serif"
                             ctx.fillText("No hay una matriz de atención disponible para esta selección.",
@@ -327,7 +328,7 @@ Item {
                                 id: queryLabel
                                 anchors.centerIn: parent
                                 text: root.queryToken(queryChip.index).texto || "∅"
-                                color: root.focusedQuery === queryChip.index ? "white" : "#0F172A"
+                                color: root.focusedQuery === queryChip.index ? "white" : Style.Theme.texto_primario
                                 font.bold: true
                                 font.pixelSize: 8 * root.sx
                                 elide: Text.ElideRight
@@ -354,13 +355,13 @@ Item {
                             y: 8 * root.sy
                             radius: 7 * root.sx
                             color: "#FFFFFF"
-                            border.color: "#94A3B8"
+                            border.color: Style.Theme.texto_terciario
                             z: 2
                             Text {
                                 id: keyLabel
                                 anchors.centerIn: parent
                                 text: root.keyToken(keyChip.index).texto || "∅"
-                                color: "#0F172A"
+                                color: Style.Theme.texto_primario
                                 font.bold: true
                                 font.pixelSize: 8 * root.sx
                                 elide: Text.ElideRight
@@ -442,7 +443,7 @@ Item {
         property real sy: 1
         signal clicked()
         radius: 10 * sx
-        color: selected ? Qt.alpha(accent, 0.10) : "#F8FAFC"
+        color: selected ? Qt.alpha(accent, 0.10) : Style.Theme.superficie_alterna
         border.color: accent
         border.width: selected ? 2 : 1
         ColumnLayout {
@@ -453,7 +454,7 @@ Item {
                 Layout.fillWidth: true
                 Text { text: "H" + String(mini.headNumber + 1).padStart(2, "0"); color: mini.accent; font.bold: true; font.pixelSize: 10 * mini.sx }
                 Item { Layout.fillWidth: true }
-                Text { text: "clic para abrir"; color: "#64748B"; font.pixelSize: 7 * mini.sx }
+                Text { text: "clic para abrir"; color: Style.Theme.texto_secundario; font.pixelSize: 7 * mini.sx }
             }
             Canvas {
                 Layout.fillWidth: true
@@ -496,7 +497,7 @@ Item {
                     if (mini.crossAttention) {
                         for (var j = 0; j < kCount; ++j) {
                             ctx.beginPath(); ctx.arc(xFor(j, kCount), kY, 3 * mini.sx, 0, Math.PI * 2)
-                            ctx.fillStyle = "#64748B"; ctx.fill()
+                            ctx.fillStyle = Style.Theme.texto_secundario; ctx.fill()
                         }
                     }
                 }

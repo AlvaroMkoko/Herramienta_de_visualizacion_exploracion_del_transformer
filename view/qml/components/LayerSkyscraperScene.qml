@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../styles" as Style
 
 Item {
     id: root
@@ -91,13 +92,13 @@ Item {
                 spacing: 1 * root.sy
                 Text {
                     text: "Rascacielos de representaciones"
-                    color: "#0F172A"
+                    color: Style.Theme.texto_primario
                     font.bold: true
                     font.pixelSize: 17 * Math.min(root.sx, root.sy)
                 }
                 Text {
                     text: "Cada piso usa hidden states reales · todos comparten los mismos ejes PCA"
-                    color: "#64748B"
+                    color: Style.Theme.texto_secundario
                     font.pixelSize: 10 * root.sx
                 }
             }
@@ -122,14 +123,14 @@ Item {
                     width: Math.max(42 * root.sx, choiceText.implicitWidth + 14 * root.sx)
                     height: 32 * root.sy
                     radius: 8 * root.sx
-                    color: root.selectedToken === index ? root.tokenColor(index, ListView.view.count) : "#F8FAFC"
+                    color: root.selectedToken === index ? root.tokenColor(index, ListView.view.count) : Style.Theme.superficie_alterna
                     border.color: root.tokenColor(index, ListView.view.count)
                     border.width: root.selectedToken === index ? 2 : 1
                     Text {
                         id: choiceText
                         anchors.centerIn: parent
                         text: root.tokenForPoint(tokenChoice.index).texto || "∅"
-                        color: root.selectedToken === tokenChoice.index ? "white" : "#334155"
+                        color: root.selectedToken === tokenChoice.index ? "white" : Style.Theme.texto_secundario_fuerte
                         font.bold: true
                         font.pixelSize: 9 * root.sx
                     }
@@ -190,8 +191,8 @@ Item {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 154 * root.sy
                         radius: 12 * root.sx
-                        color: floorCard.index === 0 ? "#EEF2FF" : "#F8FAFC"
-                        border.color: floorCard.index === 0 ? "#6366F1" : "#CBD5E1"
+                        color: floorCard.index === 0 ? "#EEF2FF" : Style.Theme.superficie_alterna
+                        border.color: floorCard.index === 0 ? "#6366F1" : Style.Theme.borde_suave
                         border.width: floorCard.index === 0 ? 2 : 1
 
                         RowLayout {
@@ -250,7 +251,7 @@ Item {
                                         var pad = 18 * root.sx
                                         var plotW = Math.max(1, width - 2 * pad)
                                         var plotH = Math.max(1, height - 2 * pad)
-                                        ctx.strokeStyle = "#E2E8F0"
+                                        ctx.strokeStyle = Style.Theme.borde_medio
                                         ctx.lineWidth = 1
                                         for (var grid = 1; grid < 4; ++grid) {
                                             var gx = pad + plotW * grid / 4
@@ -292,7 +293,7 @@ Item {
                                 Text {
                                     Layout.fillWidth: true
                                     text: floorCard.index === 0 ? "Estado contextual final" : "Representación intermedia"
-                                    color: "#0F172A"
+                                    color: Style.Theme.texto_primario
                                     font.bold: true
                                     wrapMode: Text.WordWrap
                                     font.pixelSize: 11 * root.sx
@@ -302,7 +303,7 @@ Item {
                                     Layout.fillHeight: true
                                     text: "“" + (root.tokenForPoint(root.selectedToken).texto || "token")
                                           + "” mantiene su identidad; cambia su posición relativa frente a los demás tokens."
-                                    color: "#64748B"
+                                    color: Style.Theme.texto_secundario
                                     wrapMode: Text.WordWrap
                                     font.pixelSize: 9 * root.sx
                                 }

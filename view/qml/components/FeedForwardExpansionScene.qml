@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../styles" as Style
 
 Item {
     id: root
@@ -71,7 +72,7 @@ Item {
                 spacing: 1 * root.sy
                 Text {
                     text: "Expansión → " + root.activationName + " → compresión"
-                    color: "#0F172A"
+                    color: Style.Theme.texto_primario
                     font.bold: true
                     font.pixelSize: 17 * Math.min(root.sx, root.sy)
                 }
@@ -104,10 +105,10 @@ Item {
                 anchors.margins: 8 * root.sx
                 spacing: 8 * root.sx
                 StageLabel { Layout.preferredWidth: 154 * root.sx; title: "ENTRADA"; subtitle: "d_model = " + root.inputDimension; accent: "#0284C7"; sx: root.sx }
-                Text { text: "→"; color: "#94A3B8"; font.bold: true; font.pixelSize: 18 * root.sx }
+                Text { text: "→"; color: Style.Theme.texto_terciario; font.bold: true; font.pixelSize: 18 * root.sx }
                 StageLabel { Layout.fillWidth: true; title: "EXPANSIÓN W₁"; subtitle: "d_ff = " + root.hiddenDimension; accent: "#DB2777"; sx: root.sx }
                 StageLabel { Layout.preferredWidth: 150 * root.sx; title: root.activationName.toUpperCase(); subtitle: root.activationName.toLowerCase().indexOf("relu") >= 0 ? "negativos → 0" : "atenuación suave"; accent: "#D97706"; sx: root.sx }
-                Text { text: "→"; color: "#94A3B8"; font.bold: true; font.pixelSize: 18 * root.sx }
+                Text { text: "→"; color: Style.Theme.texto_terciario; font.bold: true; font.pixelSize: 18 * root.sx }
                 StageLabel { Layout.preferredWidth: 154 * root.sx; title: "PROYECCIÓN W₂"; subtitle: "d_model = " + root.outputDimension; accent: "#059669"; sx: root.sx }
             }
         }
@@ -117,7 +118,7 @@ Item {
             Layout.fillHeight: true
             radius: 12 * root.sx
             color: "#FAFAFC"
-            border.color: "#E2E8F0"
+            border.color: Style.Theme.borde_medio
 
             ColumnLayout {
                 anchors.fill: parent
@@ -168,13 +169,13 @@ Item {
                                     Text {
                                         width: parent.width
                                         text: "“" + (root.tokenFor(tokenRow.modelData.posicion, tokenRow.index).texto || "token") + "”"
-                                        color: "#0F172A"
+                                        color: Style.Theme.texto_primario
                                         font.bold: true
                                         horizontalAlignment: Text.AlignHCenter
                                         elide: Text.ElideRight
                                         font.pixelSize: 11 * root.sx
                                     }
-                                    Text { width: parent.width; text: "posición " + tokenRow.modelData.posicion; color: "#64748B"; horizontalAlignment: Text.AlignHCenter; font.pixelSize: 8 * root.sx }
+                                    Text { width: parent.width; text: "posición " + tokenRow.modelData.posicion; color: Style.Theme.texto_secundario; horizontalAlignment: Text.AlignHCenter; font.pixelSize: 8 * root.sx }
                                 }
                             }
 
@@ -189,7 +190,7 @@ Item {
                                 sx: root.sx; sy: root.sy
                             }
 
-                            Text { text: "→"; color: "#94A3B8"; font.bold: true; font.pixelSize: 18 * root.sx }
+                            Text { text: "→"; color: Style.Theme.texto_terciario; font.bold: true; font.pixelSize: 18 * root.sx }
 
                             VectorStrip {
                                 Layout.preferredWidth: (150 + 150 * root.progress) * root.sx
@@ -213,7 +214,7 @@ Item {
                                 opacity: 0.25 + 0.75 * root.progress
                             }
 
-                            Text { text: "→"; color: "#94A3B8"; font.bold: true; font.pixelSize: 18 * root.sx }
+                            Text { text: "→"; color: Style.Theme.texto_terciario; font.bold: true; font.pixelSize: 18 * root.sx }
 
                             VectorStrip {
                                 Layout.preferredWidth: 150 * root.sx
@@ -235,7 +236,7 @@ Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     text: "No hay activaciones FFN en esta captura."
-                    color: "#64748B"
+                    color: Style.Theme.texto_secundario
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
                     font.bold: true
@@ -269,7 +270,7 @@ Item {
         property real sx: 1
         spacing: 1 * sx
         Text { width: parent.width; text: stageLabel.title; color: stageLabel.accent; font.bold: true; horizontalAlignment: Text.AlignHCenter; font.pixelSize: 9 * stageLabel.sx }
-        Text { width: parent.width; text: stageLabel.subtitle; color: "#64748B"; horizontalAlignment: Text.AlignHCenter; font.pixelSize: 8 * stageLabel.sx }
+        Text { width: parent.width; text: stageLabel.subtitle; color: Style.Theme.texto_secundario; horizontalAlignment: Text.AlignHCenter; font.pixelSize: 8 * stageLabel.sx }
     }
 
     component VectorStrip: Rectangle {
@@ -291,7 +292,7 @@ Item {
             RowLayout {
                 Layout.fillWidth: true
                 Text { Layout.fillWidth: true; text: vectorStrip.label; color: vectorStrip.accent; font.bold: true; font.pixelSize: 8 * vectorStrip.sx }
-                Text { text: vectorStrip.dimension + "d"; color: "#475569"; font.pixelSize: 7 * vectorStrip.sx }
+                Text { text: vectorStrip.dimension + "d"; color: Style.Theme.texto_secundario; font.pixelSize: 7 * vectorStrip.sx }
             }
             Canvas {
                 Layout.fillWidth: true
@@ -315,7 +316,7 @@ Item {
                     }
                 }
             }
-            Text { Layout.fillWidth: true; text: "‖·‖ " + vectorStrip.normValue.toFixed(3); color: "#475569"; horizontalAlignment: Text.AlignRight; font.pixelSize: 7 * vectorStrip.sx }
+            Text { Layout.fillWidth: true; text: "‖·‖ " + vectorStrip.normValue.toFixed(3); color: Style.Theme.texto_secundario; horizontalAlignment: Text.AlignRight; font.pixelSize: 7 * vectorStrip.sx }
         }
     }
 
@@ -338,7 +339,7 @@ Item {
                 onPaint: {
                     var ctx = getContext("2d"); ctx.reset()
                     var midX = width / 2, midY = height / 2
-                    ctx.strokeStyle = "#CBD5E1"; ctx.lineWidth = 1
+                    ctx.strokeStyle = Style.Theme.borde_suave; ctx.lineWidth = 1
                     ctx.beginPath(); ctx.moveTo(0, midY); ctx.lineTo(width, midY); ctx.stroke()
                     ctx.beginPath(); ctx.moveTo(midX, 0); ctx.lineTo(midX, height); ctx.stroke()
                     ctx.strokeStyle = "#D97706"; ctx.lineWidth = 2 * gate.sx; ctx.beginPath()

@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../styles" as Style
 
 Item {
     id: root
@@ -188,14 +189,14 @@ Item {
                 spacing: 2 * root.sy
                 Text {
                     text: "Probabilidad del siguiente token"
-                    color: "#0F172A"
+                    color: Style.Theme.texto_primario
                     font.bold: true
                     font.pixelSize: 17 * Math.min(root.sx, root.sy)
                 }
                 Text {
                     Layout.fillWidth: true
                     text: "Contexto hasta aquí:  " + root.contextText()
-                    color: "#64748B"
+                    color: Style.Theme.texto_secundario
                     elide: Text.ElideLeft
                     font.pixelSize: 10 * root.sx
                 }
@@ -267,7 +268,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 radius: 12 * root.sx
-                color: "#F8FAFC"
+                color: Style.Theme.superficie_alterna
                 border.color: "#D8E0EA"
 
                 ColumnLayout {
@@ -277,10 +278,10 @@ Item {
 
                     RowLayout {
                         Layout.fillWidth: true
-                        Text { text: "RANGO"; Layout.preferredWidth: 54 * root.sx; color: "#64748B"; font.bold: true; font.pixelSize: 8 * root.sx }
-                        Text { text: "CANDIDATO"; Layout.preferredWidth: 125 * root.sx; color: "#64748B"; font.bold: true; font.pixelSize: 8 * root.sx }
-                        Text { text: "PROBABILIDAD REAL"; Layout.fillWidth: true; color: "#64748B"; font.bold: true; font.pixelSize: 8 * root.sx }
-                        Text { text: "%"; Layout.preferredWidth: 58 * root.sx; color: "#64748B"; font.bold: true; horizontalAlignment: Text.AlignRight; font.pixelSize: 8 * root.sx }
+                        Text { text: "RANGO"; Layout.preferredWidth: 54 * root.sx; color: Style.Theme.texto_secundario; font.bold: true; font.pixelSize: 8 * root.sx }
+                        Text { text: "CANDIDATO"; Layout.preferredWidth: 125 * root.sx; color: Style.Theme.texto_secundario; font.bold: true; font.pixelSize: 8 * root.sx }
+                        Text { text: "PROBABILIDAD REAL"; Layout.fillWidth: true; color: Style.Theme.texto_secundario; font.bold: true; font.pixelSize: 8 * root.sx }
+                        Text { text: "%"; Layout.preferredWidth: 58 * root.sx; color: Style.Theme.texto_secundario; font.bold: true; horizontalAlignment: Text.AlignRight; font.pixelSize: 8 * root.sx }
                     }
 
                     ListView {
@@ -311,7 +312,7 @@ Item {
                             height: 42 * root.sy
                             radius: 8 * root.sx
                             color: horseRow.chosen ? "#DCFCE7" : "#FFFFFF"
-                            border.color: horseRow.chosen ? "#22C55E" : "#E2E8F0"
+                            border.color: horseRow.chosen ? "#22C55E" : Style.Theme.borde_medio
 
                             RowLayout {
                                 anchors.fill: parent
@@ -321,7 +322,7 @@ Item {
                                     Layout.preferredWidth: 42 * root.sx
                                     Layout.preferredHeight: 27 * root.sy
                                     radius: 7 * root.sx
-                                    color: horseRow.captured ? "#DC2626" : "#CBD5E1"
+                                    color: horseRow.captured ? "#DC2626" : Style.Theme.borde_suave
                                     Text {
                                         anchors.centerIn: parent
                                         text: horseRow.captured ? "#" + horseRow.rank : "—"
@@ -333,7 +334,7 @@ Item {
                                 Text {
                                     Layout.preferredWidth: 125 * root.sx
                                     text: "“" + horseRow.tokenText + "”"
-                                    color: "#0F172A"
+                                    color: Style.Theme.texto_primario
                                     font.bold: true
                                     elide: Text.ElideRight
                                     font.pixelSize: 10 * root.sx
@@ -344,7 +345,7 @@ Item {
                                     Rectangle {
                                         anchors.fill: parent
                                         radius: height / 2
-                                        color: "#E2E8F0"
+                                        color: Style.Theme.borde_medio
                                     }
                                     Rectangle {
                                         width: parent.width * Math.min(1, horseRow.probability / root.maxProbability)
@@ -362,7 +363,7 @@ Item {
                                 Text {
                                     Layout.preferredWidth: 58 * root.sx
                                     text: (horseRow.probability * 100).toFixed(horseRow.probability < 0.01 ? 2 : 1) + "%"
-                                    color: horseRow.captured ? "#0F172A" : "#94A3B8"
+                                    color: horseRow.captured ? Style.Theme.texto_primario : Style.Theme.texto_terciario
                                     font.bold: true
                                     horizontalAlignment: Text.AlignRight
                                     font.pixelSize: 10 * root.sx
@@ -431,13 +432,13 @@ Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     radius: 12 * root.sx
-                    color: "#F8FAFC"
-                    border.color: "#CBD5E1"
+                    color: Style.Theme.superficie_alterna
+                    border.color: Style.Theme.borde_suave
                     Text {
                         anchors.fill: parent
                         anchors.margins: 12 * root.sx
                         text: "Las barras usan probabilidades del softmax real. Un candidato que desaparece queda en 0 porque ya no pertenece al top capturado; no significa probabilidad matemática exactamente cero."
-                        color: "#475569"
+                        color: Style.Theme.texto_secundario
                         wrapMode: Text.WordWrap
                         lineHeight: 1.2
                         font.pixelSize: 9 * root.sx
@@ -457,13 +458,13 @@ Item {
         implicitWidth: primary ? 98 * sx : 38 * sx
         implicitHeight: 32 * sy
         radius: 8 * sx
-        color: !enabled ? "#F1F5F9" : (primary ? "#DC2626" : "#FFFFFF")
-        border.color: !enabled ? "#CBD5E1" : "#DC2626"
+        color: !enabled ? Style.Theme.superficie_alterna : (primary ? "#DC2626" : "#FFFFFF")
+        border.color: !enabled ? Style.Theme.borde_suave : "#DC2626"
         opacity: enabled ? 1 : 0.55
         Text {
             anchors.centerIn: parent
             text: raceButton.label
-            color: raceButton.primary && raceButton.enabled ? "white" : (raceButton.enabled ? "#B91C1C" : "#94A3B8")
+            color: raceButton.primary && raceButton.enabled ? "white" : (raceButton.enabled ? "#B91C1C" : Style.Theme.texto_terciario)
             font.bold: true
             font.pixelSize: 9 * raceButton.sx
         }

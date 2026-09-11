@@ -826,7 +826,7 @@ PagePrincipal {
                                         Layout.fillWidth: true
                                         Layout.fillHeight: true
                                         radius: 7 * root.sx
-                                        color: "#F8FAFC"
+                                        color: Style.Theme.superficie_alterna
                                         border.color: Style.Theme.divisor
                                         ColumnLayout {
                                             anchors.fill: parent
@@ -927,7 +927,7 @@ PagePrincipal {
                                 required property int index
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 31 * root.sy
-                                color: index % 2 === 0 ? "#F8FAFC" : Style.Theme.surface
+                                color: index % 2 === 0 ? Style.Theme.superficie_alterna : Style.Theme.surface
                                 radius: 4 * root.sx
                                 RowLayout {
                                     anchors.fill: parent
@@ -993,7 +993,7 @@ PagePrincipal {
                                 required property int index
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 29 * root.sy
-                                color: index % 2 === 0 ? "#F8FAFC" : "transparent"
+                                color: index % 2 === 0 ? Style.Theme.superficie_alterna : "transparent"
                                 RowLayout {
                                     anchors.fill: parent
                                     anchors.leftMargin: 8 * root.sx
@@ -1190,7 +1190,7 @@ PagePrincipal {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 38 * root.sy
                                 radius: 6 * root.sx
-                                color: "#F8FAFC"
+                                color: Style.Theme.superficie_alterna
                                 border.color: Style.Theme.divisor
                                 RowLayout {
                                     anchors.fill: parent
@@ -1446,7 +1446,7 @@ PagePrincipal {
                                 required property var modelData
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 38 * root.sy
-                                color: "#F8FAFC"
+                                color: Style.Theme.superficie_alterna
                                 radius: 6 * root.sx
                                 RowLayout {
                                     anchors.fill: parent
@@ -1670,7 +1670,7 @@ PagePrincipal {
                                 Layout.preferredHeight: 35 * root.sy
                                 radius: 5 * root.sx
                                 color: root.campo(tokenItem.modelData, ["esEspecial", "special"], false)
-                                       ? "#FEF3C7" : (index % 2 === 0 ? "#F8FAFC" : "transparent")
+                                       ? "#FEF3C7" : (index % 2 === 0 ? Style.Theme.superficie_alterna : "transparent")
                                 RowLayout {
                                     anchors.fill: parent
                                     anchors.leftMargin: 7 * root.sx
@@ -1919,7 +1919,7 @@ PagePrincipal {
                             Rectangle {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
-                                color: "#F8FAFC"
+                                color: Style.Theme.superficie_alterna
                                 border.color: Style.Theme.divisor
                                 radius: 6 * root.sx
                                 ScrollView {
@@ -2189,7 +2189,7 @@ PagePrincipal {
                                 Layout.preferredHeight: 38 * root.sy
                                 radius: 6 * root.sx
                                 color: root.mismaRuta(root.campo(versionItem.modelData, ["ruta", "path"], ""), root.rutaActual)
-                                       ? Style.Theme.acento_fondo : "#F8FAFC"
+                                       ? Style.Theme.acento_fondo : Style.Theme.superficie_alterna
                                 border.color: Style.Theme.divisor
                                 RowLayout {
                                     anchors.fill: parent
@@ -2324,7 +2324,7 @@ PagePrincipal {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
                                 radius: 8 * root.sx
-                                color: "#F8FAFC"
+                                color: Style.Theme.superficie_alterna
                                 border.color: Style.Theme.divisor
                                 RowLayout {
                                     anchors.fill: parent

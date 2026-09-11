@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Layouts
+import "../styles" as Style
 
 Rectangle {
     id: root
@@ -36,7 +37,7 @@ Rectangle {
 
             Text {
                 text: "MAPA DEL PROCESO"
-                color: "#475569"
+                color: Style.Theme.texto_secundario
                 font.bold: true
                 font.letterSpacing: 0.6
                 font.pixelSize: Math.max(10, 10 * root.sx)
@@ -45,7 +46,7 @@ Rectangle {
             Text {
                 Layout.fillWidth: true
                 text: "Sigue una sola operaci\u00f3n; el mapa mantiene visible el recorrido completo."
-                color: "#64748B"
+                color: Style.Theme.texto_secundario
                 elide: Text.ElideRight
                 font.pixelSize: Math.max(10, 10 * root.sx)
             }
@@ -77,7 +78,7 @@ Rectangle {
 
             Text {
                 text: "\u2192"
-                color: "#94A3B8"
+                color: Style.Theme.texto_terciario
                 font.bold: true
                 font.pixelSize: Math.max(13, 15 * root.sx)
             }
@@ -111,10 +112,10 @@ Rectangle {
                         radius: 9 * Math.min(root.sx, root.sy)
                         color: chapterDelegate.current
                                ? Qt.alpha(root.accent, 0.12)
-                               : (chapterDelegate.completed ? "#F0FDF4" : "#F8FAFC")
+                               : (chapterDelegate.completed ? "#F0FDF4" : Style.Theme.superficie_alterna)
                         border.color: chapterDelegate.current
                                       ? root.accent
-                                      : (chapterDelegate.completed ? "#86EFAC" : "#CBD5E1")
+                                      : (chapterDelegate.completed ? "#86EFAC" : Style.Theme.borde_suave)
                         border.width: activeFocus ? 3 : (chapterDelegate.current ? 2 : 1)
 
                         Accessible.role: Accessible.Button
@@ -143,13 +144,13 @@ Rectangle {
                                 radius: width / 2
                                 color: chapterDelegate.current
                                        ? root.accent
-                                       : (chapterDelegate.completed ? "#16A34A" : "#E2E8F0")
+                                       : (chapterDelegate.completed ? "#16A34A" : Style.Theme.borde_medio)
 
                                 Text {
                                     anchors.centerIn: parent
                                     text: chapterDelegate.completed ? "\u2713" : chapterDelegate.index + 1
                                     color: chapterDelegate.current || chapterDelegate.completed
-                                           ? "#FFFFFF" : "#64748B"
+                                           ? "#FFFFFF" : Style.Theme.texto_secundario
                                     font.bold: true
                                     font.pixelSize: Math.max(10, 10 * root.sx)
                                 }
@@ -162,7 +163,7 @@ Rectangle {
                                 Text {
                                     Layout.fillWidth: true
                                     text: chapterDelegate.modelData.label || ""
-                                    color: chapterDelegate.current ? root.accent : "#1E293B"
+                                    color: chapterDelegate.current ? root.accent : Style.Theme.texto_secundario_fuerte
                                     font.bold: true
                                     elide: Text.ElideRight
                                     font.pixelSize: Math.max(10, 10 * root.sx)
@@ -171,7 +172,7 @@ Rectangle {
                                 Text {
                                     Layout.fillWidth: true
                                     text: chapterDelegate.modelData.caption || ""
-                                    color: "#64748B"
+                                    color: Style.Theme.texto_secundario
                                     elide: Text.ElideRight
                                     font.pixelSize: Math.max(9, 9 * root.sx)
                                 }
@@ -192,7 +193,7 @@ Rectangle {
                         visible: chapterDelegate.index < root.chapters.length - 1
                         Layout.preferredWidth: visible ? Math.max(12, 14 * root.sx) : 0
                         text: "\u2192"
-                        color: chapterDelegate.completed ? "#16A34A" : "#94A3B8"
+                        color: chapterDelegate.completed ? "#16A34A" : Style.Theme.texto_terciario
                         font.bold: true
                         font.pixelSize: Math.max(12, 14 * root.sx)
                     }
@@ -201,7 +202,7 @@ Rectangle {
 
             Text {
                 text: "\u2192"
-                color: root.currentIndex === root.chapters.length - 1 ? root.accent : "#94A3B8"
+                color: root.currentIndex === root.chapters.length - 1 ? root.accent : Style.Theme.texto_terciario
                 font.bold: true
                 font.pixelSize: Math.max(13, 15 * root.sx)
             }
@@ -229,8 +230,8 @@ Rectangle {
         property real sx: 1
 
         radius: 9 * endpoint.sx
-        color: highlighted ? Qt.alpha(accent, 0.12) : "#F8FAFC"
-        border.color: highlighted ? accent : "#CBD5E1"
+        color: highlighted ? Qt.alpha(accent, 0.12) : Style.Theme.superficie_alterna
+        border.color: highlighted ? accent : Style.Theme.borde_suave
 
         ColumnLayout {
             anchors.centerIn: parent
@@ -240,14 +241,14 @@ Rectangle {
             Text {
                 Layout.alignment: Qt.AlignHCenter
                 text: endpoint.symbol + "  " + endpoint.title
-                color: endpoint.highlighted ? endpoint.accent : "#334155"
+                color: endpoint.highlighted ? endpoint.accent : Style.Theme.texto_secundario_fuerte
                 font.bold: true
                 font.pixelSize: Math.max(10, 10 * endpoint.sx)
             }
             Text {
                 Layout.fillWidth: true
                 text: endpoint.caption
-                color: "#64748B"
+                color: Style.Theme.texto_secundario
                 horizontalAlignment: Text.AlignHCenter
                 elide: Text.ElideRight
                 font.pixelSize: Math.max(9, 9 * endpoint.sx)

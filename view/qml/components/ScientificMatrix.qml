@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import "../styles" as Style
 
 Item {
     id: root
@@ -62,7 +63,7 @@ Item {
 
     function colorFor(value) {
         if (root.colorMode === "mask")
-            return Number(value) > 0 ? "#FFFFFF" : "#CBD5E1"
+            return Number(value) > 0 ? "#FFFFFF" : Style.Theme.borde_suave
 
         var minimum = root.localScale ? root.dataMinimum : root.globalMinimum
         var maximum = root.localScale ? root.dataMaximum : root.globalMaximum
@@ -140,7 +141,7 @@ Item {
             ctx.textBaseline = "middle"
 
             for (var row = 0; row < root.rows; ++row) {
-                ctx.fillStyle = "#475569"
+                ctx.fillStyle = Style.Theme.texto_secundario
                 ctx.fillText(root.rowPrefix + String(root.rowOffset + row + 1).padStart(2, "0"),
                              -5, row * cellHeight + cellHeight / 2)
                 for (var column = 0; column < root.columns; ++column) {
@@ -151,7 +152,7 @@ Item {
                     ctx.fillRect(x, y, cellWidth + 0.4, cellHeight + 0.4)
 
                     if (root.colorMode === "mask" && value <= 0) {
-                        ctx.strokeStyle = "#64748B"
+                        ctx.strokeStyle = Style.Theme.texto_secundario
                         ctx.lineWidth = 0.7
                         ctx.beginPath()
                         ctx.moveTo(x, y + cellHeight)
@@ -159,7 +160,7 @@ Item {
                         ctx.stroke()
                     }
                     if (row === root.selectedRow && column === root.selectedColumn) {
-                        ctx.strokeStyle = "#111111"
+                        ctx.strokeStyle = Style.Theme.texto_primario
                         ctx.lineWidth = 2
                         ctx.strokeRect(x + 1, y + 1, Math.max(0, cellWidth - 2),
                                        Math.max(0, cellHeight - 2))
@@ -167,7 +168,7 @@ Item {
                 }
             }
 
-            ctx.fillStyle = "#64748B"
+            ctx.fillStyle = Style.Theme.texto_secundario
             ctx.textAlign = "center"
             ctx.textBaseline = "top"
             var labelStep = Math.max(1, Math.ceil(root.columns / 8))
@@ -207,7 +208,7 @@ Item {
         width: tooltipText.implicitWidth + 18
         height: tooltipText.implicitHeight + 13
         radius: 6
-        color: "#0F172A"
+        color: Style.Theme.texto_primario
         z: 10
 
         Text {

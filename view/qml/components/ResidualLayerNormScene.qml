@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../styles" as Style
 
 Item {
     id: root
@@ -62,13 +63,13 @@ Item {
                 spacing: 1 * root.sy
                 Text {
                     text: "Carril residual + LayerNorm post-norm"
-                    color: "#0F172A"
+                    color: Style.Theme.texto_primario
                     font.bold: true
                     font.pixelSize: 17 * Math.min(root.sx, root.sy)
                 }
                 Text {
                     text: "La entrada x toma dos rutas y converge mediante una suma, no mediante concat."
-                    color: "#64748B"
+                    color: Style.Theme.texto_secundario
                     font.pixelSize: 10 * root.sx
                 }
             }
@@ -156,11 +157,11 @@ Item {
                                  root.particleProgress, "#D97706", 1)
                     }
 
-                    ctx.fillStyle = "#0F172A"
+                    ctx.fillStyle = Style.Theme.texto_primario
                     ctx.font = "bold " + Math.max(9, 10 * root.sx) + "px sans-serif"
                     ctx.textAlign = "center"
                     ctx.fillText("x", startX, middleY - 14 * root.sy)
-                    ctx.fillStyle = root.useShortcut ? "#047857" : "#94A3B8"
+                    ctx.fillStyle = root.useShortcut ? "#047857" : Style.Theme.texto_terciario
                     ctx.fillText(root.useShortcut ? "RUTA IDENTIDAD · x intacto" : "RUTA IDENTIDAD APAGADA",
                                  (splitX + mergeX) / 2, upperY - 14 * root.sy)
                     ctx.fillStyle = "#B45309"
@@ -215,7 +216,7 @@ Item {
                 text: "γ media " + Number(root.layerNorm.gamma_media || 0).toFixed(4)
                       + " · β media " + Number(root.layerNorm.beta_media || 0).toFixed(4)
                       + " · ε " + Number(root.sceneData.epsilon || 0)
-                color: "#475569"
+                color: Style.Theme.texto_secundario
                 font.pixelSize: 9 * root.sx
             }
         }
@@ -234,8 +235,8 @@ Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     radius: 11 * root.sx
-                    color: root.selectedPhase === index ? "#EEF2FF" : "#F8FAFC"
-                    border.color: root.selectedPhase === index ? "#4F46E5" : "#CBD5E1"
+                    color: root.selectedPhase === index ? "#EEF2FF" : Style.Theme.superficie_alterna
+                    border.color: root.selectedPhase === index ? "#4F46E5" : Style.Theme.borde_suave
                     border.width: root.selectedPhase === index ? 2 : 1
 
                     ColumnLayout {
@@ -261,13 +262,13 @@ Item {
                             onSharedBoundsChanged: requestPaint()
                             onPaint: {
                                 var ctx = getContext("2d"); ctx.reset()
-                                ctx.strokeStyle = "#CBD5E1"; ctx.lineWidth = 1
+                                ctx.strokeStyle = Style.Theme.borde_suave; ctx.lineWidth = 1
                                 ctx.beginPath(); ctx.moveTo(6 * root.sx, height / 2)
                                 ctx.lineTo(width - 6 * root.sx, height / 2); ctx.stroke()
                                 var zeroX = 6 * root.sx + (0 - sharedBounds.minimum)
                                             / (sharedBounds.maximum - sharedBounds.minimum)
                                             * (width - 12 * root.sx)
-                                ctx.strokeStyle = "#94A3B8"; ctx.setLineDash([3, 3])
+                                ctx.strokeStyle = Style.Theme.texto_terciario; ctx.setLineDash([3, 3])
                                 ctx.beginPath(); ctx.moveTo(zeroX, 4 * root.sy); ctx.lineTo(zeroX, height - 4 * root.sy); ctx.stroke()
                                 ctx.setLineDash([])
                                 for (var i = 0; i < values.length; ++i) {
@@ -284,7 +285,7 @@ Item {
                             Layout.fillWidth: true
                             text: "μ " + Number(phaseCard.modelData.media || 0).toFixed(4)
                                   + "  ·  σ " + Number(phaseCard.modelData.desviacion || 0).toFixed(4)
-                            color: "#475569"
+                            color: Style.Theme.texto_secundario
                             horizontalAlignment: Text.AlignHCenter
                             font.bold: true
                             font.pixelSize: 8 * root.sx
@@ -292,7 +293,7 @@ Item {
                         Text {
                             Layout.fillWidth: true
                             text: phaseCard.modelData.operacion
-                            color: "#64748B"
+                            color: Style.Theme.texto_secundario
                             horizontalAlignment: Text.AlignHCenter
                             elide: Text.ElideRight
                             font.pixelSize: 7 * root.sx

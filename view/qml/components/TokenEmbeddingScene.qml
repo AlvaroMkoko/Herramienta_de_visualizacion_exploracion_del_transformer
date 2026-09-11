@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Layouts
+import "../styles" as Style
 
 Item {
     id: root
@@ -167,14 +168,14 @@ Item {
                 spacing: 1 * root.sy
                 Text {
                     text: "Del token discreto a un vector real"
-                    color: "#0F172A"
+                    color: Style.Theme.texto_primario
                     font.bold: true
                     font.pixelSize: 17 * Math.min(root.sx, root.sy)
                 }
                 Text {
                     Layout.fillWidth: true
                     text: "lookup de embedding · escala √d_model · valores capturados del forward"
-                    color: "#64748B"
+                    color: Style.Theme.texto_secundario
                     elide: Text.ElideRight
                     font.pixelSize: 10 * root.sx
                 }
@@ -259,7 +260,7 @@ Item {
                 Layout.preferredWidth: 280 * root.sx
                 Layout.fillHeight: true
                 radius: 12 * root.sx
-                color: "#F8FAFC"
+                color: Style.Theme.superficie_alterna
                 border.color: "#D8E0EA"
                 clip: true
 
@@ -271,7 +272,7 @@ Item {
                     Text {
                         Layout.fillWidth: true
                         text: "FILAS TOKEN × DIMENSIÓN"
-                        color: "#64748B"
+                        color: Style.Theme.texto_secundario
                         font.bold: true
                         font.pixelSize: 9 * root.sx
                     }
@@ -294,7 +295,7 @@ Item {
                             height: 43 * root.sy
                             radius: 8 * root.sx
                             color: index === root.safeRow ? "#EDE9FE" : "#FFFFFF"
-                            border.color: index === root.safeRow ? "#7C3AED" : "#E2E8F0"
+                            border.color: index === root.safeRow ? "#7C3AED" : Style.Theme.borde_medio
                             border.width: index === root.safeRow ? 2 : 1
 
                             RowLayout {
@@ -306,7 +307,7 @@ Item {
                                     Layout.preferredWidth: 34 * root.sx
                                     Layout.preferredHeight: 28 * root.sy
                                     radius: 7 * root.sx
-                                    color: tokenRow.index === root.safeRow ? "#7C3AED" : "#CBD5E1"
+                                    color: tokenRow.index === root.safeRow ? "#7C3AED" : Style.Theme.borde_suave
                                     Text {
                                         anchors.centerIn: parent
                                         text: tokenRow.rowToken
@@ -324,7 +325,7 @@ Item {
                                     Text {
                                         Layout.fillWidth: true
                                         text: root.tokenText(tokenRow.rowToken)
-                                        color: "#0F172A"
+                                        color: Style.Theme.texto_primario
                                         font.bold: true
                                         elide: Text.ElideRight
                                         font.pixelSize: 10 * root.sx
@@ -332,7 +333,7 @@ Item {
                                     Text {
                                         Layout.fillWidth: true
                                         text: "id " + root.tokenIdText(tokenRow.rowToken)
-                                        color: "#64748B"
+                                        color: Style.Theme.texto_secundario
                                         font.pixelSize: 8 * root.sx
                                     }
                                 }
@@ -362,7 +363,7 @@ Item {
                             anchors.centerIn: parent
                             visible: root.availableRows === 0
                             text: "Los tokens aparecerán con una captura disponible."
-                            color: "#64748B"
+                            color: Style.Theme.texto_secundario
                             horizontalAlignment: Text.AlignHCenter
                             wrapMode: Text.WordWrap
                             width: parent.width - 24 * root.sx
@@ -435,7 +436,7 @@ Item {
                                 Text {
                                     width: parent.width
                                     text: "d" + vectorCell.index
-                                    color: "#475569"
+                                    color: Style.Theme.texto_secundario
                                     horizontalAlignment: Text.AlignHCenter
                                     font.bold: true
                                     font.pixelSize: 8 * root.sx
@@ -443,7 +444,7 @@ Item {
                                 Text {
                                     width: parent.width
                                     text: root.formatNumber(vectorCell.modelData)
-                                    color: "#0F172A"
+                                    color: Style.Theme.texto_primario
                                     horizontalAlignment: Text.AlignHCenter
                                     font.bold: true
                                     font.pixelSize: 8 * root.sx
@@ -455,7 +456,7 @@ Item {
                             anchors.centerIn: parent
                             visible: !root.selectedVector.length
                             text: "La fila del embedding aparecerá aquí."
-                            color: "#64748B"
+                            color: Style.Theme.texto_secundario
                             font.pixelSize: 11 * root.sx
                         }
                     }
@@ -609,8 +610,8 @@ Item {
         property real sx: 1
         property real sy: 1
         radius: 10 * sx
-        color: emphasized ? Qt.alpha(accent, 0.12) : "#F8FAFC"
-        border.color: emphasized ? accent : "#CBD5E1"
+        color: emphasized ? Qt.alpha(accent, 0.12) : Style.Theme.superficie_alterna
+        border.color: emphasized ? accent : Style.Theme.borde_suave
         border.width: emphasized ? 2 : 1
         opacity: emphasized ? 1 : 0.66
         Behavior on opacity {
@@ -647,7 +648,7 @@ Item {
                 Text {
                     Layout.fillWidth: true
                     text: stageCard.title
-                    color: "#0F172A"
+                    color: Style.Theme.texto_primario
                     font.bold: true
                     elide: Text.ElideRight
                     font.pixelSize: 10 * stageCard.sx
@@ -655,7 +656,7 @@ Item {
                 Text {
                     Layout.fillWidth: true
                     text: stageCard.detail
-                    color: "#64748B"
+                    color: Style.Theme.texto_secundario
                     elide: Text.ElideRight
                     font.pixelSize: 7.5 * stageCard.sx
                 }
@@ -719,7 +720,7 @@ Item {
             Text {
                 width: parent.width
                 text: metricChip.label
-                color: "#64748B"
+                color: Style.Theme.texto_secundario
                 font.bold: true
                 horizontalAlignment: Text.AlignHCenter
                 font.pixelSize: 7 * metricChip.sx

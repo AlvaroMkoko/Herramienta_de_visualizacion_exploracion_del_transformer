@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../styles" as Style
 
 Popup {
     id: popup
@@ -168,7 +169,7 @@ Popup {
         Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            color: "#F8FAFC"
+            color: Style.Theme.superficie_alterna
             radius: 11
             border.width: 1
             border.color: "#E1E6EF"

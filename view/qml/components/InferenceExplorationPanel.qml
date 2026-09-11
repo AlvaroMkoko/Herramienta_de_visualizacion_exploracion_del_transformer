@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../styles" as Style
 
 Item {
     id: root
@@ -559,7 +560,7 @@ Item {
         anchors.fill: parent
         radius: 18 * root.sx
         color: "#F5F7FB"
-        border.color: "#CBD5E1"
+        border.color: Style.Theme.borde_suave
         border.width: 1
 
         ColumnLayout {
@@ -590,7 +591,7 @@ Item {
                     spacing: 1 * root.sy
                     Text {
                         text: "Cómo se genera el siguiente token"
-                        color: "#0F172A"
+                        color: Style.Theme.texto_primario
                         font.bold: true
                         font.pixelSize: 23 * Math.min(root.sx, root.sy)
                     }
@@ -599,7 +600,7 @@ Item {
                               ? "Explicando el token " + root.currentSnapshot.paso + "/" + root.snapshots.length
                                 + ": “" + root.currentSnapshot.token_elegido.texto + "”"
                               : "Genera un token para capturar su recorrido"
-                        color: "#64748B"
+                        color: Style.Theme.texto_secundario
                         font.pixelSize: 11 * Math.min(root.sx, root.sy)
                     }
                 }
@@ -646,7 +647,7 @@ Item {
                     label: root.guideVisible
                            ? "Ocultar explicación"
                            : "Mostrar explicación"
-                    accent: "#475569"
+                    accent: Style.Theme.texto_secundario
                     onClicked: root.guideVisible = !root.guideVisible
                 }
                 ActionPill {
@@ -686,7 +687,7 @@ Item {
 
                     Text {
                         text: "PROMPT"
-                        color: "#64748B"
+                        color: Style.Theme.texto_secundario
                         font.bold: true
                         font.pixelSize: 9 * root.sx
                     }
@@ -709,7 +710,7 @@ Item {
                     Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: "#D8E0EA" }
                     Text {
                         text: "SALIDA"
-                        color: "#64748B"
+                        color: Style.Theme.texto_secundario
                         font.bold: true
                         font.pixelSize: 9 * root.sx
                     }
@@ -751,7 +752,7 @@ Item {
 
                     Text {
                         text: "AJUSTA LA ANIMACIÓN"
-                        color: "#64748B"
+                        color: Style.Theme.texto_secundario
                         font.bold: true
                         font.pixelSize: Math.max(9, 9 * root.sx)
                     }
@@ -778,7 +779,7 @@ Item {
                     Text {
                         visible: root.stageIndex >= 1 && root.stageIndex <= 4
                         text: "CAPA"
-                        color: "#64748B"
+                        color: Style.Theme.texto_secundario
                         font.bold: true
                         font.pixelSize: 9 * root.sx
                     }
@@ -796,7 +797,7 @@ Item {
                     Text {
                         visible: root.stageIndex === 1
                         text: "CABEZA"
-                        color: "#64748B"
+                        color: Style.Theme.texto_secundario
                         font.bold: true
                         font.pixelSize: 9 * root.sx
                     }
@@ -944,7 +945,7 @@ Item {
                         anchors.margins: 12 * root.sx
                         visible: Boolean(root.operation.requiresDetail) && !root.detailAvailable
                         radius: 12 * root.sx
-                        color: "#F8FAFC"
+                        color: Style.Theme.superficie_alterna
                         border.color: "#F59E0B"
                         Column {
                             anchors.centerIn: parent
@@ -959,7 +960,7 @@ Item {
                             Text {
                                 width: parent.width
                                 text: "La captura tensorial pertenece al token más reciente"
-                                color: "#0F172A"
+                                color: Style.Theme.texto_primario
                                 font.bold: true
                                 horizontalAlignment: Text.AlignHCenter
                                 wrapMode: Text.WordWrap
@@ -968,7 +969,7 @@ Item {
                             Text {
                                 width: parent.width
                                 text: "Selecciona el último token de la cinta superior. El historial anterior conserva probabilidades para la carrera softmax, pero no duplica todos los tensores."
-                                color: "#64748B"
+                                color: Style.Theme.texto_secundario
                                 horizontalAlignment: Text.AlignHCenter
                                 wrapMode: Text.WordWrap
                                 font.pixelSize: 12 * Math.min(root.sx, root.sy)
@@ -1029,7 +1030,7 @@ Item {
                             Text {
                                 Layout.fillWidth: true
                                 text: root.operation.title || root.stage.title
-                                color: "#0F172A"
+                                color: Style.Theme.texto_primario
                                 font.bold: true
                                 wrapMode: Text.WordWrap
                                 font.pixelSize: Math.max(18, 21 * Math.min(root.sx, root.sy))
@@ -1039,8 +1040,8 @@ Item {
                                 Layout.fillWidth: true
                                 implicitHeight: essentialColumn.implicitHeight + 22 * root.sy
                                 radius: 10 * root.sx
-                                color: "#F8FAFC"
-                                border.color: "#CBD5E1"
+                                color: Style.Theme.superficie_alterna
+                                border.color: Style.Theme.borde_suave
 
                                 ColumnLayout {
                                     id: essentialColumn
@@ -1060,7 +1061,7 @@ Item {
                                         objectName: "inferenceEssentialExplanation"
                                         Layout.fillWidth: true
                                         text: root.operation.operation || root.stage.concept
-                                        color: "#334155"
+                                        color: Style.Theme.texto_secundario_fuerte
                                         wrapMode: Text.WordWrap
                                         lineHeight: 1.18
                                         font.pixelSize: Math.max(11, 11 * root.sx)
@@ -1194,7 +1195,7 @@ Item {
                                 Text {
                                     Layout.fillWidth: true
                                     text: "UBICACIÓN TÉCNICA"
-                                    color: "#475569"
+                                    color: Style.Theme.texto_secundario
                                     font.bold: true
                                     font.pixelSize: Math.max(9, 9 * root.sx)
                                 }
@@ -1269,7 +1270,7 @@ Item {
                             Item { Layout.fillWidth: true }
                             Text {
                                 text: "  " + (root.operationIndex + 1) + "/" + root.flowSteps.length
-                                color: "#334155"
+                                color: Style.Theme.texto_secundario_fuerte
                                 font.bold: true
                                 font.pixelSize: Math.max(10, 10 * root.sx)
                             }
@@ -1343,8 +1344,8 @@ Item {
         implicitWidth: pillText.implicitWidth + 24 * root.sx
         implicitHeight: 32 * root.sy
         radius: height / 2
-        color: !enabled ? "#F1F5F9" : (selected ? accent : "#FFFFFF")
-        border.color: !enabled ? "#CBD5E1" : accent
+        color: !enabled ? Style.Theme.superficie_alterna : (selected ? accent : "#FFFFFF")
+        border.color: !enabled ? Style.Theme.borde_suave : accent
         border.width: activeFocus ? 2 : 1
         opacity: enabled ? 1 : 0.55
         Accessible.role: Accessible.Button
@@ -1363,7 +1364,7 @@ Item {
             id: pillText
             anchors.centerIn: parent
             text: pill.label
-            color: pill.selected ? "white" : (pill.enabled ? pill.accent : "#94A3B8")
+            color: pill.selected ? "white" : (pill.enabled ? pill.accent : Style.Theme.texto_terciario)
             font.bold: true
             font.pixelSize: Math.max(10, 10 * Math.min(root.sx, root.sy))
         }
@@ -1391,8 +1392,8 @@ Item {
         width: Math.max(42 * sx, tokenText.implicitWidth + 16 * sx)
         height: 34 * sy
         radius: 8 * sx
-        color: selected ? accent : "#F8FAFC"
-        border.color: selected ? accent : "#CBD5E1"
+        color: selected ? accent : Style.Theme.superficie_alterna
+        border.color: selected ? accent : Style.Theme.borde_suave
         border.width: activeFocus || selected ? 2 : 1
         Accessible.role: Accessible.Button
         Accessible.name: "Seleccionar token " + (token && token.texto !== undefined
@@ -1412,7 +1413,7 @@ Item {
             anchors.centerIn: parent
             text: tokenChip.token && tokenChip.token.texto !== undefined
                   ? tokenChip.token.texto : "—"
-            color: tokenChip.selected ? "white" : "#1E293B"
+            color: tokenChip.selected ? "white" : Style.Theme.texto_secundario_fuerte
             font.bold: tokenChip.selected
             font.pixelSize: Math.max(9, 10 * Math.min(tokenChip.sx, tokenChip.sy))
         }
@@ -1440,7 +1441,7 @@ Item {
         Rectangle {
             id: decrementButton
             width: Math.max(26, 28 * stepper.sx); height: Math.max(26, 28 * stepper.sy); radius: 7 * stepper.sx
-            color: "#F8FAFC"; border.color: stepper.accent
+            color: Style.Theme.superficie_alterna; border.color: stepper.accent
             border.width: activeFocus ? 2 : 1
             opacity: enabled ? 1 : 0.45
             enabled: stepper.value > stepper.minimum
@@ -1474,7 +1475,7 @@ Item {
         Rectangle {
             id: incrementButton
             width: Math.max(26, 28 * stepper.sx); height: Math.max(26, 28 * stepper.sy); radius: 7 * stepper.sx
-            color: "#F8FAFC"; border.color: stepper.accent
+            color: Style.Theme.superficie_alterna; border.color: stepper.accent
             border.width: activeFocus ? 2 : 1
             opacity: enabled ? 1 : 0.45
             enabled: stepper.value < stepper.maximum
@@ -1512,7 +1513,7 @@ Item {
         property real sx: 1
         implicitHeight: infoColumn.implicitHeight + 20 * sx
         radius: 10 * sx
-        color: "#F8FAFC"
+        color: Style.Theme.superficie_alterna
         border.color: accent
         Column {
             id: infoColumn
@@ -1531,7 +1532,7 @@ Item {
                 objectName: infoCard.bodyObjectName
                 width: parent.width
                 text: infoCard.body
-                color: "#1E293B"
+                color: Style.Theme.texto_secundario_fuerte
                 wrapMode: Text.WordWrap
                 font.family: infoCard.monospace ? "monospace" : "sans-serif"
                 font.pixelSize: Math.max(10, 10 * infoCard.sx)

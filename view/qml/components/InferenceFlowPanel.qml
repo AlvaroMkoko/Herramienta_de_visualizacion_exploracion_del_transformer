@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../styles" as Style
 
 Item {
     id: root
@@ -270,8 +271,8 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: 15 * root.sx
-        color: "#F8FAFC"
-        border.color: "#CBD5E1"
+        color: Style.Theme.superficie_alterna
+        border.color: Style.Theme.borde_suave
 
         ColumnLayout {
             anchors.fill: parent
@@ -287,7 +288,7 @@ Item {
                     spacing: 0
                     Text {
                         text: "Laboratorio de inferencia · forward pass real"
-                        color: "#111111"
+                        color: Style.Theme.texto_primario
                         font.bold: true
                         font.pixelSize: 21 * Math.min(root.sx, root.sy)
                     }
@@ -296,7 +297,7 @@ Item {
                               ? "Token " + root.currentSnapshot.paso + "/" + root.snapshots.length
                                 + " · seleccionado “" + root.currentSnapshot.token_elegido.texto + "”"
                               : "Genera texto para capturar el forward pass"
-                        color: "#475569"
+                        color: Style.Theme.texto_secundario
                         font.pixelSize: 11 * Math.min(root.sx, root.sy)
                     }
                 }
@@ -333,7 +334,7 @@ Item {
                 }
             }
 
-            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: "#E2E8F0" }
+            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Style.Theme.borde_medio }
 
             // Zona superior: tokens, selección y playback.
             RowLayout {
@@ -356,7 +357,7 @@ Item {
                         spacing: 3 * root.sy
                         Text {
                             text: "TOKENS · identidad estable · clic en salida para cambiar la query"
-                            color: "#475569"
+                            color: Style.Theme.texto_secundario
                             font.bold: true
                             font.pixelSize: 9 * Math.min(root.sx, root.sy)
                         }
@@ -378,12 +379,12 @@ Item {
                                     height: 36 * root.sy
                                     radius: 6 * root.sx
                                     color: ["#FFF3D6", "#DFF3FF", "#DCF7EE", "#FCE4F2"][promptToken.modelData.posicion % 4]
-                                    border.color: "#475569"
+                                    border.color: Style.Theme.texto_secundario
                                     Text {
                                         id: promptTokenText
                                         anchors.centerIn: parent
                                         text: promptToken.modelData.texto
-                                        color: "#111111"
+                                        color: Style.Theme.texto_primario
                                         font.bold: true
                                         font.pixelSize: 10 * Math.min(root.sx, root.sy)
                                     }
@@ -396,7 +397,7 @@ Item {
                                     MouseArea { id: promptHover; anchors.fill: parent; hoverEnabled: true }
                                 }
                             }
-                            Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: "#CBD5E1" }
+                            Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: Style.Theme.borde_suave }
                             ListView {
                                 Layout.preferredWidth: 310 * root.sx
                                 Layout.fillHeight: true
@@ -418,7 +419,7 @@ Item {
                                         id: generatedText
                                         anchors.centerIn: parent
                                         text: generatedToken.modelData.token_elegido.texto
-                                        color: "#111111"
+                                        color: Style.Theme.texto_primario
                                         font.bold: true
                                         font.pixelSize: 10 * Math.min(root.sx, root.sy)
                                     }
@@ -461,7 +462,7 @@ Item {
                         ColumnLayout {
                             visible: root.sceneIndex >= 3 && root.sceneIndex <= 12
                             Layout.fillWidth: true; spacing: 0
-                            Text { text: "CAPA " + (root.layerIndex + 1); color: "#475569"; font.bold: true; font.pixelSize: 9 * root.sx }
+                            Text { text: "CAPA " + (root.layerIndex + 1); color: Style.Theme.texto_secundario; font.bold: true; font.pixelSize: 9 * root.sx }
                             Slider {
                                 Layout.fillWidth: true
                                 from: 0; to: Math.max(0, Number(root.metadata.num_layers || 1) - 1)
@@ -532,7 +533,7 @@ Item {
                     Layout.minimumWidth: 1040 * root.sx
                     radius: 11 * root.sx
                     color: "#FFFFFF"
-                    border.color: "#CBD5E1"
+                    border.color: Style.Theme.borde_suave
                     Behavior on opacity { NumberAnimation { duration: root.reducedMotion ? 0 : 220; easing.type: Easing.InOutCubic } }
 
                     ColumnLayout {
@@ -546,7 +547,7 @@ Item {
                                 Layout.fillWidth: true; spacing: 0
                                 Text {
                                     text: (root.sceneIndex + 1) + "/" + root.sceneDefinitions.length + " · " + root.scene.title
-                                    color: "#111111"; font.bold: true
+                                    color: Style.Theme.texto_primario; font.bold: true
                                     font.pixelSize: 18 * Math.min(root.sx, root.sy)
                                 }
                                 Text {
@@ -614,12 +615,12 @@ Item {
                                             required property var modelData
                                             width: 145 * root.sx; height: 88 * root.sy; radius: 9 * root.sx
                                             color: ["#FFF3D6", "#DFF3FF", "#DCF7EE", "#FCE4F2"][tokenCard.modelData.posicion % 4]
-                                            border.color: "#475569"
+                                            border.color: Style.Theme.texto_secundario
                                             Column {
                                                 anchors.centerIn: parent; spacing: 3 * root.sy
-                                                Text { anchors.horizontalCenter: parent.horizontalCenter; text: "“" + tokenCard.modelData.texto + "”"; color: "#111111"; font.bold: true; font.pixelSize: 14 * root.sx }
-                                                Text { anchors.horizontalCenter: parent.horizontalCenter; text: "ID " + tokenCard.modelData.token_id + " · pos " + tokenCard.modelData.posicion; color: "#334155"; font.pixelSize: 10 * root.sx }
-                                                Text { anchors.horizontalCenter: parent.horizontalCenter; text: tokenCard.modelData.offset_inicio >= 0 ? "offset [" + tokenCard.modelData.offset_inicio + ", " + tokenCard.modelData.offset_fin + ")" : "offset no disponible"; color: "#64748B"; font.pixelSize: 9 * root.sx }
+                                                Text { anchors.horizontalCenter: parent.horizontalCenter; text: "“" + tokenCard.modelData.texto + "”"; color: Style.Theme.texto_primario; font.bold: true; font.pixelSize: 14 * root.sx }
+                                                Text { anchors.horizontalCenter: parent.horizontalCenter; text: "ID " + tokenCard.modelData.token_id + " · pos " + tokenCard.modelData.posicion; color: Style.Theme.texto_secundario_fuerte; font.pixelSize: 10 * root.sx }
+                                                Text { anchors.horizontalCenter: parent.horizontalCenter; text: tokenCard.modelData.offset_inicio >= 0 ? "offset [" + tokenCard.modelData.offset_inicio + ", " + tokenCard.modelData.offset_fin + ")" : "offset no disponible"; color: Style.Theme.texto_secundario; font.pixelSize: 9 * root.sx }
                                             }
                                         }
                                     }
@@ -648,10 +649,10 @@ Item {
                                         id: positionalPart
                                         required property var modelData
                                         Layout.fillWidth: true; Layout.fillHeight: true
-                                        radius: 8 * root.sx; color: "#F8FAFC"; border.color: "#CBD5E1"
+                                        radius: 8 * root.sx; color: Style.Theme.superficie_alterna; border.color: Style.Theme.borde_suave
                                         ColumnLayout {
                                             anchors.fill: parent; anchors.margins: 7 * root.sx
-                                            Text { text: positionalPart.modelData.title; color: "#111111"; font.bold: true; font.pixelSize: 11 * root.sx }
+                                            Text { text: positionalPart.modelData.title; color: Style.Theme.texto_primario; font.bold: true; font.pixelSize: 11 * root.sx }
                                             ScientificMatrix {
                                                 Layout.fillWidth: true; Layout.fillHeight: true
                                                 matrix: (positionalPart.modelData.data.matriz || {}).valores || []
@@ -659,7 +660,7 @@ Item {
                                                 rowPrefix: "T"; valueLabel: "valor"
                                                 alternativeText: positionalPart.modelData.title + " como matriz token por dimensión"
                                             }
-                                            Text { Layout.fillWidth: true; text: (positionalPart.modelData.data.matriz || {}).level_of_detail || ""; color: "#64748B"; wrapMode: Text.WordWrap; font.pixelSize: 8 * root.sx }
+                                            Text { Layout.fillWidth: true; text: (positionalPart.modelData.data.matriz || {}).level_of_detail || ""; color: Style.Theme.texto_secundario; wrapMode: Text.WordWrap; font.pixelSize: 8 * root.sx }
                                         }
                                     }
                                 }
@@ -678,10 +679,10 @@ Item {
                                         id: qkvPart
                                         required property var modelData
                                         Layout.fillWidth: true; Layout.fillHeight: true
-                                        radius: 8 * root.sx; color: "#F8FAFC"; border.color: "#CBD5E1"
+                                        radius: 8 * root.sx; color: Style.Theme.superficie_alterna; border.color: Style.Theme.borde_suave
                                         ColumnLayout {
                                             anchors.fill: parent; anchors.margins: 7 * root.sx
-                                            Text { text: qkvPart.modelData.title; color: "#111111"; font.bold: true; font.pixelSize: 11 * root.sx }
+                                            Text { text: qkvPart.modelData.title; color: Style.Theme.texto_primario; font.bold: true; font.pixelSize: 11 * root.sx }
                                             ScientificMatrix {
                                                 Layout.fillWidth: true; Layout.fillHeight: true
                                                 matrix: qkvPart.modelData.matrix; colorMode: "diverging"
@@ -731,7 +732,7 @@ Item {
                         RowLayout {
                             visible: root.sceneIndex >= 4 && root.sceneIndex <= 7 && root.attentionColumns > 1
                             Layout.fillWidth: true
-                            Text { text: "Rango de keys"; color: "#475569"; font.pixelSize: 9 * root.sx }
+                            Text { text: "Rango de keys"; color: Style.Theme.texto_secundario; font.pixelSize: 9 * root.sx }
                             RangeSlider {
                                 Layout.fillWidth: true
                                 from: 0; to: Math.max(1, root.attentionColumns - 1)
@@ -741,7 +742,7 @@ Item {
                                 second.onMoved: root.keyRangeEnd = second.value
                                 Accessible.name: "Rango de tokens key mostrado"
                             }
-                            Text { text: Math.floor(root.keyRangeStart) + "–" + Math.floor(root.keyRangeEnd); color: "#111111"; font.bold: true; font.pixelSize: 9 * root.sx }
+                            Text { text: Math.floor(root.keyRangeStart) + "–" + Math.floor(root.keyRangeEnd); color: Style.Theme.texto_primario; font.bold: true; font.pixelSize: 9 * root.sx }
                         }
                     }
                 }
@@ -752,7 +753,7 @@ Item {
                     Layout.fillHeight: true
                     radius: 11 * root.sx
                     color: "#FFFFFF"
-                    border.color: "#CBD5E1"
+                    border.color: Style.Theme.borde_suave
 
                     ScrollView {
                         anchors.fill: parent
@@ -766,7 +767,7 @@ Item {
                                 visible: root.sceneIndex === 1
                                 Layout.fillWidth: true
                                 text: "EMBEDDINGS · EXPLORA SIN SATURARTE"
-                                color: "#475569"
+                                color: Style.Theme.texto_secundario
                                 font.bold: true
                                 font.pixelSize: 9 * root.sx
                             }
@@ -774,7 +775,7 @@ Item {
                                 visible: root.sceneIndex === 1
                                 Layout.fillWidth: true
                                 text: "La vista mantiene solo lo esencial. Pulsa una tarjeta o una celda de la matriz para profundizar."
-                                color: "#334155"
+                                color: Style.Theme.texto_secundario_fuerte
                                 wrapMode: Text.WordWrap
                                 font.pixelSize: 10 * root.sx
                             }
@@ -855,10 +856,10 @@ Item {
                                 visible: root.sceneIndex !== 1 && root.densityMode >= 1 && root.attentionData.cabezas
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 104 * root.sy
-                                radius: 8 * root.sx; color: "#F8FAFC"; border.color: "#CBD5E1"
+                                radius: 8 * root.sx; color: Style.Theme.superficie_alterna; border.color: Style.Theme.borde_suave
                                 Column {
                                     anchors.fill: parent; anchors.margins: 8 * root.sx; spacing: 4 * root.sy
-                                    Text { text: "MÉTRICAS · H" + String(root.headIndex + 1).padStart(2, "0"); color: "#111111"; font.bold: true; font.pixelSize: 9 * root.sx }
+                                    Text { text: "MÉTRICAS · H" + String(root.headIndex + 1).padStart(2, "0"); color: Style.Theme.texto_primario; font.bold: true; font.pixelSize: 9 * root.sx }
                                     Text {
                                         width: parent.width
                                         text: root.attentionData.cabezas && root.attentionData.cabezas.length > root.headIndex
@@ -867,7 +868,7 @@ Item {
                                                 + "\nmasa top-3 " + root.attentionData.cabezas[root.headIndex].masa_top3
                                                 + " · soporte efectivo " + root.attentionData.cabezas[root.headIndex].soporte_efectivo
                                               : "No aplicable"
-                                        color: "#334155"; wrapMode: Text.WordWrap; font.pixelSize: 9 * root.sx
+                                        color: Style.Theme.texto_secundario_fuerte; wrapMode: Text.WordWrap; font.pixelSize: 9 * root.sx
                                     }
                                 }
                             }
@@ -928,7 +929,7 @@ Item {
                 Layout.maximumHeight: 80 * root.sy
                 radius: 9 * root.sx
                 color: "#FFFFFF"
-                border.color: "#CBD5E1"
+                border.color: Style.Theme.borde_suave
                 ScrollView {
                     anchors.fill: parent; anchors.margins: 6 * root.sx
                     contentWidth: timelineRow.implicitWidth
@@ -989,7 +990,7 @@ Item {
                     }
                     Text {
                         Layout.fillWidth: true; text: root.detailTitle
-                        color: "#0F172A"; font.bold: true
+                        color: Style.Theme.texto_primario; font.bold: true
                         wrapMode: Text.WordWrap; font.pixelSize: 22 * root.sx
                     }
                 }
@@ -999,33 +1000,33 @@ Item {
                     Accessible.name: "Cerrar explicación"
                 }
             }
-            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: "#E2E8F0" }
+            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Style.Theme.borde_medio }
             ScrollView {
                 Layout.fillWidth: true; Layout.fillHeight: true; clip: true
                 ColumnLayout {
                     width: parent.width; spacing: 14 * root.sy
                     Text {
                         Layout.fillWidth: true; text: root.detailSummary
-                        color: "#1E293B"; font.bold: true
+                        color: Style.Theme.texto_secundario_fuerte; font.bold: true
                         wrapMode: Text.WordWrap; font.pixelSize: 15 * root.sx
                     }
                     Text {
                         Layout.fillWidth: true; text: root.detailBody
-                        color: "#334155"; wrapMode: Text.WordWrap
+                        color: Style.Theme.texto_secundario_fuerte; wrapMode: Text.WordWrap
                         font.pixelSize: 13 * root.sx; lineHeight: 1.25
                     }
                     Rectangle {
                         visible: root.detailExample.length > 0
                         Layout.fillWidth: true
                         implicitHeight: exampleColumn.implicitHeight + 20 * root.sy
-                        radius: 9 * root.sx; color: "#F8FAFC"; border.color: "#CBD5E1"
+                        radius: 9 * root.sx; color: Style.Theme.superficie_alterna; border.color: Style.Theme.borde_suave
                         Column {
                             id: exampleColumn
                             anchors.left: parent.left; anchors.right: parent.right
                             anchors.top: parent.top; anchors.margins: 10 * root.sx
                             spacing: 5 * root.sy
                             Text { text: "EJEMPLO / LÍMITE"; color: root.detailAccent; font.bold: true; font.pixelSize: 9 * root.sx }
-                            Text { width: parent.width; text: root.detailExample; color: "#334155"; wrapMode: Text.WordWrap; font.pixelSize: 12 * root.sx }
+                            Text { width: parent.width; text: root.detailExample; color: Style.Theme.texto_secundario_fuerte; wrapMode: Text.WordWrap; font.pixelSize: 12 * root.sx }
                         }
                     }
                 }
@@ -1051,7 +1052,7 @@ Item {
         implicitWidth: 0
         implicitHeight: launchContent.implicitHeight + 18 * sx
         radius: 9 * sx
-        color: launchMouse.containsMouse ? "#F1F5F9" : "#F8FAFC"
+        color: launchMouse.containsMouse ? Style.Theme.superficie_alterna : Style.Theme.superficie_alterna
         border.color: accent
         border.width: launchMouse.containsMouse ? 2 : 1
         activeFocusOnTab: true
@@ -1067,10 +1068,10 @@ Item {
             spacing: 3 * launchCard.sx
             Row {
                 width: parent.width; spacing: 6 * launchCard.sx
-                Text { text: launchCard.title; width: parent.width - moreLabel.width - 8 * launchCard.sx; color: "#0F172A"; font.bold: true; font.pixelSize: 10 * launchCard.sx; elide: Text.ElideRight }
+                Text { text: launchCard.title; width: parent.width - moreLabel.width - 8 * launchCard.sx; color: Style.Theme.texto_primario; font.bold: true; font.pixelSize: 10 * launchCard.sx; elide: Text.ElideRight }
                 Text { id: moreLabel; text: "Más →"; color: launchCard.accent; font.bold: true; font.pixelSize: 9 * launchCard.sx }
             }
-            Text { width: parent.width; text: launchCard.preview; color: "#475569"; wrapMode: Text.WordWrap; font.pixelSize: 9 * launchCard.sx }
+            Text { width: parent.width; text: launchCard.preview; color: Style.Theme.texto_secundario; wrapMode: Text.WordWrap; font.pixelSize: 9 * launchCard.sx }
         }
         MouseArea {
             id: launchMouse; anchors.fill: parent; hoverEnabled: true
@@ -1088,14 +1089,14 @@ Item {
         property real sx: 1
         Layout.fillWidth: true
         implicitHeight: sectionColumn.implicitHeight + 16 * sx
-        radius: 7 * sx; color: "#F8FAFC"; border.color: accent
+        radius: 7 * sx; color: Style.Theme.superficie_alterna; border.color: accent
         Column {
             id: sectionColumn
             anchors.left: parent.left; anchors.right: parent.right
             anchors.top: parent.top; anchors.margins: 8 * infoSection.sx
             spacing: 3 * infoSection.sx
             Text { text: infoSection.title; color: infoSection.accent; font.bold: true; font.pixelSize: 9 * infoSection.sx }
-            Text { width: parent.width; text: infoSection.body; color: "#1E293B"; wrapMode: Text.WordWrap; font.family: infoSection.monospace ? "monospace" : "sans-serif"; font.pixelSize: 9 * infoSection.sx }
+            Text { width: parent.width; text: infoSection.body; color: Style.Theme.texto_secundario_fuerte; wrapMode: Text.WordWrap; font.family: infoSection.monospace ? "monospace" : "sans-serif"; font.pixelSize: 9 * infoSection.sx }
         }
     }
 
@@ -1133,11 +1134,11 @@ Item {
                 Text {
                     Layout.fillWidth: true
                     text: "Embedding escalado · token × dimensión"
-                    color: "#0F172A"; font.bold: true; font.pixelSize: 15 * embeddingScene.sx
+                    color: Style.Theme.texto_primario; font.bold: true; font.pixelSize: 15 * embeddingScene.sx
                 }
                 Text {
                     text: "Pulsa cualquier dato para entenderlo"
-                    color: "#64748B"; font.pixelSize: 9 * embeddingScene.sx
+                    color: Style.Theme.texto_secundario; font.pixelSize: 9 * embeddingScene.sx
                 }
             }
             RowLayout {
@@ -1147,7 +1148,7 @@ Item {
                     Layout.fillWidth: true; Layout.fillHeight: true
                     Layout.minimumWidth: 600 * embeddingScene.sx
                     Layout.preferredWidth: 850 * embeddingScene.sx
-                    radius: 10 * embeddingScene.sx; color: "#FFFFFF"; border.color: "#CBD5E1"
+                    radius: 10 * embeddingScene.sx; color: "#FFFFFF"; border.color: Style.Theme.borde_suave
                     clip: true
                     ScientificMatrix {
                         id: embeddingHeatmap
@@ -1191,7 +1192,7 @@ Item {
                     }
                     Rectangle {
                         Layout.fillWidth: true; Layout.preferredHeight: 42 * embeddingScene.sy
-                        radius: 7 * embeddingScene.sx; border.color: "#CBD5E1"
+                        radius: 7 * embeddingScene.sx; border.color: Style.Theme.borde_suave
                         gradient: Gradient {
                             orientation: Gradient.Horizontal
                             GradientStop { position: 0.0; color: "#0072B2" }
@@ -1201,7 +1202,7 @@ Item {
                         RowLayout {
                             anchors.fill: parent; anchors.margins: 5 * embeddingScene.sx
                             Text { text: embeddingScene.localScale ? Number(embeddingHeatmap.dataMinimum).toFixed(2) : "−1"; color: "#FFFFFF"; font.bold: true; font.pixelSize: 9 * embeddingScene.sx }
-                            Text { Layout.fillWidth: true; text: "0"; color: "#0F172A"; horizontalAlignment: Text.AlignHCenter; font.bold: true; font.pixelSize: 9 * embeddingScene.sx }
+                            Text { Layout.fillWidth: true; text: "0"; color: Style.Theme.texto_primario; horizontalAlignment: Text.AlignHCenter; font.bold: true; font.pixelSize: 9 * embeddingScene.sx }
                             Text { text: embeddingScene.localScale ? Number(embeddingHeatmap.dataMaximum).toFixed(2) : "+1"; color: "#FFFFFF"; font.bold: true; font.pixelSize: 9 * embeddingScene.sx }
                         }
                         MouseArea {
@@ -1263,7 +1264,7 @@ Item {
             anchors.fill: parent; spacing: 8 * matrixScene.sx
             ColumnLayout {
                 Layout.fillWidth: true; Layout.fillHeight: true
-                Text { text: matrixScene.title; color: "#111111"; font.bold: true; font.pixelSize: 11 * matrixScene.sx }
+                Text { text: matrixScene.title; color: Style.Theme.texto_primario; font.bold: true; font.pixelSize: 11 * matrixScene.sx }
                 ScientificMatrix {
                     Layout.fillWidth: true; Layout.fillHeight: true
                     matrix: matrixScene.matrixData.valores || matrixScene.matrixData.values || []
@@ -1271,11 +1272,11 @@ Item {
                     rowPrefix: "T"; valueLabel: "activación"
                     alternativeText: matrixScene.title
                 }
-                Text { Layout.fillWidth: true; text: matrixScene.matrixData.level_of_detail || ""; color: "#64748B"; wrapMode: Text.WordWrap; font.pixelSize: 8 * matrixScene.sx }
+                Text { Layout.fillWidth: true; text: matrixScene.matrixData.level_of_detail || ""; color: Style.Theme.texto_secundario; wrapMode: Text.WordWrap; font.pixelSize: 8 * matrixScene.sx }
             }
             ColumnLayout {
                 Layout.preferredWidth: 230 * matrixScene.sx; Layout.fillHeight: true
-                Text { text: "Norma L2 por token"; color: "#334155"; font.bold: true; font.pixelSize: 9 * matrixScene.sx }
+                Text { text: "Norma L2 por token"; color: Style.Theme.texto_secundario_fuerte; font.bold: true; font.pixelSize: 9 * matrixScene.sx }
                 ListView {
                     Layout.fillWidth: true; Layout.fillHeight: true; clip: true; spacing: 3 * matrixScene.sy
                     model: matrixScene.norms
@@ -1283,9 +1284,9 @@ Item {
                         id: normBar
                         required property real modelData
                         width: ListView.view.width; height: 15 * matrixScene.sy
-                        color: "#E2E8F0"; radius: height / 2
+                        color: Style.Theme.borde_medio; radius: height / 2
                         Rectangle { width: parent.width * Math.min(1, normBar.modelData / 30); height: parent.height; radius: parent.radius; color: "#56B4E9" }
-                        Text { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; anchors.rightMargin: 4; text: Number(normBar.modelData).toFixed(3); color: "#111111"; font.pixelSize: 8 * matrixScene.sx }
+                        Text { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; anchors.rightMargin: 4; text: Number(normBar.modelData).toFixed(3); color: Style.Theme.texto_primario; font.pixelSize: 8 * matrixScene.sx }
                     }
                 }
             }
@@ -1319,7 +1320,7 @@ Item {
                     id: comparisonColumn
                     required property int index
                     Layout.fillWidth: true; Layout.fillHeight: true
-                    Text { text: attentionScene.title + (comparisonColumn.index === 1 ? " · comparación" : ""); color: "#111111"; font.bold: true; font.pixelSize: 11 * attentionScene.sx }
+                    Text { text: attentionScene.title + (comparisonColumn.index === 1 ? " · comparación" : ""); color: Style.Theme.texto_primario; font.bold: true; font.pixelSize: 11 * attentionScene.sx }
                     ScientificMatrix {
                         Layout.fillWidth: true; Layout.fillHeight: true
                         matrix: comparisonColumn.index === 0 ? attentionScene.matrix : attentionScene.comparisonMatrix
@@ -1349,7 +1350,7 @@ Item {
         property real sy: 1
         ColumnLayout {
             anchors.fill: parent; spacing: 10 * residualScene.sy
-            Text { text: residualScene.title; color: "#111111"; font.bold: true; font.pixelSize: 12 * residualScene.sx }
+            Text { text: residualScene.title; color: Style.Theme.texto_primario; font.bold: true; font.pixelSize: 12 * residualScene.sx }
             RowLayout {
                 Layout.fillWidth: true; Layout.preferredHeight: 115 * residualScene.sy; spacing: 8 * residualScene.sx
                 Repeater {
@@ -1362,21 +1363,21 @@ Item {
                         id: residualMetric
                         required property var modelData
                         Layout.fillWidth: true; Layout.fillHeight: true; radius: 9 * residualScene.sx
-                        color: "#F8FAFC"; border.color: residualMetric.modelData.color
+                        color: Style.Theme.superficie_alterna; border.color: residualMetric.modelData.color
                         Column { anchors.centerIn: parent; spacing: 5
                             Text { anchors.horizontalCenter: parent.horizontalCenter; text: residualMetric.modelData.label; color: residualMetric.modelData.color; font.bold: true; font.pixelSize: 10 * residualScene.sx }
-                            Text { anchors.horizontalCenter: parent.horizontalCenter; text: residualMetric.modelData.value.toFixed(5); color: "#111111"; font.bold: true; font.pixelSize: 18 * residualScene.sx }
+                            Text { anchors.horizontalCenter: parent.horizontalCenter; text: residualMetric.modelData.value.toFixed(5); color: Style.Theme.texto_primario; font.bold: true; font.pixelSize: 18 * residualScene.sx }
                         }
                     }
                 }
             }
             RowLayout {
                 Layout.fillWidth: true
-                Text { Layout.fillWidth: true; text: "ratio ‖Δx‖/‖x‖ = " + Number(residualScene.sceneData.ratio_actualizacion || 0).toFixed(5); color: "#334155"; font.pixelSize: 10 * residualScene.sx }
-                Text { text: "cos(x, Δx) = " + Number(residualScene.sceneData.coseno || 0).toFixed(5); color: "#334155"; font.pixelSize: 10 * residualScene.sx }
+                Text { Layout.fillWidth: true; text: "ratio ‖Δx‖/‖x‖ = " + Number(residualScene.sceneData.ratio_actualizacion || 0).toFixed(5); color: Style.Theme.texto_secundario_fuerte; font.pixelSize: 10 * residualScene.sx }
+                Text { text: "cos(x, Δx) = " + Number(residualScene.sceneData.coseno || 0).toFixed(5); color: Style.Theme.texto_secundario_fuerte; font.pixelSize: 10 * residualScene.sx }
             }
-            Rectangle { Layout.fillWidth: true; Layout.fillHeight: true; radius: 8 * residualScene.sx; color: "#F8FAFC"; border.color: "#CBD5E1"
-                Text { anchors.centerIn: parent; width: parent.width - 20; text: "LayerNorm post-norm\nantes: μ=" + Number(residualScene.sceneData.media_antes || 0).toFixed(5) + " · σ=" + Number(residualScene.sceneData.desviacion_antes || 0).toFixed(5) + "\ndespués: μ=" + Number(residualScene.sceneData.media_despues || 0).toFixed(5) + " · σ=" + Number(residualScene.sceneData.desviacion_despues || 0).toFixed(5) + " · ε=" + Number(residualScene.sceneData.epsilon || 0); color: "#111111"; horizontalAlignment: Text.AlignHCenter; font.pixelSize: 11 * residualScene.sx }
+            Rectangle { Layout.fillWidth: true; Layout.fillHeight: true; radius: 8 * residualScene.sx; color: Style.Theme.superficie_alterna; border.color: Style.Theme.borde_suave
+                Text { anchors.centerIn: parent; width: parent.width - 20; text: "LayerNorm post-norm\nantes: μ=" + Number(residualScene.sceneData.media_antes || 0).toFixed(5) + " · σ=" + Number(residualScene.sceneData.desviacion_antes || 0).toFixed(5) + "\ndespués: μ=" + Number(residualScene.sceneData.media_despues || 0).toFixed(5) + " · σ=" + Number(residualScene.sceneData.desviacion_despues || 0).toFixed(5) + " · ε=" + Number(residualScene.sceneData.epsilon || 0); color: Style.Theme.texto_primario; horizontalAlignment: Text.AlignHCenter; font.pixelSize: 11 * residualScene.sx }
             }
         }
     }
@@ -1390,7 +1391,7 @@ Item {
             anchors.fill: parent; spacing: 10 * ffnScene.sx
             ColumnLayout {
                 Layout.fillWidth: true; Layout.fillHeight: true
-                Text { text: "Histograma de activaciones · " + (ffnScene.sceneData.activacion || ""); color: "#111111"; font.bold: true; font.pixelSize: 11 * ffnScene.sx }
+                Text { text: "Histograma de activaciones · " + (ffnScene.sceneData.activacion || ""); color: Style.Theme.texto_primario; font.bold: true; font.pixelSize: 11 * ffnScene.sx }
                 Row {
                     Layout.fillWidth: true; Layout.fillHeight: true; spacing: 3 * ffnScene.sx
                     Repeater {
@@ -1400,23 +1401,23 @@ Item {
                             required property int modelData
                             width: Math.max(4, (parent.parent.width - 50) / Math.max(1, ((ffnScene.sceneData.histograma_activacion || {}).conteos || []).length))
                             height: parent.parent.height * activationBar.modelData / root.histogramMaximum(ffnScene.sceneData.histograma_activacion)
-                            anchors.bottom: parent.bottom; color: "#CC79A7"; border.color: "#111111"
+                            anchors.bottom: parent.bottom; color: "#CC79A7"; border.color: Style.Theme.texto_primario
                         }
                     }
                 }
             }
             ColumnLayout {
                 Layout.preferredWidth: 300 * ffnScene.sx; Layout.fillHeight: true
-                Text { text: "Top unidades por |activación|"; color: "#111111"; font.bold: true; font.pixelSize: 10 * ffnScene.sx }
+                Text { text: "Top unidades por |activación|"; color: Style.Theme.texto_primario; font.bold: true; font.pixelSize: 10 * ffnScene.sx }
                 Repeater {
                     model: ffnScene.sceneData.unidades_top || []
                     delegate: Rectangle {
                         id: ffnUnit
                         required property var modelData
-                        Layout.fillWidth: true; Layout.preferredHeight: 29 * ffnScene.sx; radius: 5 * ffnScene.sx; color: "#F8FAFC"; border.color: "#CBD5E1"
+                        Layout.fillWidth: true; Layout.preferredHeight: 29 * ffnScene.sx; radius: 5 * ffnScene.sx; color: Style.Theme.superficie_alterna; border.color: Style.Theme.borde_suave
                         RowLayout { anchors.fill: parent; anchors.margins: 5
-                            Text { Layout.fillWidth: true; text: "unidad " + ffnUnit.modelData.unidad; color: "#334155"; font.pixelSize: 9 * ffnScene.sx }
-                            Text { text: Number(ffnUnit.modelData.valor).toFixed(5); color: "#111111"; font.bold: true; font.pixelSize: 9 * ffnScene.sx }
+                            Text { Layout.fillWidth: true; text: "unidad " + ffnUnit.modelData.unidad; color: Style.Theme.texto_secundario_fuerte; font.pixelSize: 9 * ffnScene.sx }
+                            Text { text: Number(ffnUnit.modelData.valor).toFixed(5); color: Style.Theme.texto_primario; font.bold: true; font.pixelSize: 9 * ffnScene.sx }
                         }
                     }
                 }
@@ -1441,14 +1442,14 @@ Item {
                         id: layerCard
                         required property var modelData
                         width: 190 * trajectoryScene.sx; height: 260 * trajectoryScene.sy
-                        radius: 9 * trajectoryScene.sx; color: "#F8FAFC"; border.color: "#0072B2"
+                        radius: 9 * trajectoryScene.sx; color: Style.Theme.superficie_alterna; border.color: "#0072B2"
                         property var att: root.attentionFromLayer(modelData)
                         property var res: root.residualFromLayer(modelData)
                         Column { anchors.fill: parent; anchors.margins: 10 * root.sx; spacing: 8 * root.sy
                             Text { text: "CAPA " + layerCard.modelData.capa; color: "#0072B2"; font.bold: true; font.pixelSize: 13 * root.sx }
-                            Text { width: parent.width; text: layerCard.att.cabezas && layerCard.att.cabezas.length ? "entropía media H01: " + layerCard.att.cabezas[0].entropia + "\npico H01: " + layerCard.att.cabezas[0].maximo : "atención no disponible"; color: "#334155"; wrapMode: Text.WordWrap; font.pixelSize: 10 * root.sx }
-                            Rectangle { width: parent.width; height: 1; color: "#CBD5E1" }
-                            Text { width: parent.width; text: "‖x‖ " + Number(layerCard.res.norma_entrada || 0).toFixed(4) + "\n‖Δx‖ " + Number(layerCard.res.norma_actualizacion || 0).toFixed(4) + "\nratio " + Number(layerCard.res.ratio_actualizacion || 0).toFixed(4); color: "#334155"; font.pixelSize: 10 * root.sx }
+                            Text { width: parent.width; text: layerCard.att.cabezas && layerCard.att.cabezas.length ? "entropía media H01: " + layerCard.att.cabezas[0].entropia + "\npico H01: " + layerCard.att.cabezas[0].maximo : "atención no disponible"; color: Style.Theme.texto_secundario_fuerte; wrapMode: Text.WordWrap; font.pixelSize: 10 * root.sx }
+                            Rectangle { width: parent.width; height: 1; color: Style.Theme.borde_suave }
+                            Text { width: parent.width; text: "‖x‖ " + Number(layerCard.res.norma_entrada || 0).toFixed(4) + "\n‖Δx‖ " + Number(layerCard.res.norma_actualizacion || 0).toFixed(4) + "\nratio " + Number(layerCard.res.ratio_actualizacion || 0).toFixed(4); color: Style.Theme.texto_secundario_fuerte; font.pixelSize: 10 * root.sx }
                         }
                     }
                 }
@@ -1467,7 +1468,7 @@ Item {
             anchors.fill: parent; spacing: 10 * logitsScene.sx
             ColumnLayout {
                 Layout.fillWidth: true; Layout.fillHeight: true
-                Text { text: logitsScene.showProbabilities ? "Probabilidades top-k y acumulada" : "Histograma del vocabulario completo"; color: "#111111"; font.bold: true; font.pixelSize: 11 * logitsScene.sx }
+                Text { text: logitsScene.showProbabilities ? "Probabilidades top-k y acumulada" : "Histograma del vocabulario completo"; color: Style.Theme.texto_primario; font.bold: true; font.pixelSize: 11 * logitsScene.sx }
                 Row {
                     visible: !logitsScene.showProbabilities
                     Layout.fillWidth: true; Layout.fillHeight: true; spacing: 3 * logitsScene.sx
@@ -1478,11 +1479,11 @@ Item {
                             required property int modelData
                             width: Math.max(5, (parent.parent.width - 30) / Math.max(1, ((logitsScene.logits.histograma || {}).conteos || []).length))
                             height: parent.parent.height * logitsBar.modelData / root.histogramMaximum(logitsScene.logits.histograma)
-                            anchors.bottom: parent.bottom; color: "#56B4E9"; border.color: "#111111"
+                            anchors.bottom: parent.bottom; color: "#56B4E9"; border.color: Style.Theme.texto_primario
                         }
                     }
                 }
-                Text { visible: !logitsScene.showProbabilities; text: "shape " + (logitsScene.logits.shape || "—") + " · dtype " + (logitsScene.logits.dtype || "—"); color: "#475569"; font.pixelSize: 9 * logitsScene.sx }
+                Text { visible: !logitsScene.showProbabilities; text: "shape " + (logitsScene.logits.shape || "—") + " · dtype " + (logitsScene.logits.dtype || "—"); color: Style.Theme.texto_secundario; font.pixelSize: 9 * logitsScene.sx }
                 ListView {
                     visible: logitsScene.showProbabilities
                     Layout.fillWidth: true; Layout.fillHeight: true; clip: true; spacing: 5 * logitsScene.sy
@@ -1491,11 +1492,11 @@ Item {
                         id: predictionRow
                         required property var modelData
                         width: ListView.view.width; height: 38 * logitsScene.sy; radius: 6 * logitsScene.sx
-                        color: predictionRow.modelData.elegido ? "#DCF7EE" : "#F8FAFC"; border.color: predictionRow.modelData.elegido ? "#009E73" : "#CBD5E1"
+                        color: predictionRow.modelData.elegido ? "#DCF7EE" : Style.Theme.superficie_alterna; border.color: predictionRow.modelData.elegido ? "#009E73" : Style.Theme.borde_suave
                         RowLayout { anchors.fill: parent; anchors.margins: 6
-                            Text { Layout.preferredWidth: 80 * logitsScene.sx; text: "#" + predictionRow.modelData.rango + "  “" + predictionRow.modelData.texto + "”"; color: "#111111"; font.bold: true; elide: Text.ElideRight; font.pixelSize: 9 * logitsScene.sx }
-                            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 10 * logitsScene.sy; radius: height / 2; color: "#E2E8F0"; Rectangle { width: parent.width * Number(predictionRow.modelData.probabilidad); height: parent.height; radius: parent.radius; color: predictionRow.modelData.elegido ? "#009E73" : "#0072B2" } }
-                            Text { Layout.preferredWidth: 155 * logitsScene.sx; text: root.percentage(predictionRow.modelData.probabilidad) + " · acum " + root.percentage(predictionRow.modelData.probabilidad_acumulada) + " · logit " + Number(predictionRow.modelData.logit).toFixed(3); color: "#334155"; font.pixelSize: 8 * logitsScene.sx }
+                            Text { Layout.preferredWidth: 80 * logitsScene.sx; text: "#" + predictionRow.modelData.rango + "  “" + predictionRow.modelData.texto + "”"; color: Style.Theme.texto_primario; font.bold: true; elide: Text.ElideRight; font.pixelSize: 9 * logitsScene.sx }
+                            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 10 * logitsScene.sy; radius: height / 2; color: Style.Theme.borde_medio; Rectangle { width: parent.width * Number(predictionRow.modelData.probabilidad); height: parent.height; radius: parent.radius; color: predictionRow.modelData.elegido ? "#009E73" : "#0072B2" } }
+                            Text { Layout.preferredWidth: 155 * logitsScene.sx; text: root.percentage(predictionRow.modelData.probabilidad) + " · acum " + root.percentage(predictionRow.modelData.probabilidad_acumulada) + " · logit " + Number(predictionRow.modelData.logit).toFixed(3); color: Style.Theme.texto_secundario_fuerte; font.pixelSize: 8 * logitsScene.sx }
                         }
                     }
                 }

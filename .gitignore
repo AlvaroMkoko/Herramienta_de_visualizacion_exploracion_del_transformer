@@ -16,3 +16,4 @@ data/checkpoints/modelo.pt
 *.pt
 
 !data/teoria/transformer.json
+cambiar_constantes.py

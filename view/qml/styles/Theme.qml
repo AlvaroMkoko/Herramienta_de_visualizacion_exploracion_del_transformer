@@ -71,7 +71,26 @@ QtObject {
         // ===== Acentos de marca =====
         "acento":        "#7C3AED",
         "acento_fuerte": "#6D28D9",
-        "acento_alt":    "#4F46E5"
+        "acento_alt":    "#4F46E5",
+
+        // ===== Colores de matriz =====
+        "matriz_query":  "#56B4E9",
+        "matriz_key":    "#F0E442",
+        "matriz_value":  "#D55E00",
+
+        // ===== Escalas de color =====
+        "escala_sec_0":  "#F7FBFF",
+        "escala_sec_1":  "#C6DBEF",
+        "escala_sec_2":  "#6BAED6",
+        "escala_sec_3":  "#2171B5",
+        "escala_sec_4":  "#08306B",
+
+        // ===== Escalas divergentes =====
+        "escala_div_neg2": "#B2182B",
+        "escala_div_neg1": "#EF8A62",
+        "escala_div_cero": "#F7F7F7",
+        "escala_div_pos1": "#67A9CF",
+        "escala_div_pos2": "#2166AC"
     })
 
     readonly property var paletaOscura: ({
@@ -121,7 +140,26 @@ QtObject {
         // ===== Acentos de marca =====
         "acento":        "#A78BFA",
         "acento_fuerte": "#C4B5FD",
-        "acento_alt":    "#818CF8"
+        "acento_alt":    "#818CF8",
+
+        // ===== Colores de matriz =====
+        "matriz_query":  "#56B4E9",
+        "matriz_key":    "#F0E442",
+        "matriz_value":  "#D55E00",
+
+        // ===== Escalas de color =====
+        "escala_sec_0":  "#F7FBFF",
+        "escala_sec_1":  "#C6DBEF",
+        "escala_sec_2":  "#6BAED6",
+        "escala_sec_3":  "#2171B5",
+        "escala_sec_4":  "#08306B",
+
+        // ===== Escalas divergentes =====
+        "escala_div_neg2": "#B2182B",
+        "escala_div_neg1": "#EF8A62",
+        "escala_div_cero": "#F7F7F7",
+        "escala_div_pos1": "#67A9CF",
+        "escala_div_pos2": "#2166AC"
     })
 
     readonly property var p: modoOscuro ? paletaOscura : paletaClara

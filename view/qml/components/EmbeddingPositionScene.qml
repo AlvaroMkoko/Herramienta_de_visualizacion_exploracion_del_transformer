@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../styles" as Style
 
 Item {
     id: root
@@ -123,13 +124,13 @@ Item {
                 spacing: 1 * root.sy
                 Text {
                     text: "Embedding puro  →  embedding + posición"
-                    color: "#0F172A"
+                    color: Style.Theme.texto_primario
                     font.bold: true
                     font.pixelSize: 17 * Math.min(root.sx, root.sy)
                 }
                 Text {
                     text: "PCA calculado una sola vez sobre origen y destino · cada flecha es una suma vectorial real"
-                    color: "#64748B"
+                    color: Style.Theme.texto_secundario
                     font.pixelSize: 10 * root.sx
                 }
             }
@@ -234,7 +235,7 @@ Item {
                     var right = width - 30 * root.sx
                     var bottom = height - 42 * root.sy
 
-                    ctx.strokeStyle = "#E2E8F0"
+                    ctx.strokeStyle = Style.Theme.borde_medio
                     ctx.lineWidth = 1
                     for (var grid = 0; grid <= 5; ++grid) {
                         var gx = left + (right - left) * grid / 5
@@ -242,7 +243,7 @@ Item {
                         ctx.beginPath(); ctx.moveTo(gx, top); ctx.lineTo(gx, bottom); ctx.stroke()
                         ctx.beginPath(); ctx.moveTo(left, gy); ctx.lineTo(right, gy); ctx.stroke()
                     }
-                    ctx.fillStyle = "#64748B"
+                    ctx.fillStyle = Style.Theme.texto_secundario
                     ctx.font = Math.max(9, 9 * root.sx) + "px sans-serif"
                     ctx.fillText("PC2", left - 32 * root.sx, top)
                     ctx.fillText("PC1", right - 18 * root.sx, bottom + 26 * root.sy)
@@ -282,7 +283,7 @@ Item {
 
                         if (i === root.hoveredIndex || root.count <= 10) {
                             var token = root.tokenAt(i)
-                            ctx.fillStyle = "#0F172A"
+                            ctx.fillStyle = Style.Theme.texto_primario
                             ctx.font = (i === root.hoveredIndex ? "bold " : "")
                                        + Math.max(9, 9 * root.sx) + "px sans-serif"
                             ctx.fillText(String(token.texto || "∅") + " · p" + Number(token.posicion),
@@ -291,7 +292,7 @@ Item {
                     }
 
                     if (!root.count) {
-                        ctx.fillStyle = "#64748B"
+                        ctx.fillStyle = Style.Theme.texto_secundario
                         ctx.font = "bold " + Math.max(12, 14 * root.sx) + "px sans-serif"
                         ctx.textAlign = "center"
                         ctx.fillText("La proyección aparecerá con la captura del token más reciente.",
@@ -334,7 +335,7 @@ Item {
                 LegendMark { label: "Embedding + posición"; square: true; sx: root.sx }
                 Text {
                     text: "color = posición 0 → " + Math.max(0, root.count - 1)
-                    color: "#64748B"
+                    color: Style.Theme.texto_secundario
                     font.pixelSize: 9 * root.sx
                 }
             }
@@ -389,6 +390,6 @@ Item {
                 else { ctx.beginPath(); ctx.arc(width / 2, height / 2, width / 2 - 2, 0, Math.PI * 2); ctx.fill(); ctx.stroke() }
             }
         }
-        Text { text: legend.label; color: "#475569"; font.pixelSize: 9 * legend.sx }
+        Text { text: legend.label; color: Style.Theme.texto_secundario; font.pixelSize: 9 * legend.sx }
     }
 }

@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import "../styles" as Style
 
 Item {
     id: root
@@ -323,7 +324,7 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: 11 * Math.min(root.sx, root.sy)
-        color: "#F8FAFC"
+        color: Style.Theme.superficie_alterna
         border.color: Qt.alpha(root.accent, 0.48)
         border.width: 1
 
@@ -333,7 +334,7 @@ Item {
             anchors.top: parent.top
             anchors.topMargin: 8 * root.sy
             text: "MAPA DEL TRANSFORMER"
-            color: "#475569"
+            color: Style.Theme.texto_secundario
             font.bold: true
             font.letterSpacing: 0.6
             font.pixelSize: 8.5 * Math.min(root.sx, root.sy)
@@ -347,13 +348,13 @@ Item {
             width: passiveLabel.implicitWidth + 12 * root.sx
             height: 20 * root.sy
             radius: height / 2
-            color: "#E2E8F0"
+            color: Style.Theme.borde_medio
 
             Text {
                 id: passiveLabel
                 anchors.centerIn: parent
                 text: "SOLO REFERENCIA"
-                color: "#64748B"
+                color: Style.Theme.texto_secundario
                 font.bold: true
                 font.pixelSize: 7 * Math.min(root.sx, root.sy)
             }
@@ -373,7 +374,7 @@ Item {
                 anchors.right: encoderColumn.right
                 anchors.top: parent.top
                 text: "ENCODER  ↑"
-                color: "#334155"
+                color: Style.Theme.texto_secundario_fuerte
                 font.bold: true
                 horizontalAlignment: Text.AlignHCenter
                 font.pixelSize: 8 * Math.min(root.sx, root.sy)
@@ -383,7 +384,7 @@ Item {
                 anchors.right: decoderColumn.right
                 anchors.top: parent.top
                 text: "DECODER  ↑"
-                color: "#334155"
+                color: Style.Theme.texto_secundario_fuerte
                 font.bold: true
                 horizontalAlignment: Text.AlignHCenter
                 font.pixelSize: 8 * Math.min(root.sx, root.sy)
@@ -442,7 +443,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.verticalCenterOffset: 17 * root.sy
                 text: "K,V →"
-                color: root.crossOperationActive ? root.accent : "#94A3B8"
+                color: root.crossOperationActive ? root.accent : Style.Theme.texto_terciario
                 font.bold: root.crossOperationActive
                 font.pixelSize: 7.5 * Math.min(root.sx, root.sy)
             }
@@ -478,7 +479,7 @@ Item {
         id: block
 
         property string title: ""
-        property color baseColor: "#64748B"
+        property color baseColor: Style.Theme.texto_secundario
         property bool active: false
         property color accent: "#4F46E5"
         property bool reducedMotion: false
@@ -511,7 +512,7 @@ Item {
                 anchors.leftMargin: 3
                 anchors.rightMargin: 3
                 text: block.title
-                color: block.active ? Qt.darker(block.displayColor, 1.45) : "#475569"
+                color: block.active ? Qt.darker(block.displayColor, 1.45) : Style.Theme.texto_secundario
                 font.bold: block.active
                 font.pixelSize: 7 * block.textScale
                 horizontalAlignment: Text.AlignHCenter

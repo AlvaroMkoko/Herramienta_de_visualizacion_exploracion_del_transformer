@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Layouts
+import "../styles" as Style
 
 Item {
     id: root
@@ -287,7 +288,7 @@ Item {
                 Text {
                     Layout.fillWidth: true
                     text: root.phaseTitle
-                    color: "#0F172A"
+                    color: Style.Theme.texto_primario
                     font.bold: true
                     font.pixelSize: 17 * Math.min(root.sx, root.sy)
                     elide: Text.ElideRight
@@ -295,7 +296,7 @@ Item {
                 Text {
                     Layout.fillWidth: true
                     text: root.phaseFormula
-                    color: "#475569"
+                    color: Style.Theme.texto_secundario
                     font.family: "monospace"
                     font.pixelSize: 9 * root.sx
                     elide: Text.ElideRight
@@ -348,8 +349,8 @@ Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 42 * root.sy
             radius: 9 * root.sx
-            color: "#F8FAFC"
-            border.color: "#CBD5E1"
+            color: Style.Theme.superficie_alterna
+            border.color: Style.Theme.borde_suave
 
             RowLayout {
                 anchors.fill: parent
@@ -375,7 +376,7 @@ Item {
                 Text {
                     Layout.fillWidth: true
                     text: root.phaseExplanation
-                    color: "#334155"
+                    color: Style.Theme.texto_secundario_fuerte
                     font.pixelSize: 9 * root.sx
                     wrapMode: Text.WordWrap
                     maximumLineCount: 2
@@ -409,7 +410,7 @@ Item {
                     Layout.minimumHeight: 210 * root.sy
                     radius: 11 * root.sx
                     color: "#FFFFFF"
-                    border.color: revealed ? modelData.accent : "#CBD5E1"
+                    border.color: revealed ? modelData.accent : Style.Theme.borde_suave
                     border.width: revealed ? 1.5 : 1
                     opacity: revealed ? 1 : 0.16
                     scale: revealed ? 1 : 0.985
@@ -456,7 +457,7 @@ Item {
                                 Text {
                                     Layout.fillWidth: true
                                     text: matrixCard.modelData.title
-                                    color: "#0F172A"
+                                    color: Style.Theme.texto_primario
                                     font.bold: true
                                     font.pixelSize: 10 * root.sx
                                     elide: Text.ElideRight
@@ -464,7 +465,7 @@ Item {
                                 Text {
                                     Layout.fillWidth: true
                                     text: matrixCard.modelData.subtitle
-                                    color: "#64748B"
+                                    color: Style.Theme.texto_secundario
                                     font.pixelSize: 7 * root.sx
                                     elide: Text.ElideRight
                                 }
@@ -507,13 +508,13 @@ Item {
                                 Text {
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     text: "∅"
-                                    color: "#94A3B8"
+                                    color: Style.Theme.texto_terciario
                                     font.pixelSize: 30 * Math.min(root.sx, root.sy)
                                 }
                                 Text {
                                     width: parent.width
                                     text: "No hay datos para esta operación en la captura seleccionada."
-                                    color: "#64748B"
+                                    color: Style.Theme.texto_secundario
                                     horizontalAlignment: Text.AlignHCenter
                                     wrapMode: Text.WordWrap
                                     font.pixelSize: 9 * root.sx
@@ -527,7 +528,7 @@ Item {
                                   ? root.matrixRows(matrixCard.modelData.matrix) + " cabezas × "
                                     + root.matrixColumns(matrixCard.modelData.matrix) + " valores mostrados"
                                   : "Sin matriz disponible"
-                            color: "#64748B"
+                            color: Style.Theme.texto_secundario
                             horizontalAlignment: Text.AlignHCenter
                             font.pixelSize: 8 * root.sx
                         }
@@ -550,7 +551,7 @@ Item {
                         width: 9 * root.sx
                         height: 9 * root.sy
                         radius: Math.min(width, height) / 2
-                        color: root.revealStep >= index + 1 ? "#0284C7" : "#CBD5E1"
+                        color: root.revealStep >= index + 1 ? "#0284C7" : Style.Theme.borde_suave
                     }
                 }
             }
@@ -562,7 +563,7 @@ Item {
                     var shape = String(data.original_shape || "forma no disponible")
                     return detail + " · original " + shape
                 }
-                color: "#64748B"
+                color: Style.Theme.texto_secundario
                 elide: Text.ElideRight
                 font.pixelSize: 8 * root.sx
             }

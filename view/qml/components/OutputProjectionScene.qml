@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Layouts
+import "../styles" as Style
 
 Item {
     id: root
@@ -139,14 +140,14 @@ Item {
                 spacing: 1 * root.sy
                 Text {
                     text: "Del estado final a los logits del vocabulario"
-                    color: "#0F172A"
+                    color: Style.Theme.texto_primario
                     font.bold: true
                     font.pixelSize: 17 * Math.min(root.sx, root.sy)
                 }
                 Text {
                     Layout.fillWidth: true
                     text: "h_final · W_vocab + b → un puntaje real por token"
-                    color: "#64748B"
+                    color: Style.Theme.texto_secundario
                     elide: Text.ElideRight
                     font.pixelSize: 10 * root.sx
                 }
@@ -289,14 +290,14 @@ Item {
                                     Text {
                                         width: parent.width
                                         text: "d" + hiddenCell.index
-                                        color: "#475569"
+                                        color: Style.Theme.texto_secundario
                                         horizontalAlignment: Text.AlignHCenter
                                         font.pixelSize: 7 * root.sx
                                     }
                                     Text {
                                         width: parent.width
                                         text: root.formatNumber(hiddenCell.modelData)
-                                        color: "#0F172A"
+                                        color: Style.Theme.texto_primario
                                         font.bold: true
                                         horizontalAlignment: Text.AlignHCenter
                                         font.pixelSize: 7 * root.sx
@@ -307,7 +308,7 @@ Item {
                                 anchors.centerIn: parent
                                 visible: !root.finalHidden.length
                                 text: "Estado oculto no disponible"
-                                color: "#64748B"
+                                color: Style.Theme.texto_secundario
                                 font.pixelSize: 9 * root.sx
                             }
                         }
@@ -409,7 +410,7 @@ Item {
                                 anchors.centerIn: parent
                                 visible: !root.histogramCounts.length
                                 text: "Histograma no disponible"
-                                color: "#64748B"
+                                color: Style.Theme.texto_secundario
                                 font.pixelSize: 10 * root.sx
                             }
                         }
@@ -459,7 +460,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 radius: 12 * root.sx
-                color: "#F8FAFC"
+                color: Style.Theme.superficie_alterna
                 border.color: "#D8E0EA"
                 clip: true
 
@@ -473,13 +474,13 @@ Item {
                         Text {
                             Layout.fillWidth: true
                             text: "TOP CAPTURADO"
-                            color: "#475569"
+                            color: Style.Theme.texto_secundario
                             font.bold: true
                             font.pixelSize: 9 * root.sx
                         }
                         Text {
                             text: "logit de Linear · probabilidad posterior"
-                            color: "#64748B"
+                            color: Style.Theme.texto_secundario
                             font.pixelSize: 8 * root.sx
                         }
                     }
@@ -504,7 +505,7 @@ Item {
                             height: 51 * root.sy
                             radius: 8 * root.sx
                             color: chosen ? "#DCFCE7" : "#FFFFFF"
-                            border.color: chosen ? "#22C55E" : "#E2E8F0"
+                            border.color: chosen ? "#22C55E" : Style.Theme.borde_medio
                             border.width: chosen ? 2 : 1
                             opacity: root.reveal(0.64 + Math.min(index, 8) * 0.025, 0.22)
 
@@ -537,7 +538,7 @@ Item {
                                         text: candidateRow.modelData.texto !== undefined
                                               ? "“" + String(candidateRow.modelData.texto) + "”"
                                               : "Sin etiqueta"
-                                        color: "#0F172A"
+                                        color: Style.Theme.texto_primario
                                         font.bold: true
                                         elide: Text.ElideRight
                                         font.pixelSize: 10 * root.sx
@@ -546,7 +547,7 @@ Item {
                                         Layout.fillWidth: true
                                         text: candidateRow.modelData.token_id !== undefined
                                               ? "id " + candidateRow.modelData.token_id : "id —"
-                                        color: "#64748B"
+                                        color: Style.Theme.texto_secundario
                                         font.pixelSize: 8 * root.sx
                                     }
                                 }
@@ -566,7 +567,7 @@ Item {
                                         Text {
                                             text: (candidateRow.probability * 100).toFixed(
                                                       candidateRow.probability < 0.01 ? 2 : 1) + "%"
-                                            color: candidateRow.chosen ? "#047857" : "#475569"
+                                            color: candidateRow.chosen ? "#047857" : Style.Theme.texto_secundario
                                             font.bold: true
                                             font.pixelSize: 8 * root.sx
                                         }
@@ -578,7 +579,7 @@ Item {
                                         Rectangle {
                                             anchors.fill: parent
                                             radius: height / 2
-                                            color: "#E2E8F0"
+                                            color: Style.Theme.borde_medio
                                         }
                                         Rectangle {
                                             width: parent.width
@@ -605,7 +606,7 @@ Item {
                             anchors.centerIn: parent
                             visible: !root.candidates.length
                             text: "Los candidatos aparecerán después de proyectar el estado final."
-                            color: "#64748B"
+                            color: Style.Theme.texto_secundario
                             horizontalAlignment: Text.AlignHCenter
                             wrapMode: Text.WordWrap
                             width: parent.width - 30 * root.sx
@@ -620,15 +621,15 @@ Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 40 * root.sy
             radius: 9 * root.sx
-            color: root.hasData ? "#FFF7ED" : "#F8FAFC"
-            border.color: root.hasData ? "#FDBA74" : "#CBD5E1"
+            color: root.hasData ? "#FFF7ED" : Style.Theme.superficie_alterna
+            border.color: root.hasData ? "#FDBA74" : Style.Theme.borde_suave
             Text {
                 anchors.centerIn: parent
                 width: parent.width - 20 * root.sx
                 text: root.hasData
                       ? "El histograma resume todos los logits; el top conserva logits reales y probabilidades posteriores. Linear aún no elige el token."
                       : "Aún no hay una captura de salida para este paso de inferencia."
-                color: root.hasData ? "#9A3412" : "#64748B"
+                color: root.hasData ? "#9A3412" : Style.Theme.texto_secundario
                 horizontalAlignment: Text.AlignHCenter
                 elide: Text.ElideRight
                 font.pixelSize: 9 * root.sx
@@ -673,8 +674,8 @@ Item {
         property real sx: 1
         property real sy: 1
         radius: 10 * sx
-        color: emphasized ? Qt.alpha(accent, 0.11) : "#F8FAFC"
-        border.color: emphasized ? accent : "#CBD5E1"
+        color: emphasized ? Qt.alpha(accent, 0.11) : Style.Theme.superficie_alterna
+        border.color: emphasized ? accent : Style.Theme.borde_suave
         border.width: emphasized ? 2 : 1
         opacity: emphasized ? 1 : 0.64
         Behavior on opacity {
@@ -711,7 +712,7 @@ Item {
                 Text {
                     Layout.fillWidth: true
                     text: pipelineCard.title
-                    color: "#0F172A"
+                    color: Style.Theme.texto_primario
                     font.bold: true
                     elide: Text.ElideRight
                     font.pixelSize: 10 * pipelineCard.sx
@@ -719,7 +720,7 @@ Item {
                 Text {
                     Layout.fillWidth: true
                     text: pipelineCard.detail
-                    color: "#64748B"
+                    color: Style.Theme.texto_secundario
                     elide: Text.ElideRight
                     font.pixelSize: 7.5 * pipelineCard.sx
                 }
@@ -783,7 +784,7 @@ Item {
             Text {
                 width: parent.width
                 text: metricChip.label
-                color: "#64748B"
+                color: Style.Theme.texto_secundario
                 font.bold: true
                 horizontalAlignment: Text.AlignHCenter
                 font.pixelSize: 7 * metricChip.sx

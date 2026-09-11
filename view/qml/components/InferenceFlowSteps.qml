@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import "../styles" as Style
 
 QtObject {
     id: root
