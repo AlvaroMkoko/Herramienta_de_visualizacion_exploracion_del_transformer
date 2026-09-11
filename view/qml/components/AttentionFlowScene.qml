@@ -169,7 +169,7 @@ Item {
                         x: thresholdSlider.leftPadding + thresholdSlider.visualPosition * (thresholdSlider.availableWidth - width)
                         y: thresholdSlider.topPadding + thresholdSlider.availableHeight / 2 - height / 2
                         width: 18 * root.sx; height: 18 * root.sy; radius: width / 2
-                        color: "white"; border.color: "#0284C7"; border.width: 3
+                        color: Style.Theme.surface; border.color: "#0284C7"; border.width: 3
                     }
                 }
                 Text { text: "≥ " + root.threshold.toFixed(3); color: "#075985"; font.bold: true; font.pixelSize: 10 * root.sx }
@@ -354,7 +354,7 @@ Item {
                                * (parent.width - 84 * root.sx) - width / 2
                             y: 8 * root.sy
                             radius: 7 * root.sx
-                            color: "#FFFFFF"
+                            color: Style.Theme.surface
                             border.color: Style.Theme.texto_terciario
                             z: 2
                             Text {

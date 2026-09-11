@@ -581,7 +581,7 @@ Item {
                     Text {
                         anchors.centerIn: parent
                         text: "✦"
-                        color: "white"
+                        color: Style.Theme.texto_sobre_color
                         font.pixelSize: 20 * Math.min(root.sx, root.sy)
                     }
                 }
@@ -677,7 +677,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 58 * root.sy
                 radius: 11 * root.sx
-                color: "#FFFFFF"
+                color: Style.Theme.surface
                 border.color: Style.Theme.borde_medio
 
                 RowLayout {
@@ -742,7 +742,7 @@ Item {
                 Layout.preferredHeight: visible ? 48 * root.sy : 0
                 visible: root.stageIndex >= 1 && root.stageIndex <= 4
                 radius: 11 * root.sx
-                color: "#FFFFFF"
+                color: Style.Theme.surface
                 border.color: Style.Theme.borde_medio
 
                 RowLayout {
@@ -836,7 +836,7 @@ Item {
                     Layout.fillHeight: true
                     Layout.minimumWidth: 1120 * root.sx
                     radius: 14 * root.sx
-                    color: "#FFFFFF"
+                    color: Style.Theme.surface
                     border.color: Style.Theme.borde_medio
                     clip: true
 
@@ -987,7 +987,7 @@ Item {
                     Layout.maximumWidth: visible ? Math.max(320, 410 * root.sx) : 0
                     Layout.fillHeight: true
                     radius: 14 * root.sx
-                    color: "#FFFFFF"
+                    color: Style.Theme.surface
                     border.color: root.stage.accent
                     border.width: 1
 
@@ -1236,7 +1236,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.preferredHeight: Math.max(56, 76 * root.sy)
                 radius: 12 * root.sx
-                color: "#FFFFFF"
+                color: Style.Theme.surface
                 border.color: Style.Theme.borde_medio
 
                 RowLayout {
@@ -1470,7 +1470,7 @@ Item {
         Rectangle {
             width: Math.max(34, 38 * stepper.sx); height: Math.max(26, 28 * stepper.sy); radius: 7 * stepper.sx
             color: stepper.accent
-            Text { anchors.centerIn: parent; text: stepper.value; color: "white"; font.bold: true; font.pixelSize: Math.max(9, 10 * stepper.sx) }
+            Text { anchors.centerIn: parent; text: stepper.value; color: Style.Theme.texto_sobre_color; font.bold: true; font.pixelSize: Math.max(9, 10 * stepper.sx) }
         }
         Rectangle {
             id: incrementButton

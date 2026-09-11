@@ -235,7 +235,7 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
                                 radius: 9 * root.sx
-                                color: "#FFFFFF"
+                                color: Style.Theme.surface
                                 border.color: Style.Theme.borde_medio
                                 Canvas {
                                     id: scatterCanvas

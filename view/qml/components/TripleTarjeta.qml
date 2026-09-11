@@ -3,7 +3,7 @@ import QtQuick.Controls
 import "../styles" as Style
 
     
-Rectanlge{
+Rectangle{
     color:"blue"
     Rectangle {
         property real sx: 1.0
@@ -16,7 +16,7 @@ Rectanlge{
         implicitWidth: 350 * sx
         implicitHeight: 350 * sy
         radius: 10 * sx
-        color: "white"
+        Style.Theme.surface
         border.color: Style.Theme.borde_cuadro
     }
 

@@ -187,7 +187,7 @@ Item {
                         y: progressSlider.topPadding + progressSlider.availableHeight / 2 - height / 2
                         width: 20 * root.sx; height: 20 * root.sy
                         radius: width / 2
-                        color: "#FFFFFF"
+                        color: Style.Theme.surface
                         border.color: Style.Theme.acento
                         border.width: 3
                     }

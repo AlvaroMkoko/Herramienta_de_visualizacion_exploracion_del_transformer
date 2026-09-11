@@ -37,6 +37,7 @@ QtObject {
         "surface":           "#FFFFFF",
         "texto_primario":    "#111827",
         "texto_secundario":  "#6B7280",
+        "texto_secundario_fuerte":"#334155",
         "borde":             "#aeb0b3",
         "borde_boton":       "#afb4b9",
         "borde_cuadro":      "#9e979f",
@@ -44,6 +45,8 @@ QtObject {
         "warning":           "#F59E0B",
         "error":             "#EF4444",
         "info":              "#3B82F6",
+        "texto_sobre_color": "#FFFFFF",
+
         // Superficies auxiliares para reemplazar los hex fijos de las pantallas
         "chip_fondo":        "#F3F4F6",
         "chip_borde":        "#D1D5DB",
@@ -103,9 +106,12 @@ QtObject {
         "surface":           "#1C1B26",
         "texto_primario":    "#ECEAF4",
         "texto_secundario":  "#A5A2BB",
+        "texto_secundario_fuerte":"#C6C3D8",
         "borde":             "#3A3A4A",
         "borde_boton":       "#45445A",
         "borde_cuadro":      "#4A4860",
+        "texto_sobre_color": "#FFFFFF",
+
         // Los estados se aclaran: los tonos claros no contrastan sobre fondo oscuro
         "success":           "#4ADE80",
         "warning":           "#FBBF24",
@@ -175,6 +181,8 @@ QtObject {
     readonly property color surface: p.surface
     readonly property color texto_primario: p.texto_primario
     readonly property color texto_secundario: p.texto_secundario
+    readonly property color texto_secundario_fuerte: p.texto_secundario_fuerte
+    readonly property color texto_sobre_color: p.texto_sobre_color
     readonly property color borde: p.borde
     readonly property color borde_boton: p.borde_boton
     readonly property color borde_cuadro: p.borde_cuadro
@@ -192,7 +200,6 @@ QtObject {
     readonly property color superficie_alterna: p.superficie_alterna
     readonly property color borde_suave: p.borde_suave
     readonly property color borde_medio: p.borde_medio
-    readonly property color texto_sobre_color: p.texto_sobre_color
     readonly property color exito_fondo: p.exito_fondo
     readonly property color exito_texto: p.exito_texto
     readonly property color error_fondo: p.error_fondo

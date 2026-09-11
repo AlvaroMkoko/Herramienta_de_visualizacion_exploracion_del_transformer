@@ -225,9 +225,14 @@ Rectangle {
                             background: Rectangle {
                                 radius: 8 * root.scaleFactor
                                 color: optionDelegate.seleccionada
-                                       ? Style.Theme.acento_fondo : optionDelegate.hovered ? Style.Theme.acento_fondo : "#FFFFFF"
+                                       ? Style.Theme.acento_fondo
+                                       : optionDelegate.hovered
+                                         ? Style.Theme.superficie_alterna
+                                         : Style.Theme.surface
                                 border.width: optionDelegate.seleccionada ? 2 : 1
-                                border.color: optionDelegate.seleccionada ? Style.Theme.acento : Style.Theme.chip_borde
+                                border.color: optionDelegate.seleccionada
+                                              ? Style.Theme.acento
+                                              : Style.Theme.borde_suave
                             }
 
                             contentItem: Text {
@@ -416,7 +421,7 @@ Rectangle {
                         Accessible.description: String(root.value("explanationPrompt", ""))
                         background: Rectangle {
                             radius: 8 * root.scaleFactor
-                            color: "#FFFFFF"
+                            color: Style.Theme.surface
                             border.color: explanationInput.activeFocus ? Style.Theme.acento : Style.Theme.borde_suave
                             border.width: explanationInput.activeFocus ? 2 : 1
                         }

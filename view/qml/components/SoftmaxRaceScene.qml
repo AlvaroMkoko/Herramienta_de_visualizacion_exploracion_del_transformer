@@ -326,7 +326,7 @@ Item {
                                     Text {
                                         anchors.centerIn: parent
                                         text: horseRow.captured ? "#" + horseRow.rank : "—"
-                                        color: "white"
+                                        color: Style.Theme.texto_sobre_color
                                         font.bold: true
                                         font.pixelSize: 9 * root.sx
                                     }

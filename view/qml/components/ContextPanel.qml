@@ -62,7 +62,7 @@ Rectangle {
 
     implicitHeight: (root.expanded ? 620 : 390) * root.contentScale
     radius: (root.expanded ? 16 : 10) * root.contentScale
-    color: "#FFFFFF"
+    color: Style.Theme.surface
     border.color: Style.Theme.acento_fondo
     border.width: 1
     clip: true

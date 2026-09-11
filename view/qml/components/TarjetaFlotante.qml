@@ -15,7 +15,7 @@ Rectangle{
     implicitWidth: 350 * sx
     implicitHeight: 350 * sy
     radius: 10 * sx
-    color: "white"
+    color: Style.Theme.surface
     border.color: Style.Theme.borde_cuadro
 
 

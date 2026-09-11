@@ -47,7 +47,7 @@ Popup {
     }
 
     background: Rectangle {
-        color: "#FFFFFF"
+        color: Style.Theme.surface
         radius: 16
         border.width: 1
         border.color: Style.Theme.borde_medio

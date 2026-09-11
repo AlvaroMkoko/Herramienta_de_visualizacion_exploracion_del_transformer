@@ -89,7 +89,7 @@ Item {
                 Layout.preferredHeight: 32 * root.sy
                 radius: 8 * root.sx
                 color: "#DB2777"
-                Text { anchors.centerIn: parent; text: "↺ Respirar"; color: "white"; font.bold: true; font.pixelSize: 9 * root.sx }
+                Text { anchors.centerIn: parent; text: "↺ Respirar"; color: Style.Theme.texto_sobre_color; font.bold: true; font.pixelSize: 9 * root.sx }
                 MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.replay() }
             }
         }
@@ -149,7 +149,7 @@ Item {
                         Layout.fillHeight: true
                         Layout.minimumHeight: 100 * root.sy
                         radius: 10 * root.sx
-                        color: "#FFFFFF"
+                        color: Style.Theme.surface
                         border.color: ["#7DD3FC", "#F9A8D4", "#86EFAC"][tokenRow.index % 3]
 
                         RowLayout {

@@ -524,7 +524,7 @@ Item {
                                         text: candidateRow.modelData.rango !== undefined
                                               ? "#" + candidateRow.modelData.rango
                                               : String(candidateRow.index + 1)
-                                        color: "white"
+                                        color: Style.Theme.texto_sobre_color
                                         font.bold: true
                                         font.pixelSize: 8 * root.sx
                                     }
@@ -652,7 +652,7 @@ Item {
             id: buttonText
             anchors.centerIn: parent
             text: sceneButton.label
-            color: "white"
+            color: Style.Theme.texto_sobre_color
             font.bold: true
             font.pixelSize: 9 * sceneButton.sx
         }
@@ -693,7 +693,7 @@ Item {
                 Text {
                     anchors.centerIn: parent
                     text: pipelineCard.number
-                    color: "white"
+                    color: Style.Theme.texto_sobre_color
                     font.bold: true
                     font.pixelSize: 9 * pipelineCard.sx
                 }
@@ -766,7 +766,7 @@ Item {
         property real sx: 1
         property real sy: 1
         radius: 7 * sx
-        color: "#FFFFFF"
+        color: Style.Theme.surface
         border.color: Style.Theme.error_fondo
         Column {
             anchors.centerIn: parent

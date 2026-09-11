@@ -226,7 +226,7 @@ Item {
                   + (root.maskMatrix.length ? "\npermitido: " + (root.auxiliaryValue(root.maskMatrix, "1") !== "0.000000") : "")
                   + (root.attentionMatrix.length ? "\natención Aᵢⱼ: " + root.auxiliaryValue(root.attentionMatrix, "—") : "")
                   + (root.contributionMatrix.length ? "\n‖AᵢⱼVⱼ‖: " + root.auxiliaryValue(root.contributionMatrix, "—") : "")
-            color: "#FFFFFF"
+            color: Style.Theme.texto_sobre_color
             font.pixelSize: 10
         }
     }

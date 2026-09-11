@@ -20,7 +20,7 @@ Rectangle {
     signal chapterSelected(int index)
 
     radius: 12 * Math.min(sx, sy)
-    color: "#FFFFFF"
+    color: Style.Theme.surface
     border.color: Style.Theme.borde_medio
 
     ColumnLayout {

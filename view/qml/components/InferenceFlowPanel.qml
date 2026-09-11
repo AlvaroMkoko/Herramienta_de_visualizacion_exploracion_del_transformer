@@ -348,7 +348,7 @@ Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     radius: 9 * root.sx
-                    color: "#FFFFFF"
+                    color: Style.Theme.surface
                     border.color: Style.Theme.borde_suave
 
                     ColumnLayout {
@@ -443,7 +443,7 @@ Item {
                     Layout.maximumWidth: 610 * root.sx
                     Layout.fillHeight: true
                     radius: 9 * root.sx
-                    color: "#FFFFFF"
+                    color: Style.Theme.surface
                     border.color: Style.Theme.borde_suave
                     RowLayout {
                         anchors.fill: parent
@@ -532,7 +532,7 @@ Item {
                     Layout.fillHeight: true
                     Layout.minimumWidth: 1040 * root.sx
                     radius: 11 * root.sx
-                    color: "#FFFFFF"
+                    color: Style.Theme.surface
                     border.color: Style.Theme.borde_suave
                     Behavior on opacity { NumberAnimation { duration: root.reducedMotion ? 0 : 220; easing.type: Easing.InOutCubic } }
 
@@ -752,7 +752,7 @@ Item {
                     Layout.preferredWidth: 485 * root.sx
                     Layout.fillHeight: true
                     radius: 11 * root.sx
-                    color: "#FFFFFF"
+                    color: Style.Theme.surface
                     border.color: Style.Theme.borde_suave
 
                     ScrollView {
@@ -928,7 +928,7 @@ Item {
                 Layout.minimumHeight: 80 * root.sy
                 Layout.maximumHeight: 80 * root.sy
                 radius: 9 * root.sx
-                color: "#FFFFFF"
+                color: Style.Theme.surface
                 border.color: Style.Theme.borde_suave
                 ScrollView {
                     anchors.fill: parent; anchors.margins: 6 * root.sx
@@ -973,7 +973,7 @@ Item {
         Overlay.modal: Rectangle { color: "#73111B2E" }
         background: Rectangle {
             radius: 16 * root.sx
-            color: "#FFFFFF"
+            color: Style.Theme.surface
             border.color: root.detailAccent
             border.width: 2
         }
@@ -1148,7 +1148,7 @@ Item {
                     Layout.fillWidth: true; Layout.fillHeight: true
                     Layout.minimumWidth: 600 * embeddingScene.sx
                     Layout.preferredWidth: 850 * embeddingScene.sx
-                    radius: 10 * embeddingScene.sx; color: "#FFFFFF"; border.color: Style.Theme.borde_suave
+                    radius: 10 * embeddingScene.sx; color: Style.Theme.surface; border.color: Style.Theme.borde_suave
                     clip: true
                     ScientificMatrix {
                         id: embeddingHeatmap
@@ -1201,9 +1201,9 @@ Item {
                         }
                         RowLayout {
                             anchors.fill: parent; anchors.margins: 5 * embeddingScene.sx
-                            Text { text: embeddingScene.localScale ? Number(embeddingHeatmap.dataMinimum).toFixed(2) : "−1"; color: "#FFFFFF"; font.bold: true; font.pixelSize: 9 * embeddingScene.sx }
+                            Text { text: embeddingScene.localScale ? Number(embeddingHeatmap.dataMinimum).toFixed(2) : "−1"; color: Style.Theme.texto_sobre_color; font.bold: true; font.pixelSize: 9 * embeddingScene.sx }
                             Text { Layout.fillWidth: true; text: "0"; color: Style.Theme.texto_primario; horizontalAlignment: Text.AlignHCenter; font.bold: true; font.pixelSize: 9 * embeddingScene.sx }
-                            Text { text: embeddingScene.localScale ? Number(embeddingHeatmap.dataMaximum).toFixed(2) : "+1"; color: "#FFFFFF"; font.bold: true; font.pixelSize: 9 * embeddingScene.sx }
+                            Text { text: embeddingScene.localScale ? Number(embeddingHeatmap.dataMaximum).toFixed(2) : "+1"; color: Style.Theme.texto_sobre_color; font.bold: true; font.pixelSize: 9 * embeddingScene.sx }
                         }
                         MouseArea {
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor

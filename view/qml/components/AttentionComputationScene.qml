@@ -325,7 +325,7 @@ Item {
                 Layout.preferredWidth: 112 * root.sx
                 Layout.preferredHeight: 31 * root.sy
                 radius: 8 * root.sx
-                color: "#FFFFFF"
+                color: Style.Theme.surface
                 border.color: "#0284C7"
                 Accessible.role: Accessible.Button
                 Accessible.name: "Reproducir cálculo de atención"
@@ -409,7 +409,7 @@ Item {
                     Layout.minimumWidth: 220 * root.sx
                     Layout.minimumHeight: 210 * root.sy
                     radius: 11 * root.sx
-                    color: "#FFFFFF"
+                    color: Style.Theme.surface
                     border.color: revealed ? modelData.accent : Style.Theme.borde_suave
                     border.width: revealed ? 1.5 : 1
                     opacity: revealed ? 1 : 0.16
@@ -446,7 +446,7 @@ Item {
                                 Text {
                                     anchors.centerIn: parent
                                     text: matrixCard.index + 1
-                                    color: "white"
+                                    color: Style.Theme.texto_sobre_color
                                     font.bold: true
                                     font.pixelSize: 8 * root.sx
                                 }

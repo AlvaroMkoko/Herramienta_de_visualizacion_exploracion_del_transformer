@@ -125,7 +125,7 @@ Item {
                             Text {
                                 anchors.centerIn: parent
                                 text: "H" + String(index + 1).padStart(2, "0")
-                                color: "white"
+                                color: Style.Theme.texto_sobre_color
                                 font.bold: true
                                 visible: parent.width > 34 * root.sx
                                 font.pixelSize: 8 * root.sx
@@ -257,7 +257,7 @@ Item {
                         Layout.preferredWidth: 150 * root.sx
                         Layout.fillHeight: true
                         radius: 9 * root.sx
-                        color: "#FFFFFF"
+                        color: Style.Theme.surface
                         border.color: Style.Theme.warning
                         Canvas {
                             anchors.fill: parent
@@ -290,7 +290,7 @@ Item {
                                 GradientStop { position: 0.45; color: Style.Theme.warning }
                                 GradientStop { position: 1; color: "#059669" }
                             }
-                            Text { anchors.centerIn: parent; text: root.dModel + " dims mezcladas"; color: "white"; font.bold: true; font.pixelSize: 9 * root.sx }
+                            Text { anchors.centerIn: parent; text: root.dModel + " dims mezcladas"; color: Style.Theme.texto_sobre_color; font.bold: true; font.pixelSize: 9 * root.sx }
                         }
                         Text { text: "‖Wᴼz‖ " + root.norm(root.projected).toFixed(4); color: Style.Theme.texto_secundario; font.pixelSize: 8 * root.sx }
                     }
@@ -320,7 +320,7 @@ Item {
         signal clicked()
         implicitWidth: 112 * sx; implicitHeight: 32 * sy; radius: 8 * sx
         color: Style.Theme.warning
-        Text { anchors.centerIn: parent; text: "↺ Reproducir"; color: "white"; font.bold: true; font.pixelSize: 9 * button.sx }
+        Text { anchors.centerIn: parent; text: "↺ Reproducir"; color: Style.Theme.texto_sobre_color; font.bold: true; font.pixelSize: 9 * button.sx }
         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: button.clicked() }
     }
 }

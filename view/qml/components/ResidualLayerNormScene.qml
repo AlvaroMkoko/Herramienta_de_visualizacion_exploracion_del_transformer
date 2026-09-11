@@ -192,7 +192,7 @@ Item {
                 width: metricsText.implicitWidth + 18 * root.sx
                 height: 31 * root.sy
                 radius: 7 * root.sx
-                color: "#FFFFFF"
+                color: Style.Theme.surface
                 border.color: "#86EFAC"
                 Text {
                     id: metricsText
@@ -248,7 +248,7 @@ Item {
                             Rectangle {
                                 Layout.preferredWidth: 23 * root.sx; Layout.preferredHeight: 23 * root.sy
                                 radius: height / 2; color: Style.Theme.acento
-                                Text { anchors.centerIn: parent; text: phaseCard.index + 1; color: "white"; font.bold: true; font.pixelSize: 8 * root.sx }
+                                Text { anchors.centerIn: parent; text: phaseCard.index + 1; color: Style.Theme.texto_sobre_color; font.bold: true; font.pixelSize: 8 * root.sx }
                             }
                             Text { Layout.fillWidth: true; text: phaseCard.modelData.nombre; color: Style.Theme.acento_fuerte; font.bold: true; elide: Text.ElideRight; font.pixelSize: 9 * root.sx }
                         }

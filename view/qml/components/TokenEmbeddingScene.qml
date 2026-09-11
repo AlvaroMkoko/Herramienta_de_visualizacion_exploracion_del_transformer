@@ -313,7 +313,7 @@ Item {
                                         text: tokenRow.rowToken
                                               && tokenRow.rowToken.posicion !== undefined
                                               ? "p" + tokenRow.rowToken.posicion : "—"
-                                        color: "white"
+                                        color: Style.Theme.texto_sobre_color
                                         font.bold: true
                                         font.pixelSize: 8 * root.sx
                                     }
@@ -588,7 +588,7 @@ Item {
             id: buttonText
             anchors.centerIn: parent
             text: sceneButton.label
-            color: "white"
+            color: Style.Theme.texto_sobre_color
             font.bold: true
             font.pixelSize: 9 * sceneButton.sx
         }
@@ -629,7 +629,7 @@ Item {
                 Text {
                     anchors.centerIn: parent
                     text: stageCard.step
-                    color: "white"
+                    color: Style.Theme.texto_sobre_color
                     font.bold: true
                     font.pixelSize: 9 * stageCard.sx
                 }
@@ -702,7 +702,7 @@ Item {
         property real sx: 1
         property real sy: 1
         radius: 8 * sx
-        color: "#FFFFFF"
+        color: Style.Theme.surface
         border.color: Style.Theme.acento_alt
         Column {
             anchors.centerIn: parent

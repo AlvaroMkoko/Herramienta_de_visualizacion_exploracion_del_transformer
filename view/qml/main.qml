@@ -24,7 +24,7 @@ ApplicationWindow {
     }
 
     Component.onCompleted: {
-        stack.push("screens/HomeScreen.qml", {
+        stack.push("screens/WelcomeScreen.qml", {
             "stackView": stack
         })
     }
