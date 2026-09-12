@@ -39,6 +39,7 @@ PagePrincipal {
     property string componenteRelevante: "Esperando el primer batch"
     property real intensidadRelevante: 0
     property var componentesSnapshot: ({})
+    property var pedagogiaSnapshot: ({})
     property var prediccionesTop: []
     property var historialVisible: []
     property var teoriaActual: ({})
@@ -239,6 +240,8 @@ PagePrincipal {
         root.intensidadRelevante = Number(resumen.intensidad_relevante || 0)
         root.prediccionesTop = resumen.predicciones_top || []
         root.componentesSnapshot = visualizacion.componentes || ({})
+        if (visualizacion.pedagogia && visualizacion.pedagogia.disponible)
+            root.pedagogiaSnapshot = visualizacion.pedagogia
 
         var siguiente = root.historialVisible.slice(Math.max(0, root.historialVisible.length - 39))
         siguiente.push(root.perdidaActual)
@@ -285,6 +288,7 @@ PagePrincipal {
         localBridge.numCapas = Number(info.num_capas || 1)
 
         root.trainingController.activarNubeEmbeddings(false)
+        root.trainingController.activarVisualizacionPedagogica(true)
         root.trainingController.configurarNubeEmbeddings("pca", [0,1,2], 10)
     }
 
@@ -584,26 +588,49 @@ PagePrincipal {
                             Layout.fillWidth: true
 
                             onCurrentIndexChanged: {
-                                root.trainingController.activarNubeEmbeddings(barraPestanas.currentIndex === 1)
+                                root.trainingController.activarNubeEmbeddings(barraPestanas.currentIndex === 2)
+                                root.trainingController.activarVisualizacionPedagogica(barraPestanas.currentIndex === 0)
                             }
 
+                            TabButton { text: "Entrenamiento guiado" }
                             TabButton { text: "Arquitectura" }
-                            TabButton { text: "Embeddings 3D" }
+                            TabButton { text: "Embeddings PCA 3D" }
                         }
 
-                        StackLayout {
+                        Item {
+                            id: trainingViewStack
+                            objectName: "trainingViewStack"
                             Layout.fillWidth: true
                             Layout.fillHeight: true
-                            currentIndex: barraPestanas.currentIndex
+                            property int currentIndex: barraPestanas.currentIndex
+
+                            TrainingJourney {
+                                anchors.fill: parent
+                                visible: barraPestanas.currentIndex === 0
+                                snapshot: root.pedagogiaSnapshot
+                                lossHistory: root.historialVisible
+                                epoch: root.epocaSesionActual
+                                batch: root.loteActual
+                                globalStep: root.pasoGlobalActual
+                                numLayers: localBridge.numCapas
+                                numHeads: Number((root.viewModel.modeloActualInfo || {}).num_cabezas || 1)
+                                gradientNorm: root.normaGradiente
+                                sx: root.sx
+                                sy: root.sy
+                            }
 
                             TransformerDiagram {
                                 objectName: "trainingTransformerDiagram"
+                                anchors.fill: parent
+                                visible: barraPestanas.currentIndex === 1
                                 bridge: localBridge
                                 trainingMode: true
                                 highlightedComponentId: root.componenteRelevanteId
                             }
 
                             NubeEmbeddings3D {
+                                anchors.fill: parent
+                                visible: barraPestanas.currentIndex === 2
                                 puntos: root.nubeEmbeddings.puntos || []
                                 etiquetas: root.nubeEmbeddings.etiquetas || []
                                 varianzaConservada: Number(root.nubeEmbeddings.varianza_conservada || 0)
@@ -612,7 +639,7 @@ PagePrincipal {
                                 dimensiones: root.nubeEmbeddings.dimensiones || []
                                 // Solo rota sola cuando la pestaña esta visible,
                                 // para no repintar un Canvas que nadie ve.
-                                rotacionAutomatica: barraPestanas.currentIndex === 1
+                                rotacionAutomatica: barraPestanas.currentIndex === 2
                                 onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
                             }
                         }

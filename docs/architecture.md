@@ -63,7 +63,8 @@ Motor Transformer encoder-decoder, fiel al diagrama de *Attention Is All You Nee
 - `setup_controller.py` — único componente que **crea** el modelo. Calcula un
   resumen de parámetros en vivo sin instanciar nada ni consultar la red.
 - `training_controller.py` — entrenamiento en segundo plano, guardado de
-  checkpoints y configuración de la nube de embeddings.
+  checkpoints, configuración de la nube de embeddings e instrumentación del
+  batch real (gradientes y valores antes/después de `optimizer.step()`).
 - `inference_controller.py` — generación de texto token a token.
 - `dataset_controller.py` — catálogo de datasets: análisis, metadatos,
   vista previa de registros.
@@ -76,7 +77,9 @@ Motor Transformer encoder-decoder, fiel al diagrama de *Attention Is All You Nee
   `QThread` con soporte de pausa, cancelación y control de velocidad.
 - `visual_adapter.py` — capa delgada sobre `tensor_to_array`: convierte
   `numpy` a listas de Python y agrega lo que el Modelo no conoce (el
-  tokenizador, para decodificar etiquetas).
+  tokenizador, para decodificar etiquetas). También prepara el ejemplo
+  pedagógico de entrenamiento: teacher forcing, máscara, atenciones, Top-K,
+  loss y resúmenes de actualización, sin enviar tensores a QML.
 - `evaluation_controller.py` — **pendiente** (RF22–RF25).
 - `signal_manager.py` — **sin uso**. Las pantallas hablan directo con los
   controladores; se conserva solo por referencia histórica.
@@ -98,7 +101,8 @@ Motor Transformer encoder-decoder, fiel al diagrama de *Attention Is All You Nee
 - `qml/screens/` — `HomeScreen`, `GuidedLearningScreen`,
   `ModulePlaceholderScreen`, `SetupScreen`, `DataSetScreen`, `TrainingScreen`,
   `ResultsScreen`, `InferenceScreen`, `ComparisonScreen`, `EvaluationScreen`.
-- `qml/components/` — `TransformerDiagram`, `NubeEmbeddings3D`, `SliderColumn`,
+- `qml/components/` — `TransformerDiagram`, `NubeEmbeddings3D`, `TrainingJourney`,
+  `SliderColumn`,
   `GuidedConceptReader`, `GuidedLearningActivity`,
   `GuidedDemoVisualization`, `BotonPrincipal`, `RectanglePrincipal`,
   `PagePrincipal`, `FlujoPaso`.

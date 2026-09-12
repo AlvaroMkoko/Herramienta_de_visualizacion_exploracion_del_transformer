@@ -121,6 +121,36 @@ class TestEntrenamientoBasico:
                 "softmax",
             }.issubset(visualizacion["componentes"])
             assert visualizacion["componentes"]["encoder_self_attention"]["capas"]
+            pedagogia = visualizacion["pedagogia"]
+            assert pedagogia["disponible"] is True
+            assert pedagogia["ejemplo"]["tokens_origen"]
+            assert pedagogia["ejemplo"]["pares_teacher_forcing"]
+            assert all(
+                len(par["prefijo"]) == par["posicion"] + 1
+                for par in pedagogia["ejemplo"]["pares_teacher_forcing"]
+            )
+            assert pedagogia["predicciones_por_posicion"]
+            assert pedagogia["atenciones"]["encoder"]["capas"]
+            assert pedagogia["atenciones"]["decoder_masked"]["capas"]
+            assert pedagogia["atenciones"]["cross"]["capas"]
+            assert pedagogia["mascara_causal"]["activa"] is True
+            assert pedagogia["actualizaciones_parametros"]
+            assert all(
+                actualizacion["despues"] - actualizacion["antes"]
+                == pytest.approx(actualizacion["actualizacion"])
+                for actualizacion in pedagogia["actualizaciones_parametros"]
+            )
+
+            def contiene_tensor(nodo):
+                if isinstance(nodo, torch.Tensor):
+                    return True
+                if isinstance(nodo, dict):
+                    return any(contiene_tensor(valor) for valor in nodo.values())
+                if isinstance(nodo, list):
+                    return any(contiene_tensor(valor) for valor in nodo)
+                return False
+
+            assert contiene_tensor(pedagogia) is False
 
             def metricas_en(nodo):
                 if isinstance(nodo, dict):
@@ -157,6 +187,20 @@ class TestEntrenamientoBasico:
             for paso in pasos_recibidos
         )
         assert all(paso["visualizacion"]["componentes"] for paso in pasos_recibidos)
+
+    def test_telemetria_pedagogica_se_puede_apagar_sin_detener_entrenamiento(
+        self, qtbot, controlador, config
+    ):
+        pasos_recibidos = []
+        controlador.paso_entrenamiento.connect(pasos_recibidos.append)
+        controlador.activarVisualizacionPedagogica(False)
+
+        proveedor = _crear_proveedor_batches(config, cantidad_batches=1)
+        with qtbot.waitSignal(controlador.entrenamiento_completo, timeout=10000):
+            controlador.iniciar_entrenamiento(proveedor, num_epocas=1)
+
+        assert pasos_recibidos[0]["visualizacion"]["pedagogia"] == {}
+        assert pasos_recibidos[0]["perdida"] > 0
 
     def test_contadores_de_epoca_y_paso_global_a_traves_de_varias_epocas(self, qtbot, controlador, config):
         pasos_recibidos = []

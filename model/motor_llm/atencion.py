@@ -61,17 +61,23 @@ def atencion_escalada(
     if mascara is not None:
         scores = scores.masked_fill(mascara == False, float("-inf"))  # noqa: E712
 
+    # Conservamos por separado la distribucion que sale de Softmax y la
+    # version a la que se aplica dropout. La primera es la que una persona
+    # debe interpretar como "pesos de atencion" (cada fila suma uno); la
+    # segunda es la que realmente participa en el forward de entrenamiento.
+    # Mezclarlas haria que la visualizacion mostrara filas con suma distinta
+    # de uno cuando dropout esta activo.
     pesos_atencion = F.softmax(scores, dim=-1)
+    pesos_aplicados = dropout(pesos_atencion) if dropout is not None else pesos_atencion
 
-    if dropout is not None:
-        pesos_atencion = dropout(pesos_atencion)
-
-    salida = pesos_atencion @ v
+    salida = pesos_aplicados @ v
     if devolver_traza:
         return salida, pesos_atencion, {
             "scores_crudos": scores_crudos.detach(),
             "scores_enmascarados": scores.detach(),
             "mascara": mascara.detach() if mascara is not None else None,
+            "pesos_softmax": pesos_atencion.detach(),
+            "pesos_aplicados": pesos_aplicados.detach(),
         }
     return salida, pesos_atencion
 

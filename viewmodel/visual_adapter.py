@@ -1218,6 +1218,343 @@ def _componente(
     }
 
 
+def _etiqueta_token_entrenamiento(modelo, tokenizer, token_id: int) -> str:
+    """Etiqueta ids reservados sin pedirle a tiktoken que los decodifique."""
+    if modelo.config.id_token_relleno is not None and token_id == modelo.config.id_token_relleno:
+        return "<PAD>"
+    vocabulario_base = getattr(tokenizer, "vocab_size", None)
+    if vocabulario_base is not None:
+        if token_id == int(vocabulario_base) + 1:
+            return "<BOS>"
+        if token_id == int(vocabulario_base) + 2:
+            return "<EOS>"
+    if tokenizer is None:
+        return f"#{token_id}"
+    return _texto_token(tokenizer, token_id)
+
+
+def _tokens_entrenamiento(modelo, tokenizer, ids: list[int]) -> list[dict]:
+    return [
+        {
+            "posicion": posicion,
+            "token_id": int(token_id),
+            "texto": _etiqueta_token_entrenamiento(
+                modelo, tokenizer, int(token_id)
+            ),
+        }
+        for posicion, token_id in enumerate(ids)
+    ]
+
+
+def _longitud_sin_relleno(tokens: torch.Tensor, id_relleno: int | None) -> int:
+    if id_relleno is None:
+        return int(tokens.numel())
+    return int(tokens.ne(id_relleno).sum().item())
+
+
+def _flujo_atencion_entrenamiento(
+    pesos: torch.Tensor | None,
+    indice_batch: int,
+    longitud_queries: int,
+    longitud_keys: int,
+    limite: int = 12,
+) -> dict:
+    """Matriz exacta y acotada para el lienzo QML de atencion."""
+    if pesos is None or pesos.numel() == 0:
+        return {}
+    datos = pesos.detach().float()[indice_batch]
+    queries = min(longitud_queries, int(datos.size(-2)), limite)
+    keys = min(longitud_keys, int(datos.size(-1)), limite)
+    datos = datos[:, :queries, :keys].cpu()
+    cabezas = []
+    for indice, matriz in enumerate(datos):
+        filas = matriz.clamp_min(0)
+        entropias = -(filas * torch.log(filas + 1e-12)).sum(dim=-1)
+        cabezas.append(
+            {
+                "id": f"H{indice + 1:02d}",
+                "indice": indice,
+                "entropia": round(float(entropias.mean().item()), 6),
+                "maximo": round(float(filas.max().item()), 6),
+            }
+        )
+    return {
+        "flujo": {
+            "matrices": [
+                [
+                    [round(float(valor), 6) for valor in fila]
+                    for fila in cabeza
+                ]
+                for cabeza in datos.tolist()
+            ],
+            "inicio_queries": 0,
+            "inicio_keys": 0,
+            "queries_mostradas": queries,
+            "keys_mostradas": keys,
+            "ventana_exacta": queries == longitud_queries and keys == longitud_keys,
+        },
+        "cabezas": cabezas,
+        "original_shape": " × ".join(str(int(v)) for v in pesos.shape),
+        "displayed_shape": f"{datos.size(0)} × {queries} × {keys}",
+        "aggregation_method": "ninguna",
+        "level_of_detail": (
+            "completo exacto"
+            if queries == longitud_queries and keys == longitud_keys
+            else f"primeros {queries} × {keys} tokens; valores exactos"
+        ),
+    }
+
+
+def _capas_atencion_entrenamiento(
+    pesos_por_capa: list[torch.Tensor | None],
+    indice_batch: int,
+    longitud_queries: int,
+    longitud_keys: int,
+) -> list[dict]:
+    return [
+        {
+            "capa": indice + 1,
+            "atencion": _flujo_atencion_entrenamiento(
+                pesos,
+                indice_batch,
+                longitud_queries,
+                longitud_keys,
+            ),
+        }
+        for indice, pesos in enumerate(pesos_por_capa)
+        if pesos is not None
+    ]
+
+
+def _mascara_entrenamiento(
+    mascara: torch.Tensor | None,
+    indice_batch: int,
+    longitud: int,
+    limite: int = 12,
+) -> dict:
+    if mascara is None:
+        datos = torch.ones((longitud, longitud), dtype=torch.bool)
+    else:
+        datos = mascara.detach().bool()
+        if datos.dim() == 4:
+            datos = datos[indice_batch, 0]
+        elif datos.dim() == 3:
+            datos = datos[indice_batch]
+        while datos.dim() > 2:
+            datos = datos[0]
+    cantidad = min(longitud, int(datos.size(-2)), int(datos.size(-1)), limite)
+    muestra = datos[:cantidad, :cantidad].cpu()
+    return {
+        "valores": [[1 if valor else 0 for valor in fila] for fila in muestra.tolist()],
+        "original_shape": f"{longitud} × {longitud}",
+        "displayed_shape": f"{cantidad} × {cantidad}",
+        "porcentaje_bloqueado": round(float((~muestra).float().mean().item() * 100), 3),
+        "ventana_exacta": cantidad == longitud,
+    }
+
+
+def _predicciones_entrenamiento(
+    modelo,
+    tokenizer,
+    logits: torch.Tensor,
+    objetivos: list[int],
+    indice_batch: int,
+    limite: int = 12,
+    top_k: int = 5,
+) -> list[dict]:
+    probabilidades = torch.softmax(logits.detach().float()[indice_batch], dim=-1)
+    resultado = []
+    for posicion, objetivo_id in enumerate(objetivos[:limite]):
+        fila = probabilidades[posicion]
+        cantidad_top = min(top_k, int(fila.numel()))
+        probs_top, ids_top = torch.topk(fila, cantidad_top)
+        prob_objetivo = float(fila[int(objetivo_id)].item())
+        top = []
+        for rango, (probabilidad, token_id) in enumerate(
+            zip(probs_top.tolist(), ids_top.tolist()), start=1
+        ):
+            top.append(
+                {
+                    "token_id": int(token_id),
+                    "texto": _etiqueta_token_entrenamiento(
+                        modelo, tokenizer, int(token_id)
+                    ),
+                    "probabilidad": round(float(probabilidad), 6),
+                    "rango": rango,
+                    "esperado": int(token_id) == int(objetivo_id),
+                }
+            )
+        resultado.append(
+            {
+                "posicion": posicion,
+                "objetivo": {
+                    "token_id": int(objetivo_id),
+                    "texto": _etiqueta_token_entrenamiento(
+                        modelo, tokenizer, int(objetivo_id)
+                    ),
+                    "probabilidad": round(prob_objetivo, 8),
+                    "rango": int((fila > prob_objetivo).sum().item()) + 1,
+                },
+                "predicho": top[0] if top else {},
+                "top": top,
+                "perdida_token": round(-math.log(max(prob_objetivo, 1e-12)), 6),
+                "acierto": bool(top and top[0]["token_id"] == int(objetivo_id)),
+            }
+        )
+    return resultado
+
+
+def _proyecciones_entrenamiento(
+    modelo,
+    indice_batch: int,
+    longitud_origen: int,
+    longitud_destino: int,
+) -> dict:
+    traza = getattr(modelo, "ultima_traza", None) or {}
+
+    def recortar(nombre: str, longitud: int) -> torch.Tensor | None:
+        tensor = traza.get(nombre)
+        if tensor is None:
+            return None
+        return tensor[indice_batch : indice_batch + 1, :longitud]
+
+    def comparar(nombre_antes: str, nombre_despues: str, longitud: int) -> dict:
+        antes = recortar(nombre_antes, longitud)
+        despues = recortar(nombre_despues, longitud)
+        if antes is None or despues is None or longitud == 0:
+            return {}
+        return _proyeccion_posicional(antes, despues, limite=12)
+
+    return {
+        "embedding_posicion_encoder": comparar(
+            "embedding_encoder_escalado", "entrada_encoder", longitud_origen
+        ),
+        "contexto_encoder": comparar(
+            "entrada_encoder_dropout", "salida_encoder", longitud_origen
+        ),
+        "embedding_posicion_decoder": comparar(
+            "embedding_decoder_escalado", "entrada_decoder", longitud_destino
+        ),
+    }
+
+
+def _resumen_pedagogico_entrenamiento(
+    modelo,
+    tokenizer,
+    logits: torch.Tensor,
+    tokens_origen: torch.Tensor,
+    tokens_destino: torch.Tensor,
+    objetivo: torch.Tensor,
+    perdida: float,
+    actualizaciones_parametros: list[dict],
+    optimizador=None,
+) -> dict:
+    """Snapshot serializable de un ejemplo real del batch de entrenamiento."""
+    indice_batch = 0
+    id_relleno = modelo.config.id_token_relleno
+    longitud_origen = _longitud_sin_relleno(tokens_origen[indice_batch], id_relleno)
+    longitud_destino = _longitud_sin_relleno(objetivo[indice_batch], id_relleno)
+    ids_origen = [
+        int(valor)
+        for valor in tokens_origen[indice_batch, :longitud_origen].detach().cpu().tolist()
+    ]
+    ids_decoder = [
+        int(valor)
+        for valor in tokens_destino[indice_batch, :longitud_destino].detach().cpu().tolist()
+    ]
+    ids_objetivo = [
+        int(valor)
+        for valor in objetivo[indice_batch, :longitud_destino].detach().cpu().tolist()
+    ]
+    tokens_fuente = _tokens_entrenamiento(modelo, tokenizer, ids_origen)
+    tokens_decoder = _tokens_entrenamiento(modelo, tokenizer, ids_decoder)
+    tokens_objetivo = _tokens_entrenamiento(modelo, tokenizer, ids_objetivo)
+    limite = 12
+    predicciones = _predicciones_entrenamiento(
+        modelo,
+        tokenizer,
+        logits,
+        ids_objetivo,
+        indice_batch,
+        limite=limite,
+    )
+    traza = getattr(modelo, "ultima_traza", None) or {}
+    tasa = (
+        float(optimizador.param_groups[0].get("lr", 0.0))
+        if optimizador is not None and optimizador.param_groups
+        else 0.0
+    )
+    return {
+        "disponible": bool(ids_origen and ids_decoder and ids_objetivo),
+        "ejemplo": {
+            "indice_batch": indice_batch,
+            "tokens_origen": tokens_fuente[:limite],
+            "tokens_decoder": tokens_decoder[:limite],
+            "tokens_objetivo": tokens_objetivo[:limite],
+            "longitud_origen_total": longitud_origen,
+            "longitud_destino_total": longitud_destino,
+            "truncado_visual": longitud_origen > limite or longitud_destino > limite,
+            "pares_teacher_forcing": [
+                {
+                    "posicion": posicion,
+                    "entrada": tokens_decoder[posicion],
+                    "prefijo": tokens_decoder[: posicion + 1],
+                    "objetivo": tokens_objetivo[posicion],
+                }
+                for posicion in range(min(longitud_destino, limite))
+            ],
+        },
+        "proyecciones_pca": _proyecciones_entrenamiento(
+            modelo, indice_batch, longitud_origen, longitud_destino
+        ),
+        "atenciones": {
+            "encoder": {
+                "capas": _capas_atencion_entrenamiento(
+                    modelo.encoder.pesos_atencion_por_capa(),
+                    indice_batch,
+                    longitud_origen,
+                    longitud_origen,
+                )
+            },
+            "decoder_masked": {
+                "capas": _capas_atencion_entrenamiento(
+                    modelo.decoder.pesos_autoatencion_por_capa(),
+                    indice_batch,
+                    longitud_destino,
+                    longitud_destino,
+                )
+            },
+            "cross": {
+                "capas": _capas_atencion_entrenamiento(
+                    modelo.decoder.pesos_atencion_cruzada_por_capa(),
+                    indice_batch,
+                    longitud_destino,
+                    longitud_origen,
+                )
+            },
+        },
+        "mascara_causal": {
+            **_mascara_entrenamiento(
+                traza.get("mascara_causal"), indice_batch, longitud_destino
+            ),
+            "activa": bool(modelo.config.usar_mascara_causal),
+        },
+        "predicciones_por_posicion": predicciones,
+        "perdida_batch": perdida,
+        "actualizaciones_parametros": actualizaciones_parametros,
+        "optimizador": {
+            "nombre": optimizador.__class__.__name__ if optimizador is not None else "—",
+            "tasa_aprendizaje": tasa,
+            "formula_conceptual": "θ ← θ − η∇θL",
+            "advertencia": (
+                "La fórmula es conceptual; los valores antes/después muestran "
+                "la actualización real aplicada por el optimizador."
+            ),
+        },
+        "limite_tokens_visual": limite,
+    }
+
+
 def resumir_paso_entrenamiento(
     modelo,
     logits: torch.Tensor,
@@ -1228,6 +1565,9 @@ def resumir_paso_entrenamiento(
     perdida_anterior: float | None,
     norma_gradiente_global: float,
     tokenizer=None,
+    actualizaciones_parametros: list[dict] | None = None,
+    optimizador=None,
+    incluir_pedagogia: bool = False,
 ) -> dict:
     """Construye el snapshot pequeno, real y QML-safe de un batch.
 
@@ -1450,6 +1790,24 @@ def resumir_paso_entrenamiento(
     else:
         lectura_perdida = "La pérdida se mantuvo respecto al batch anterior."
 
+    pedagogia = (
+        _resumen_pedagogico_entrenamiento(
+            modelo=modelo,
+            tokenizer=tokenizer,
+            logits=logits,
+            tokens_origen=tokens_origen,
+            tokens_destino=tokens_destino,
+            objetivo=objetivo,
+            perdida=perdida,
+            actualizaciones_parametros=list(actualizaciones_parametros or []),
+            optimizador=optimizador,
+        )
+        if incluir_pedagogia
+        else {}
+    )
+    if pedagogia.get("predicciones_por_posicion"):
+        predicciones_top = pedagogia["predicciones_por_posicion"][-1]["top"]
+
     return {
         "resumen": {
             "perdida": perdida,
@@ -1462,6 +1820,7 @@ def resumir_paso_entrenamiento(
             "predicciones_top": predicciones_top,
         },
         "componentes": componentes,
+        "pedagogia": pedagogia,
     }
 
 def extraer_nube_embeddings(

@@ -150,6 +150,7 @@ def training_qml(qapp, monkeypatch):
 
     window = component.create()
     assert window is not None, _errores(component)
+    window._test_view_model = view_model
     qapp.processEvents()
 
     yield window
@@ -297,11 +298,91 @@ def test_entrenamiento_espera_el_boton_y_consulta_la_teoria_del_json(
 
 def test_entrenamiento_muestra_el_segundo_paso_del_laboratorio(training_qml):
     progress = training_qml.findChild(QObject, "trainingLaboratoryProgress")
+    journey = training_qml.findChild(QObject, "trainingJourney")
 
     assert progress is not None
+    assert journey is not None
     assert progress.property("currentStep") == 1
     assert progress.property("totalSteps") == 3
     assert progress.property("currentStepTitle") == "Entrenamiento"
+    assert journey.property("stageIndex") == 0
+
+
+def test_recorrido_guiado_recibe_un_batch_real_y_recorre_sus_escenas(
+    training_qml, qapp, qtbot
+):
+    journey = training_qml.findChild(QObject, "trainingJourney")
+    controller = training_qml._test_view_model.trainingController
+    training_qml.show()
+    qapp.processEvents()
+
+    def proveedor():
+        return [
+            (
+                torch.tensor([[1, 2, 3]], dtype=torch.long),
+                torch.tensor([[98, 4, 5]], dtype=torch.long),
+                torch.tensor([[4, 5, 99]], dtype=torch.long),
+            )
+        ]
+
+    with qtbot.waitSignal(controller.entrenamiento_completo, timeout=10000):
+        controller.iniciar_entrenamiento(
+            proveedor,
+            num_epocas=1,
+            tasa_aprendizaje=1e-3,
+            incluir_tensores_crudos=False,
+        )
+    qapp.processEvents()
+
+    snapshot = _como_python(journey.property("snapshot"))
+    viewport = training_qml.findChild(QObject, "trainingJourneyViewport")
+    scenes = training_qml.findChild(QObject, "trainingJourneyScenes")
+    shift_rows = training_qml.findChild(QObject, "teacherForcingRows")
+    shift_alignment = training_qml.findChild(QObject, "teacherForcingAlignment")
+    assert journey.property("dataAvailable") is True
+    assert viewport is not None
+    assert scenes is not None
+    assert shift_rows is not None
+    assert shift_alignment is not None
+    assert journey.property("height") > 100
+    assert viewport.property("height") > 100
+    assert snapshot["ejemplo"]["tokens_decoder"][0]["texto"] == "<BOS>"
+    assert snapshot["ejemplo"]["tokens_objetivo"][-1]["texto"] == "<EOS>"
+    assert [len(pair["prefijo"]) for pair in snapshot["ejemplo"]["pares_teacher_forcing"]] == [1, 2, 3]
+    assert snapshot["predicciones_por_posicion"]
+    assert snapshot["actualizaciones_parametros"]
+
+    expected_scope = [
+        (0, "DATOS"),
+        (1, "ENCODER"),
+        (1, "ENCODER"),
+        (1, "ENCODER"),
+        (2, "DECODER"),
+        (2, "DECODER"),
+        (2, "PUENTE · ENCODER → DECODER"),
+        (2, "DECODER"),
+        (3, "APRENDIZAJE"),
+        (3, "APRENDIZAJE"),
+        (3, "APRENDIZAJE"),
+        (3, "APRENDIZAJE"),
+        (3, "APRENDIZAJE"),
+    ]
+    for stage in range(13):
+        _invocar(journey, "setStage", stage)
+        qapp.processEvents()
+        scene = training_qml.findChild(QObject, f"trainingScene{stage}")
+        assert scene is not None
+        assert scenes.property("currentIndex") == stage
+        assert journey.property("chapterIndex") == expected_scope[stage][0]
+        assert journey.property("scopeLabel") == expected_scope[stage][1]
+        assert 0 < scene.property("width") <= viewport.property("width")
+        assert 0 < scene.property("height") <= viewport.property("height")
+    assert journey.property("stageIndex") == 12
+    assert shift_alignment.property("height") > 0
+    assert shift_rows.property("width") > 0
+    assert shift_rows.property("height") > 0
+    assert shift_rows.property("count") == 3
+    assert shift_rows.property("contentHeight") <= shift_rows.property("height")
 
 
 def test_ayuda_inline_de_perdida_abre_el_glosario_en_modal(

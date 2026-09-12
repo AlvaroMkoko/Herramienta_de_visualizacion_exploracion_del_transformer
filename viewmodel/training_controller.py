@@ -30,6 +30,212 @@ def _norma_gradiente_global(modelo: "Transformer") -> float:
     return total**0.5
 
 
+def _indice_tensor(indice_plano: int, forma: tuple[int, ...]) -> list[int]:
+    """Convierte un indice plano a coordenadas sin depender de NumPy."""
+    coordenadas = []
+    restante = int(indice_plano)
+    for dimension in reversed(forma):
+        coordenadas.append(restante % int(dimension))
+        restante //= int(dimension)
+    return list(reversed(coordenadas))
+
+
+def _grupos_parametros_pedagogicos(modelo: "Transformer") -> list[dict]:
+    """Agrupa parametros reales por su papel en el Transformer.
+
+    Las capas de una misma clase se resumen juntas: la interfaz no necesita
+    copiar millones de valores para explicar que WQ, WK o la FFN recibieron
+    gradiente. Cada grupo conserva, ademas, un escalar representativo real.
+    """
+
+    def por_capa(ruta: str, modulos) -> list[tuple[str, torch.nn.Module]]:
+        return [(f"{ruta}.{indice}", modulo) for indice, modulo in enumerate(modulos)]
+
+    encoder = list(modelo.encoder.bloques)
+    decoder = list(modelo.decoder.bloques)
+    grupos = [
+        {
+            "id": "embedding_entrada",
+            "etiqueta": "Embedding · entrada",
+            "modulos": [("embedding_entrada", modelo.embedding_entrada)],
+        },
+        {
+            "id": "embedding_salida",
+            "etiqueta": (
+                "Embedding · salida / Linear compartida"
+                if modelo.compartir_pesos_salida
+                else "Embedding · salida"
+            ),
+            "modulos": [("embedding_salida", modelo.embedding_salida)],
+            "pesos_compartidos": bool(modelo.compartir_pesos_salida),
+        },
+        {
+            "id": "encoder_wq",
+            "etiqueta": "Encoder · WQ",
+            "modulos": por_capa(
+                "encoder.WQ", [bloque.atencion.proyeccion_q for bloque in encoder]
+            ),
+        },
+        {
+            "id": "encoder_wk",
+            "etiqueta": "Encoder · WK",
+            "modulos": por_capa(
+                "encoder.WK", [bloque.atencion.proyeccion_k for bloque in encoder]
+            ),
+        },
+        {
+            "id": "encoder_wv",
+            "etiqueta": "Encoder · WV",
+            "modulos": por_capa(
+                "encoder.WV", [bloque.atencion.proyeccion_v for bloque in encoder]
+            ),
+        },
+        {
+            "id": "encoder_wo",
+            "etiqueta": "Encoder · WO",
+            "modulos": por_capa(
+                "encoder.WO", [bloque.atencion.proyeccion_salida for bloque in encoder]
+            ),
+        },
+        {
+            "id": "encoder_ffn",
+            "etiqueta": "Encoder · Feed Forward",
+            "modulos": por_capa("encoder.FFN", [bloque.feed_forward for bloque in encoder]),
+        },
+        {
+            "id": "decoder_masked_qkv",
+            "etiqueta": "Decoder causal · WQ/WK/WV",
+            "modulos": por_capa(
+                "decoder.masked",
+                [bloque.autoatencion for bloque in decoder],
+            ),
+        },
+        {
+            "id": "decoder_cross_qkv",
+            "etiqueta": "Cross-Attention · WQ/WK/WV",
+            "modulos": por_capa(
+                "decoder.cross",
+                [bloque.atencion_cruzada for bloque in decoder],
+            ),
+        },
+        {
+            "id": "decoder_ffn",
+            "etiqueta": "Decoder · Feed Forward",
+            "modulos": por_capa("decoder.FFN", [bloque.feed_forward for bloque in decoder]),
+        },
+        {
+            "id": "normalizaciones",
+            "etiqueta": "Add & Norm · γ/β",
+            "modulos": por_capa(
+                "encoder.norm",
+                [
+                    conexion
+                    for bloque in encoder
+                    for conexion in (bloque.conexion_atencion, bloque.conexion_feed_forward)
+                ],
+            )
+            + por_capa(
+                "decoder.norm",
+                [
+                    conexion
+                    for bloque in decoder
+                    for conexion in (
+                        bloque.conexion_autoatencion,
+                        bloque.conexion_atencion_cruzada,
+                        bloque.conexion_feed_forward,
+                    )
+                ],
+            ),
+        },
+        {
+            "id": "linear_salida",
+            "etiqueta": "Linear final",
+            "modulos": [("capa_salida", modelo.capa_salida)],
+            "pesos_compartidos": bool(modelo.compartir_pesos_salida),
+        },
+    ]
+    return grupos
+
+
+def _capturar_actualizaciones_antes(
+    modelo: "Transformer", optimizador: torch.optim.Optimizer
+) -> list[dict]:
+    """Resume gradientes y recuerda un escalar antes de ``optimizer.step``."""
+    tasa = float(optimizador.param_groups[0].get("lr", 0.0)) if optimizador.param_groups else 0.0
+    resultado = []
+    for grupo in _grupos_parametros_pedagogicos(modelo):
+        vistos: set[int] = set()
+        suma = 0.0
+        suma_cuadrados = 0.0
+        cantidad = 0
+        minimo = float("inf")
+        maximo = float("-inf")
+        mejor_magnitud = -1.0
+        referencia = None
+
+        for prefijo, modulo in grupo["modulos"]:
+            for nombre, parametro in modulo.named_parameters(recurse=True):
+                if id(parametro) in vistos or parametro.grad is None:
+                    continue
+                vistos.add(id(parametro))
+                gradiente = parametro.grad.detach().float().reshape(-1)
+                finitos = gradiente[torch.isfinite(gradiente)]
+                if finitos.numel() == 0:
+                    continue
+                cantidad_local = int(finitos.numel())
+                suma += float(finitos.sum().item())
+                suma_cuadrados += float(finitos.square().sum().item())
+                cantidad += cantidad_local
+                minimo = min(minimo, float(finitos.min().item()))
+                maximo = max(maximo, float(finitos.max().item()))
+
+                indice_local = int(gradiente.abs().argmax().item())
+                magnitud = float(gradiente[indice_local].abs().item())
+                if magnitud > mejor_magnitud:
+                    mejor_magnitud = magnitud
+                    referencia = {
+                        "parametro_ref": parametro,
+                        "indice_plano": indice_local,
+                        "parametro": f"{prefijo}.{nombre}",
+                        "indice": _indice_tensor(indice_local, tuple(parametro.shape)),
+                        "antes": float(parametro.detach().reshape(-1)[indice_local].item()),
+                        "gradiente": float(gradiente[indice_local].item()),
+                    }
+
+        if cantidad == 0 or referencia is None:
+            continue
+        resultado.append(
+            {
+                "id": grupo["id"],
+                "etiqueta": grupo["etiqueta"],
+                "pesos_compartidos": bool(grupo.get("pesos_compartidos", False)),
+                "optimizador": optimizador.__class__.__name__,
+                "tasa_aprendizaje": tasa,
+                "cantidad_gradientes": cantidad,
+                "gradiente_norma_l2": suma_cuadrados**0.5,
+                "gradiente_rms": (suma_cuadrados / cantidad) ** 0.5,
+                "gradiente_media": suma / cantidad,
+                "gradiente_minimo": minimo,
+                "gradiente_maximo": maximo,
+                **referencia,
+            }
+        )
+    return resultado
+
+
+def _finalizar_actualizaciones(diagnosticos: list[dict]) -> list[dict]:
+    """Lee el mismo escalar despues del paso y elimina referencias PyTorch."""
+    resultado = []
+    for diagnostico in diagnosticos:
+        parametro = diagnostico.pop("parametro_ref")
+        indice_plano = diagnostico.pop("indice_plano")
+        despues = float(parametro.detach().reshape(-1)[indice_plano].item())
+        diagnostico["despues"] = despues
+        diagnostico["actualizacion"] = despues - float(diagnostico["antes"])
+        resultado.append(diagnostico)
+    return resultado
+
+
 def _crear_batches(dataset, id_token_relleno: int | None, batch_size: int):
     """Acepta tanto Dataset reales como proveedores usados por las pruebas."""
     if callable(dataset):
@@ -69,6 +275,7 @@ def _tarea_entrenamiento(
     estado: dict[str, Any],
     bloqueo_estado: threading.RLock,
     config_nube: dict[str, Any],
+    config_pedagogia: dict[str, Any],
     incluir_tensores_crudos: bool,
 ) -> Generator[dict, None, dict]:
     """Entrena en segundo plano y actualiza un estado snapshotable.
@@ -116,13 +323,21 @@ def _tarea_entrenamiento(
             objetivo = objetivo.to(dispositivo)
 
             with bloqueo_estado:
+                pedagogia_activa = bool(config_pedagogia.get("activa", True))
+                modelo.capturar_traza_entrenamiento = pedagogia_activa
                 optimizador.zero_grad()
                 logits = modelo(tokens_origen, tokens_destino)
                 perdida = modelo.calcular_perdida(logits, objetivo)
                 perdida.backward()
                 norma_gradiente = _norma_gradiente_global(modelo)
                 perdida_anterior = historial[-1] if historial else None
+                actualizaciones = (
+                    _capturar_actualizaciones_antes(modelo, optimizador)
+                    if pedagogia_activa
+                    else []
+                )
                 optimizador.step()
+                actualizaciones = _finalizar_actualizaciones(actualizaciones)
 
                 nube_cfg = dict(config_nube)
 
@@ -197,6 +412,9 @@ def _tarea_entrenamiento(
                         perdida_anterior=perdida_anterior,
                         norma_gradiente_global=norma_gradiente,
                         tokenizer=tokenizer,
+                        actualizaciones_parametros=actualizaciones,
+                        optimizador=optimizador,
+                        incluir_pedagogia=pedagogia_activa,
                     ),
                 }
 
@@ -353,6 +571,9 @@ class TrainingController(QObject):
             "dimensiones": [0, 1, 2],
             "intervalo": 10,
         }
+        # La pestaña guiada es la vista inicial. Al salir de ella, QML apaga
+        # su snapshot costoso y conserva congelado el último batch observado.
+        self._config_pedagogia = {"activa": True}
 
         self._optimizador: torch.optim.Optimizer | None = None
         self._optimizer_state_pendiente = getattr(
@@ -549,6 +770,7 @@ class TrainingController(QObject):
             self._estado_entrenamiento,
             self._bloqueo_estado,
             self._config_nube,
+            self._config_pedagogia,
             incluir_tensores_crudos,
             velocidad_inicial=velocidad_inicial,
         )
@@ -730,6 +952,12 @@ class TrainingController(QObject):
         ni siquiera lee los embeddings."""
         with self._bloqueo_estado:
             self._config_nube["activa"] = bool(activa)
+
+    @Slot(bool)
+    def activarVisualizacionPedagogica(self, activa: bool) -> None:
+        """Activa la telemetría detallada solo mientras su pestaña es visible."""
+        with self._bloqueo_estado:
+            self._config_pedagogia["activa"] = bool(activa)
 
     @Slot(str, "QVariantList", int)
     def configurarNubeEmbeddings(self, modo: str, dimensiones: list, intervalo: int) -> None:
@@ -913,6 +1141,8 @@ class TrainingController(QObject):
         self.paso_entrenamiento.emit(paso)
 
     def _al_completar(self, resultado: dict) -> None:
+        self.modelo.capturar_traza_entrenamiento = False
+        self.modelo.ultima_traza = None
         with self._bloqueo_estado:
             self._estado_entrenamiento["ultima_sesion_fin_utc"] = datetime.now(
                 timezone.utc
@@ -923,6 +1153,8 @@ class TrainingController(QObject):
         self.entrenamiento_completo.emit(resultado)
 
     def _al_cancelar(self) -> None:
+        self.modelo.capturar_traza_entrenamiento = False
+        self.modelo.ultima_traza = None
         with self._bloqueo_estado:
             self._estado_entrenamiento["ultima_sesion_fin_utc"] = datetime.now(
                 timezone.utc
@@ -941,6 +1173,8 @@ class TrainingController(QObject):
         )
 
     def _al_error(self, mensaje: str) -> None:
+        self.modelo.capturar_traza_entrenamiento = False
+        self.modelo.ultima_traza = None
         with self._bloqueo_estado:
             self._estado_entrenamiento["ultima_sesion_fin_utc"] = datetime.now(
                 timezone.utc

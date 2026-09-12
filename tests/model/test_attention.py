@@ -94,6 +94,26 @@ class TestAtencionEscalada:
 
         assert (pesos >= 0).all()
 
+    def test_dropout_no_convierte_la_visualizacion_en_una_falsa_distribucion(
+        self, config, batch_size
+    ):
+        """La salida usa dropout, pero los pesos expuestos son el Softmax real."""
+        t = 6
+        q = torch.randn(batch_size, config.num_cabezas, t, config.dimension_cabeza)
+        k = torch.randn(batch_size, config.num_cabezas, t, config.dimension_cabeza)
+        v = torch.randn(batch_size, config.num_cabezas, t, config.dimension_cabeza)
+        dropout = torch.nn.Dropout(0.5)
+
+        _, pesos, traza = atencion_escalada(
+            q, k, v, dropout=dropout, devolver_traza=True
+        )
+
+        assert torch.allclose(
+            pesos.sum(dim=-1), torch.ones_like(pesos.sum(dim=-1)), atol=1e-6
+        )
+        assert torch.equal(pesos, traza["pesos_softmax"])
+        assert traza["pesos_aplicados"].shape == pesos.shape
+
     def test_mascara_causal_bloquea_futuro(self, config, batch_size):
         """Con máscara causal, el peso de atención hacia una posición
         futura debe ser exactamente 0 (softmax de -infinito)."""

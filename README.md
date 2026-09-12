@@ -57,8 +57,8 @@ El flujo de los laboratorios es:
    compatibilidad de entrenamiento. Se pueden seleccionar varios y se combinan
    en un solo corpus.
 3. **Entrenamiento** — métricas en vivo, controles de pausa/reanudación y de
-   velocidad, y dos pestañas: el diagrama del Transformer y la nube 3D de
-   embeddings.
+   velocidad, y tres pestañas: recorrido pedagógico del batch real, diagrama
+   del Transformer y nube PCA 3D de embeddings.
 4. **Resultados** — resumen del entrenamiento, curva de pérdida y opciones de
    guardado.
 5. **Inferencia** — generación token a token con temperatura, top-k, top-p,
@@ -113,6 +113,11 @@ lejos en las dimensiones no mostradas.
 
 El cálculo corre en el hilo de entrenamiento cada N pasos (10 por defecto) y
 solo mientras la pestaña está visible.
+
+El recorrido pedagógico conserva además comparaciones PCA 2D de estados del
+forward actual. Todas las nubes comparadas comparten una sola base PCA para
+evitar rotaciones engañosas; PCA es solo la lente visual y no una capa ni una
+operación aprendida del Transformer.
 
 ## Guardar, abrir y compartir modelos
 

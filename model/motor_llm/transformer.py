@@ -71,6 +71,13 @@ class Transformer(nn.Module):
             # de pesos que el Output Embedding (mismo shape: vocab x d_model).
             self.capa_salida.weight = self.embedding_salida.embedding.weight
 
+        # Ultimo forward observable. Es instrumentacion del mismo modelo, no
+        # una segunda red: el ViewModel toma copias detach acotadas al batch
+        # actual para explicar el entrenamiento y nunca las usa para calcular
+        # gradientes ni predicciones.
+        self.ultima_traza: dict | None = None
+        self.capturar_traza_entrenamiento = False
+
         self._inicializar_pesos()
 
     def _inicializar_pesos(self) -> None:
@@ -160,17 +167,25 @@ class Transformer(nn.Module):
             mascara_causal = mascara_causal if mascara_causal is not None else mascara_causal_auto
 
         # --- Rama del Encoder ---
-        x_encoder = self.embedding_entrada(tokens_origen) * math.sqrt(self.config.dimension_modelo)
-        x_encoder = self.codificacion_posicional(x_encoder)
-        x_encoder = self.dropout_entrada(x_encoder)
-        salida_encoder = self.encoder(x_encoder, mascara=mascara_encoder)
+        embedding_encoder = self.embedding_entrada(tokens_origen)
+        embedding_encoder_escalado = embedding_encoder * math.sqrt(
+            self.config.dimension_modelo
+        )
+        posicion_encoder = self.codificacion_posicional.pe[:, : tokens_origen.size(1)]
+        entrada_encoder = self.codificacion_posicional(embedding_encoder_escalado)
+        entrada_encoder_dropout = self.dropout_entrada(entrada_encoder)
+        salida_encoder = self.encoder(entrada_encoder_dropout, mascara=mascara_encoder)
 
         # --- Rama del Decoder ---
-        x_decoder = self.embedding_salida(tokens_destino) * math.sqrt(self.config.dimension_modelo)
-        x_decoder = self.codificacion_posicional(x_decoder)
-        x_decoder = self.dropout_salida(x_decoder)
+        embedding_decoder = self.embedding_salida(tokens_destino)
+        embedding_decoder_escalado = embedding_decoder * math.sqrt(
+            self.config.dimension_modelo
+        )
+        posicion_decoder = self.codificacion_posicional.pe[:, : tokens_destino.size(1)]
+        entrada_decoder = self.codificacion_posicional(embedding_decoder_escalado)
+        entrada_decoder_dropout = self.dropout_salida(entrada_decoder)
         salida_decoder = self.decoder(
-            x_decoder,
+            entrada_decoder_dropout,
             salida_encoder,
             mascara_causal=mascara_causal,
             mascara_encoder=mascara_encoder,
@@ -178,6 +193,29 @@ class Transformer(nn.Module):
 
         # --- Linear ---
         logits = self.capa_salida(salida_decoder)
+        if self.capturar_traza_entrenamiento:
+            self.ultima_traza = {
+                "embedding_encoder": embedding_encoder.detach(),
+                "embedding_encoder_escalado": embedding_encoder_escalado.detach(),
+                "posicion_encoder": posicion_encoder.detach(),
+                "entrada_encoder": entrada_encoder.detach(),
+                "entrada_encoder_dropout": entrada_encoder_dropout.detach(),
+                "salida_encoder": salida_encoder.detach(),
+                "embedding_decoder": embedding_decoder.detach(),
+                "embedding_decoder_escalado": embedding_decoder_escalado.detach(),
+                "posicion_decoder": posicion_decoder.detach(),
+                "entrada_decoder": entrada_decoder.detach(),
+                "entrada_decoder_dropout": entrada_decoder_dropout.detach(),
+                "salida_decoder": salida_decoder.detach(),
+                "mascara_encoder": (
+                    mascara_encoder.detach() if mascara_encoder is not None else None
+                ),
+                "mascara_causal": (
+                    mascara_causal.detach() if mascara_causal is not None else None
+                ),
+            }
+        else:
+            self.ultima_traza = None
         return logits
 
     def obtener_probabilidades(self, logits: torch.Tensor) -> torch.Tensor:
