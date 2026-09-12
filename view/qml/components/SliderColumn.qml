@@ -1,105 +1,3 @@
-// import QtQuick
-// import QtQuick.Controls
-// import QtQuick.Layouts
-
-// ColumnLayout {
-//     id: root
-
-//     // Propiedades públicas
-//     property alias text: titulo.text
-//     property alias value: slider.value
-//     property string tipo_dato: "entero"
-
-//     property real from: 0
-//     property real to: 10
-//     property real stepSize: 1
-
-//     property real sx: 1
-//     property real sy: 1
-
-//     spacing: 6 * sy
-
-//     Text {
-//         id: titulo
-
-//         Layout.fillWidth: true
-
-//         color: Style.Theme.chip_texto
-//         font.pixelSize: 14 * sy
-//     }
-
-//     RowLayout {
-//         Layout.fillWidth: true
-//         Layout.fillHeight:true
-
-//         spacing: 6 * sx
-
-//         Slider {
-//             id: slider
-
-//             Layout.fillWidth: true
-//             Layout.alignment: Qt.AlignVCenter
-
-//             from: root.from
-//             to: root.to
-//             stepSize: root.stepSize
-//             snapMode: Slider.SnapAlways
-
-//             background: Rectangle {
-//                 x: slider.leftPadding
-//                 y: slider.topPadding + slider.availableHeight / 2 - height / 2
-
-//                 width: slider.availableWidth
-//                 height: 6 * root.sy
-
-//                 radius: height / 2
-//                 color: Style.Theme.divisor
-
-//                 Rectangle {
-//                     width: slider.visualPosition * parent.width
-//                     height: parent.height
-
-//                     radius: parent.radius
-//                     color: Style.Theme.acento_fuerte
-//                 }
-//             }
-
-//             handle: Rectangle {
-//                 x: slider.leftPadding +
-//                    slider.visualPosition * (slider.availableWidth - width)
-
-//                 y: slider.topPadding +
-//                    slider.availableHeight / 2 - height / 2
-
-//                 width: 26 * root.sx
-//                 height: width
-
-//                 radius: width / 2
-
-//                 color: Style.Theme.acento_fuerte
-
-//                 border.width: 2
-//                 border.color: "white"
-//             }
-//         }
-
-//         Text {
-//             id: valor
-
-//             Layout.alignment: Qt.AlignVCenter
-
-//             text: tipo_dato === "entero"
-//                     ? Math.round(slider.value)
-//                     : slider.value.toFixed(3)
-
-//             color: Style.Theme.acento_fuerte
-//             font.pixelSize: 22 * root.sy
-//             font.bold: true
-//         }
-//     }
-// }
-
-
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -156,59 +54,18 @@ ColumnLayout {
 
         spacing: 12 * sx
 
-        Slider {
+        SliderPrincipal {
             id: slider
 
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignVCenter
 
+            sx: root.sx
+            sy: root.sy
+
             from: root.from
             to: root.to
             stepSize: root.stepSize
-
-            snapMode: Slider.SnapAlways
-
-            background: Rectangle {
-
-                x: slider.leftPadding
-                y: slider.topPadding + slider.availableHeight / 2 - height / 2
-
-                width: slider.availableWidth
-                height: 6 * sy
-
-                radius: height / 2
-
-                color: Style.Theme.divisor
-
-                Rectangle {
-
-                    width: slider.visualPosition * parent.width
-                    height: parent.height
-
-                    radius: parent.radius
-
-                    color: Style.Theme.acento_fuerte
-                }
-            }
-
-            handle: Rectangle {
-
-                x: slider.leftPadding +
-                   slider.visualPosition * (slider.availableWidth - width)
-
-                y: slider.topPadding +
-                   slider.availableHeight / 2 - height / 2
-
-                width: 24 * sx
-                height: width
-
-                radius: width / 2
-
-                color: Style.Theme.acento_fuerte
-
-                border.width: 2
-                border.color: "white"
-            }
         }
 
         Text {
@@ -226,7 +83,7 @@ ColumnLayout {
                     ? Math.round(slider.value)
                     : Number(slider.value).toFixed(3)
 
-            color: Style.Theme.acento_fuerte
+            color: Style.Theme.acento
 
             font.bold: true
             font.pixelSize: 18 * sy

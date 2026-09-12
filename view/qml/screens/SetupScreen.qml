@@ -583,10 +583,12 @@ PagePrincipal {
                             }
                         }
 
-                        ComboBox {
+                        SelectorPrincipal {
                             id: comboActivacion
                             Layout.fillWidth: true
                             Layout.preferredHeight: 35 * root.sy
+                            sx: root.sx
+                            sy: root.sy
                             enabled: !root.usarModeloActual
                             opacity: enabled ? 1.0 : 0.55
 

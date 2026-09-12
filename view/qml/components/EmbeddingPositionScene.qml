@@ -159,39 +159,21 @@ Item {
                 anchors.margins: 9 * root.sx
                 spacing: 10 * root.sx
                 Text { text: "E · √d"; color: Style.Theme.acento_fuerte; font.bold: true; font.pixelSize: 10 * root.sx }
-                Slider {
+                
+                SliderPrincipal {
                     id: progressSlider
                     Layout.fillWidth: true
-                    from: 0; to: 1; value: root.progress
+                    sx: root.sx
+                    sy: root.sy
+                    from: 0; to: 1
+                    value: root.progress
+                    snapMode: Slider.NoSnap
                     onMoved: {
                         travel.stop()
                         root.progress = value
                     }
-                    background: Rectangle {
-                        x: progressSlider.leftPadding
-                        y: progressSlider.topPadding + progressSlider.availableHeight / 2 - height / 2
-                        width: progressSlider.availableWidth
-                        height: 7 * root.sy
-                        radius: height / 2
-                        color: Style.Theme.acento_alt
-                        Rectangle {
-                            width: progressSlider.visualPosition * parent.width
-                            height: parent.height
-                            radius: parent.radius
-                            color: Style.Theme.acento
-                        }
-                    }
-                    handle: Rectangle {
-                        x: progressSlider.leftPadding + progressSlider.visualPosition
-                           * (progressSlider.availableWidth - width)
-                        y: progressSlider.topPadding + progressSlider.availableHeight / 2 - height / 2
-                        width: 20 * root.sx; height: 20 * root.sy
-                        radius: width / 2
-                        color: Style.Theme.surface
-                        border.color: Style.Theme.acento
-                        border.width: 3
-                    }
                 }
+
                 Text {
                     text: "+ " + Math.round(root.progress * 100) + "% PE"
                     color: Style.Theme.acento

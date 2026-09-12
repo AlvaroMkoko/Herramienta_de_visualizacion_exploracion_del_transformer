@@ -509,10 +509,10 @@ PagePrincipal {
                             }
                         }
 
-                        SpinBox {
+                        NumeroPrincipal {
                             id: maxTokens
                             Layout.preferredWidth: 116 * root.sx
-                            Layout.preferredHeight: 50 * root.sy
+                            Layout.preferredHeight: 24 * root.sy
                             from: 1
                             to: root.maxTokensPermitidos
                             value: 100
@@ -543,9 +543,11 @@ PagePrincipal {
                         }
                     }
 
-                    Slider {
+                    SliderPrincipal {
                         id: temperatura
                         Layout.fillWidth: true
+                        sx: root.sx
+                        sy: root.sy
                         from: 0.1
                         to: 2.0
                         stepSize: 0.05
@@ -557,7 +559,7 @@ PagePrincipal {
                     RowLayout {
                         Layout.fillWidth: true
 
-                        CheckBox {
+                        CasillaPrincipal {
                             id: usarTopK
                             Layout.fillWidth: true
                             text: "Usar Top-K"
@@ -570,7 +572,7 @@ PagePrincipal {
                             controlSize: Math.max(24, 27 * Math.min(root.sx, root.sy))
                             onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
                         }
-                        SpinBox {
+                        NumeroPrincipal {
                             id: topK
                             Layout.preferredWidth: 116 * root.sx
                             from: 1
@@ -583,7 +585,7 @@ PagePrincipal {
                     RowLayout {
                         Layout.fillWidth: true
 
-                        CheckBox {
+                        CasillaPrincipal {
                             id: usarTopP
                             Layout.fillWidth: true
                             text: "Usar Top-P"
@@ -604,9 +606,11 @@ PagePrincipal {
                         }
                     }
 
-                    Slider {
+                    SliderPrincipal {
                         id: topP
                         Layout.fillWidth: true
+                        sx: root.sx
+                        sy: root.sy
                         from: 0.05
                         to: 0.99
                         stepSize: 0.01
@@ -617,7 +621,7 @@ PagePrincipal {
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 6 * root.sx
-                        CheckBox {
+                        CasillaPrincipal {
                             id: muestreoCodicioso
                             Layout.fillWidth: true
                             text: "Muestreo codicioso (elegir siempre el token más probable)"

@@ -145,33 +145,24 @@ Item {
             radius: 10 * root.sx
             color: Style.Theme.chip_fondo
             border.color: Style.Theme.info_fondo
+
             RowLayout {
                 anchors.fill: parent
                 anchors.margins: 8 * root.sx
                 spacing: 10 * root.sx
                 Text { text: "UMBRAL"; color: "#0369A1"; font.bold: true; font.pixelSize: 9 * root.sx }
-                Slider {
+
+                SliderPrincipal {
                     id: thresholdSlider
                     Layout.preferredWidth: 260 * root.sx
+                    sx: root.sx
+                    sy: root.sy
+                    colorRelleno: Style.Theme.info_texto
                     from: 0.0; to: 0.35; stepSize: 0.005
                     value: root.threshold
                     onMoved: root.threshold = value
-                    background: Rectangle {
-                        x: thresholdSlider.leftPadding
-                        y: thresholdSlider.topPadding + thresholdSlider.availableHeight / 2 - height / 2
-                        width: thresholdSlider.availableWidth
-                        height: 6 * root.sy
-                        radius: height / 2
-                        color: Style.Theme.info_fondo
-                        Rectangle { width: thresholdSlider.visualPosition * parent.width; height: parent.height; radius: parent.radius; color: "#0284C7" }
-                    }
-                    handle: Rectangle {
-                        x: thresholdSlider.leftPadding + thresholdSlider.visualPosition * (thresholdSlider.availableWidth - width)
-                        y: thresholdSlider.topPadding + thresholdSlider.availableHeight / 2 - height / 2
-                        width: 18 * root.sx; height: 18 * root.sy; radius: width / 2
-                        color: Style.Theme.surface; border.color: "#0284C7"; border.width: 3
-                    }
                 }
+
                 Text { text: "≥ " + root.threshold.toFixed(3); color: "#075985"; font.bold: true; font.pixelSize: 10 * root.sx }
                 Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: Style.Theme.info_fondo }
                 Text {

@@ -521,10 +521,12 @@ PagePrincipal {
             onTextChanged: root.reconstruirModelosVisibles()
         }
 
-        ComboBox {
+        SelectorPrincipal {
             id: selectorOrden
             Layout.preferredWidth: 225 * root.sx
             Layout.preferredHeight: 40 * root.sy
+            sx: root.sx
+            sy: root.sy
             model: ["Más recientes", "Nombre A–Z", "Nombre Z–A",
                     "Más parámetros", "Menos parámetros"]
             onCurrentIndexChanged: root.reconstruirModelosVisibles()

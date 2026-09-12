@@ -631,7 +631,7 @@ Item {
                     accent: Style.Theme.acento
                     onClicked: root.nextTokenRequested()
                 }
-                CheckBox {
+                CasillaPrincipal {
                     objectName: "inferenceReducedMotionToggle"
                     Layout.preferredWidth: Math.max(142, 166 * root.sx)
                     text: "Reducir movimiento"
@@ -1306,12 +1306,14 @@ Item {
                         }
                     }
 
-                    ComboBox {
+                    SelectorPrincipal {
                         id: operationSelector
                         objectName: "inferenceOperationSelector"
                         Layout.preferredWidth: Math.max(180, 240 * root.sx)
                         Layout.preferredHeight: Math.max(38, 40 * root.sy)
                         model: root.flowSteps
+                        sx: root.sx
+                        sy: root.sy
                         textRole: "short"
                         currentIndex: root.operationIndex
                         displayText: "Ir al paso " + (root.operationIndex + 1)

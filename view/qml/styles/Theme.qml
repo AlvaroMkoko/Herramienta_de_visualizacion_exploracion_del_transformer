@@ -46,13 +46,8 @@ QtObject {
         "error":             "#EF4444",
         "info":              "#3B82F6",
         "texto_sobre_color": "#FFFFFF",
-
-        // Superficies auxiliares para reemplazar los hex fijos de las pantallas
-        "chip_fondo":        "#F3F4F6",
-        "chip_borde":        "#D1D5DB",
-        "chip_texto":        "#4B5563",
+        "texto_sobre_acento": "#FFFFFF",
         "acento_suave":      "#EDE9FE",
-        "acento":            "#6D28D9",
 
         // ===== Neutros (los más repetidos: 58, 42, 36, 34, 27, 20 usos) =====
         "texto_terciario":   "#94A3B8",
@@ -60,7 +55,6 @@ QtObject {
         "superficie_alterna":"#F8FAFC",
         "borde_suave":       "#CBD5E1",
         "borde_medio":       "#E2E8F0",
-        "texto_sobre_color": "#FFFFFF",
 
         // ===== Pares semánticos: fondo de chip + su texto =====
         "exito_fondo":   "#DCFCE7",  "exito_texto":   "#166534",
@@ -111,25 +105,21 @@ QtObject {
         "borde_boton":       "#45445A",
         "borde_cuadro":      "#4A4860",
         "texto_sobre_color": "#FFFFFF",
+        "texto_sobre_acento": "#14141C",
 
         // Los estados se aclaran: los tonos claros no contrastan sobre fondo oscuro
         "success":           "#4ADE80",
         "warning":           "#FBBF24",
         "error":             "#F87171",
         "info":              "#60A5FA",
-        "chip_fondo":        "#2A2938",
-        "chip_borde":        "#3F3E52",
-        "chip_texto":        "#C3C0D4",
         "acento_suave":      "#312A4D",
-        "acento":            "#A78BFA",
 
         // ===== Neutros =====
         "texto_terciario":   "#8B889E",
         "divisor":           "#2E2D3D",
-        "superficie_alterna":"#1C1B26",
+        "superficie_alterna":"#282734",
         "borde_suave":       "#3F3E52",
         "borde_medio":       "#33323F",
-        "texto_sobre_color": "#14141C",
 
         // ===== Pares semánticos =====
         // El fondo del chip se oscurece y desatura; el texto se aclara.
@@ -142,7 +132,6 @@ QtObject {
         "acento_fondo":  "#2A2342",  "acento_texto":  "#A78BFA",
         "chip_fondo":    "#2A2938",  "chip_texto":    "#C3C0D4",
         "chip_borde":    "#3F3E52",
-        "superficie_alterna": "#282734",
 
         // ===== Acentos de marca =====
         "acento":        "#A78BFA",
@@ -197,6 +186,7 @@ QtObject {
     readonly property color acento_suave: p.acento_suave
     readonly property color acento: p.acento
     readonly property color texto_terciario: p.texto_terciario
+    readonly property color texto_sobre_acento: p.texto_sobre_acento
     readonly property color divisor: p.divisor
     readonly property color superficie_alterna: p.superficie_alterna
     readonly property color borde_suave: p.borde_suave

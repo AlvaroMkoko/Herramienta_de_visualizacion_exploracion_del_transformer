@@ -449,7 +449,7 @@ Item {
                         anchors.fill: parent
                         anchors.margins: 7 * root.sx
                         spacing: 6 * root.sx
-                        ComboBox {
+                        SelectorPrincipal {
                             visible: root.sceneIndex >= 3 && root.sceneIndex <= 12
                             Layout.preferredWidth: 150 * root.sx
                             Layout.minimumWidth: 150 * root.sx
@@ -463,16 +463,18 @@ Item {
                             visible: root.sceneIndex >= 3 && root.sceneIndex <= 12
                             Layout.fillWidth: true; spacing: 0
                             Text { text: "CAPA " + (root.layerIndex + 1); color: Style.Theme.texto_secundario; font.bold: true; font.pixelSize: 9 * root.sx }
-                            Slider {
+                            SliderPrincipal {
                                 Layout.fillWidth: true
-                                from: 0; to: Math.max(0, Number(root.metadata.num_layers || 1) - 1)
-                                stepSize: 1; snapMode: Slider.SnapAlways
+                                sx: root.sx
+                                sy: root.sy
+                                from: 0
+                                to: Math.max(0, Number(root.metadata.num_layers || 1) - 1)
+                                stepSize: 1
                                 value: root.layerIndex
                                 onMoved: root.layerIndex = Math.round(value)
-                                Accessible.name: "Capa " + (root.layerIndex + 1)
                             }
                         }
-                        SpinBox {
+                        NumeroPrincipal {
                             visible: root.sceneIndex >= 3 && root.sceneIndex <= 12
                             Layout.preferredWidth: 76 * root.sx
                             Layout.minimumWidth: 76 * root.sx
@@ -506,7 +508,7 @@ Item {
                             onClicked: root.setScene(root.sceneIndex + 1)
                             Accessible.name: "Paso siguiente"
                         }
-                        ComboBox {
+                        SelectorPrincipal {
                             Layout.preferredWidth: 68 * root.sx
                             Layout.minimumWidth: 68 * root.sx
                             Layout.maximumWidth: 68 * root.sx
@@ -559,7 +561,7 @@ Item {
                                     font.pixelSize: 10 * Math.min(root.sx, root.sy)
                                 }
                             }
-                            CheckBox {
+                            CasillaPrincipal {
                                 visible: root.sceneIndex === 1 || root.densityMode >= 1
                                 text: "Escala local"
                                 checked: root.localScale
@@ -567,13 +569,13 @@ Item {
                                 ToolTip.visible: hovered
                                 ToolTip.text: checked ? "La escala se ajusta a esta vista" : "Escala global compartida"
                             }
-                            CheckBox {
+                            CasillaPrincipal {
                                 visible: root.densityMode === 2
                                 text: "Comparar capa"
                                 checked: root.comparisonEnabled
                                 onToggled: root.comparisonEnabled = checked
                             }
-                            SpinBox {
+                            NumeroPrincipal {
                                 visible: root.densityMode === 2 && root.comparisonEnabled
                                 from: 1; to: Math.max(1, Number(root.metadata.num_layers || 1))
                                 value: root.comparisonLayer + 1
@@ -904,7 +906,7 @@ Item {
                                 }
                             }
 
-                            CheckBox {
+                            CasillaPrincipal {
                                 text: "Reducir movimiento"
                                 checked: root.reducedMotion
                                 onToggled: root.reducedMotion = checked

@@ -672,7 +672,7 @@ PagePrincipal {
                                 controlSize: Math.max(21, 24 * Math.min(root.sx, root.sy))
                                 onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
                             }
-                            SpinBox {
+                            NumeroPrincipal {
                                 id: maxTokens
                                 Layout.preferredWidth: 110 * root.sx
                                 from: 1
@@ -687,9 +687,11 @@ PagePrincipal {
                                 controlSize: Math.max(21, 24 * Math.min(root.sx, root.sy))
                                 onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
                             }
-                            Slider {
+                            SliderPrincipal {
                                 id: temperatura
                                 Layout.fillWidth: true
+                                sx: root.sx
+                                sy: root.sy
                                 from: 0.1
                                 to: 2.0
                                 stepSize: 0.05
@@ -705,7 +707,7 @@ PagePrincipal {
 
                         RowLayout {
                             Layout.fillWidth: true
-                            CheckBox {
+                            CasillaPrincipal {
                                 id: usarTopK
                                 text: "Top-K"
                                 checked: true
@@ -716,7 +718,7 @@ PagePrincipal {
                                 controlSize: Math.max(21, 24 * Math.min(root.sx, root.sy))
                                 onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
                             }
-                            SpinBox {
+                            NumeroPrincipal {
                                 id: topK
                                 Layout.preferredWidth: 100 * root.sx
                                 from: 1
@@ -725,7 +727,7 @@ PagePrincipal {
                                 editable: true
                                 enabled: usarTopK.checked && usarTopK.enabled
                             }
-                            CheckBox {
+                            CasillaPrincipal {
                                 id: usarTopP
                                 text: "Top-P"
                                 checked: true
@@ -736,9 +738,11 @@ PagePrincipal {
                                 controlSize: Math.max(21, 24 * Math.min(root.sx, root.sy))
                                 onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
                             }
-                            Slider {
+                            SliderPrincipal {
                                 id: topP
                                 Layout.fillWidth: true
+                                sx: root.sx
+                                sy: root.sy
                                 from: 0.05
                                 to: 0.99
                                 stepSize: 0.01
@@ -750,7 +754,7 @@ PagePrincipal {
                                 color: Style.Theme.acento_fuerte
                                 font.bold: true
                             }
-                            CheckBox {
+                            CasillaPrincipal {
                                 id: muestreoCodicioso
                                 text: "Codicioso"
                                 checked: false
