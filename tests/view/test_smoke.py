@@ -223,6 +223,16 @@ def test_seleccionar_bloque_espera_el_boton_para_abrir_teoria(
     assert modal.property("visible") is False
 
 
+def test_configuracion_muestra_el_primer_paso_del_laboratorio(setup_qml):
+    window, _ = setup_qml
+    progress = window.findChild(QObject, "setupLaboratoryProgress")
+
+    assert progress is not None
+    assert progress.property("currentStep") == 0
+    assert progress.property("totalSteps") == 3
+    assert progress.property("currentStepTitle") == "Configuración"
+
+
 def test_error_de_cabezas_desaparece_al_corregir_configuracion(
     setup_qml, qapp
 ):
@@ -283,6 +293,15 @@ def test_entrenamiento_espera_el_boton_y_consulta_la_teoria_del_json(
     _invocar(diagram, "clearSelection")
     qapp.processEvents()
     assert panel.property("visible") is False
+
+
+def test_entrenamiento_muestra_el_segundo_paso_del_laboratorio(training_qml):
+    progress = training_qml.findChild(QObject, "trainingLaboratoryProgress")
+
+    assert progress is not None
+    assert progress.property("currentStep") == 1
+    assert progress.property("totalSteps") == 3
+    assert progress.property("currentStepTitle") == "Entrenamiento"
 
 
 def test_ayuda_inline_de_perdida_abre_el_glosario_en_modal(

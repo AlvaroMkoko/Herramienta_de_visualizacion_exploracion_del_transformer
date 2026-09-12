@@ -92,6 +92,16 @@ ApplicationWindow {{
     assert window is not None, _errors(component)
     qapp.processEvents()
 
+    if screen_name == "InferenceScreen":
+        progress = window.findChild(QObject, "inferenceLaboratoryProgress")
+        assert progress is not None
+        assert progress.property("currentStep") == 2
+        assert progress.property("currentStepTitle") == "Inferencia"
+    elif screen_name == "ComparisonScreen":
+        title = window.findChild(QObject, "comparisonScreenTitle")
+        assert title is not None
+        assert title.property("text") == "Comparación de modelos"
+
     window.deleteLater()
     engine.deleteLater()
     qapp.processEvents()

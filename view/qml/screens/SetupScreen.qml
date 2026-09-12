@@ -223,6 +223,19 @@ PagePrincipal {
         onActivated: localBridge.clearSelection()
     }
 
+    LaboratoryProgress {
+        id: laboratoryProgress
+        objectName: "setupLaboratoryProgress"
+        anchors.top: parent.top
+        anchors.topMargin: 10 * root.sy
+        anchors.horizontalCenter: parent.horizontalCenter
+        width: Math.min(implicitWidth, parent.width - 600 * root.sx)
+        currentStep: 0
+        sx: root.sx
+        sy: root.sy
+        z: 10
+    }
+
     Rectangle {
         id: overlayPreparacion
         objectName: "setupPreparationOverlay"
@@ -294,8 +307,7 @@ PagePrincipal {
     BotonPrincipal {
         anchors.left: parent.left
         anchors.leftMargin: 10 * sx
-        anchors.top: parent.top
-        anchors.topMargin: 10 * sy
+        anchors.verticalCenter: laboratoryProgress.verticalCenter
         width: 250 * sx
         height: 40 * sy
         text: " ↶ Volver al inicio"
@@ -379,9 +391,12 @@ PagePrincipal {
         id: centerArea
         anchors.left: rec_left.right
         anchors.right: rightPanel.left
-        anchors.top: parent.top
+        anchors.top: laboratoryProgress.bottom
         anchors.bottom: parent.bottom
-        anchors.margins: 20 * sx
+        anchors.leftMargin: 20 * root.sx
+        anchors.rightMargin: 20 * root.sx
+        anchors.topMargin: 10 * root.sy
+        anchors.bottomMargin: 20 * root.sy
 
         // Instanciamos el diagrama puro sin la UI externa y le pasamos el puente local
         TransformerDiagram {
@@ -396,12 +411,14 @@ PagePrincipal {
         id: rightPanel
         property real size_width: 320
         width: size_width * sx
-        height: parent.height
         color: "transparent"
         
         anchors.right: parent.right
-        anchors.verticalCenter: parent.verticalCenter
+        anchors.top: laboratoryProgress.bottom
+        anchors.bottom: parent.bottom
         anchors.rightMargin: 20 * sx
+        anchors.topMargin: 10 * root.sy
+        anchors.bottomMargin: 20 * root.sy
 
         ScrollView {
             id: panelScroll

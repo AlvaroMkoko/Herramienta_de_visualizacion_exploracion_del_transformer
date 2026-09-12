@@ -142,12 +142,26 @@ PagePrincipal {
         }
     }
 
+    LaboratoryProgress {
+        id: laboratoryProgress
+        objectName: "inferenceLaboratoryProgress"
+        anchors.top: parent.top
+        anchors.topMargin: 10 * root.sy
+        anchors.horizontalCenter: parent.horizontalCenter
+        width: Math.min(implicitWidth, parent.width - 600 * root.sx)
+        currentStep: 2
+        sx: root.sx
+        sy: root.sy
+    }
+
     RowLayout {
         id: cabecera
-        anchors.top: parent.top
+        anchors.top: laboratoryProgress.bottom
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.margins: 24 * root.sx
+        anchors.topMargin: 6 * root.sy
+        anchors.leftMargin: 24 * root.sx
+        anchors.rightMargin: 24 * root.sx
         height: 72 * root.sy
         spacing: 14 * root.sx
 

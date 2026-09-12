@@ -283,7 +283,9 @@ PagePrincipal {
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.margins: 24 * root.sx
+        anchors.topMargin: 24 * root.sy
+        anchors.leftMargin: 24 * root.sx
+        anchors.rightMargin: Math.max(100, 150 * root.sx)
         height: 72 * root.sy
         spacing: 14 * root.sx
 
@@ -299,7 +301,8 @@ PagePrincipal {
             Layout.fillWidth: true
             spacing: 1 * root.sy
             Text {
-                text: root.modelosListos ? "Comparación de generación" : "Elige dos modelos"
+                objectName: "comparisonScreenTitle"
+                text: "Comparación de modelos"
                 color: Style.Theme.texto_primario
                 font.bold: true
                 font.pixelSize: 27 * Math.min(root.sx, root.sy)

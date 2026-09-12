@@ -346,12 +346,25 @@ PagePrincipal {
         }
     }
 
+    LaboratoryProgress {
+        id: laboratoryProgress
+        objectName: "trainingLaboratoryProgress"
+        anchors.top: parent.top
+        anchors.topMargin: 10 * root.sy
+        anchors.horizontalCenter: parent.horizontalCenter
+        width: Math.min(implicitWidth, parent.width - 600 * root.sx)
+        currentStep: 1
+        sx: root.sx
+        sy: root.sy
+    }
+
     Item {
         id: header
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.top: parent.top
-        height: 78 * root.sy
+        anchors.top: laboratoryProgress.bottom
+        anchors.topMargin: 6 * root.sy
+        height: 72 * root.sy
 
         BotonPrincipal {
             anchors.left: parent.left

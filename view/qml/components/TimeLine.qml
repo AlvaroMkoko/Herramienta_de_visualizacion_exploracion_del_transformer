@@ -1,14 +1,14 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
-import QtQuick.Layouts
 import "../styles" as Style
 
 /*
-    StepIndicator.qml
-    ------------------
+    TimeLine.qml
+    ------------
     Barra de progreso tipo "pipeline" horizontal, estilo circulos solidos
-    (done = relleno morado + check blanco, running = circulo mas grande y
-    oscuro + texto en negrita, pending = circulo claro con borde y check
-    desvanecido).
+    (done = relleno de acento + check contrastante, running = circulo mas
+    grande con el numero de paso, pending = circulo claro con borde y numero).
 
     Uso:
 
@@ -44,19 +44,19 @@ Item {
 
     // Colores - "done"
     property color doneColor: Style.Theme.acento
-    property color doneCheckColor: "white"
+    property color doneCheckColor: Style.Theme.texto_sobre_color
     property color doneLabelColor: Style.Theme.chip_texto
 
     // Colores - "running" (paso activo: circulo mas grande y oscuro)
     property color runningColor: Style.Theme.acento_fuerte
-    property color runningCheckColor: "white"
+    property color runningCheckColor: Style.Theme.texto_sobre_color
     property color runningLabelColor: Style.Theme.acento_fuerte
 
     // Colores - "pending"
     property color pendingBg: Style.Theme.acento_fondo
     property color pendingBorder: Style.Theme.acento_alt
     property color pendingCheckColor: Style.Theme.acento_alt
-    property color pendingLabelColor: Style.Theme.texto_terciario
+    property color pendingLabelColor: Style.Theme.texto_secundario
 
     // Conectores
     property color connectorDoneColor: Style.Theme.acento
@@ -73,41 +73,76 @@ Item {
     property real baseFontSizeActive: 13
     property real baseIconSize: 14
     property real baseIconSizeActive: 16
-    property real baseConnectorMinWidth: 20
+    property real minimumCircleSize: 24
+    property real minimumCircleSizeActive: 28
+    property real minimumFontSize: 11
+    property real minimumFontSizeActive: 12
+    property real minimumIconSize: 12
+    property real minimumIconSizeActive: 13
     property real baseHorizontalPadding: 10
+    property real baseVerticalPadding: 6
     property real baseColumnSpacing: 6
 
-    readonly property real circleSize: baseCircleSize * sx
-    readonly property real circleSizeActive: baseCircleSizeActive * sx
-    readonly property real fontSize: baseFontSize * sx
-    readonly property real fontSizeActive: baseFontSizeActive * sx
-    readonly property real iconSize: baseIconSize * sx
-    readonly property real iconSizeActive: baseIconSizeActive * sx
-    readonly property real connectorMinWidth: baseConnectorMinWidth * sx
+    readonly property real circleSize: Math.max(minimumCircleSize, baseCircleSize * sx)
+    readonly property real circleSizeActive: Math.max(minimumCircleSizeActive,
+                                                       baseCircleSizeActive * sx)
+    readonly property real fontSize: Math.max(minimumFontSize, baseFontSize * sx)
+    readonly property real fontSizeActive: Math.max(minimumFontSizeActive,
+                                                     baseFontSizeActive * sx)
+    readonly property real iconSize: Math.max(minimumIconSize, baseIconSize * sx)
+    readonly property real iconSizeActive: Math.max(minimumIconSizeActive,
+                                                     baseIconSizeActive * sx)
     readonly property real horizontalPadding: baseHorizontalPadding * sx
+    readonly property real verticalPadding: baseVerticalPadding * sy
     readonly property real columnSpacing: baseColumnSpacing * sy
 
     // Tamaño natural calculado del contenido real (no un numero fijo),
     // asi si cambias baseCircleSizeActive/baseFontSize, este valor se
     // actualiza solo y cualquier contenedor que dimensione en base a el
     // (ej. Math.max(altoFijo, indicador.implicitHeight)) mide correcto.
-    implicitWidth: rowLayout.implicitWidth + horizontalPadding * 2
-    implicitHeight: circleSizeActive + columnSpacing + (fontSizeActive * 1.4) + (12 * sy)
+    implicitWidth: Math.max(1, stepRepeater.count) * 140 * sx
+                   + horizontalPadding * 2
+    implicitHeight: circleSizeActive + columnSpacing + (fontSizeActive * 1.4)
+                    + verticalPadding * 2
 
-    RowLayout {
-        id: rowLayout
+    Item {
+        id: content
         anchors.fill: parent
-        anchors.margins: root.horizontalPadding
-        spacing: 0
+        anchors.leftMargin: root.horizontalPadding
+        anchors.rightMargin: root.horizontalPadding
+        anchors.topMargin: root.verticalPadding
+        anchors.bottomMargin: root.verticalPadding
+
+        readonly property real stepWidth: width / Math.max(1, stepRepeater.count)
 
         Repeater {
-            id: repeater
             model: root.model
 
-            delegate: RowLayout {
+            delegate: Rectangle {
+                required property int index
+                required property var modelData
+
+                visible: index < stepRepeater.count - 1
+                x: (index + 0.5) * content.stepWidth
+                y: root.circleSizeActive / 2 - height / 2
+                width: content.stepWidth
+                height: Math.max(1, 2 * root.sx)
+                color: modelData.state === "done"
+                       ? root.connectorDoneColor : root.connectorPendingColor
+
+                Behavior on color { ColorAnimation { duration: 250 } }
+            }
+        }
+
+        Repeater {
+            id: stepRepeater
+            model: root.model
+
+            delegate: Item {
                 id: stepDelegate
-                spacing: 0
-                Layout.fillWidth: index < repeater.count - 1
+
+                required property int index
+                required property var modelData
 
                 readonly property var stepData: modelData
                 readonly property bool isDone: stepData.state === "done"
@@ -115,17 +150,21 @@ Item {
                 readonly property bool isPending: stepData.state === "pending"
                 readonly property real thisCircleSize: isRunning ? root.circleSizeActive : root.circleSize
 
-                // --- circulo + etiqueta ---
-                Column {
-                    spacing: root.columnSpacing
-                    Layout.alignment: Qt.AlignTop
+                x: index * content.stepWidth
+                width: content.stepWidth
+                height: content.height
+
+                Item {
+                    id: circleSlot
+                    width: parent.width
+                    height: root.circleSizeActive
 
                     Rectangle {
                         id: circle
                         width: stepDelegate.thisCircleSize
                         height: stepDelegate.thisCircleSize
                         radius: width / 2
-                        anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.centerIn: parent
                         color: stepDelegate.isDone ? root.doneColor
                                : stepDelegate.isRunning ? root.runningColor
                                : root.pendingBg
@@ -138,7 +177,7 @@ Item {
 
                         Text {
                             anchors.centerIn: parent
-                            text: "\u2713"
+                            text: stepDelegate.isDone ? "\u2713" : String(stepDelegate.index + 1)
                             font.bold: !stepDelegate.isPending
                             font.pixelSize: stepDelegate.isRunning ? root.iconSizeActive : root.iconSize
                             color: stepDelegate.isDone ? root.doneCheckColor
@@ -146,32 +185,21 @@ Item {
                                    : root.pendingCheckColor
                         }
                     }
-
-                    Text {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        text: stepDelegate.stepData.title
-                        font.pixelSize: stepDelegate.isRunning ? root.fontSizeActive : root.fontSize
-                        font.bold: stepDelegate.isRunning
-                        color: stepDelegate.isDone ? root.doneLabelColor
-                               : stepDelegate.isRunning ? root.runningLabelColor
-                               : root.pendingLabelColor
-                    }
                 }
 
-                // --- conector entre circulos (no despues del ultimo) ---
-                Item {
-                    visible: index < repeater.count - 1
-                    Layout.fillWidth: true
-                    Layout.minimumWidth: root.connectorMinWidth
-                    Layout.preferredHeight: Math.max(1, 2 * root.sx)
-                    Layout.alignment: Qt.AlignTop
-                    Layout.topMargin: root.circleSize / 2 - (1 * root.sx)
-
-                    Rectangle {
-                        anchors.fill: parent
-                        color: stepDelegate.isDone ? root.connectorDoneColor : root.connectorPendingColor
-                        Behavior on color { ColorAnimation { duration: 250 } }
-                    }
+                Text {
+                    anchors.top: circleSlot.bottom
+                    anchors.topMargin: root.columnSpacing
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    text: stepDelegate.stepData.title
+                    horizontalAlignment: Text.AlignHCenter
+                    elide: Text.ElideRight
+                    font.pixelSize: stepDelegate.isRunning ? root.fontSizeActive : root.fontSize
+                    font.bold: stepDelegate.isRunning
+                    color: stepDelegate.isDone ? root.doneLabelColor
+                           : stepDelegate.isRunning ? root.runningLabelColor
+                           : root.pendingLabelColor
                 }
             }
         }
