@@ -32,13 +32,13 @@ PagePrincipal {
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 72 * root.sy
+            Layout.preferredHeight: 82 * root.sy
             spacing: 20 * root.sx
 
             BotonPrincipal {
                 objectName: "evaluationIntroBackButton"
                 Layout.preferredWidth: 210 * root.sx
-                Layout.preferredHeight: 44 * root.sy
+                Layout.preferredHeight: 48 * root.sy
                 text: "← Volver al inicio"
                 onClicked: root.stackView.pop()
             }
@@ -51,7 +51,7 @@ PagePrincipal {
                     Layout.fillWidth: true
                     text: root.evaluationController.eyebrow
                     color: root.isPreTest ? Style.Theme.info_texto : Style.Theme.acento_fuerte
-                    font.pixelSize: 12 * root.sx
+                    font.pixelSize: 14 * root.sx
                     font.bold: true
                     font.letterSpacing: 1
                 }
@@ -60,14 +60,14 @@ PagePrincipal {
                     Layout.fillWidth: true
                     text: root.evaluationController.title
                     color: Style.Theme.texto_primario
-                    font.pixelSize: 30 * root.sx
+                    font.pixelSize: 34 * root.sx
                     font.bold: true
                 }
             }
 
             Rectangle {
                 Layout.preferredWidth: 175 * root.sx
-                Layout.preferredHeight: 34 * root.sy
+                Layout.preferredHeight: 38 * root.sy
                 radius: height / 2
                 color: root.isPreTest ? Style.Theme.info_fondo : Style.Theme.acento_fondo
                 border.color: root.isPreTest ? Style.Theme.info : Style.Theme.acento
@@ -76,7 +76,7 @@ PagePrincipal {
                     anchors.centerIn: parent
                     text: root.isPreTest ? "FORMA A" : "FORMA B"
                     color: root.isPreTest ? Style.Theme.info_texto : Style.Theme.acento_fuerte
-                    font.pixelSize: 11 * root.sx
+                    font.pixelSize: 13 * root.sx
                     font.bold: true
                 }
             }
@@ -88,9 +88,10 @@ PagePrincipal {
             spacing: 24 * root.sx
 
             RectanglePrincipal {
+                objectName: "evaluationIntroContentCard"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.minimumWidth: 700 * root.sx
+                Layout.minimumWidth: 760 * root.sx
                 sx: root.sx
                 sy: root.sy
 
@@ -105,7 +106,7 @@ PagePrincipal {
                               ? "Descubre tu punto de partida"
                               : "Comprueba cuánto aprendiste"
                         color: Style.Theme.texto_primario
-                        font.pixelSize: 25 * root.sx
+                        font.pixelSize: 29 * root.sx
                         font.bold: true
                         wrapMode: Text.WordWrap
                     }
@@ -114,7 +115,7 @@ PagePrincipal {
                         Layout.fillWidth: true
                         text: root.evaluationController.description
                         color: Style.Theme.texto_secundario_fuerte
-                        font.pixelSize: 16 * root.sx
+                        font.pixelSize: 18 * root.sx
                         lineHeight: 1.25
                         wrapMode: Text.WordWrap
                     }
@@ -132,7 +133,7 @@ PagePrincipal {
                             anchors.margins: 14 * root.sx
                             text: root.evaluationController.instructions
                             color: root.isPreTest ? Style.Theme.info_texto : Style.Theme.acento_fuerte
-                            font.pixelSize: 13 * root.sx
+                            font.pixelSize: 15 * root.sx
                             wrapMode: Text.WordWrap
                         }
                     }
@@ -140,7 +141,7 @@ PagePrincipal {
                     Text {
                         text: "¿QUÉ SE EVALÚA?"
                         color: Style.Theme.texto_secundario
-                        font.pixelSize: 11 * root.sx
+                        font.pixelSize: 12 * root.sx
                         font.bold: true
                         font.letterSpacing: 0.8
                     }
@@ -151,7 +152,7 @@ PagePrincipal {
                             id: dimensionCard
                             required property var modelData
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 58 * root.sy
+                            Layout.preferredHeight: 66 * root.sy
                             radius: 9 * root.sx
                             color: Style.Theme.superficie_alterna
                             border.color: Style.Theme.borde_medio
@@ -163,8 +164,8 @@ PagePrincipal {
                                 spacing: 12 * root.sx
 
                                 Rectangle {
-                                    Layout.preferredWidth: 28 * root.sx
-                                    Layout.preferredHeight: 28 * root.sy
+                                    Layout.preferredWidth: 32 * root.sx
+                                    Layout.preferredHeight: 32 * root.sy
                                     radius: width / 2
                                     color: Style.Theme.acento_fondo
                                     Text { anchors.centerIn: parent; text: "✓"; color: Style.Theme.acento_fuerte; font.bold: true }
@@ -173,14 +174,14 @@ PagePrincipal {
                                     Layout.fillWidth: true
                                     text: dimensionCard.modelData.name
                                     color: Style.Theme.texto_primario
-                                    font.pixelSize: 14 * root.sx
+                                    font.pixelSize: 16 * root.sx
                                     font.bold: true
                                     wrapMode: Text.WordWrap
                                 }
                                 Text {
                                     text: dimensionCard.modelData.question_count + " preguntas"
                                     color: Style.Theme.texto_secundario
-                                    font.pixelSize: 12 * root.sx
+                                    font.pixelSize: 13 * root.sx
                                 }
                             }
                         }
@@ -191,7 +192,7 @@ PagePrincipal {
             }
 
             RectanglePrincipal {
-                Layout.preferredWidth: 560 * root.sx
+                Layout.preferredWidth: 600 * root.sx
                 Layout.fillHeight: true
                 sx: root.sx
                 sy: root.sy
@@ -201,7 +202,7 @@ PagePrincipal {
                     anchors.margins: 32 * root.sx
                     spacing: 18 * root.sy
 
-                    Text { text: "Antes de comenzar"; color: Style.Theme.texto_primario; font.pixelSize: 22 * root.sx; font.bold: true }
+                    Text { text: "Antes de comenzar"; color: Style.Theme.texto_primario; font.pixelSize: 25 * root.sx; font.bold: true }
 
                     Repeater {
                         model: [
@@ -215,12 +216,12 @@ PagePrincipal {
                             required property var modelData
                             Layout.fillWidth: true
                             spacing: 10 * root.sx
-                            Text { text: "•"; color: Style.Theme.acento; font.pixelSize: 18 * root.sx; font.bold: true }
+                            Text { text: "•"; color: Style.Theme.acento; font.pixelSize: 20 * root.sx; font.bold: true }
                             Text {
                                 Layout.fillWidth: true
                                 text: ruleRow.modelData
                                 color: Style.Theme.texto_secundario_fuerte
-                                font.pixelSize: 13 * root.sx
+                                font.pixelSize: 15 * root.sx
                                 wrapMode: Text.WordWrap
                             }
                         }
@@ -228,7 +229,7 @@ PagePrincipal {
 
                     Rectangle {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 86 * root.sy
+                        Layout.preferredHeight: 96 * root.sy
                         radius: 10 * root.sx
                         color: Style.Theme.chip_fondo
                         border.color: Style.Theme.chip_borde
@@ -239,20 +240,20 @@ PagePrincipal {
                             spacing: 12 * root.sx
                             ColumnLayout {
                                 Layout.fillWidth: true
-                                Text { text: "PREGUNTAS"; color: Style.Theme.texto_secundario; font.pixelSize: 9 * root.sx; font.bold: true }
-                                Text { text: root.evaluationController.totalQuestions; color: Style.Theme.texto_primario; font.pixelSize: 22 * root.sx; font.bold: true }
+                                Text { text: "PREGUNTAS"; color: Style.Theme.texto_secundario; font.pixelSize: 10 * root.sx; font.bold: true }
+                                Text { text: root.evaluationController.totalQuestions; color: Style.Theme.texto_primario; font.pixelSize: 26 * root.sx; font.bold: true }
                             }
                             Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: Style.Theme.divisor }
                             ColumnLayout {
                                 Layout.fillWidth: true
-                                Text { text: "DIMENSIONES"; color: Style.Theme.texto_secundario; font.pixelSize: 9 * root.sx; font.bold: true }
-                                Text { text: root.evaluationController.dimensions.length; color: Style.Theme.texto_primario; font.pixelSize: 22 * root.sx; font.bold: true }
+                                Text { text: "DIMENSIONES"; color: Style.Theme.texto_secundario; font.pixelSize: 10 * root.sx; font.bold: true }
+                                Text { text: root.evaluationController.dimensions.length; color: Style.Theme.texto_primario; font.pixelSize: 26 * root.sx; font.bold: true }
                             }
                             Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: Style.Theme.divisor }
                             ColumnLayout {
                                 Layout.fillWidth: true
-                                Text { text: "TIEMPO APROX."; color: Style.Theme.texto_secundario; font.pixelSize: 9 * root.sx; font.bold: true }
-                                Text { text: "5–8 min"; color: Style.Theme.texto_primario; font.pixelSize: 18 * root.sx; font.bold: true }
+                                Text { text: "TIEMPO APROX."; color: Style.Theme.texto_secundario; font.pixelSize: 10 * root.sx; font.bold: true }
+                                Text { text: "5–8 min"; color: Style.Theme.texto_primario; font.pixelSize: 20 * root.sx; font.bold: true }
                             }
                         }
                     }
@@ -260,7 +261,7 @@ PagePrincipal {
                     Rectangle {
                         visible: root.evaluationController.hasPreviousResult
                         Layout.fillWidth: true
-                        Layout.preferredHeight: visible ? 54 * root.sy : 0
+                        Layout.preferredHeight: visible ? 60 * root.sy : 0
                         radius: 8 * root.sx
                         color: Style.Theme.exito_fondo
                         Text {
@@ -269,7 +270,7 @@ PagePrincipal {
                                   + root.evaluationController.previousResult.total + " ("
                                   + root.evaluationController.previousResult.percentage + "%)"
                             color: Style.Theme.exito_texto
-                            font.pixelSize: 12 * root.sx
+                            font.pixelSize: 14 * root.sx
                             font.bold: true
                         }
                     }
@@ -287,8 +288,8 @@ PagePrincipal {
                     BotonPrincipal {
                         objectName: "evaluationStartButton"
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 52 * root.sy
-                        minimum_text_size: 12
+                        Layout.preferredHeight: 58 * root.sy
+                        minimum_text_size: 13
                         text: root.evaluationController.hasPreviousResult
                               ? "Repetir " + root.evaluationController.title.toLowerCase()
                               : "Comenzar " + root.evaluationController.title.toLowerCase()

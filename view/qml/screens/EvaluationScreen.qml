@@ -35,21 +35,21 @@ PagePrincipal {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.leftMargin: 70 * root.sx
-        anchors.rightMargin: 70 * root.sx
+        anchors.leftMargin: 50 * root.sx
+        anchors.rightMargin: 50 * root.sx
         anchors.topMargin: 30 * root.sy
         anchors.bottomMargin: 34 * root.sy
         spacing: 18 * root.sy
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 68 * root.sy
+            Layout.preferredHeight: 76 * root.sy
             spacing: 18 * root.sx
 
             BotonPrincipal {
                 objectName: "evaluationExitButton"
                 Layout.preferredWidth: 190 * root.sx
-                Layout.preferredHeight: 42 * root.sy
+                Layout.preferredHeight: 48 * root.sy
                 text: "← Salir"
                 onClicked: root.stackView.pop()
             }
@@ -60,14 +60,14 @@ PagePrincipal {
                 Text {
                     text: root.evaluationController.eyebrow
                     color: Style.Theme.acento_fuerte
-                    font.pixelSize: 11 * root.sx
+                    font.pixelSize: 13 * root.sx
                     font.bold: true
                     font.letterSpacing: 0.8
                 }
                 Text {
                     text: root.evaluationController.title
                     color: Style.Theme.texto_primario
-                    font.pixelSize: 26 * root.sx
+                    font.pixelSize: 30 * root.sx
                     font.bold: true
                 }
             }
@@ -77,7 +77,7 @@ PagePrincipal {
                 text: "Pregunta " + root.evaluationController.currentQuestionNumber
                       + " de " + root.evaluationController.totalQuestions
                 color: Style.Theme.texto_secundario_fuerte
-                font.pixelSize: 13 * root.sx
+                font.pixelSize: 15 * root.sx
                 font.bold: true
             }
         }
@@ -85,7 +85,7 @@ PagePrincipal {
         Rectangle {
             visible: !root.showingResult
             Layout.fillWidth: true
-            Layout.preferredHeight: 10 * root.sy
+            Layout.preferredHeight: 12 * root.sy
             radius: height / 2
             color: Style.Theme.divisor
 
@@ -103,7 +103,7 @@ PagePrincipal {
             visible: !root.showingResult
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.maximumWidth: 1300 * root.sx
+            Layout.maximumWidth: 1500 * root.sx
             Layout.alignment: Qt.AlignHCenter
             sx: root.sx
             sy: root.sy
@@ -119,7 +119,7 @@ PagePrincipal {
 
                     Rectangle {
                         Layout.preferredWidth: dimensionText.implicitWidth + 22 * root.sx
-                        Layout.preferredHeight: 30 * root.sy
+                        Layout.preferredHeight: 34 * root.sy
                         radius: height / 2
                         color: Style.Theme.acento_fondo
                         Text {
@@ -129,13 +129,13 @@ PagePrincipal {
                                   ? "Tokenización"
                                   : "Embeddings y posición"
                             color: Style.Theme.acento_fuerte
-                            font.pixelSize: 10 * root.sx
+                            font.pixelSize: 11 * root.sx
                             font.bold: true
                         }
                     }
                     Rectangle {
                         Layout.preferredWidth: bloomText.implicitWidth + 22 * root.sx
-                        Layout.preferredHeight: 30 * root.sy
+                        Layout.preferredHeight: 34 * root.sy
                         radius: height / 2
                         color: Style.Theme.info_fondo
                         Text {
@@ -143,7 +143,7 @@ PagePrincipal {
                             anchors.centerIn: parent
                             text: root.currentQuestion.bloom_level || ""
                             color: Style.Theme.info_texto
-                            font.pixelSize: 10 * root.sx
+                            font.pixelSize: 11 * root.sx
                             font.bold: true
                         }
                     }
@@ -151,7 +151,7 @@ PagePrincipal {
                     Text {
                         text: root.currentQuestion.code || ""
                         color: Style.Theme.texto_terciario
-                        font.pixelSize: 12 * root.sx
+                        font.pixelSize: 14 * root.sx
                         font.bold: true
                     }
                 }
@@ -161,7 +161,7 @@ PagePrincipal {
                     Layout.fillWidth: true
                     text: root.currentQuestion.prompt || ""
                     color: Style.Theme.texto_primario
-                    font.pixelSize: 22 * root.sx
+                    font.pixelSize: 26 * root.sx
                     font.bold: true
                     lineHeight: 1.18
                     wrapMode: Text.WordWrap
@@ -170,7 +170,7 @@ PagePrincipal {
                 Text {
                     text: "Selecciona una respuesta:"
                     color: Style.Theme.texto_secundario
-                    font.pixelSize: 12 * root.sx
+                    font.pixelSize: 14 * root.sx
                 }
 
                 Repeater {
@@ -184,7 +184,7 @@ PagePrincipal {
                             root.evaluationController.selectedOptionId === modelData.id
                         objectName: "evaluationOption_" + modelData.id
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 68 * root.sy
+                        Layout.preferredHeight: 80 * root.sy
                         hoverEnabled: true
                         focusPolicy: Qt.StrongFocus
                         Accessible.name: modelData.id.toUpperCase() + ". " + modelData.text
@@ -206,8 +206,8 @@ PagePrincipal {
                         contentItem: RowLayout {
                             spacing: 13 * root.sx
                             Rectangle {
-                                Layout.preferredWidth: 32 * root.sx
-                                Layout.preferredHeight: 32 * root.sy
+                                Layout.preferredWidth: 38 * root.sx
+                                Layout.preferredHeight: 38 * root.sy
                                 radius: width / 2
                                 color: optionButton.selected
                                        ? Style.Theme.acento
@@ -221,7 +221,7 @@ PagePrincipal {
                                     color: optionButton.selected
                                            ? Style.Theme.texto_sobre_color
                                            : Style.Theme.texto_secundario_fuerte
-                                    font.pixelSize: 12 * root.sx
+                                    font.pixelSize: 14 * root.sx
                                     font.bold: true
                                 }
                             }
@@ -229,7 +229,7 @@ PagePrincipal {
                                 Layout.fillWidth: true
                                 text: optionButton.modelData.text
                                 color: Style.Theme.texto_primario
-                                font.pixelSize: 14 * root.sx
+                                font.pixelSize: 17 * root.sx
                                 wrapMode: Text.WordWrap
                                 verticalAlignment: Text.AlignVCenter
                             }
@@ -251,14 +251,14 @@ PagePrincipal {
                         color: root.evaluationController.canContinue
                                ? Style.Theme.exito_texto
                                : Style.Theme.texto_secundario
-                        font.pixelSize: 11 * root.sx
+                        font.pixelSize: 13 * root.sx
                     }
 
                     BotonPrincipal {
                         objectName: "evaluationNextButton"
                         Layout.preferredWidth: 250 * root.sx
-                        Layout.preferredHeight: 48 * root.sy
-                        minimum_text_size: 11
+                        Layout.preferredHeight: 54 * root.sy
+                        minimum_text_size: 13
                         enabled: root.evaluationController.canContinue
                         opacity: enabled ? 1 : 0.45
                         text: root.evaluationController.currentQuestionNumber
@@ -284,7 +284,7 @@ PagePrincipal {
             visible: root.showingResult
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.maximumWidth: 1150 * root.sx
+            Layout.maximumWidth: 1300 * root.sx
             Layout.alignment: Qt.AlignHCenter
             sx: root.sx
             sy: root.sy
@@ -298,7 +298,7 @@ PagePrincipal {
                     Layout.fillWidth: true
                     text: "Evaluación completada"
                     color: Style.Theme.texto_primario
-                    font.pixelSize: 28 * root.sx
+                    font.pixelSize: 32 * root.sx
                     font.bold: true
                     horizontalAlignment: Text.AlignHCenter
                 }
@@ -309,7 +309,7 @@ PagePrincipal {
                     text: (root.evaluationController.result.correct || 0) + " / "
                           + (root.evaluationController.result.total || 0)
                     color: Style.Theme.acento_fuerte
-                    font.pixelSize: 48 * root.sx
+                    font.pixelSize: 56 * root.sx
                     font.bold: true
                     horizontalAlignment: Text.AlignHCenter
                 }
@@ -318,7 +318,7 @@ PagePrincipal {
                     Layout.fillWidth: true
                     text: (root.evaluationController.result.percentage || 0) + "% de respuestas correctas"
                     color: Style.Theme.texto_secundario_fuerte
-                    font.pixelSize: 15 * root.sx
+                    font.pixelSize: 17 * root.sx
                     horizontalAlignment: Text.AlignHCenter
                 }
 
@@ -326,7 +326,7 @@ PagePrincipal {
                     Layout.fillWidth: true
                     text: root.evaluationController.resultMessage
                     color: Style.Theme.texto_secundario_fuerte
-                    font.pixelSize: 14 * root.sx
+                    font.pixelSize: 16 * root.sx
                     wrapMode: Text.WordWrap
                     horizontalAlignment: Text.AlignHCenter
                 }
@@ -334,7 +334,7 @@ PagePrincipal {
                 Text {
                     text: "RESULTADO POR DIMENSIÓN"
                     color: Style.Theme.texto_secundario
-                    font.pixelSize: 10 * root.sx
+                    font.pixelSize: 12 * root.sx
                     font.bold: true
                     font.letterSpacing: 0.8
                 }
@@ -345,7 +345,7 @@ PagePrincipal {
                         id: resultDimension
                         required property var modelData
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 72 * root.sy
+                        Layout.preferredHeight: 80 * root.sy
                         radius: 10 * root.sx
                         color: Style.Theme.superficie_alterna
                         border.color: Style.Theme.borde_medio
@@ -358,7 +358,7 @@ PagePrincipal {
                                 Layout.fillWidth: true
                                 text: resultDimension.modelData.name
                                 color: Style.Theme.texto_primario
-                                font.pixelSize: 14 * root.sx
+                                font.pixelSize: 16 * root.sx
                                 font.bold: true
                                 wrapMode: Text.WordWrap
                             }
@@ -372,7 +372,7 @@ PagePrincipal {
                                 text: resultDimension.modelData.correct + "/"
                                       + resultDimension.modelData.total
                                 color: Style.Theme.acento_fuerte
-                                font.pixelSize: 15 * root.sx
+                                font.pixelSize: 17 * root.sx
                                 font.bold: true
                             }
                         }
@@ -388,14 +388,14 @@ PagePrincipal {
                     BotonPrincipal {
                         objectName: "evaluationRepeatButton"
                         Layout.preferredWidth: 240 * root.sx
-                        Layout.preferredHeight: 48 * root.sy
+                        Layout.preferredHeight: 54 * root.sy
                         text: "Repetir evaluación"
                         onClicked: root.evaluationController.startEvaluation(root.assessmentType)
                     }
                     BotonPrincipal {
                         objectName: "evaluationReturnHomeButton"
                         Layout.preferredWidth: 250 * root.sx
-                        Layout.preferredHeight: 48 * root.sy
+                        Layout.preferredHeight: 54 * root.sy
                         text: "Volver al flujo formativo"
                         onClicked: root.returnToLearningPath()
                     }
