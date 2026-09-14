@@ -1,0 +1,257 @@
+{
+  "schema_version": 1,
+  "dimensions": [
+    {
+      "id": "tokenizacion",
+      "name": "Tokenización"
+    },
+    {
+      "id": "embeddings_posicion",
+      "name": "Embeddings y Codificación Posicional"
+    }
+  ],
+  "assessments": {
+    "pre": {
+      "form": "A",
+      "title": "Pre-test",
+      "eyebrow": "DIAGNÓSTICO INICIAL",
+      "description": "Identifica tus conocimientos previos sobre los conceptos fundamentales del Transformer.",
+      "instructions": "Responde sin consultar el recorrido guiado. El resultado sirve como línea base y no bloquea tu avance.",
+      "questions": [
+        {
+          "id": "pre_t1",
+          "code": "T1",
+          "dimension_id": "tokenizacion",
+          "bloom_level": "Recordar",
+          "prompt": "¿Cuál es el propósito principal de la tokenización en un modelo de lenguaje?",
+          "options": [
+            {"id": "a", "text": "Traducir el texto a otro idioma antes de procesarlo"},
+            {"id": "b", "text": "Eliminar las palabras repetidas del texto de entrada"},
+            {"id": "c", "text": "Calcular la probabilidad de cada palabra en el vocabulario"},
+            {"id": "d", "text": "Convertir el texto en unidades discretas que el modelo puede procesar numéricamente"}
+          ],
+          "correct_option_id": "d"
+        },
+        {
+          "id": "pre_t2",
+          "code": "T2",
+          "dimension_id": "tokenizacion",
+          "bloom_level": "Comprender",
+          "prompt": "Un modelo que tokeniza palabra por palabra (sin sub-palabras) recibe una palabra que nunca vio en su vocabulario de entrenamiento. ¿Qué problema enfrenta?",
+          "options": [
+            {"id": "a", "text": "La palabra se traduce automáticamente a un sinónimo conocido"},
+            {"id": "b", "text": "No puede representar esa palabra y debe tratarla como un token desconocido (<UNK>)"},
+            {"id": "c", "text": "El modelo se detiene y genera un error de ejecución"},
+            {"id": "d", "text": "La palabra se ignora y el resto de la oración se procesa normalmente"}
+          ],
+          "correct_option_id": "b"
+        },
+        {
+          "id": "pre_t3",
+          "code": "T3",
+          "dimension_id": "tokenizacion",
+          "bloom_level": "Comprender",
+          "prompt": "¿Por qué el algoritmo Byte-Pair Encoding (BPE) resuelve el problema anterior mejor que la tokenización por palabra completa?",
+          "options": [
+            {"id": "a", "text": "Porque fusiona los pares de caracteres más frecuentes, permitiendo representar cualquier palabra nueva como combinación de sub-palabras ya conocidas"},
+            {"id": "b", "text": "Porque memoriza todas las palabras posibles de un idioma por adelantado"},
+            {"id": "c", "text": "Porque traduce las palabras desconocidas a su raíz gramatical"},
+            {"id": "d", "text": "Porque elimina del vocabulario las palabras que aparecen una sola vez"}
+          ],
+          "correct_option_id": "a"
+        },
+        {
+          "id": "pre_t4",
+          "code": "T4",
+          "dimension_id": "tokenizacion",
+          "bloom_level": "Aplicar",
+          "prompt": "Si un modelo con vocabulario BPE nunca vio la palabra «tokenización» completa, pero sí vio «token» y «-ización» por separado, ¿qué es más probable que ocurra?",
+          "options": [
+            {"id": "a", "text": "La palabra se reemplaza por el token <UNK>"},
+            {"id": "b", "text": "El modelo rechaza procesar la oración completa"},
+            {"id": "c", "text": "La palabra se segmenta en las sub-palabras conocidas («token» + «ización»)"},
+            {"id": "d", "text": "La palabra se trunca a sus primeros 4 caracteres"}
+          ],
+          "correct_option_id": "c"
+        },
+        {
+          "id": "pre_e1",
+          "code": "E1",
+          "dimension_id": "embeddings_posicion",
+          "bloom_level": "Recordar",
+          "prompt": "¿Qué es un embedding en el contexto de un modelo de lenguaje?",
+          "options": [
+            {"id": "a", "text": "Una tabla que traduce palabras a otro idioma"},
+            {"id": "b", "text": "Un vector de números reales que representa una palabra o token capturando relaciones semánticas y sintácticas"},
+            {"id": "c", "text": "Una lista ordenada de las reglas gramaticales del texto"},
+            {"id": "d", "text": "Un identificador numérico único sin relación con el significado"}
+          ],
+          "correct_option_id": "b"
+        },
+        {
+          "id": "pre_e2",
+          "code": "E2",
+          "dimension_id": "embeddings_posicion",
+          "bloom_level": "Comprender",
+          "prompt": "Los embeddings por sí solos no contienen información sobre el orden de las palabras. ¿Qué mecanismo del Transformer resuelve esta carencia?",
+          "options": [
+            {"id": "a", "text": "La codificación posicional, que se suma a los embeddings antes de entrar a las capas del modelo"},
+            {"id": "b", "text": "La capa feed-forward, que reordena los vectores según su posición"},
+            {"id": "c", "text": "La función Softmax, que asigna mayor probabilidad a los tokens en orden correcto"},
+            {"id": "d", "text": "La normalización de capas (Layer Normalization)"}
+          ],
+          "correct_option_id": "a"
+        },
+        {
+          "id": "pre_e3",
+          "code": "E3",
+          "dimension_id": "embeddings_posicion",
+          "bloom_level": "Comprender",
+          "prompt": "¿Por qué es necesario agregar codificación posicional si el modelo ya procesa toda la secuencia en paralelo mediante autoatención?",
+          "options": [
+            {"id": "a", "text": "Porque sin ella el modelo no podría calcular los embeddings"},
+            {"id": "b", "text": "Porque la codificación posicional reduce el tamaño del vocabulario necesario"},
+            {"id": "c", "text": "Porque acelera el entrenamiento al reducir el número de parámetros"},
+            {"id": "d", "text": "Porque el procesamiento en paralelo no distingue por sí mismo el orden de los tokens; sin esa información, «el gato come pescado» y «pescado come el gato» serían indistinguibles para el modelo"}
+          ],
+          "correct_option_id": "d"
+        },
+        {
+          "id": "pre_e4",
+          "code": "E4",
+          "dimension_id": "embeddings_posicion",
+          "bloom_level": "Aplicar",
+          "prompt": "Si se intercambia el orden de dos palabras en una oración sin modificar sus vectores de embedding, pero manteniendo la codificación posicional correspondiente a su nueva posición, ¿qué ocurre?",
+          "options": [
+            {"id": "a", "text": "El modelo la procesa exactamente igual, porque el embedding de cada palabra no cambió"},
+            {"id": "b", "text": "El modelo genera un error, porque no puede procesar palabras fuera de su posición original"},
+            {"id": "c", "text": "El modelo procesa la oración de forma distinta, porque la codificación posicional cambia según la nueva posición de cada palabra"},
+            {"id": "d", "text": "El modelo ignora la codificación posicional en este caso"}
+          ],
+          "correct_option_id": "c"
+        }
+      ]
+    },
+    "post": {
+      "form": "B",
+      "title": "Post-test",
+      "eyebrow": "EVALUACIÓN FINAL",
+      "description": "Comprueba lo aprendido después del recorrido guiado y la práctica.",
+      "instructions": "Responde con base en lo aprendido. Las preguntas miden los mismos conceptos del pre-test con situaciones equivalentes.",
+      "questions": [
+        {
+          "id": "post_t1",
+          "code": "T1",
+          "dimension_id": "tokenizacion",
+          "bloom_level": "Recordar",
+          "prompt": "En el procesamiento de un modelo de lenguaje, ¿qué función cumple la etapa de tokenización?",
+          "options": [
+            {"id": "a", "text": "Corregir errores ortográficos del texto original"},
+            {"id": "b", "text": "Segmentar el texto de entrada en unidades que puedan convertirse en representaciones numéricas"},
+            {"id": "c", "text": "Resumir el texto de entrada antes de procesarlo"},
+            {"id": "d", "text": "Ordenar alfabéticamente las palabras de la oración"}
+          ],
+          "correct_option_id": "b"
+        },
+        {
+          "id": "post_t2",
+          "code": "T2",
+          "dimension_id": "tokenizacion",
+          "bloom_level": "Comprender",
+          "prompt": "Un sistema que solo reconoce palabras completas de un vocabulario fijo recibe «hiperparametrización», ausente de ese vocabulario. ¿Qué ocurre?",
+          "options": [
+            {"id": "a", "text": "El sistema lo traduce automáticamente a una palabra similar"},
+            {"id": "b", "text": "El procesamiento se detiene con un error irrecuperable"},
+            {"id": "c", "text": "El término no puede representarse y se sustituye por un token desconocido (<UNK>)"},
+            {"id": "d", "text": "El término se omite y el resto del texto se procesa sin problema"}
+          ],
+          "correct_option_id": "c"
+        },
+        {
+          "id": "post_t3",
+          "code": "T3",
+          "dimension_id": "tokenizacion",
+          "bloom_level": "Comprender",
+          "prompt": "¿Cuál es la ventaja principal de usar Byte-Pair Encoding (BPE) frente a un vocabulario cerrado de palabras completas?",
+          "options": [
+            {"id": "a", "text": "Reduce el tiempo de entrenamiento eliminando palabras poco usadas"},
+            {"id": "b", "text": "Traduce automáticamente el texto a un idioma estándar"},
+            {"id": "c", "text": "Corrige errores de escritura antes de tokenizar"},
+            {"id": "d", "text": "Permite construir palabras no vistas a partir de subpalabras frecuentes ya aprendidas"}
+          ],
+          "correct_option_id": "d"
+        },
+        {
+          "id": "post_t4",
+          "code": "T4",
+          "dimension_id": "tokenizacion",
+          "bloom_level": "Aplicar",
+          "prompt": "Un modelo con BPE nunca vio la palabra «retroalimentación» completa, pero sí vio «retro» y «-alimentación» como sub-palabras frecuentes. ¿Qué es más probable que ocurra al procesarla?",
+          "options": [
+            {"id": "a", "text": "Se segmenta usando esas dos sub-palabras conocidas"},
+            {"id": "b", "text": "Se sustituye por el token <UNK>"},
+            {"id": "c", "text": "Se rechaza la oración completa"},
+            {"id": "d", "text": "Se trunca a los primeros caracteres de la palabra"}
+          ],
+          "correct_option_id": "a"
+        },
+        {
+          "id": "post_e1",
+          "code": "E1",
+          "dimension_id": "embeddings_posicion",
+          "bloom_level": "Recordar",
+          "prompt": "¿Qué representa, en esencia, el vector de embedding asociado a un token?",
+          "options": [
+            {"id": "a", "text": "Un contador de cuántas veces aparece la palabra en el texto"},
+            {"id": "b", "text": "Una traducción literal del token a un identificador binario"},
+            {"id": "c", "text": "Una etiqueta gramatical (sustantivo, verbo, etc.) asignada manualmente"},
+            {"id": "d", "text": "Una representación numérica que codifica relaciones de significado y uso entre palabras"}
+          ],
+          "correct_option_id": "d"
+        },
+        {
+          "id": "post_e2",
+          "code": "E2",
+          "dimension_id": "embeddings_posicion",
+          "bloom_level": "Comprender",
+          "prompt": "Dado que los embeddings no codifican por sí mismos la posición de un token dentro de la secuencia, ¿qué componente del Transformer soluciona esta limitación?",
+          "options": [
+            {"id": "a", "text": "La red feed-forward, que procesa cada posición de forma independiente"},
+            {"id": "b", "text": "La capa de normalización, que reordena los vectores"},
+            {"id": "c", "text": "La codificación posicional, sumada a los embeddings antes de ingresar a las capas de atención"},
+            {"id": "d", "text": "La función de muestreo (sampling), aplicada al final de la generación"}
+          ],
+          "correct_option_id": "c"
+        },
+        {
+          "id": "post_e3",
+          "code": "E3",
+          "dimension_id": "embeddings_posicion",
+          "bloom_level": "Comprender",
+          "prompt": "El Transformer procesa todos los tokens de una secuencia en paralelo mediante autoatención. ¿Por qué esto hace indispensable la codificación posicional?",
+          "options": [
+            {"id": "a", "text": "Porque, sin ella, el modelo no tendría forma de diferenciar «el perro persigue al gato» de «el gato persigue al perro»"},
+            {"id": "b", "text": "Porque el procesamiento paralelo requiere reducir la dimensión de los embeddings"},
+            {"id": "c", "text": "Porque sin codificación posicional el vocabulario del modelo se duplicaría"},
+            {"id": "d", "text": "Porque acelera el cálculo de la función Softmax final"}
+          ],
+          "correct_option_id": "a"
+        },
+        {
+          "id": "post_e4",
+          "code": "E4",
+          "dimension_id": "embeddings_posicion",
+          "bloom_level": "Aplicar",
+          "prompt": "Se modifican las posiciones de dos tokens en una secuencia, ajustando su codificación posicional a la nueva posición, sin alterar sus embeddings originales. ¿Cuál es el efecto esperado?",
+          "options": [
+            {"id": "a", "text": "No hay ningún cambio, porque el significado de cada palabra no varió"},
+            {"id": "b", "text": "El modelo distingue la nueva disposición, ya que la codificación posicional refleja el cambio de posición"},
+            {"id": "c", "text": "El modelo produce un error de procesamiento"},
+            {"id": "d", "text": "La codificación posicional no tiene ningún efecto sobre el resultado"}
+          ],
+          "correct_option_id": "b"
+        }
+      ]
+    }
+  }
+}

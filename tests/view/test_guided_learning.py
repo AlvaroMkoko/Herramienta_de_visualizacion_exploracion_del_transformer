@@ -237,7 +237,7 @@ def test_recorrido_expone_seis_unidades_y_dieciocho_conceptos(guided_qml, qtbot)
 
 
 def test_navegacion_cambia_concepto_y_respeta_unidades(guided_qml, qapp):
-    window, _ = guided_qml
+    window, view_model = guided_qml
     screen = _buscar(window, "guidedLearningScreen")
     _invocar(screen, "resetProgress")
     qapp.processEvents()
@@ -255,6 +255,9 @@ def test_navegacion_cambia_concepto_y_respeta_unidades(guided_qml, qapp):
     assert _propiedad(screen, "currentConceptIndex") == 0
     assert _propiedad(screen, "currentConceptId") == concepto_inicial
 
+    for unit_number in range(1, 6):
+        view_model.learningController.markUnitCompleted(f"unit_{unit_number}")
+    qapp.processEvents()
     _invocar(screen, "selectUnit", 5)
     qapp.processEvents()
     assert _propiedad(screen, "currentUnitIndex") == 5
@@ -335,16 +338,16 @@ def test_home_expone_secuencia_y_abre_el_recorrido_guiado(home_qml, qapp, qtbot)
     assert _propiedad(home, "platformStageAvailability") == [
         True,
         True,
-        True,
+        False,
         True,
         True,
     ]
 
     etapas = [
-        ("pretestStageCard", 1, True, True, "ModulePlaceholderScreen.qml"),
+        ("pretestStageCard", 1, True, False, "EvaluationIntroScreen.qml"),
         ("guidedStageCard", 2, True, False, "GuidedLearningScreen.qml"),
-        ("labsStageCard", 3, True, False, ""),
-        ("posttestStageCard", 4, True, True, "ModulePlaceholderScreen.qml"),
+        ("labsStageCard", 3, False, False, ""),
+        ("posttestStageCard", 4, True, False, "EvaluationIntroScreen.qml"),
         ("resultsStageCard", 5, True, True, "ModulePlaceholderScreen.qml"),
     ]
     for object_name, orden, disponible, placeholder, ruta in etapas:
@@ -391,8 +394,33 @@ def test_home_expone_secuencia_y_abre_el_recorrido_guiado(home_qml, qapp, qtbot)
         qtbot.waitUntil(lambda: _propiedad(navigation, "depth") == 1, timeout=5000)
         qapp.processEvents()
 
-    abrir_placeholder("pretestOpenButton", "Pre-test", 1)
-    abrir_placeholder("posttestOpenButton", "Post-test", 4)
+    def evaluation_intro_visible():
+        return next(
+            (
+                item
+                for item in window.findChildren(QObject, "evaluationIntroScreen")
+                if _propiedad(item, "visible")
+            ),
+            None,
+        )
+
+    def abrir_evaluacion(button_name, expected_type, expected_title):
+        _invocar(_buscar(home, button_name), "clicked")
+        qtbot.waitUntil(
+            lambda: _propiedad(navigation, "depth") == 2
+            and evaluation_intro_visible() is not None,
+            timeout=5000,
+        )
+        intro = evaluation_intro_visible()
+        assert _propiedad(intro, "assessmentType") == expected_type
+        assert _propiedad(_buscar(intro, "evaluationIntroTitle"), "text") == expected_title
+        assert _propiedad(_buscar(intro, "evaluationStartButton"), "enabled") is True
+        _invocar(_buscar(intro, "evaluationIntroBackButton"), "clicked")
+        qtbot.waitUntil(lambda: _propiedad(navigation, "depth") == 1, timeout=5000)
+        qapp.processEvents()
+
+    abrir_evaluacion("pretestOpenButton", "pre", "Pre-test")
+    abrir_evaluacion("posttestOpenButton", "post", "Post-test")
     abrir_placeholder("resultsOpenButton", "Progreso y resultados", 5)
 
     # Haber avanzado dentro de la primera unidad también debe mostrarse como
@@ -414,3 +442,50 @@ def test_home_expone_secuencia_y_abre_el_recorrido_guiado(home_qml, qapp, qtbot)
     assert _propiedad(guided, "totalUnits") == 6
     assert _propiedad(guided, "totalCoreConcepts") == 18
     assert _propiedad(guided, "currentConceptIndex") == 1
+
+
+def test_pretest_responde_ocho_preguntas_y_muestra_resultado(
+    home_qml, qapp, qtbot
+):
+    window, view_model = home_qml
+    home = _buscar(window, "homeScreen")
+    navigation = _buscar(window, "learningNavigation")
+
+    _invocar(_buscar(home, "pretestOpenButton"), "clicked")
+    qtbot.waitUntil(
+        lambda: window.findChild(QObject, "evaluationIntroScreen") is not None,
+        timeout=5000,
+    )
+    intro = _buscar(window, "evaluationIntroScreen")
+    _invocar(_buscar(intro, "evaluationStartButton"), "clicked")
+    qtbot.waitUntil(
+        lambda: _propiedad(navigation, "depth") == 3
+        and window.findChild(QObject, "evaluationScreen") is not None,
+        timeout=5000,
+    )
+    evaluation = _buscar(window, "evaluationScreen")
+    controller = view_model.evaluationController
+
+    first_question = _propiedad(controller, "currentQuestion")
+    assert first_question["id"] == "pre_t1"
+    assert "correct_option_id" not in first_question
+    assert _propiedad(_buscar(evaluation, "evaluationNextButton"), "enabled") is False
+    assert _propiedad(_buscar(evaluation, "evaluationOptionsRepeater"), "count") == 4
+
+    for expected_number in range(1, 9):
+        assert _propiedad(controller, "currentQuestionNumber") == expected_number
+        controller.selectAnswer("a")
+        qapp.processEvents()
+        assert _propiedad(controller, "selectedOptionId") == "a"
+        next_button = _buscar(evaluation, "evaluationNextButton")
+        assert _propiedad(next_button, "enabled") is True
+        _invocar(next_button, "clicked")
+        qapp.processEvents()
+
+    assert _propiedad(controller, "finished") is True
+    result = _propiedad(controller, "result")
+    assert result["correct"] == 2
+    assert result["total"] == 8
+    assert len(result["dimensions"]) == 2
+    assert _propiedad(_buscar(evaluation, "evaluationResultCard"), "visible") is True
+    assert _propiedad(_buscar(evaluation, "evaluationScoreText"), "text") == "2 / 8"

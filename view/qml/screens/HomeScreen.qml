@@ -86,6 +86,13 @@ PagePrincipal {
         })
     }
 
+    function openEvaluation(assessmentType) {
+        root.stackView.push("EvaluationIntroScreen.qml", {
+            "stackView": root.stackView,
+            "assessmentType": assessmentType
+        })
+    }
+
     ScrollView {
         id: pageScroll
         anchors.fill: parent
@@ -225,7 +232,7 @@ PagePrincipal {
 
                     Text {
                         Layout.fillWidth: true
-                        text: "Modo de prueba activo: puedes abrir cualquier etapa sin completar las anteriores. Los módulos futuros muestran una vista placeholder."
+                        text: "Modo de prueba activo: puedes abrir cualquier etapa sin completar las anteriores. El pre-test y el post-test ya están disponibles."
                         color: Style.Theme.acento_fuerte
                         font.pixelSize: 13
                         wrapMode: Text.WordWrap
@@ -280,6 +287,7 @@ PagePrincipal {
                             readonly property string note: parent ? parent.note : ""
                             readonly property bool stagePlaceholder: parent ? parent.stagePlaceholder : false
                             readonly property string testButtonName: parent ? parent.testButtonName : ""
+                            readonly property string assessmentType: parent ? parent.assessmentType : ""
 
                             anchors.fill: parent
 
@@ -468,6 +476,42 @@ PagePrincipal {
                                     }
 
                                     Button {
+                                        id: evaluationButton
+                                        objectName: stageContainer.kind === "evaluation"
+                                                    ? stageContainer.testButtonName
+                                                    : ""
+                                        Layout.fillWidth: true
+                                        Layout.minimumWidth: 0
+                                        Layout.preferredHeight: 42
+                                        implicitWidth: 0
+                                        visible: stageContainer.kind === "evaluation"
+                                        text: stageContainer.assessmentType === "pre"
+                                              ? "Entrar al pre-test"
+                                              : "Entrar al post-test"
+                                        focusPolicy: Qt.StrongFocus
+                                        Accessible.name: text
+                                        Accessible.description: "Abre la evaluación " + stageContainer.title
+
+                                        background: Rectangle {
+                                            radius: 8
+                                            color: evaluationButton.down
+                                                   ? Style.Theme.acento_fuerte
+                                                   : (evaluationButton.hovered
+                                                      ? Style.Theme.acento_fuerte
+                                                      : Style.Theme.acento)
+                                        }
+                                        contentItem: Text {
+                                            text: evaluationButton.text
+                                            color: Style.Theme.texto_sobre_color
+                                            font.pixelSize: 12
+                                            font.bold: true
+                                            horizontalAlignment: Text.AlignHCenter
+                                            verticalAlignment: Text.AlignVCenter
+                                        }
+                                        onClicked: root.openEvaluation(stageContainer.assessmentType)
+                                    }
+
+                                    Button {
                                         id: placeholderButton
                                         objectName: stageContainer.stagePlaceholder
                                                     ? stageContainer.testButtonName
@@ -653,13 +697,16 @@ PagePrincipal {
                                         Layout.fillWidth: true
                                         Layout.minimumWidth: 0
                                         visible: stageContainer.stagePlaceholder
+                                                 || stageContainer.kind === "evaluation"
                                         spacing: 6
 
                                         Rectangle {
                                             Layout.preferredWidth: 7
                                             Layout.preferredHeight: 7
                                             radius: 4
-                                            color: Style.Theme.borde_suave
+                                            color: stageContainer.kind === "evaluation"
+                                                   ? stageContainer.accentColor
+                                                   : Style.Theme.borde_suave
                                         }
 
                                         Text {
@@ -732,14 +779,15 @@ PagePrincipal {
                         property string eyebrow: "DIAGNÓSTICO"
                         property string title: "Pre-test"
                         property string description: "Identificará tus conocimientos previos para personalizar la experiencia."
-                        property string stageStatus: "Vista de prueba"
+                        property string stageStatus: "Disponible"
                         property bool stageAvailable: true
-                        property string stageRoute: "ModulePlaceholderScreen.qml"
-                        property string kind: "placeholder"
-                        property string accentColor: Style.Theme.warning
-                        property string note: "Funcionalidad pendiente; navegación habilitada."
-                        property bool stagePlaceholder: true
+                        property string stageRoute: "EvaluationIntroScreen.qml"
+                        property string kind: "evaluation"
+                        property string accentColor: Style.Theme.info
+                        property string note: "8 preguntas · 2 dimensiones · Forma A"
+                        property bool stagePlaceholder: false
                         property string testButtonName: "pretestOpenButton"
+                        property string assessmentType: "pre"
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         Layout.minimumWidth: 214
@@ -761,6 +809,7 @@ PagePrincipal {
                         property string note: "Punto de inicio disponible ahora."
                         property bool stagePlaceholder: false
                         property string testButtonName: ""
+                        property string assessmentType: ""
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         Layout.minimumWidth: 214
@@ -782,6 +831,7 @@ PagePrincipal {
                         property string note: stageAvailable ? "Elige un laboratorio." : "Completa el recorrdio guiado para desploquearlo."
                         property bool stagePlaceholder: false
                         property string testButtonName: ""
+                        property string assessmentType: ""
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         Layout.minimumWidth: 214
@@ -795,14 +845,15 @@ PagePrincipal {
                         property string eyebrow: "EVALUACIÓN"
                         property string title: "Post-test"
                         property string description: "Comprobará cuánto aprendiste después del recorrido y la práctica."
-                        property string stageStatus: "Vista de prueba"
+                        property string stageStatus: "Disponible"
                         property bool stageAvailable: true
-                        property string stageRoute: "ModulePlaceholderScreen.qml"
-                        property string kind: "placeholder"
-                        property string accentColor: Style.Theme.warning
-                        property string note: "Funcionalidad pendiente; navegación habilitada."
-                        property bool stagePlaceholder: true
+                        property string stageRoute: "EvaluationIntroScreen.qml"
+                        property string kind: "evaluation"
+                        property string accentColor: Style.Theme.acento
+                        property string note: "8 preguntas · 2 dimensiones · Forma B"
+                        property bool stagePlaceholder: false
                         property string testButtonName: "posttestOpenButton"
+                        property string assessmentType: "post"
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         Layout.minimumWidth: 214
@@ -824,6 +875,7 @@ PagePrincipal {
                         property string note: "Funcionalidad pendiente; navegación habilitada."
                         property bool stagePlaceholder: true
                         property string testButtonName: "resultsOpenButton"
+                        property string assessmentType: ""
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         Layout.minimumWidth: 214

@@ -64,7 +64,11 @@ Item {
     readonly property var stages: [
         {
             id: "dataset", short: "Datos", color: "#7C3AED",
-            title: "El batch contiene entrada y respuesta correcta",
+            title: "Prepara el batch y limpia gradientes anteriores",
+            action: "Pone los gradientes en cero, toma un lote del dataset y separa la entrada, lo que verá el decoder y la respuesta que debe aprender.",
+            input: "Ejemplos tokenizados del dataset.",
+            output: "Tokens de origen, entrada desplazada del decoder y tokens objetivo.",
+            purpose: "Evita acumular correcciones anteriores y define la pregunta y la respuesta con las que se medirá el error.",
             intuitive: "Durante el entrenamiento conocemos ambos lados del ejemplo. El modelo no memoriza una animación: procesa estos IDs reales del dataset.",
             technical: "El encoder recibe la secuencia fuente; el decoder recibe la salida correcta desplazada y la loss usa la secuencia objetivo.",
             mathematical: "x = tokens_origen · y_in = [BOS, y₀…yₙ₋₁] · y = [y₀…yₙ₋₁, EOS]",
@@ -73,6 +77,10 @@ Item {
         {
             id: "embedding", short: "Vectores", color: "#DB2777",
             title: "Embedding y posición forman la representación inicial",
+            action: "Busca el vector aprendido de cada token de entrada, lo escala y le suma una señal que representa su posición.",
+            input: "IDs de los tokens de origen.",
+            output: "Una matriz de vectores con contenido y orden: [batch, tokens, d_model].",
+            purpose: "Convierte símbolos discretos en números continuos que el encoder puede procesar.",
             intuitive: "Cada token se convierte en un vector aprendido y recibe una señal que indica dónde está.",
             technical: "Los embeddings se escalan por √d_model y se suman a la codificación posicional sinusoidal.",
             mathematical: "X₀ = Embedding(x) · √d_model + PE(x)",
@@ -81,6 +89,10 @@ Item {
         {
             id: "encoder_attention", short: "Self-Attn", color: "#0284C7",
             title: "El encoder mezcla información de la entrada",
+            action: "Cada token consulta a los demás tokens válidos de la entrada mediante varias cabezas de autoatención.",
+            input: "Vectores de origen y máscara de relleno.",
+            output: "Vectores que combinan información relevante de toda la entrada.",
+            purpose: "Permite descubrir relaciones entre palabras aunque estén alejadas en la secuencia.",
             intuitive: "Una conexión más intensa significa que esa cabeza usa más información del token conectado.",
             technical: "Q, K y V proceden de la misma secuencia. Puedes cambiar capa, cabeza y token consultante.",
             mathematical: "Attention(Q,K,V) = softmax(QKᵀ/√dₖ)V",
@@ -89,6 +101,10 @@ Item {
         {
             id: "encoder_output", short: "Contexto", color: "#2563EB",
             title: "La salida del encoder ya depende del contexto",
+            action: "Completa cada bloque con conexión residual, normalización y red feed-forward, y repite el proceso por todas las capas.",
+            input: "Resultado de la autoatención en cada capa del encoder.",
+            output: "Memoria contextual final del encoder (H_enc).",
+            purpose: "Entrega al decoder una representación rica de toda la entrada.",
             intuitive: "Los tokens se desplazan en el espacio de representación porque ahora incorporan información de sus vecinos.",
             technical: "La comparación usa los estados reales antes de la pila y después de la última capa del encoder.",
             mathematical: "H_enc = Encoder(X₀)",
@@ -97,6 +113,10 @@ Item {
         {
             id: "shifted_target", short: "Shift", color: "#D97706",
             title: "Teacher forcing: la respuesta se desplaza una posición",
+            action: "Antepone BOS y desplaza la respuesta correcta para que cada posición reciba solamente los tokens correctos anteriores.",
+            input: "Secuencia objetivo completa del ejemplo.",
+            output: "Entrada del decoder y objetivo siguiente alineados posición por posición.",
+            purpose: "Permite practicar todas las predicciones del ejemplo en paralelo sin revelar el token actual.",
             intuitive: "El decoder recibe los tokens correctos anteriores y practica predecir el siguiente.",
             technical: "Cada posición alinea una entrada conocida con un objetivo. BOS inicia la primera predicción y EOS enseña cuándo terminar.",
             mathematical: "y_in[t] → predecir y[t]",
@@ -105,6 +125,10 @@ Item {
         {
             id: "causal_mask", short: "Máscara", color: "#DC2626",
             title: "La máscara causal bloquea el futuro",
+            action: "Convierte la entrada desplazada en vectores con posición y aplica una máscara triangular antes de la autoatención del decoder.",
+            input: "Tokens desplazados del decoder y sus posiciones.",
+            output: "Estados del decoder que solo incorporan el presente y el pasado.",
+            purpose: "Evita que el modelo haga trampa mirando tokens futuros de la respuesta.",
             intuitive: "Aunque la respuesta completa está en el batch, cada posición solo puede mirar lo que ya debería conocer.",
             technical: "Las celdas futuras reciben −∞ antes de Softmax, por lo que su peso final es cero.",
             mathematical: "Mᵢⱼ = 0 si j≤i; −∞ si j>i",
@@ -113,6 +137,10 @@ Item {
         {
             id: "cross_attention", short: "Cross-Attn", color: "#059669",
             title: "El decoder consulta la memoria del encoder",
+            action: "Usa los estados del decoder como consultas y la memoria del encoder como claves y valores; después completa residual, normalización y feed-forward en todas las capas.",
+            input: "Estados causales del decoder y memoria H_enc del encoder.",
+            output: "Estados finales del decoder enriquecidos con información de la entrada.",
+            purpose: "Relaciona cada predicción con las partes pertinentes de la secuencia de origen.",
             intuitive: "El token del decoder busca qué parte de la entrada resulta útil para su siguiente predicción.",
             technical: "Q procede del decoder; K y V proceden de la salida del encoder.",
             mathematical: "Q=H_decWQ · K=H_encWK · V=H_encWV",
@@ -120,15 +148,23 @@ Item {
         },
         {
             id: "prediction", short: "Top-K", color: "#0F766E",
-            title: "Linear y Softmax producen una distribución",
+            title: "Linear produce logits para todo el vocabulario",
+            action: "Proyecta cada estado del decoder a un puntaje por token. La vista aplica Softmax para hacer esos puntajes interpretables como probabilidades.",
+            input: "Estados finales del decoder.",
+            output: "Logits para todo el vocabulario y probabilidades mostradas en Top-5.",
+            purpose: "Expresa qué tan compatible considera el modelo cada posible token siguiente.",
             intuitive: "El modelo no entrega directamente una palabra: reparte probabilidad entre todo el vocabulario.",
-            technical: "La vista limita la lista a Top‑5, pero Softmax se calculó sobre los logits completos.",
+            technical: "El entrenamiento entrega logits crudos a CrossEntropyLoss. Solo esta vista aplica Softmax sobre todos los logits y limita la lista visible a Top‑5.",
             mathematical: "p(yₜ|x,y<t) = softmax(Wₒhₜ+b)",
-            formula: "Decoder → Linear → logits → Softmax"
+            formula: "Decoder → Linear → logits · Softmax solo para visualizar"
         },
         {
             id: "loss", short: "Loss", color: "#B45309",
             title: "La probabilidad del token correcto determina el error",
+            action: "Compara los logits con el token objetivo en cada posición, ignora PAD y promedia las penalizaciones válidas del batch.",
+            input: "Logits del modelo y tokens objetivo.",
+            output: "Una pérdida por token y un único escalar de pérdida para el batch.",
+            purpose: "Resume en un número cuánto debe corregirse el modelo.",
             intuitive: "Cuanta menos probabilidad recibe la respuesta correcta, mayor es la penalización.",
             technical: "La loss del token mostrado es exacta; la loss del batch promedia todas las posiciones válidas y omite PAD.",
             mathematical: "Lₜ = −log p(yₜ) · L_batch = mean(Lₜ)",
@@ -137,6 +173,10 @@ Item {
         {
             id: "backprop", short: "Backward", color: "#9333EA",
             title: "El error vuelve por el grafo de cálculo",
+            action: "Autograd recorre el cálculo en sentido inverso y deriva la pérdida respecto de cada parámetro entrenable.",
+            input: "Pérdida del batch y grafo conservado durante forward.",
+            output: "Un gradiente almacenado en .grad para cada parámetro.",
+            purpose: "Indica en qué dirección y con qué sensibilidad debería cambiar cada peso; todavía no lo modifica.",
             intuitive: "La señal de error viaja hacia atrás y mide cuánto contribuyó cada parámetro.",
             technical: "autograd aplica la regla de la cadena desde la loss hasta embeddings, atención, FFN y normalizaciones.",
             mathematical: "∂L/∂W = ∂L/∂h · ∂h/∂W",
@@ -144,7 +184,11 @@ Item {
         },
         {
             id: "gradients", short: "Gradientes", color: "#C026D3",
-            title: "Los parámetros no reciben la misma señal",
+            title: "La vista resume los gradientes calculados",
+            action: "Agrupa los gradientes reales por función y calcula medidas comparables como norma L2 y RMS.",
+            input: "Gradientes producidos por backward.",
+            output: "Barras y estadísticas por familia de parámetros.",
+            purpose: "Ayuda a interpretar dónde llegó una señal fuerte o débil; esta medición no cambia el modelo.",
             intuitive: "Las barras muestran qué familias recibieron una corrección más intensa en este batch.",
             technical: "Se muestran norma L2, RMS, media, mínimo y máximo de gradientes reales agrupados por función.",
             mathematical: "‖g‖₂ = √Σgᵢ² · RMS(g)=√(Σgᵢ²/n)",
@@ -153,6 +197,10 @@ Item {
         {
             id: "optimizer", short: "Adam", color: "#047857",
             title: "El optimizador aplica una actualización real",
+            action: "Adam combina cada gradiente con su historial interno y la tasa de aprendizaje para modificar el parámetro.",
+            input: "Pesos actuales, gradientes, estado de Adam y learning rate.",
+            output: "Nuevos valores de los parámetros del modelo.",
+            purpose: "Este es el momento en que el modelo realmente aprende del batch.",
             intuitive: "Una modificación pequeña de muchos valores, repetida batch tras batch, constituye el aprendizaje.",
             technical: "Antes, gradiente, delta y después pertenecen al mismo elemento real; el delta incluye la regla interna de Adam.",
             mathematical: "θₜ = θₜ₋₁ − η·m̂ₜ/(√v̂ₜ+ε)",
@@ -161,6 +209,10 @@ Item {
         {
             id: "evolution", short: "Evolución", color: "#1D4ED8",
             title: "La mejora se evalúa a lo largo de muchos batches",
+            action: "Guarda la pérdida del paso, actualiza los contadores y continúa con el siguiente batch o la siguiente época.",
+            input: "Pérdida recién observada e historial anterior.",
+            output: "Curva de pérdida actualizada y avance del entrenamiento.",
+            purpose: "Permite evaluar la tendencia; un solo batch no basta para decidir si el modelo mejora.",
             intuitive: "La pérdida puede subir en un batch difícil; importa la tendencia, no exigir que cada punto baje.",
             technical: "La curva conserva los últimos pasos observados. Cada punto puede corresponder a ejemplos distintos por el shuffle.",
             mathematical: "L̄ = (1/N)Σ L_batch",
@@ -475,7 +527,7 @@ Item {
             spacing: 10 * root.sx
 
             Rectangle {
-                Layout.preferredWidth: 275 * root.sx
+                Layout.preferredWidth: 310 * root.sx
                 Layout.fillHeight: true
                 radius: 11 * root.sx
                 color: Qt.alpha(root.stage.color, 0.07)
@@ -513,6 +565,61 @@ Item {
                         font.bold: true
                         font.pixelSize: 15 * root.sx
                         wrapMode: Text.WordWrap
+                    }
+
+                    StageFact {
+                        objectName: "trainingStageAction"
+                        Layout.fillWidth: true
+                        label: "QUÉ HACE"
+                        value: root.stage.action
+                        accent: root.stage.color
+                        sx: root.sx
+                        sy: root.sy
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6 * root.sx
+
+                        StageFact {
+                            objectName: "trainingStageInput"
+                            Layout.fillWidth: true
+                            label: "RECIBE"
+                            value: root.stage.input
+                            accent: root.stage.color
+                            sx: root.sx
+                            sy: root.sy
+                        }
+
+                        StageFact {
+                            objectName: "trainingStageOutput"
+                            Layout.fillWidth: true
+                            label: "PRODUCE"
+                            value: root.stage.output
+                            accent: root.stage.color
+                            sx: root.sx
+                            sy: root.sy
+                        }
+                    }
+
+                    StageFact {
+                        objectName: "trainingStagePurpose"
+                        Layout.fillWidth: true
+                        label: "POR QUÉ IMPORTA"
+                        value: root.stage.purpose
+                        accent: root.stage.color
+                        sx: root.sx
+                        sy: root.sy
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: "DETALLE · " + (root.explanationLevel === 0 ? "INTUITIVO"
+                                               : (root.explanationLevel === 1 ? "TÉCNICO"
+                                                                              : "MATEMÁTICO"))
+                        color: root.stage.color
+                        font.bold: true
+                        font.pixelSize: 8 * root.sx
                     }
                     Text {
                         Layout.fillWidth: true
@@ -761,6 +868,45 @@ Item {
             font.pixelSize: 9 * root.sx
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
+        }
+    }
+
+    component StageFact: Rectangle {
+        id: stageFact
+        property string label: ""
+        property string value: ""
+        property color accent: Style.Theme.acento
+        property real sx: 1
+        property real sy: 1
+
+        implicitHeight: factContent.implicitHeight + 13 * sy
+        radius: 7 * sx
+        color: Qt.alpha(accent, 0.055)
+        border.color: Qt.alpha(accent, 0.24)
+
+        ColumnLayout {
+            id: factContent
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.leftMargin: 8 * stageFact.sx
+            anchors.rightMargin: 8 * stageFact.sx
+            spacing: 2 * stageFact.sy
+
+            Text {
+                Layout.fillWidth: true
+                text: stageFact.label
+                color: stageFact.accent
+                font.bold: true
+                font.pixelSize: 8 * stageFact.sx
+            }
+            Text {
+                Layout.fillWidth: true
+                text: stageFact.value
+                color: Style.Theme.texto_secundario_fuerte
+                wrapMode: Text.WordWrap
+                font.pixelSize: 9 * stageFact.sx
+            }
         }
     }
 

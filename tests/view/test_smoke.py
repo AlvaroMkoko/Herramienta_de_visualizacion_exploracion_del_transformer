@@ -367,14 +367,32 @@ def test_recorrido_guiado_recibe_un_batch_real_y_recorre_sus_escenas(
         (3, "APRENDIZAJE"),
         (3, "APRENDIZAJE"),
     ]
+    action_card = training_qml.findChild(QObject, "trainingStageAction")
+    input_card = training_qml.findChild(QObject, "trainingStageInput")
+    output_card = training_qml.findChild(QObject, "trainingStageOutput")
+    purpose_card = training_qml.findChild(QObject, "trainingStagePurpose")
+    assert action_card is not None
+    assert input_card is not None
+    assert output_card is not None
+    assert purpose_card is not None
+
     for stage in range(13):
         _invocar(journey, "setStage", stage)
         qapp.processEvents()
         scene = training_qml.findChild(QObject, f"trainingScene{stage}")
+        stage_data = _como_python(journey.property("stage"))
         assert scene is not None
         assert scenes.property("currentIndex") == stage
         assert journey.property("chapterIndex") == expected_scope[stage][0]
         assert journey.property("scopeLabel") == expected_scope[stage][1]
+        assert all(
+            str(stage_data[field]).strip()
+            for field in ("action", "input", "output", "purpose")
+        )
+        assert action_card.property("value") == stage_data["action"]
+        assert input_card.property("value") == stage_data["input"]
+        assert output_card.property("value") == stage_data["output"]
+        assert purpose_card.property("value") == stage_data["purpose"]
         assert 0 < scene.property("width") <= viewport.property("width")
         assert 0 < scene.property("height") <= viewport.property("height")
     assert journey.property("stageIndex") == 12

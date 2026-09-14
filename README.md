@@ -29,19 +29,19 @@ python main.py
 
 La pantalla de inicio presenta la evolución prevista de la plataforma educativa:
 
-1. **Pre-test** — diagnóstico inicial; por ahora se muestra como módulo futuro.
+1. **Pre-test** — diagnóstico inicial de 8 preguntas en dos dimensiones.
 2. **Recorrido guiado** — disponible. Organiza 18 conceptos esenciales en seis
    unidades, incluida una guía del contrato de datasets, y combina lectura con
    el ciclo *predecir → observar → explicar*.
 3. **Laboratorios** — entrenamiento, apertura de modelos y comparación siguen
    disponibles como accesos directos para experimentar libremente.
-4. **Post-test** — evaluación final; por ahora se muestra como módulo futuro.
+4. **Post-test** — evaluación final equivalente, con resultado total y por dimensión.
 5. **Progreso y resultados** — seguimiento integral; por ahora se muestra como
    módulo futuro.
 
 Durante el desarrollo, las cinco etapas pueden abrirse sin requisitos de
-progreso. Los módulos futuros llevan a una vista placeholder navegable para
-probar el flujo, sin simular que su funcionalidad definitiva ya existe.
+progreso. El seguimiento integral conserva una vista placeholder; el pre-test
+y el post-test ya cuentan con flujo de entrada, resolución y resultados.
 
 El recorrido guiado guarda localmente las unidades completadas y la última
 posición visitada. No requiere un dataset ni un modelo entrenado para comenzar.
@@ -186,7 +186,8 @@ Ambos aceptan `--help` con el listado completo de opciones.
 | Recorrido guiado y progreso local | Implementada |
 | Visualización de embeddings 3D | Implementada |
 | Comparación de modelos (CU07) | Implementada |
-| Evaluación de utilidad (RF22–RF25) | Pendiente |
+| Pre-test y post-test conceptuales | Implementada |
+| Analítica histórica de utilidad (RF22–RF25) | Pendiente |
 
 ## Estructura
 
