@@ -104,7 +104,17 @@ def test_explorador_prioriza_mapa_y_resumen_con_detalle_bajo_demanda(qapp):
     process_map = window.findChild(QObject, "inferenceProcessMap")
     essential = window.findChild(QObject, "inferenceEssentialExplanation")
     visual_guide = window.findChild(QObject, "inferenceVisualGuide")
+    animation_takeaway = window.findChild(QObject, "inferenceAnimationTakeaway")
     next_step = window.findChild(QObject, "inferenceNextStepText")
+    local_context = window.findChild(QObject, "inferenceLocalContext")
+    previous_step = window.findChild(QObject, "inferencePreviousStepText")
+    current_step = window.findChild(QObject, "inferenceCurrentStepText")
+    following_step = window.findChild(QObject, "inferenceFollowingStepText")
+    input_output = window.findChild(QObject, "inferenceInputOutputText")
+    formula_card = window.findChild(QObject, "inferenceFormulaCard")
+    formula = window.findChild(QObject, "inferenceFormulaText")
+    formula_explanation = window.findChild(QObject, "inferenceFormulaExplanation")
+    purpose = window.findChild(QObject, "inferencePurposeText")
     advanced = window.findChild(QObject, "inferenceAdvancedDetails")
     technical_map = window.findChild(QObject, "inferenceTransformerMiniMap")
     reduced_motion = window.findChild(QObject, "inferenceReducedMotionToggle")
@@ -120,16 +130,29 @@ def test_explorador_prioriza_mapa_y_resumen_con_detalle_bajo_demanda(qapp):
         "output",
     ]
 
-    # La primera lectura contiene solo lo necesario para interpretar la escena.
+    # La lectura principal conserva el hilo local y la formula relevante.
     assert panel.property("detailsExpanded") is False
     assert advanced is not None and advanced.property("visible") is False
     assert technical_map is not None and technical_map.property("visible") is False
     assert reduced_motion is not None and reduced_motion.property("visible") is True
-    for item in (essential, visual_guide, next_step):
+    assert panel.property("guidedStepDuration") >= 9000
+    assert local_context is not None and local_context.property("visible") is True
+    for item in (essential, visual_guide, animation_takeaway, next_step, input_output):
         assert item is not None
         assert str(item.property("text")).strip()
+    for item in (previous_step, current_step, following_step):
+        assert item is not None
+        assert str(item.property("stepText")).strip()
+    assert formula_card is not None and formula_card.property("visible") is True
+    assert formula is not None and str(formula.property("text")).strip()
+    assert formula.property("font").pixelSize() >= 17
+    assert formula_explanation is not None
+    assert str(formula_explanation.property("text")).startswith("CÓMO LEERLA")
+    assert purpose is not None and str(purpose.property("text")).strip()
+    assert essential.property("font").pixelSize() >= 13
+    assert visual_guide.property("font").pixelSize() >= 13
 
-    # Formula, evidencia, matiz y mapa tecnico se conservan al profundizar.
+    # Evidencia, matiz y mapa tecnico se conservan al profundizar.
     panel.setProperty("detailsExpanded", True)
     qapp.processEvents()
     assert advanced.property("visible") is True
@@ -334,12 +357,23 @@ def test_explorador_acepta_un_forward_real_en_todo_el_recorrido(qapp):
     panel.setProperty("selectedIndex", 0)
 
     flow_steps = _como_python(panel.property("flowSteps"))
+    formula = window.findChild(QObject, "inferenceFormulaText")
+    formula_explanation = window.findChild(QObject, "inferenceFormulaExplanation")
+    input_output = window.findChild(QObject, "inferenceInputOutputText")
+    previous_step = window.findChild(QObject, "inferencePreviousStepText")
+    following_step = window.findChild(QObject, "inferenceFollowingStepText")
     for operation_index, operation in enumerate(flow_steps):
         panel.setProperty("operationIndex", operation_index)
         qapp.processEvents()
         assert panel.property("operationIndex") == operation_index
         assert panel.property("stageIndex") == operation["stageIndex"]
         assert panel.property("branchIndex") == operation["branchIndex"]
+        assert formula.property("text") == operation["formula"]
+        assert len(str(formula_explanation.property("text"))) > len("CÓMO LEERLA")
+        assert "ENTRA" in input_output.property("text")
+        assert "SALE" in input_output.property("text")
+        assert str(previous_step.property("stepText")).strip()
+        assert str(following_step.property("stepText")).strip()
 
     assert window.findChild(QObject, "tokenEmbeddingScene") is not None
     assert window.findChild(QObject, "attentionComputationScene") is not None

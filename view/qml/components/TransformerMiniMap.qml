@@ -337,7 +337,7 @@ Item {
             color: Style.Theme.texto_secundario
             font.bold: true
             font.letterSpacing: 0.6
-            font.pixelSize: 8.5 * Math.min(root.sx, root.sy)
+            font.pixelSize: Math.max(10, 9.5 * Math.min(root.sx, root.sy))
         }
 
         Rectangle {
@@ -356,7 +356,7 @@ Item {
                 text: "SOLO REFERENCIA"
                 color: Style.Theme.texto_secundario
                 font.bold: true
-                font.pixelSize: 7 * Math.min(root.sx, root.sy)
+                font.pixelSize: Math.max(9, 8 * Math.min(root.sx, root.sy))
             }
         }
 
@@ -377,7 +377,7 @@ Item {
                 color: Style.Theme.texto_secundario_fuerte
                 font.bold: true
                 horizontalAlignment: Text.AlignHCenter
-                font.pixelSize: 8 * Math.min(root.sx, root.sy)
+                font.pixelSize: Math.max(9, 9 * Math.min(root.sx, root.sy))
             }
             Text {
                 anchors.left: decoderColumn.left
@@ -387,7 +387,7 @@ Item {
                 color: Style.Theme.texto_secundario_fuerte
                 font.bold: true
                 horizontalAlignment: Text.AlignHCenter
-                font.pixelSize: 8 * Math.min(root.sx, root.sy)
+                font.pixelSize: Math.max(9, 9 * Math.min(root.sx, root.sy))
             }
 
             Column {
@@ -445,7 +445,7 @@ Item {
                 text: "K,V →"
                 color: root.crossOperationActive ? root.accent : Style.Theme.texto_terciario
                 font.bold: root.crossOperationActive
-                font.pixelSize: 7.5 * Math.min(root.sx, root.sy)
+                font.pixelSize: Math.max(9, 8.5 * Math.min(root.sx, root.sy))
             }
         }
 
@@ -469,7 +469,7 @@ Item {
                 text: "●  Estás aquí · " + root.activeRegion
                 color: Qt.darker(root.accent, 1.35)
                 font.bold: true
-                font.pixelSize: 8 * Math.min(root.sx, root.sy)
+                font.pixelSize: Math.max(9, 9 * Math.min(root.sx, root.sy))
                 elide: Text.ElideRight
             }
         }
@@ -514,7 +514,7 @@ Item {
                 text: block.title
                 color: block.active ? Qt.darker(block.displayColor, 1.45) : Style.Theme.texto_secundario
                 font.bold: block.active
-                font.pixelSize: 7 * block.textScale
+                font.pixelSize: Math.max(9, 8 * block.textScale)
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter
                 elide: Text.ElideRight

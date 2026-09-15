@@ -191,14 +191,14 @@ Item {
                     text: "Probabilidad del siguiente token"
                     color: Style.Theme.texto_primario
                     font.bold: true
-                    font.pixelSize: 17 * Math.min(root.sx, root.sy)
+                    font.pixelSize: Math.max(18, 18 * Math.min(root.sx, root.sy))
                 }
                 Text {
                     Layout.fillWidth: true
                     text: "Contexto hasta aquí:  " + root.contextText()
                     color: Style.Theme.texto_secundario
                     elide: Text.ElideLeft
-                    font.pixelSize: 10 * root.sx
+                    font.pixelSize: Math.max(11, 11 * root.sx)
                 }
             }
 
@@ -278,10 +278,10 @@ Item {
 
                     RowLayout {
                         Layout.fillWidth: true
-                        Text { text: "RANGO"; Layout.preferredWidth: 54 * root.sx; color: Style.Theme.texto_secundario; font.bold: true; font.pixelSize: 8 * root.sx }
-                        Text { text: "CANDIDATO"; Layout.preferredWidth: 125 * root.sx; color: Style.Theme.texto_secundario; font.bold: true; font.pixelSize: 8 * root.sx }
-                        Text { text: "PROBABILIDAD REAL"; Layout.fillWidth: true; color: Style.Theme.texto_secundario; font.bold: true; font.pixelSize: 8 * root.sx }
-                        Text { text: "%"; Layout.preferredWidth: 58 * root.sx; color: Style.Theme.texto_secundario; font.bold: true; horizontalAlignment: Text.AlignRight; font.pixelSize: 8 * root.sx }
+                        Text { text: "RANGO"; Layout.preferredWidth: 54 * root.sx; color: Style.Theme.texto_secundario; font.bold: true; font.pixelSize: Math.max(9, 9 * root.sx) }
+                        Text { text: "CANDIDATO"; Layout.preferredWidth: 125 * root.sx; color: Style.Theme.texto_secundario; font.bold: true; font.pixelSize: Math.max(9, 9 * root.sx) }
+                        Text { text: "PROBABILIDAD REAL"; Layout.fillWidth: true; color: Style.Theme.texto_secundario; font.bold: true; font.pixelSize: Math.max(9, 9 * root.sx) }
+                        Text { text: "%"; Layout.preferredWidth: 58 * root.sx; color: Style.Theme.texto_secundario; font.bold: true; horizontalAlignment: Text.AlignRight; font.pixelSize: Math.max(9, 9 * root.sx) }
                     }
 
                     ListView {

@@ -74,14 +74,14 @@ Item {
                     text: "Expansión → " + root.activationName + " → compresión"
                     color: Style.Theme.texto_primario
                     font.bold: true
-                    font.pixelSize: 17 * Math.min(root.sx, root.sy)
+                    font.pixelSize: Math.max(18, 18 * Math.min(root.sx, root.sy))
                 }
                 Text {
                     text: root.inputDimension + " → " + root.hiddenDimension + " → "
                           + root.outputDimension + " · la misma FFN se aplica por separado a cada token"
                     color: "#DB2777"
                     font.bold: true
-                    font.pixelSize: 10 * root.sx
+                    font.pixelSize: Math.max(11, 11 * root.sx)
                 }
             }
             Rectangle {
@@ -175,7 +175,7 @@ Item {
                                         elide: Text.ElideRight
                                         font.pixelSize: 11 * root.sx
                                     }
-                                    Text { width: parent.width; text: "posición " + tokenRow.modelData.posicion; color: Style.Theme.texto_secundario; horizontalAlignment: Text.AlignHCenter; font.pixelSize: 8 * root.sx }
+                                    Text { width: parent.width; text: "posición " + tokenRow.modelData.posicion; color: Style.Theme.texto_secundario; horizontalAlignment: Text.AlignHCenter; font.pixelSize: Math.max(9, 9 * root.sx) }
                                 }
                             }
 
@@ -270,7 +270,7 @@ Item {
         property real sx: 1
         spacing: 1 * sx
         Text { width: parent.width; text: stageLabel.title; color: stageLabel.accent; font.bold: true; horizontalAlignment: Text.AlignHCenter; font.pixelSize: 9 * stageLabel.sx }
-        Text { width: parent.width; text: stageLabel.subtitle; color: Style.Theme.texto_secundario; horizontalAlignment: Text.AlignHCenter; font.pixelSize: 8 * stageLabel.sx }
+        Text { width: parent.width; text: stageLabel.subtitle; color: Style.Theme.texto_secundario; horizontalAlignment: Text.AlignHCenter; font.pixelSize: Math.max(9, 9 * stageLabel.sx) }
     }
 
     component VectorStrip: Rectangle {
@@ -291,8 +291,8 @@ Item {
             spacing: 3 * vectorStrip.sy
             RowLayout {
                 Layout.fillWidth: true
-                Text { Layout.fillWidth: true; text: vectorStrip.label; color: vectorStrip.accent; font.bold: true; font.pixelSize: 8 * vectorStrip.sx }
-                Text { text: vectorStrip.dimension + "d"; color: Style.Theme.texto_secundario; font.pixelSize: 7 * vectorStrip.sx }
+                Text { Layout.fillWidth: true; text: vectorStrip.label; color: vectorStrip.accent; font.bold: true; font.pixelSize: Math.max(9, 9 * vectorStrip.sx) }
+                Text { text: vectorStrip.dimension + "d"; color: Style.Theme.texto_secundario; font.pixelSize: Math.max(9, 8 * vectorStrip.sx) }
             }
             Canvas {
                 Layout.fillWidth: true
@@ -316,7 +316,7 @@ Item {
                     }
                 }
             }
-            Text { Layout.fillWidth: true; text: "‖·‖ " + vectorStrip.normValue.toFixed(3); color: Style.Theme.texto_secundario; horizontalAlignment: Text.AlignRight; font.pixelSize: 7 * vectorStrip.sx }
+            Text { Layout.fillWidth: true; text: "‖·‖ " + vectorStrip.normValue.toFixed(3); color: Style.Theme.texto_secundario; horizontalAlignment: Text.AlignRight; font.pixelSize: Math.max(9, 8 * vectorStrip.sx) }
         }
     }
 
@@ -333,7 +333,7 @@ Item {
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: 5 * gate.sx
-            Text { Layout.fillWidth: true; text: gate.activation; color: Style.Theme.aviso_texto; font.bold: true; horizontalAlignment: Text.AlignHCenter; font.pixelSize: 8 * gate.sx }
+            Text { Layout.fillWidth: true; text: gate.activation; color: Style.Theme.aviso_texto; font.bold: true; horizontalAlignment: Text.AlignHCenter; font.pixelSize: Math.max(9, 9 * gate.sx) }
             Canvas {
                 Layout.fillWidth: true; Layout.fillHeight: true
                 onPaint: {
@@ -364,7 +364,7 @@ Item {
                       : (gate.negativeFraction * 100).toFixed(1) + "% preactivación < 0"
                 color: Style.Theme.aviso_texto
                 horizontalAlignment: Text.AlignHCenter
-                font.pixelSize: 7 * gate.sx
+                font.pixelSize: Math.max(9, 8 * gate.sx)
             }
         }
     }

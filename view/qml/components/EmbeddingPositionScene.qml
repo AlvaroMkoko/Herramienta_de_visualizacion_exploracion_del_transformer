@@ -126,12 +126,12 @@ Item {
                     text: "Embedding puro  →  embedding + posición"
                     color: Style.Theme.texto_primario
                     font.bold: true
-                    font.pixelSize: 17 * Math.min(root.sx, root.sy)
+                    font.pixelSize: Math.max(18, 18 * Math.min(root.sx, root.sy))
                 }
                 Text {
                     text: "PCA calculado una sola vez sobre origen y destino · cada flecha es una suma vectorial real"
                     color: Style.Theme.texto_secundario
-                    font.pixelSize: 10 * root.sx
+                    font.pixelSize: Math.max(11, 11 * root.sx)
                 }
             }
             SceneButton {

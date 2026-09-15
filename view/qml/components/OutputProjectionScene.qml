@@ -142,14 +142,14 @@ Item {
                     text: "Del estado final a los logits del vocabulario"
                     color: Style.Theme.texto_primario
                     font.bold: true
-                    font.pixelSize: 17 * Math.min(root.sx, root.sy)
+                    font.pixelSize: Math.max(18, 18 * Math.min(root.sx, root.sy))
                 }
                 Text {
                     Layout.fillWidth: true
                     text: "h_final · W_vocab + b → un puntaje real por token"
                     color: Style.Theme.texto_secundario
                     elide: Text.ElideRight
-                    font.pixelSize: 10 * root.sx
+                    font.pixelSize: Math.max(11, 11 * root.sx)
                 }
             }
 
@@ -255,13 +255,13 @@ Item {
                                 text: "h FINAL · MUESTRA EXACTA"
                                 color: Style.Theme.acento_fuerte
                                 font.bold: true
-                                font.pixelSize: 8 * root.sx
+                                font.pixelSize: Math.max(9, 9 * root.sx)
                             }
                             Text {
                                 text: root.hiddenMatrix && root.hiddenMatrix.displayed_shape
                                       ? String(root.hiddenMatrix.displayed_shape) : "—"
                                 color: Style.Theme.acento
-                                font.pixelSize: 8 * root.sx
+                                font.pixelSize: Math.max(9, 9 * root.sx)
                             }
                         }
                         ListView {
@@ -292,7 +292,7 @@ Item {
                                         text: "d" + hiddenCell.index
                                         color: Style.Theme.texto_secundario
                                         horizontalAlignment: Text.AlignHCenter
-                                        font.pixelSize: 7 * root.sx
+                                        font.pixelSize: Math.max(9, 8 * root.sx)
                                     }
                                     Text {
                                         width: parent.width
@@ -300,7 +300,7 @@ Item {
                                         color: Style.Theme.texto_primario
                                         font.bold: true
                                         horizontalAlignment: Text.AlignHCenter
-                                        font.pixelSize: 7 * root.sx
+                                        font.pixelSize: Math.max(9, 8 * root.sx)
                                     }
                                 }
                             }
@@ -340,7 +340,7 @@ Item {
                                 text: root.logitsData && root.logitsData.dtype
                                       ? String(root.logitsData.dtype) : "—"
                                 color: Style.Theme.error_texto
-                                font.pixelSize: 8 * root.sx
+                                font.pixelSize: Math.max(9, 9 * root.sx)
                             }
                         }
 
@@ -394,7 +394,7 @@ Item {
                                 text: root.histogramEdges.length
                                       ? root.formatNumber(root.histogramEdges[0]) : "—"
                                 color: Style.Theme.error_texto
-                                font.pixelSize: 7 * root.sx
+                                font.pixelSize: Math.max(9, 8 * root.sx)
                             }
                             Text {
                                 anchors.right: parent.right
@@ -404,7 +404,7 @@ Item {
                                       ? root.formatNumber(root.histogramEdges[
                                           root.histogramEdges.length - 1]) : "—"
                                 color: Style.Theme.error_texto
-                                font.pixelSize: 7 * root.sx
+                                font.pixelSize: Math.max(9, 8 * root.sx)
                             }
                             Text {
                                 anchors.centerIn: parent
@@ -481,7 +481,7 @@ Item {
                         Text {
                             text: "logit de Linear · probabilidad posterior"
                             color: Style.Theme.texto_secundario
-                            font.pixelSize: 8 * root.sx
+                            font.pixelSize: Math.max(9, 9 * root.sx)
                         }
                     }
 
@@ -526,7 +526,7 @@ Item {
                                               : String(candidateRow.index + 1)
                                         color: Style.Theme.texto_sobre_color
                                         font.bold: true
-                                        font.pixelSize: 8 * root.sx
+                                        font.pixelSize: Math.max(9, 9 * root.sx)
                                     }
                                 }
 
@@ -548,7 +548,7 @@ Item {
                                         text: candidateRow.modelData.token_id !== undefined
                                               ? "id " + candidateRow.modelData.token_id : "id —"
                                         color: Style.Theme.texto_secundario
-                                        font.pixelSize: 8 * root.sx
+                                        font.pixelSize: Math.max(9, 9 * root.sx)
                                     }
                                 }
 
@@ -561,7 +561,7 @@ Item {
                                             text: "logit " + root.formatNumber(candidateRow.logit)
                                             color: candidateRow.logit >= 0 ? Style.Theme.info_texto : "#BE123C"
                                             font.bold: true
-                                            font.pixelSize: 8 * root.sx
+                                            font.pixelSize: Math.max(9, 9 * root.sx)
                                         }
                                         Item { Layout.fillWidth: true }
                                         Text {
@@ -569,7 +569,7 @@ Item {
                                                       candidateRow.probability < 0.01 ? 2 : 1) + "%"
                                             color: candidateRow.chosen ? Style.Theme.exito_texto : Style.Theme.texto_secundario
                                             font.bold: true
-                                            font.pixelSize: 8 * root.sx
+                                            font.pixelSize: Math.max(9, 9 * root.sx)
                                         }
                                     }
 
@@ -707,7 +707,7 @@ Item {
                     color: pipelineCard.accent
                     font.bold: true
                     elide: Text.ElideRight
-                    font.pixelSize: 8 * pipelineCard.sx
+                    font.pixelSize: Math.max(9, 9 * pipelineCard.sx)
                 }
                 Text {
                     Layout.fillWidth: true
@@ -722,7 +722,7 @@ Item {
                     text: pipelineCard.detail
                     color: Style.Theme.texto_secundario
                     elide: Text.ElideRight
-                    font.pixelSize: 7.5 * pipelineCard.sx
+                    font.pixelSize: Math.max(9, 8.5 * pipelineCard.sx)
                 }
             }
         }
@@ -787,7 +787,7 @@ Item {
                 color: Style.Theme.texto_secundario
                 font.bold: true
                 horizontalAlignment: Text.AlignHCenter
-                font.pixelSize: 7 * metricChip.sx
+                font.pixelSize: Math.max(9, 8 * metricChip.sx)
             }
         }
     }
