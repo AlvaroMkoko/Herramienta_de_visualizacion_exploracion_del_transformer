@@ -253,7 +253,7 @@ PagePrincipal {
                             ColumnLayout {
                                 Layout.fillWidth: true
                                 Text { text: "TIEMPO APROX."; color: Style.Theme.texto_secundario; font.pixelSize: 10 * root.sx; font.bold: true }
-                                Text { text: "5–8 min"; color: Style.Theme.texto_primario; font.pixelSize: 20 * root.sx; font.bold: true }
+                                Text { text: "20-25 min"; color: Style.Theme.texto_primario; font.pixelSize: 20 * root.sx; font.bold: true }
                             }
                         }
                     }

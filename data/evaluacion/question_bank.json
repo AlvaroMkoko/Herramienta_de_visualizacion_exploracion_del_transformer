@@ -8,6 +8,18 @@
     {
       "id": "embeddings_posicion",
       "name": "Embeddings y Codificación Posicional"
+    },
+    {
+      "id": "atencion_qkv",
+      "name": "Mecanismo de Atención (Q, K, V)"
+    },
+    {
+      "id": "feedforward_normalizacion",
+      "name": "Feed-Forward y Normalización"
+    },
+    {
+      "id": "estrategias_muestreo",
+      "name": "Estrategias de Muestreo"
     }
   ],
   "assessments": {
@@ -129,6 +141,174 @@
             {"id": "d", "text": "El modelo ignora la codificación posicional en este caso"}
           ],
           "correct_option_id": "c"
+        },
+        {
+          "id": "pre_a1",
+          "code": "A1",
+          "dimension_id": "atencion_qkv",
+          "bloom_level": "Recordar",
+          "prompt": "En el mecanismo de atención, ¿qué representan las matrices Query (Q), Key (K) y Value (V)?",
+          "options": [
+            {"id": "a", "text": "Tres redes neuronales independientes que compiten entre sí"},
+            {"id": "b", "text": "Los tres tipos de tokens que puede reconocer el vocabulario"},
+            {"id": "c", "text": "Proyecciones aprendidas del mismo vector de entrada que permiten calcular qué tan relevante es un token respecto a otro"},
+            {"id": "d", "text": "Las tres capas obligatorias de todo encoder"}
+          ],
+          "correct_option_id": "c"
+        },
+        {
+          "id": "pre_a2",
+          "code": "A2",
+          "dimension_id": "atencion_qkv",
+          "bloom_level": "Comprender",
+          "prompt": "En la Atención del Producto Escalado (Scaled Dot-Product Attention), el resultado del producto punto entre Q y K se divide entre √d_k antes de aplicar softmax. ¿Por qué es necesario este escalamiento?",
+          "options": [
+            {"id": "a", "text": "Porque a medida que d_k crece, el producto punto puede volverse muy grande, empujando a softmax hacia regiones de gradiente casi nulo y dificultando el entrenamiento"},
+            {"id": "b", "text": "Porque reduce el número de cabezas de atención necesarias"},
+            {"id": "c", "text": "Porque convierte los valores negativos en positivos antes de la suma"},
+            {"id": "d", "text": "Porque disminuye el tamaño del vocabulario de salida"}
+          ],
+          "correct_option_id": "a"
+        },
+        {
+          "id": "pre_a3",
+          "code": "A3",
+          "dimension_id": "atencion_qkv",
+          "bloom_level": "Comprender",
+          "prompt": "¿Cuál es la diferencia principal entre el Self-Attention del encoder y el Masked Self-Attention del decoder?",
+          "options": [
+            {"id": "a", "text": "El Self-Attention del encoder solo puede usarse con secuencias cortas"},
+            {"id": "b", "text": "El Masked Self-Attention impide que un token atienda a posiciones futuras aún no generadas, preservando el proceso autorregresivo"},
+            {"id": "c", "text": "El Masked Self-Attention no utiliza las matrices Query y Key"},
+            {"id": "d", "text": "El Self-Attention del encoder no tiene parámetros entrenables"}
+          ],
+          "correct_option_id": "b"
+        },
+        {
+          "id": "pre_a4",
+          "code": "A4",
+          "dimension_id": "atencion_qkv",
+          "bloom_level": "Aplicar",
+          "prompt": "En una oración, el token «banco» (institución financiera) debe distinguirse de otro «banco» (asiento). Si el peso de atención entre «banco» y «dinero» es alto, y entre «banco» y «sentarse» es bajo, ¿qué interpretación es correcta según el mecanismo de atención?",
+          "options": [
+            {"id": "a", "text": "El modelo ha eliminado por completo la información de «sentarse» del vocabulario"},
+            {"id": "b", "text": "El valor de atención bajo indica que «sentarse» es la palabra correcta"},
+            {"id": "c", "text": "La atención no influye en cómo se interpreta la palabra «banco»"},
+            {"id": "d", "text": "El modelo está ponderando con más peso la relación entre «banco» y «dinero» para construir la representación contextual de ese token"}
+          ],
+          "correct_option_id": "d"
+        },
+        {
+          "id": "pre_f1",
+          "code": "F1",
+          "dimension_id": "feedforward_normalizacion",
+          "bloom_level": "Recordar",
+          "prompt": "¿Qué hace la red feed-forward dentro de cada capa del Transformer?",
+          "options": [
+            {"id": "a", "text": "Calcula los pesos de atención entre todos los pares de tokens"},
+            {"id": "b", "text": "Aplica una transformación no lineal de forma independiente a cada posición de la secuencia, añadiendo capacidad expresiva"},
+            {"id": "c", "text": "Convierte el texto de entrada en tokens"},
+            {"id": "d", "text": "Genera la distribución de probabilidad final sobre el vocabulario"}
+          ],
+          "correct_option_id": "b"
+        },
+        {
+          "id": "pre_f2",
+          "code": "F2",
+          "dimension_id": "feedforward_normalizacion",
+          "bloom_level": "Comprender",
+          "prompt": "¿Cuál es el propósito de la Layer Normalization dentro del Transformer?",
+          "options": [
+            {"id": "a", "text": "Reducir el número de parámetros entrenables del modelo"},
+            {"id": "b", "text": "Eliminar tokens poco frecuentes del vocabulario"},
+            {"id": "c", "text": "Calcular la probabilidad de cada palabra candidata en la generación"},
+            {"id": "d", "text": "Estabilizar las distribuciones estadísticas de las activaciones entre capas, facilitando y acelerando la convergencia del entrenamiento"}
+          ],
+          "correct_option_id": "d"
+        },
+        {
+          "id": "pre_f3",
+          "code": "F3",
+          "dimension_id": "feedforward_normalizacion",
+          "bloom_level": "Comprender",
+          "prompt": "¿Para qué se utilizan las conexiones residuales alrededor de los bloques de atención y feed-forward?",
+          "options": [
+            {"id": "a", "text": "Para reducir el tamaño de los embeddings de entrada"},
+            {"id": "b", "text": "Para aumentar artificialmente la longitud de la secuencia procesada"},
+            {"id": "c", "text": "Para mantener estable el flujo de gradientes en redes profundas y evitar que se desvanezcan durante el entrenamiento"},
+            {"id": "d", "text": "Para eliminar la necesidad de usar softmax al final del modelo"}
+          ],
+          "correct_option_id": "c"
+        },
+        {
+          "id": "pre_f4",
+          "code": "F4",
+          "dimension_id": "feedforward_normalizacion",
+          "bloom_level": "Aplicar",
+          "prompt": "Si se eliminaran las conexiones residuales de un Transformer con muchas capas, manteniendo todo lo demás igual, ¿qué efecto es más probable observar durante el entrenamiento?",
+          "options": [
+            {"id": "a", "text": "Mayor dificultad para entrenar el modelo, debido al desvanecimiento del flujo de gradientes a través de las capas profundas"},
+            {"id": "b", "text": "El modelo entrenaría más rápido sin ningún efecto negativo"},
+            {"id": "c", "text": "El vocabulario del modelo se reduciría automáticamente"},
+            {"id": "d", "text": "La codificación posicional dejaría de ser necesaria"}
+          ],
+          "correct_option_id": "a"
+        },
+        {
+          "id": "pre_s1",
+          "code": "S1",
+          "dimension_id": "estrategias_muestreo",
+          "bloom_level": "Recordar",
+          "prompt": "En la etapa de generación de texto, ¿qué controla el parámetro de temperatura (temperature)?",
+          "options": [
+            {"id": "a", "text": "El número máximo de tokens que puede generar el modelo"},
+            {"id": "b", "text": "La aleatoriedad o diversidad de la distribución de probabilidad sobre los tokens candidatos antes de seleccionar el siguiente token"},
+            {"id": "c", "text": "El tamaño del vocabulario disponible para la generación"},
+            {"id": "d", "text": "La velocidad de procesamiento del modelo durante la inferencia"}
+          ],
+          "correct_option_id": "b"
+        },
+        {
+          "id": "pre_s2",
+          "code": "S2",
+          "dimension_id": "estrategias_muestreo",
+          "bloom_level": "Comprender",
+          "prompt": "¿Cuál es la diferencia principal entre las estrategias de muestreo Top-k y Top-p (nucleus sampling)?",
+          "options": [
+            {"id": "a", "text": "Top-k solo puede usarse en el encoder, mientras que Top-p solo en el decoder"},
+            {"id": "b", "text": "Top-p siempre selecciona un único token, mientras que Top-k selecciona varios"},
+            {"id": "c", "text": "Top-k limita la selección a un número fijo k de tokens más probables, mientras que Top-p selecciona dinámicamente el conjunto mínimo de tokens cuya probabilidad acumulada supera un umbral p"},
+            {"id": "d", "text": "No existe ninguna diferencia funcional entre ambas estrategias"}
+          ],
+          "correct_option_id": "c"
+        },
+        {
+          "id": "pre_s3",
+          "code": "S3",
+          "dimension_id": "estrategias_muestreo",
+          "bloom_level": "Comprender",
+          "prompt": "Si se reduce considerablemente el valor de la temperatura en la generación de texto (acercándolo a 0), ¿qué efecto se espera sobre las salidas del modelo?",
+          "options": [
+            {"id": "a", "text": "Las salidas se vuelven más deterministas y predecibles, favoreciendo siempre los tokens de mayor probabilidad"},
+            {"id": "b", "text": "Las salidas se vuelven completamente aleatorias"},
+            {"id": "c", "text": "El modelo deja de generar texto coherente"},
+            {"id": "d", "text": "El tamaño del vocabulario disponible se reduce"}
+          ],
+          "correct_option_id": "a"
+        },
+        {
+          "id": "pre_s4",
+          "code": "S4",
+          "dimension_id": "estrategias_muestreo",
+          "bloom_level": "Aplicar",
+          "prompt": "Se necesita generar texto para un chatbot de atención a clientes donde las respuestas deben ser consistentes y predecibles, evitando variaciones creativas excesivas. ¿Qué configuración de muestreo sería más adecuada?",
+          "options": [
+            {"id": "a", "text": "Una temperatura muy alta, para maximizar la creatividad de las respuestas"},
+            {"id": "b", "text": "Desactivar por completo la etapa de muestreo"},
+            {"id": "c", "text": "Aumentar el valor de Top-k al máximo posible sin ningún límite"},
+            {"id": "d", "text": "Una temperatura baja, que favorezca los tokens de mayor probabilidad y reduzca la aleatoriedad de las respuestas"}
+          ],
+          "correct_option_id": "d"
         }
       ]
     },
@@ -250,6 +430,174 @@
             {"id": "d", "text": "La codificación posicional no tiene ningún efecto sobre el resultado"}
           ],
           "correct_option_id": "b"
+        },
+        {
+          "id": "post_a1",
+          "code": "A1",
+          "dimension_id": "atencion_qkv",
+          "bloom_level": "Recordar",
+          "prompt": "Dentro del mecanismo de atención, ¿qué función cumplen conjuntamente las matrices Query (Q), Key (K) y Value (V)?",
+          "options": [
+            {"id": "a", "text": "Son tres capas de salida independientes del decoder"},
+            {"id": "b", "text": "Representan tres idiomas distintos que el modelo puede procesar"},
+            {"id": "c", "text": "Son proyecciones del mismo vector de entrada que permiten calcular la relevancia entre tokens de una secuencia"},
+            {"id": "d", "text": "Son los únicos parámetros no entrenables del modelo"}
+          ],
+          "correct_option_id": "c"
+        },
+        {
+          "id": "post_a2",
+          "code": "A2",
+          "dimension_id": "atencion_qkv",
+          "bloom_level": "Comprender",
+          "prompt": "En la Atención del Producto Escalado, se divide el producto Q·K entre √d_k. ¿Cuál es la razón de este paso?",
+          "options": [
+            {"id": "a", "text": "Reducir el número de capas necesarias en el encoder"},
+            {"id": "b", "text": "Igualar el tamaño de los embeddings con el del vocabulario"},
+            {"id": "c", "text": "Acelerar la tokenización de la secuencia de entrada"},
+            {"id": "d", "text": "Evitar que el producto punto crezca demasiado y empuje a la función softmax a zonas con gradientes casi nulos, lo que dificultaría el entrenamiento"}
+          ],
+          "correct_option_id": "d"
+        },
+        {
+          "id": "post_a3",
+          "code": "A3",
+          "dimension_id": "atencion_qkv",
+          "bloom_level": "Comprender",
+          "prompt": "¿Por qué el decoder utiliza Masked Self-Attention en lugar del Self-Attention estándar del encoder?",
+          "options": [
+            {"id": "a", "text": "Para impedir que, al generar un token, el modelo tenga acceso a tokens futuros que aún no ha producido"},
+            {"id": "b", "text": "Porque el decoder no puede procesar secuencias largas"},
+            {"id": "c", "text": "Porque el Masked Self-Attention no requiere la matriz Value"},
+            {"id": "d", "text": "Porque reduce el vocabulario disponible para la generación"}
+          ],
+          "correct_option_id": "a"
+        },
+        {
+          "id": "post_a4",
+          "code": "A4",
+          "dimension_id": "atencion_qkv",
+          "bloom_level": "Aplicar",
+          "prompt": "En «el gato persiguió al ratón porque tenía hambre», el pronombre implícito en «tenía hambre» refiere a «el gato». Si el peso de atención entre «tenía» y «gato» es alto, y entre «tenía» y «ratón» es bajo, ¿qué indica esto?",
+          "options": [
+            {"id": "a", "text": "El modelo eliminó la palabra «ratón» del vocabulario"},
+            {"id": "b", "text": "El modelo está asignando mayor relevancia a «gato» al construir la representación contextual de esa parte de la oración"},
+            {"id": "c", "text": "El peso bajo indica que «ratón» es la respuesta correcta"},
+            {"id": "d", "text": "Los pesos de atención no afectan la interpretación del modelo"}
+          ],
+          "correct_option_id": "b"
+        },
+        {
+          "id": "post_f1",
+          "code": "F1",
+          "dimension_id": "feedforward_normalizacion",
+          "bloom_level": "Recordar",
+          "prompt": "Dentro de cada capa del Transformer, ¿qué función cumple la red feed-forward?",
+          "options": [
+            {"id": "a", "text": "Calcula la relevancia entre pares de tokens de la secuencia"},
+            {"id": "b", "text": "Segmenta el texto en unidades tokenizables"},
+            {"id": "c", "text": "Produce la distribución final de probabilidades sobre el vocabulario"},
+            {"id": "d", "text": "Transforma de manera no lineal la representación de cada posición de forma independiente, aportando capacidad expresiva adicional"}
+          ],
+          "correct_option_id": "d"
+        },
+        {
+          "id": "post_f2",
+          "code": "F2",
+          "dimension_id": "feedforward_normalizacion",
+          "bloom_level": "Comprender",
+          "prompt": "¿Por qué se incorpora la Layer Normalization en la arquitectura Transformer?",
+          "options": [
+            {"id": "a", "text": "Porque estabiliza las distribuciones estadísticas de las activaciones a lo largo del entrenamiento, favoreciendo una convergencia más rápida"},
+            {"id": "b", "text": "Porque disminuye la cantidad de capas necesarias en el encoder"},
+            {"id": "c", "text": "Porque filtra palabras poco comunes del vocabulario de entrada"},
+            {"id": "d", "text": "Porque calcula directamente la probabilidad de cada token de salida"}
+          ],
+          "correct_option_id": "a"
+        },
+        {
+          "id": "post_f3",
+          "code": "F3",
+          "dimension_id": "feedforward_normalizacion",
+          "bloom_level": "Comprender",
+          "prompt": "¿Cuál es la función de las conexiones residuales presentes alrededor de los bloques de atención y feed-forward?",
+          "options": [
+            {"id": "a", "text": "Reducir la dimensión de los vectores de embedding"},
+            {"id": "b", "text": "Incrementar artificialmente el número de tokens procesados"},
+            {"id": "c", "text": "Preservar un flujo estable de gradientes en arquitecturas profundas, evitando que se desvanezcan durante el entrenamiento"},
+            {"id": "d", "text": "Sustituir la necesidad de aplicar la función softmax"}
+          ],
+          "correct_option_id": "c"
+        },
+        {
+          "id": "post_f4",
+          "code": "F4",
+          "dimension_id": "feedforward_normalizacion",
+          "bloom_level": "Aplicar",
+          "prompt": "Se entrena un Transformer profundo sin conexiones residuales, dejando el resto de la arquitectura sin cambios. ¿Qué consecuencia es más probable durante el entrenamiento?",
+          "options": [
+            {"id": "a", "text": "El entrenamiento se acelera sin ningún inconveniente"},
+            {"id": "b", "text": "El entrenamiento se dificulta debido al desvanecimiento del gradiente conforme atraviesa las capas profundas"},
+            {"id": "c", "text": "El tamaño del vocabulario se reduce automáticamente"},
+            {"id": "d", "text": "La codificación posicional se vuelve innecesaria"}
+          ],
+          "correct_option_id": "b"
+        },
+        {
+          "id": "post_s1",
+          "code": "S1",
+          "dimension_id": "estrategias_muestreo",
+          "bloom_level": "Recordar",
+          "prompt": "Durante la generación de texto, ¿qué aspecto de la distribución de probabilidad sobre los tokens regula el parámetro de temperatura?",
+          "options": [
+            {"id": "a", "text": "El número total de tokens en el vocabulario"},
+            {"id": "b", "text": "Su grado de aleatoriedad, haciendo la distribución más uniforme (mayor temperatura) o más concentrada en los tokens más probables (menor temperatura)"},
+            {"id": "c", "text": "La longitud máxima de la secuencia generada"},
+            {"id": "d", "text": "El tiempo de cómputo requerido por cada token generado"}
+          ],
+          "correct_option_id": "b"
+        },
+        {
+          "id": "post_s2",
+          "code": "S2",
+          "dimension_id": "estrategias_muestreo",
+          "bloom_level": "Comprender",
+          "prompt": "Entre las estrategias Top-k y Top-p (nucleus sampling), ¿en qué se diferencian principalmente?",
+          "options": [
+            {"id": "a", "text": "Top-p solo funciona con modelos que usan atención causal"},
+            {"id": "b", "text": "Top-k selecciona siempre exactamente un token, sin importar el contexto"},
+            {"id": "c", "text": "Ambas estrategias producen resultados idénticos en la práctica"},
+            {"id": "d", "text": "Top-k restringe la selección a un número fijo de tokens, mientras que Top-p ajusta dinámicamente cuántos tokens considerar según un umbral de probabilidad acumulada"}
+          ],
+          "correct_option_id": "d"
+        },
+        {
+          "id": "post_s3",
+          "code": "S3",
+          "dimension_id": "estrategias_muestreo",
+          "bloom_level": "Comprender",
+          "prompt": "Si se incrementa considerablemente el valor de la temperatura en la generación de texto, ¿qué efecto es más probable observar?",
+          "options": [
+            {"id": "a", "text": "Las salidas se vuelven completamente deterministas"},
+            {"id": "b", "text": "El modelo deja de poder generar tokens"},
+            {"id": "c", "text": "Las salidas se vuelven más diversas y menos predecibles, dando más probabilidad relativa a tokens que antes tenían baja probabilidad"},
+            {"id": "d", "text": "El vocabulario del modelo se amplía automáticamente"}
+          ],
+          "correct_option_id": "c"
+        },
+        {
+          "id": "post_s4",
+          "code": "S4",
+          "dimension_id": "estrategias_muestreo",
+          "bloom_level": "Aplicar",
+          "prompt": "Se desea generar texto creativo para un cuento corto, donde se valora la originalidad y la variedad léxica por encima de la previsibilidad. ¿Qué ajuste de muestreo sería más adecuado?",
+          "options": [
+            {"id": "a", "text": "Una temperatura más alta, que incremente la diversidad de los tokens seleccionados"},
+            {"id": "b", "text": "Una temperatura de valor 0, para maximizar la coherencia"},
+            {"id": "c", "text": "Desactivar completamente la función softmax"},
+            {"id": "d", "text": "Reducir el vocabulario disponible al mínimo posible"}
+          ],
+          "correct_option_id": "a"
         }
       ]
     }

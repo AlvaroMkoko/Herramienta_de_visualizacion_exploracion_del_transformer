@@ -784,7 +784,7 @@ PagePrincipal {
                         property string stageRoute: "EvaluationIntroScreen.qml"
                         property string kind: "evaluation"
                         property string accentColor: Style.Theme.info
-                        property string note: "8 preguntas · 2 dimensiones · Forma A"
+                        property string note: "20 preguntas · 4 dimensiones · Forma A"
                         property bool stagePlaceholder: false
                         property string testButtonName: "pretestOpenButton"
                         property string assessmentType: "pre"
@@ -850,7 +850,7 @@ PagePrincipal {
                         property string stageRoute: "EvaluationIntroScreen.qml"
                         property string kind: "evaluation"
                         property string accentColor: Style.Theme.acento
-                        property string note: "8 preguntas · 2 dimensiones · Forma B"
+                        property string note: "20 preguntas · 4 dimensiones · Forma B"
                         property bool stagePlaceholder: false
                         property string testButtonName: "posttestOpenButton"
                         property string assessmentType: "post"
