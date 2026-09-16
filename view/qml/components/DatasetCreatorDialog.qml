@@ -304,11 +304,13 @@ Dialog {
                         font.pixelSize: 14
                     }
 
-                    TextField {
+                    CampoTextoPrincipal {
                         id: nameField
                         objectName: "datasetCreatorNameField"
                         Layout.fillWidth: true
                         Layout.preferredHeight: 43
+                        sx: root.sx
+                        sy: root.sy
                         maximumLength: 80
                         placeholderText: "Ejemplo: preguntas de ciencias"
                         color: Style.Theme.texto_primario
@@ -316,14 +318,6 @@ Dialog {
                         selectByMouse: true
                         Accessible.name: "Nombre del dataset, obligatorio"
                         Accessible.description: "Máximo 80 caracteres"
-
-                        background: Rectangle {
-                            radius: 8
-                            color: Style.Theme.surface
-                            border.width: nameField.activeFocus ? 2 : 1
-                            border.color: nameField.activeFocus
-                                          ? Style.Theme.acento : Style.Theme.borde_suave
-                        }
                     }
 
                     Label {
@@ -388,25 +382,19 @@ Dialog {
                             font.pixelSize: 13
                         }
 
-                        TextArea {
+                        AreaTextoPrincipal {
                             id: instructionField
                             objectName: "datasetInstructionField"
                             Layout.fillWidth: true
                             Layout.preferredHeight: 72
+                            sx: root.sx
+                            sy: root.sy
                             placeholderText: "Pregunta, orden o texto de entrada"
                             color: Style.Theme.texto_primario
                             placeholderTextColor: Style.Theme.texto_terciario
                             wrapMode: TextEdit.Wrap
                             selectByMouse: true
                             Accessible.name: "Instruction, entrada obligatoria"
-
-                            background: Rectangle {
-                                radius: 8
-                                color: Style.Theme.surface
-                                border.width: instructionField.activeFocus ? 2 : 1
-                                border.color: instructionField.activeFocus
-                                              ? Style.Theme.acento : Style.Theme.borde_suave
-                            }
                         }
 
                         Label {
@@ -417,25 +405,19 @@ Dialog {
                             font.pixelSize: 13
                         }
 
-                        TextArea {
+                        AreaTextoPrincipal {
                             id: contextField
                             objectName: "datasetContextField"
                             Layout.fillWidth: true
                             Layout.preferredHeight: 62
+                            sx: root.sx
+                            sy: root.sy
                             placeholderText: "Datos o fragmento que ayudan a responder (opcional)"
                             color: Style.Theme.texto_primario
                             placeholderTextColor: Style.Theme.texto_terciario
                             wrapMode: TextEdit.Wrap
                             selectByMouse: true
                             Accessible.name: "Context, información adicional opcional"
-
-                            background: Rectangle {
-                                radius: 8
-                                color: Style.Theme.surface
-                                border.width: contextField.activeFocus ? 2 : 1
-                                border.color: contextField.activeFocus
-                                              ? Style.Theme.acento : Style.Theme.borde_suave
-                            }
                         }
 
                         Label {
@@ -446,25 +428,19 @@ Dialog {
                             font.pixelSize: 13
                         }
 
-                        TextArea {
+                        AreaTextoPrincipal {
                             id: responseField
                             objectName: "datasetResponseField"
                             Layout.fillWidth: true
                             Layout.preferredHeight: 72
+                            sx: root.sx
+                            sy: root.sy
                             placeholderText: "Respuesta correcta que el modelo debe aprender"
                             color: Style.Theme.texto_primario
                             placeholderTextColor: Style.Theme.texto_terciario
                             wrapMode: TextEdit.Wrap
                             selectByMouse: true
                             Accessible.name: "Response, respuesta esperada obligatoria"
-
-                            background: Rectangle {
-                                radius: 8
-                                color: Style.Theme.surface
-                                border.width: responseField.activeFocus ? 2 : 1
-                                border.color: responseField.activeFocus
-                                              ? Style.Theme.acento : Style.Theme.borde_suave
-                            }
                         }
 
                         Label {
@@ -475,24 +451,18 @@ Dialog {
                             font.pixelSize: 13
                         }
 
-                        TextField {
+                        CampoTextoPrincipal {
                             id: categoryField
                             objectName: "datasetCategoryField"
                             Layout.fillWidth: true
                             Layout.preferredHeight: 42
+                            sx: root.sx
+                            sy: root.sy
                             placeholderText: "Ejemplo: traducción, resumen, preguntas"
                             color: Style.Theme.texto_primario
                             placeholderTextColor: Style.Theme.texto_terciario
                             selectByMouse: true
                             Accessible.name: "Category, etiqueta opcional"
-
-                            background: Rectangle {
-                                radius: 8
-                                color: Style.Theme.surface
-                                border.width: categoryField.activeFocus ? 2 : 1
-                                border.color: categoryField.activeFocus
-                                              ? Style.Theme.acento : Style.Theme.borde_suave
-                            }
                         }
 
                         Button {

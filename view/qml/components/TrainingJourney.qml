@@ -491,30 +491,38 @@ Item {
             SmallButton { label: "Siguiente →"; enabled: root.stageIndex < root.stages.length - 1; onClicked: root.setStage(root.stageIndex + 1) }
             Item { Layout.fillWidth: true }
             Text { text: "Explicación"; color: Style.Theme.texto_secundario; font.pixelSize: 9 * root.sx }
-            ComboBox {
+            SelectorPrincipal {
                 Layout.preferredWidth: 135 * root.sx
+                sx: root.sx
+                sy: root.sy
                 model: ["Intuitiva", "Técnica", "Matemática"]
                 currentIndex: root.explanationLevel
                 onActivated: function(index) { root.explanationLevel = index }
             }
-            ComboBox {
+            SelectorPrincipal {
                 visible: root.stageIndex === 2 || root.stageIndex === 5 || root.stageIndex === 6
                 Layout.preferredWidth: 105 * root.sx
+                sx: root.sx
+                sy: root.sy
                 model: root.layerModels()
                 currentIndex: root.layerIndex
                 onActivated: function(index) { root.layerIndex = index }
             }
-            ComboBox {
+            SelectorPrincipal {
                 visible: root.stageIndex === 2 || root.stageIndex === 5 || root.stageIndex === 6
                 Layout.preferredWidth: 112 * root.sx
+                sx: root.sx
+                sy: root.sy
                 model: root.headModels()
                 currentIndex: root.headIndex
                 onActivated: function(index) { root.headIndex = index }
             }
-            ComboBox {
+            SelectorPrincipal {
                 visible: root.stageIndex === 2 || root.stageIndex === 5 || root.stageIndex === 6
                          || root.stageIndex === 7 || root.stageIndex === 8
                 Layout.preferredWidth: 125 * root.sx
+                sx: root.sx
+                sy: root.sy
                 model: root.tokenModels()
                 currentIndex: root.tokenIndex
                 onActivated: function(index) { root.tokenIndex = index }
@@ -1518,7 +1526,7 @@ Item {
             anchors.fill: parent; spacing: 12 * optimizerScene.sy
             RowLayout { Layout.fillWidth: true
                 Text { text: "Parámetro inspeccionado"; color: Style.Theme.texto_secundario; font.pixelSize: 10 * optimizerScene.sx }
-                ComboBox { Layout.fillWidth: true; model: optimizerScene.updates.map(function(item) { return item.etiqueta }); currentIndex: optimizerScene.selectedIndex; onActivated: function(index) { optimizerScene.selected(index) } }
+                SelectorPrincipal { Layout.fillWidth: true; sx: root.sx; sy: root.sy; model: optimizerScene.updates.map(function(item) { return item.etiqueta }); currentIndex: optimizerScene.selectedIndex; onActivated: function(index) { optimizerScene.selected(index) } }
                 Text { text: String(optimizerScene.optimizer.nombre || "—") + " · LR " + root.number(optimizerScene.optimizer.tasa_aprendizaje, 2); color: "#047857"; font.bold: true; font.pixelSize: 10 * optimizerScene.sx }
             }
             RowLayout {
