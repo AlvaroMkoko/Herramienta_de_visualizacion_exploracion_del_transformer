@@ -119,7 +119,7 @@ Item {
                     text: root.crossAttention ? "Flujo de atención cruzada" : "Self-attention como flujo de información"
                     color: Style.Theme.texto_primario
                     font.bold: true
-                    font.pixelSize: 17 * Math.min(root.sx, root.sy)
+                    font.pixelSize: Math.max(18, 18 * Math.min(root.sx, root.sy))
                 }
                 Text {
                     text: root.showHeadGrid
@@ -128,7 +128,7 @@ Item {
                             + " · grosor y opacidad = peso real"
                     color: root.colorForHead(root.headIndex)
                     font.bold: true
-                    font.pixelSize: 10 * root.sx
+                    font.pixelSize: Math.max(11, 11 * root.sx)
                 }
             }
             FlowButton {
@@ -321,7 +321,7 @@ Item {
                                 text: root.queryToken(queryChip.index).texto || "∅"
                                 color: root.focusedQuery === queryChip.index ? "white" : Style.Theme.texto_primario
                                 font.bold: true
-                                font.pixelSize: 8 * root.sx
+                                font.pixelSize: Math.max(9, 9 * root.sx)
                                 elide: Text.ElideRight
                             }
                             MouseArea {
@@ -354,7 +354,7 @@ Item {
                                 text: root.keyToken(keyChip.index).texto || "∅"
                                 color: Style.Theme.texto_primario
                                 font.bold: true
-                                font.pixelSize: 8 * root.sx
+                                font.pixelSize: Math.max(9, 9 * root.sx)
                                 elide: Text.ElideRight
                             }
                         }
@@ -445,7 +445,7 @@ Item {
                 Layout.fillWidth: true
                 Text { text: "H" + String(mini.headNumber + 1).padStart(2, "0"); color: mini.accent; font.bold: true; font.pixelSize: 10 * mini.sx }
                 Item { Layout.fillWidth: true }
-                Text { text: "clic para abrir"; color: Style.Theme.texto_secundario; font.pixelSize: 7 * mini.sx }
+                Text { text: "clic para abrir"; color: Style.Theme.texto_secundario; font.pixelSize: Math.max(9, 8 * mini.sx) }
             }
             Canvas {
                 Layout.fillWidth: true

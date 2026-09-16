@@ -170,14 +170,14 @@ Item {
                     text: "Del token discreto a un vector real"
                     color: Style.Theme.texto_primario
                     font.bold: true
-                    font.pixelSize: 17 * Math.min(root.sx, root.sy)
+                    font.pixelSize: Math.max(18, 18 * Math.min(root.sx, root.sy))
                 }
                 Text {
                     Layout.fillWidth: true
                     text: "lookup de embedding · escala √d_model · valores capturados del forward"
                     color: Style.Theme.texto_secundario
                     elide: Text.ElideRight
-                    font.pixelSize: 10 * root.sx
+                    font.pixelSize: Math.max(11, 11 * root.sx)
                 }
             }
 
@@ -315,7 +315,7 @@ Item {
                                               ? "p" + tokenRow.rowToken.posicion : "—"
                                         color: Style.Theme.texto_sobre_color
                                         font.bold: true
-                                        font.pixelSize: 8 * root.sx
+                                        font.pixelSize: Math.max(9, 9 * root.sx)
                                     }
                                 }
 
@@ -334,7 +334,7 @@ Item {
                                         Layout.fillWidth: true
                                         text: "id " + root.tokenIdText(tokenRow.rowToken)
                                         color: Style.Theme.texto_secundario
-                                        font.pixelSize: 8 * root.sx
+                                        font.pixelSize: Math.max(9, 9 * root.sx)
                                     }
                                 }
 
@@ -343,7 +343,7 @@ Item {
                                           ? "‖x‖ " + root.formatNumber(tokenRow.rowNorm) : "—"
                                     color: Style.Theme.acento_fuerte
                                     font.bold: true
-                                    font.pixelSize: 8 * root.sx
+                                    font.pixelSize: Math.max(9, 9 * root.sx)
                                 }
                             }
 
@@ -439,7 +439,7 @@ Item {
                                     color: Style.Theme.texto_secundario
                                     horizontalAlignment: Text.AlignHCenter
                                     font.bold: true
-                                    font.pixelSize: 8 * root.sx
+                                    font.pixelSize: Math.max(9, 9 * root.sx)
                                 }
                                 Text {
                                     width: parent.width
@@ -447,7 +447,7 @@ Item {
                                     color: Style.Theme.texto_primario
                                     horizontalAlignment: Text.AlignHCenter
                                     font.bold: true
-                                    font.pixelSize: 8 * root.sx
+                                    font.pixelSize: Math.max(9, 9 * root.sx)
                                 }
                             }
                         }
@@ -514,7 +514,7 @@ Item {
                                 text: "NORMA DEL TOKEN"
                                 color: Style.Theme.info_texto
                                 font.bold: true
-                                font.pixelSize: 8 * root.sx
+                                font.pixelSize: Math.max(9, 9 * root.sx)
                             }
                             Rectangle {
                                 Layout.fillWidth: true
@@ -643,7 +643,7 @@ Item {
                     color: stageCard.accent
                     font.bold: true
                     elide: Text.ElideRight
-                    font.pixelSize: 8 * stageCard.sx
+                    font.pixelSize: Math.max(9, 9 * stageCard.sx)
                 }
                 Text {
                     Layout.fillWidth: true
@@ -658,7 +658,7 @@ Item {
                     text: stageCard.detail
                     color: Style.Theme.texto_secundario
                     elide: Text.ElideRight
-                    font.pixelSize: 7.5 * stageCard.sx
+                    font.pixelSize: Math.max(9, 8.5 * stageCard.sx)
                 }
             }
         }
@@ -723,7 +723,7 @@ Item {
                 color: Style.Theme.texto_secundario
                 font.bold: true
                 horizontalAlignment: Text.AlignHCenter
-                font.pixelSize: 7 * metricChip.sx
+                font.pixelSize: Math.max(9, 8 * metricChip.sx)
             }
         }
     }

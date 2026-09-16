@@ -80,13 +80,13 @@ Item {
                     text: "Split → procesamiento independiente → concat → Wᴼ"
                     color: Style.Theme.texto_primario
                     font.bold: true
-                    font.pixelSize: 17 * Math.min(root.sx, root.sy)
+                    font.pixelSize: Math.max(18, 18 * Math.min(root.sx, root.sy))
                 }
                 Text {
                     text: root.dModel + " dimensiones = " + root.numHeads + " cabezas × " + root.dHead + " dimensiones"
                     color: Style.Theme.warning
                     font.bold: true
-                    font.pixelSize: 10 * root.sx
+                    font.pixelSize: Math.max(11, 11 * root.sx)
                 }
             }
             ReplayButton { sx: root.sx; sy: root.sy; onClicked: root.replay() }
@@ -128,7 +128,7 @@ Item {
                                 color: Style.Theme.texto_sobre_color
                                 font.bold: true
                                 visible: parent.width > 34 * root.sx
-                                font.pixelSize: 8 * root.sx
+                                font.pixelSize: Math.max(9, 9 * root.sx)
                             }
                         }
                     }
@@ -203,7 +203,7 @@ Item {
                                     width: parent.width - 12 * root.sx
                                     spacing: 3 * root.sy
                                     Text { anchors.horizontalCenter: parent.horizontalCenter; text: "H" + String(headCard.index + 1).padStart(2, "0"); color: root.colorAt(headCard.index); font.bold: true; font.pixelSize: 12 * root.sx }
-                                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: root.dHead + " dims"; color: Style.Theme.texto_secundario; font.pixelSize: 8 * root.sx }
+                                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: root.dHead + " dims"; color: Style.Theme.texto_secundario; font.pixelSize: Math.max(9, 9 * root.sx) }
                                     Text {
                                         anchors.horizontalCenter: parent.horizontalCenter
                                         text: "‖z‖ " + root.norm(root.headOutputs.length > headCard.index ? root.headOutputs[headCard.index] : []).toFixed(3)
@@ -248,7 +248,7 @@ Item {
                                 }
                             }
                         }
-                        Text { text: "‖concat real‖ " + root.norm(root.concatenated).toFixed(4); color: Style.Theme.texto_secundario; font.pixelSize: 8 * root.sx }
+                        Text { text: "‖concat real‖ " + root.norm(root.concatenated).toFixed(4); color: Style.Theme.texto_secundario; font.pixelSize: Math.max(9, 9 * root.sx) }
                     }
 
                     Text { text: "→"; color: Style.Theme.warning; font.bold: true; font.pixelSize: 24 * root.sx }
@@ -292,7 +292,7 @@ Item {
                             }
                             Text { anchors.centerIn: parent; text: root.dModel + " dims mezcladas"; color: Style.Theme.texto_sobre_color; font.bold: true; font.pixelSize: 9 * root.sx }
                         }
-                        Text { text: "‖Wᴼz‖ " + root.norm(root.projected).toFixed(4); color: Style.Theme.texto_secundario; font.pixelSize: 8 * root.sx }
+                        Text { text: "‖Wᴼz‖ " + root.norm(root.projected).toFixed(4); color: Style.Theme.texto_secundario; font.pixelSize: Math.max(9, 9 * root.sx) }
                     }
                 }
             }

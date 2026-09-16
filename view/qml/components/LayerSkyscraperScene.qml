@@ -94,12 +94,12 @@ Item {
                     text: "Rascacielos de representaciones"
                     color: Style.Theme.texto_primario
                     font.bold: true
-                    font.pixelSize: 17 * Math.min(root.sx, root.sy)
+                    font.pixelSize: Math.max(18, 18 * Math.min(root.sx, root.sy))
                 }
                 Text {
                     text: "Cada piso usa hidden states reales · todos comparten los mismos ejes PCA"
                     color: Style.Theme.texto_secundario
-                    font.pixelSize: 10 * root.sx
+                    font.pixelSize: Math.max(11, 11 * root.sx)
                 }
             }
 

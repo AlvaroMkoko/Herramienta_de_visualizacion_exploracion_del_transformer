@@ -40,7 +40,7 @@ Rectangle {
                 color: Style.Theme.texto_secundario
                 font.bold: true
                 font.letterSpacing: 0.6
-                font.pixelSize: Math.max(10, 10 * root.sx)
+                font.pixelSize: Math.max(11, 11 * root.sx)
             }
 
             Text {
@@ -48,7 +48,7 @@ Rectangle {
                 text: "Sigue una sola operaci\u00f3n; el mapa mantiene visible el recorrido completo."
                 color: Style.Theme.texto_secundario
                 elide: Text.ElideRight
-                font.pixelSize: Math.max(10, 10 * root.sx)
+                font.pixelSize: Math.max(11, 11 * root.sx)
             }
 
             Text {
@@ -58,7 +58,7 @@ Rectangle {
                       : ""
                 color: root.accent
                 font.bold: true
-                font.pixelSize: Math.max(10, 10 * root.sx)
+                font.pixelSize: Math.max(11, 11 * root.sx)
             }
         }
 
@@ -152,7 +152,7 @@ Rectangle {
                                     color: chapterDelegate.current || chapterDelegate.completed
                                            ? "#FFFFFF" : Style.Theme.texto_secundario
                                     font.bold: true
-                                    font.pixelSize: Math.max(10, 10 * root.sx)
+                                    font.pixelSize: Math.max(11, 11 * root.sx)
                                 }
                             }
 
@@ -166,7 +166,7 @@ Rectangle {
                                     color: chapterDelegate.current ? root.accent : Style.Theme.texto_secundario_fuerte
                                     font.bold: true
                                     elide: Text.ElideRight
-                                    font.pixelSize: Math.max(10, 10 * root.sx)
+                                    font.pixelSize: Math.max(11, 11 * root.sx)
                                 }
 
                                 Text {
@@ -174,7 +174,7 @@ Rectangle {
                                     text: chapterDelegate.modelData.caption || ""
                                     color: Style.Theme.texto_secundario
                                     elide: Text.ElideRight
-                                    font.pixelSize: Math.max(9, 9 * root.sx)
+                                    font.pixelSize: Math.max(10, 10 * root.sx)
                                 }
                             }
                         }
@@ -243,7 +243,7 @@ Rectangle {
                 text: endpoint.symbol + "  " + endpoint.title
                 color: endpoint.highlighted ? endpoint.accent : Style.Theme.texto_secundario_fuerte
                 font.bold: true
-                font.pixelSize: Math.max(10, 10 * endpoint.sx)
+                font.pixelSize: Math.max(11, 11 * endpoint.sx)
             }
             Text {
                 Layout.fillWidth: true
@@ -251,7 +251,7 @@ Rectangle {
                 color: Style.Theme.texto_secundario
                 horizontalAlignment: Text.AlignHCenter
                 elide: Text.ElideRight
-                font.pixelSize: Math.max(9, 9 * endpoint.sx)
+                font.pixelSize: Math.max(10, 10 * endpoint.sx)
             }
         }
     }

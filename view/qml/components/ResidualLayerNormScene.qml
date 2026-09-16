@@ -65,12 +65,12 @@ Item {
                     text: "Carril residual + LayerNorm post-norm"
                     color: Style.Theme.texto_primario
                     font.bold: true
-                    font.pixelSize: 17 * Math.min(root.sx, root.sy)
+                    font.pixelSize: Math.max(18, 18 * Math.min(root.sx, root.sy))
                 }
                 Text {
                     text: "La entrada x toma dos rutas y converge mediante una suma, no mediante concat."
                     color: Style.Theme.texto_secundario
-                    font.pixelSize: 10 * root.sx
+                    font.pixelSize: Math.max(11, 11 * root.sx)
                 }
             }
             Rectangle {
@@ -202,7 +202,7 @@ Item {
                           + "   ·   ratio " + Number(root.sceneData.ratio_actualizacion || 0).toFixed(3)
                     color: Style.Theme.exito_texto
                     font.bold: true
-                    font.pixelSize: 8 * root.sx
+                    font.pixelSize: Math.max(9, 9 * root.sx)
                 }
             }
         }
@@ -248,7 +248,7 @@ Item {
                             Rectangle {
                                 Layout.preferredWidth: 23 * root.sx; Layout.preferredHeight: 23 * root.sy
                                 radius: height / 2; color: Style.Theme.acento
-                                Text { anchors.centerIn: parent; text: phaseCard.index + 1; color: Style.Theme.texto_sobre_color; font.bold: true; font.pixelSize: 8 * root.sx }
+                                Text { anchors.centerIn: parent; text: phaseCard.index + 1; color: Style.Theme.texto_sobre_color; font.bold: true; font.pixelSize: Math.max(9, 9 * root.sx) }
                             }
                             Text { Layout.fillWidth: true; text: phaseCard.modelData.nombre; color: Style.Theme.acento_fuerte; font.bold: true; elide: Text.ElideRight; font.pixelSize: 9 * root.sx }
                         }
@@ -288,7 +288,7 @@ Item {
                             color: Style.Theme.texto_secundario
                             horizontalAlignment: Text.AlignHCenter
                             font.bold: true
-                            font.pixelSize: 8 * root.sx
+                            font.pixelSize: Math.max(9, 9 * root.sx)
                         }
                         Text {
                             Layout.fillWidth: true
@@ -296,7 +296,7 @@ Item {
                             color: Style.Theme.texto_secundario
                             horizontalAlignment: Text.AlignHCenter
                             elide: Text.ElideRight
-                            font.pixelSize: 7 * root.sx
+                            font.pixelSize: Math.max(9, 8 * root.sx)
                         }
                     }
                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.selectedPhase = phaseCard.index }

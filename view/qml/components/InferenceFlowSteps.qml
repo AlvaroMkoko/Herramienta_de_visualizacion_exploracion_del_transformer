@@ -43,21 +43,21 @@ QtObject {
             "linear_logits", "output", "Linear \u2192 logits", 6, 1, 8, "", false,
             "capa_linear_salida", "El estado se proyecta al vocabulario",
             "logits = h_final W_vocab\u1d40 + b",
-            "La capa Linear asigna un score crudo a cada token del vocabulario.",
-            "La escena conecta el ultimo estado real del decoder con el histograma completo y los candidatos del mismo forward. Los logits se capturan antes de excluir IDs reservados.",
-            "Esta proyeccion cambia el ancho d_model por |V| alternativas comparables.",
-            "Luego se excluyen IDs reservados y, si estan activos, se aplican temperatura, top-k o top-p.",
-            "Un logit no es una probabilidad; se interpreta en relacion con los demas candidatos.",
+            "Linear toma el último estado del decoder y calcula un score crudo para cada token del vocabulario.",
+            "Sigue el vector h_final hacia W_vocab: al otro lado aparece una barra por candidato. Su altura es el logit real, todavía no una probabilidad.",
+            "Esta proyección convierte un único vector de ancho d_model en |V| alternativas que pueden compararse.",
+            "Después se excluyen los IDs reservados y, si están activos, se aplican temperatura, top-k o top-p.",
+            "Un logit solo indica preferencia relativa: todavía puede ser negativo y no tiene que sumar uno.",
             4500, true),
         step(
             "output_softmax", "output", "Softmax + token", 6, 1, 9, "", false,
-            "seleccion_token", "La distribucion elige el siguiente token",
+            "seleccion_token", "La distribución elige el siguiente token",
             "p = softmax(filtros(logits / T)); token \u223c p",
-            "Softmax convierte los logits elegibles en probabilidades y el modo configurado selecciona un token.",
-            "Las barras usan probabilidades reales del top capturado; 'resto' completa la masa y el token elegido conserva su rango.",
-            "La distribucion permite elegir por argmax en greedy o muestrear cuando esa opcion esta activa.",
-            "El token elegido se anade al contexto del decoder y comienza otra vuelta autoregresiva.",
-            "Temperatura, top-k y top-p solo intervienen cuando estan activos y no son capas aprendidas.",
+            "Softmax convierte los logits elegibles en probabilidades; el modo configurado decide cómo sale el token final.",
+            "Compara la longitud de las barras y localiza la marca de token elegido. «Resto» reúne la probabilidad que no cabe en el top visible.",
+            "La distribución permite elegir el máximo en modo greedy o muestrear cuando esa opción está activa.",
+            "El token elegido se añade al contexto del decoder y comienza otra vuelta autoregresiva.",
+            "Temperatura, top-k y top-p solo intervienen cuando están activos; son reglas de generación, no capas aprendidas.",
             5600, false)
     ]
 
@@ -96,7 +96,7 @@ QtObject {
             return "Encoder"
         if (branch === 1)
             return "Decoder causal"
-        return "Atencion cruzada"
+        return "Atención cruzada"
     }
 
     function embeddingStep(id, branch) {
@@ -107,32 +107,32 @@ QtObject {
             encoder ? "Los IDs se convierten en vectores" : "El decoder representa su contexto",
             "E = W_embed[token_ids] \u00b7 \u221ad_model",
             encoder
-                ? "Cada token_id del prompt consulta una fila aprendida de W_embed y se escala por \u221ad_model."
-                : "El token de inicio y los tokens ya generados consultan la tabla de embeddings del decoder.",
-            "Cada tarjeta conserva token e ID; la tira de color contiene componentes reales del vector escalado y la barra resume su norma L2.",
+                ? "Cada token_id del prompt selecciona una fila aprendida de W_embed y la escala por \u221ad_model."
+                : "El token de inicio y los tokens ya generados seleccionan filas de la tabla de embeddings del decoder.",
+            "Lee la escena de izquierda a derecha: ID discreto → fila de W_embed → vector escalado. Las franjas son componentes reales y la barra resume la norma L2.",
             encoder
-                ? "La atencion necesita representaciones continuas y no puede operar directamente sobre IDs discretos."
-                : "El decoder debe volver a representar numericamente el prefijo disponible en esta iteracion.",
+                ? "La atención necesita representaciones continuas y no puede operar directamente sobre IDs discretos."
+                : "El decoder debe representar numéricamente el prefijo disponible en esta iteración.",
             encoder
-                ? "E se suma con la codificacion posicional del encoder."
-                : "E se suma con la codificacion posicional del decoder.",
-            "Una coordenada aislada no posee un significado semantico estable; el significado reside en el vector completo.",
+                ? "E se suma con la codificación posicional del encoder."
+                : "E se suma con la codificación posicional del decoder.",
+            "Una coordenada aislada no posee un significado semántico estable; el significado reside en el vector completo.",
             4200, true)
     }
 
     function positionStep(id, branch) {
         var encoder = branch === 0
         return step(
-            id, sectionForBranch(branch), encoder ? "Posicion encoder" : "Posicion decoder",
+            id, sectionForBranch(branch), encoder ? "Posición encoder" : "Posición decoder",
             0, branch, 1, "", false, "combinacion_embedding_pe",
             encoder ? "El encoder incorpora el orden" : "El decoder incorpora el orden conocido",
             encoder ? "X\u2080 = E + PE" : "X_tgt = E_tgt + PE_tgt",
-            "Una senal sinusoidal distinta se suma, componente a componente, en cada posicion.",
-            "Cada punto se desplaza desde E hasta E + PE usando un unico PCA para ambos estados. PCA solo proyecta el resultado y no forma parte del Transformer.",
-            "Sin informacion posicional, self-attention no distingue permutaciones de los mismos tokens.",
+            "Una señal sinusoidal distinta se suma, componente a componente, en cada posición.",
+            "Sigue cada punto desde E hasta E + PE: ese desplazamiento es el efecto del orden. PCA solo permite dibujarlo en 2D y no forma parte del Transformer.",
+            "Sin información posicional, self-attention no distingue permutaciones de los mismos tokens.",
             encoder
                 ? "X\u2080 alimenta Q, K y V de la primera capa del encoder."
-                : "X_tgt alimenta Q, K y V de la autoatencion causal.",
+                : "X_tgt alimenta Q, K y V de la autoatención causal.",
             "Las distancias 2D son aproximadas; la suma real ocurre en d_model dimensiones.",
             4300, true)
     }
@@ -161,11 +161,11 @@ QtObject {
                 : "Q=XW\u1d3a; K=XW\u1d4f; V=XW\u1d5b"
             operation = cross
                 ? "Q procede del decoder, mientras K y V se proyectan desde la salida final del encoder."
-                : "La misma representacion se proyecta con tres matrices aprendidas y se divide por cabezas."
-            visual = "La captura muestra la ultima query y, para K/V, la key mas atendida por cada cabeza; son valores exactos recortados a las dimensiones visibles."
+                : "La misma representación se proyecta con tres matrices aprendidas y se divide por cabezas."
+            visual = "Compara las tres tiras: Q representa lo que busca la posición actual; K y V pertenecen a la key destacada. Los colores son valores reales, recortados a las dimensiones visibles."
             purpose = cross
-                ? "Separar los origenes permite que la generacion consulte la memoria codificada del prompt."
-                : "Q expresa que se busca, K con que se compara y V que informacion puede transferirse."
+                ? "Separar los orígenes permite que la generación consulte la memoria codificada del prompt."
+                : "Q expresa qué se busca, K con qué se compara y V qué información puede transferirse."
             next = "Q y K se multiplican para formar los scores escalados."
             caveat = "K y V son la key destacada, no todas las posiciones del tensor completo."
             concept = cross ? "origen_qkv_cross" : "query_key_value"
@@ -173,35 +173,35 @@ QtObject {
             shortLabel = cross ? "Scores cruzados" : (causal ? "Scores causales" : "Scores encoder")
             title = label + ": calcula compatibilidades"
             formula = "S = QK\u1d40 / \u221ad_head"
-            operation = "Cada query se compara con las keys y el producto se escala por la raiz de d_head."
-            visual = "El mapa divergente contiene scores reales firmados de la query actual: el color indica signo y magnitud, no probabilidad."
-            purpose = "El escalamiento evita valores extremos que saturarian el Softmax."
+            operation = "Cada query se compara con las keys y el producto se escala por la raíz de d_head."
+            visual = "Lee cada celda como una compatibilidad Q↔K. El color indica signo y magnitud del score real; todavía no representa una probabilidad."
+            purpose = "El escalamiento evita valores extremos que saturarían Softmax."
             next = causal
-                ? "La mascara causal bloquea el futuro antes de Softmax."
-                : "Los scores validos se normalizan mediante Softmax."
-            caveat = "La ventana conserva las keys finales cuando la secuencia supera el limite visual."
+                ? "La máscara causal bloquea el futuro antes de Softmax."
+                : "Los scores válidos se normalizan mediante Softmax."
+            caveat = "La ventana conserva las keys finales cuando la secuencia supera el límite visual."
             concept = "producto_qk"
         } else if (phase === "mask") {
-            shortLabel = "Mascara causal"
+            shortLabel = "Máscara causal"
             title = "El futuro queda bloqueado"
             formula = "S'\u1d62\u2c7c = S\u1d62\u2c7c si j\u2264i; -\u221e si j>i"
-            operation = "La mascara triangular sustituye por -\u221e los scores que apuntan a posiciones futuras."
-            visual = "El tramado marca celdas bloqueadas de la mascara real y se compara con los scores crudos y enmascarados."
-            purpose = "Impide que el decoder use el token que intenta predecir y conserva la generacion autoregresiva."
+            operation = "La máscara triangular sustituye por -\u221e los scores que apuntan a posiciones futuras."
+            visual = "Compara antes y después: las celdas tramadas son conexiones hacia el futuro y dejan de competir al recibir -\u221e."
+            purpose = "Impide que el decoder use el token que intenta predecir y conserva la generación autoregresiva."
             next = "Softmax asigna peso cero a lo bloqueado y normaliza solo las posiciones permitidas."
             caveat = "Bloqueado no significa que el score original fuera cero; se fuerza a -\u221e antes de normalizar."
             concept = "por_que_mascara"
         } else if (phase === "softmax") {
-            shortLabel = cross ? "Softmax cruzado" : (causal ? "Softmax causal" : "Softmax atencion")
+            shortLabel = cross ? "Softmax cruzado" : (causal ? "Softmax causal" : "Softmax atención")
             title = label + ": normaliza los scores"
-            formula = "A = softmax(S + mascara)"
+            formula = "A = softmax(S + máscara)"
             operation = "Softmax transforma cada fila permitida en pesos no negativos cuya suma es uno."
             visual = cross
-                ? "Las queries del decoder aparecen abajo y las keys del prompt arriba; grosor, opacidad y particulas siguen pesos reales."
-                : "Las curvas se vuelven mas gruesas y opacas cuanto mayor es el peso real de la cabeza seleccionada."
-            purpose = "Los coeficientes comparables permiten decidir cuanto usar de cada Value."
+                ? "Sigue una query del decoder hacia las keys del prompt: una curva más gruesa y opaca significa mayor peso real."
+                : "Sigue una query hacia las keys accesibles: una curva más gruesa y opaca significa mayor peso real de atención."
+            purpose = "Los coeficientes comparables permiten decidir cuánto usar de cada Value."
             next = "Cada A\u1d62\u2c7c pondera V\u2c7c y las contribuciones se suman."
-            caveat = "El umbral solo oculta curvas para evitar saturacion visual; no modifica el calculo."
+            caveat = "El umbral solo oculta curvas para evitar saturación visual; no modifica el cálculo."
             concept = "softmax_attention"
             visualIndex = 3
         } else {
@@ -209,12 +209,12 @@ QtObject {
             title = label + ": combina los Values"
             formula = "Z\u1d62 = \u03a3\u2c7c A\u1d62\u2c7cV\u2c7c"
             operation = "Cada Value se pondera con A y las contribuciones se suman para formar el contexto de la query."
-            visual = "La matriz distingue pesos A, normas \u2016A\u1d62\u2c7cV\u2c7c\u2016 y la salida real por cabeza."
+            visual = "Recorre una fila: primero ves el peso A, después la magnitud de A·V y finalmente la suma Z. No se elige una sola key; se mezclan todas."
             purpose = cross
-                ? "El resultado incorpora al decoder la informacion del prompt relevante para esta prediccion."
-                : "El resultado incorpora informacion de las posiciones accesibles al estado actual."
+                ? "El resultado incorpora al decoder la información del prompt relevante para esta predicción."
+                : "El resultado incorpora información de las posiciones accesibles al estado actual."
             next = "Las salidas de las cabezas se concatenan y atraviesan W\u1d3c."
-            caveat = "Se muestran normas de contribucion, no el vector completo ni una atribucion causal."
+            caveat = "Se muestran normas de contribución, no el vector completo ni una atribución causal."
             concept = "producto_por_v"
         }
 
@@ -229,11 +229,11 @@ QtObject {
             id, sectionForBranch(branch), "Concat + W\u1d3c", 2, branch, 4, "", false,
             "problema_multi_head", label + ": las cabezas vuelven a reunirse",
             "MHA = Concat(Z\u2081,...,Z\u2095)W\u1d3c",
-            "Las h salidas paralelas se concatenan y una proyeccion aprendida las mezcla de nuevo en d_model.",
-            "Cada color sigue una cabeza real desde d_head hasta concat; la malla final representa W\u1d3c.",
+            "Las h salidas paralelas se concatenan y una proyección aprendida las mezcla de nuevo en d_model.",
+            "Sigue los colores: cada franja es una cabeza de ancho d_head; Concat las alinea y la malla Wᴼ mezcla sus componentes para producir una sola salida.",
             "Varias cabezas permiten modelar relaciones distintas sin aumentar el ancho final del bloque.",
-            "La actualizacion MHA entra a su conexion residual y LayerNorm.",
-            "Las cabezas se calculan en paralelo; el orden animado es una explicacion visual.",
+            "La actualización MHA entra a su conexión residual y LayerNorm.",
+            "Las cabezas se calculan en paralelo; el orden animado solo ayuda a seguir el recorrido.",
             5200, true)
     }
 
@@ -247,13 +247,13 @@ QtObject {
             4, branch, 6, "", usesFfn, "flujo_add_norm",
             label + (usesFfn ? ": cierra la capa" : ": conserva y estabiliza"),
             "salida = LayerNorm(" + inputName + " + Dropout(" + updateName + "))",
-            "La actualizacion se suma a la entrada de la subcapa y despues se normaliza; este modelo usa post-norm.",
-            "Las particulas recorren la rama principal y el atajo; las tarjetas inferiores contienen fases reales de LayerNorm.",
-            "La ruta residual protege informacion previa y LayerNorm controla la escala del siguiente estado.",
+            "La actualización se suma a la entrada de la subcapa y después se normaliza; este modelo usa post-norm.",
+            "Sigue las dos rutas: el atajo conserva la entrada y la rama principal aporta el cambio. Ambas se suman antes de las cuatro fases de LayerNorm.",
+            "La ruta residual protege información previa y LayerNorm controla la escala del siguiente estado.",
             usesFfn
-                ? (branch === 0 ? "El resultado alimenta la siguiente capa o la memoria final del encoder." : "El resultado alimenta la siguiente capa o Linear en la ultima.")
-                : (branch === 0 ? "El estado entra a la FFN del encoder." : (cross ? "El estado entra a la FFN del decoder." : "El estado se convierte en Query de la atencion cruzada.")),
-            "La suma residual no concatena vectores; las metricas corresponden al ultimo token capturado.",
+                ? (branch === 0 ? "El resultado alimenta la siguiente capa o la memoria final del encoder." : "El resultado alimenta la siguiente capa o Linear en la última.")
+                : (branch === 0 ? "El estado entra a la FFN del encoder." : (cross ? "El estado entra a la FFN del decoder." : "El estado se convierte en Query de la atención cruzada.")),
+            "La suma residual no concatena vectores; las métricas corresponden al último token capturado.",
             4800, true)
     }
 
@@ -262,13 +262,13 @@ QtObject {
         return step(
             id, sectionForBranch(branch), encoder ? "FFN encoder" : "FFN decoder",
             3, branch, 5, "", false, "que_es_ffn",
-            (encoder ? "Encoder" : "Decoder") + ": cada posicion pasa por la misma FFN",
+            (encoder ? "Encoder" : "Decoder") + ": cada posición pasa por la misma FFN",
             "FFN(x)=W\u2082\u03c6(W\u2081x+b\u2081)+b\u2082",
-            "La red expande cada token de d_model a d_ff, aplica la activacion configurada y comprime de vuelta.",
-            "Las filas comparan tokens reales que comparten pesos y muestran entrada, preactivacion, activacion y salida.",
-            "La atencion mezcla posiciones; la FFN transforma de manera independiente la representacion de cada una.",
-            "La salida FFN entra a la segunda conexion residual del encoder o a la tercera del decoder.",
-            "ReLU y GELU no tratan igual los negativos; la escena usa la activacion configurada.",
+            "La red expande cada token de d_model a d_ff, aplica la activación configurada y comprime de vuelta.",
+            "Lee cada fila de izquierda a derecha: entrada → preactivación → activación → salida. Las filas comparten pesos, pero cada token produce valores distintos.",
+            "La atención mezcla posiciones; la FFN transforma de manera independiente la representación de cada una.",
+            "La salida FFN entra a la segunda conexión residual del encoder o a la tercera del decoder.",
+            "ReLU y GELU no tratan igual los negativos; la escena usa la activación configurada.",
             5100, true)
     }
 
@@ -281,14 +281,14 @@ QtObject {
             (encoder ? "El encoder" : "El decoder") + " recorre todas sus capas",
             "X\u2080 \u2192 bloque\u2081 \u2192 ... \u2192 bloque_L",
             encoder
-                ? "El bloque de atencion, residual, FFN y residual se repite L veces con parametros distintos."
-                : "Cada capa repite atencion causal, atencion cruzada y FFN con sus tres Add & Norm.",
-            "El rascacielos sigue el mismo token mediante un PCA conjunto de estados reales de cada capa.",
-            "La profundidad refina progresivamente la representacion antes de entregarla al siguiente modulo.",
+                ? "El bloque de atención, residual, FFN y residual se repite L veces con parámetros distintos."
+                : "Cada capa repite atención causal, atención cruzada y FFN con sus tres Add & Norm.",
+            "Sigue el mismo color de abajo arriba: cada piso es el estado real del mismo token después de otra capa. La cercanía 2D es una aproximación de PCA.",
+            "La profundidad refina progresivamente la representación antes de entregarla al siguiente módulo.",
             encoder
-                ? "La salida final queda disponible como memoria K/V para la atencion cruzada."
-                : "El estado de la ultima posicion de la ultima capa entra a Linear.",
-            "Esta escena es una recapitulacion: PCA no es una capa ni una operacion del Transformer.",
+                ? "La salida final queda disponible como memoria K/V para la atención cruzada."
+                : "El estado de la última posición de la última capa entra a Linear.",
+            "Esta escena es una recapitulación: PCA no es una capa ni una operación del Transformer.",
             5300, true)
     }
 }

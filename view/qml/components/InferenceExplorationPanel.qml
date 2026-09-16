@@ -27,6 +27,7 @@ Item {
     property bool sequencePlaying: false
     property bool detailsExpanded: false
     property bool guideVisible: true
+    readonly property int guidedStepDuration: 9000
 
     // Las 31 operaciones siguen disponibles, pero la orientacion principal
     // se resume en cuatro etapas que corresponden al recorrido completo.
@@ -525,6 +526,113 @@ Item {
                 + Number(currentSnapshot.validacion ? currentSnapshot.validacion.suma_probabilidades : 0).toFixed(4)
     }
 
+    function shortStepAt(index, fallback) {
+        if (index < 0 || index >= flowSteps.length)
+            return fallback
+        return flowSteps[index].short || fallback
+    }
+
+    function previousStepLabel() {
+        return shortStepAt(operationIndex - 1, "Prompt tokenizado")
+    }
+
+    function nextStepLabel() {
+        return shortStepAt(operationIndex + 1, "Token vuelve al decoder")
+    }
+
+    function operationInputLabel() {
+        var operationId = String(operation.id || "")
+        if (operationId.indexOf("embedding") !== -1)
+            return "IDs de los tokens"
+        if (operationId.indexOf("position") !== -1)
+            return "embedding y se\u00f1al posicional"
+        if (operationId.indexOf("qkv") !== -1)
+            return branchIndex === 2
+                    ? "estado del decoder y memoria del encoder"
+                    : "representaciones de los tokens"
+        if (operationId.indexOf("scores") !== -1)
+            return "matrices Q y K"
+        if (operationId === "decoder_masked_mask")
+            return "scores y m\u00e1scara causal"
+        if (operationId.indexOf("softmax") !== -1)
+            return operationId === "output_softmax" ? "logits filtrados" : "scores permitidos"
+        if (operationId.indexOf("weighted") !== -1)
+            return "pesos A y vectores V"
+        if (operationId.indexOf("multihead") !== -1)
+            return "salidas de todas las cabezas"
+        if (operationId.indexOf("addnorm") !== -1)
+            return "entrada y actualizaci\u00f3n de la subcapa"
+        if (operationId.indexOf("ffn") !== -1)
+            return "vector contextualizado de cada token"
+        if (operationId.indexOf("layers") !== -1)
+            return "estado de la capa anterior"
+        if (operationId === "linear_logits")
+            return "\u00faltimo estado del decoder"
+        return "estado del paso anterior"
+    }
+
+    function operationOutputLabel() {
+        var operationId = String(operation.id || "")
+        if (operationId.indexOf("embedding") !== -1)
+            return "embeddings escalados"
+        if (operationId.indexOf("position") !== -1)
+            return "vectores que ya contienen orden"
+        if (operationId.indexOf("qkv") !== -1)
+            return "Q, K y V separados por cabeza"
+        if (operationId.indexOf("scores") !== -1)
+            return "scores de compatibilidad"
+        if (operationId === "decoder_masked_mask")
+            return "futuro bloqueado con \u2212\u221e"
+        if (operationId.indexOf("softmax") !== -1)
+            return operationId === "output_softmax"
+                    ? "probabilidades y token elegido"
+                    : "pesos de atenci\u00f3n A"
+        if (operationId.indexOf("weighted") !== -1)
+            return "contexto Z de cada cabeza"
+        if (operationId.indexOf("multihead") !== -1)
+            return "actualizaci\u00f3n MHA en d_model"
+        if (operationId.indexOf("addnorm") !== -1)
+            return "estado residual normalizado"
+        if (operationId.indexOf("ffn") !== -1)
+            return "vector transformado por la FFN"
+        if (operationId.indexOf("layers") !== -1)
+            return branchIndex === 0 ? "memoria final del encoder" : "estado final del decoder"
+        if (operationId === "linear_logits")
+            return "un logit por token del vocabulario"
+        return "entrada del paso siguiente"
+    }
+
+    function formulaReading() {
+        var operationId = String(operation.id || "")
+        if (operationId.indexOf("embedding") !== -1)
+            return "W_embed selecciona la fila del token; √d_model ajusta su escala."
+        if (operationId.indexOf("position") !== -1)
+            return "E aporta identidad y PE aporta posición; la suma produce el vector que usa la atención."
+        if (operationId.indexOf("qkv") !== -1)
+            return "Cada W es una matriz aprendida: Q pregunta, K permite comparar y V transporta información."
+        if (operationId.indexOf("scores") !== -1)
+            return "QKᵀ mide compatibilidad; dividir entre √d_head mantiene los valores en una escala estable."
+        if (operationId === "decoder_masked_mask")
+            return "i es la posición que consulta y j la consultada; j > i identifica el futuro prohibido."
+        if (operationId === "output_softmax")
+            return "T y los filtros cambian qué logits compiten; Softmax los convierte en una distribución p."
+        if (operationId.indexOf("softmax") !== -1)
+            return "Softmax convierte cada fila de scores en pesos A entre 0 y 1 cuya suma es 1."
+        if (operationId.indexOf("weighted") !== -1)
+            return "Cada peso Aᵢⱼ escala su Value Vⱼ; la suma forma el contexto Zᵢ de la query."
+        if (operationId.indexOf("multihead") !== -1)
+            return "Concat reúne las cabezas y Wᴼ aprende cómo volver a mezclar sus subespacios."
+        if (operationId.indexOf("addnorm") !== -1)
+            return "La entrada conserva un atajo; la actualización se suma y LayerNorm estabiliza el resultado."
+        if (operationId.indexOf("ffn") !== -1)
+            return "W₁ expande, φ introduce no linealidad y W₂ devuelve el vector a d_model."
+        if (operationId.indexOf("layers") !== -1)
+            return "Cada flecha aplica un bloque completo con parámetros propios al estado de la capa anterior."
+        if (operationId === "linear_logits")
+            return "h_final resume el contexto; W_vocab produce un score independiente para cada token posible."
+        return "La expresión resume la transformación numérica que la escena está animando."
+    }
+
     onMetadataChanged: clampSelections()
     onOperationIndexChanged: {
         synchronizeOperation()
@@ -543,7 +651,10 @@ Item {
         id: sequenceTimer
         running: root.sequencePlaying
         repeat: false
-        interval: Math.max(1200, Number(root.operation.duration || 4200))
+        // Nueve segundos dejan completar la animacion y leer el hilo local
+        // antes de cambiar de operacion.
+        interval: Math.max(root.guidedStepDuration,
+                           Number(root.operation.duration || root.guidedStepDuration))
         onTriggered: {
             if (root.operationIndex >= root.flowSteps.length - 1) {
                 root.sequencePlaying = false
@@ -601,7 +712,7 @@ Item {
                                 + ": “" + root.currentSnapshot.token_elegido.texto + "”"
                               : "Genera un token para capturar su recorrido"
                         color: Style.Theme.texto_secundario
-                        font.pixelSize: 11 * Math.min(root.sx, root.sy)
+                        font.pixelSize: Math.max(12, 13 * Math.min(root.sx, root.sy))
                     }
                 }
 
@@ -617,7 +728,7 @@ Item {
                         text: root.operationDataAvailable ? "● Datos reales" : "Captura no disponible"
                         color: root.operationDataAvailable ? Style.Theme.exito_texto : Style.Theme.aviso_texto
                         font.bold: true
-                        font.pixelSize: 10 * Math.min(root.sx, root.sy)
+                        font.pixelSize: Math.max(11, 11 * Math.min(root.sx, root.sy))
                     }
                 }
 
@@ -636,7 +747,7 @@ Item {
                     Layout.preferredWidth: Math.max(142, 166 * root.sx)
                     text: "Reducir movimiento"
                     checked: root.reducedMotion
-                    font.pixelSize: Math.max(10, 10 * root.sx)
+                    font.pixelSize: Math.max(11, 11 * root.sx)
                     onToggled: root.reducedMotion = checked
                     Accessible.description: "Detiene las transiciones decorativas de las escenas"
                 }
@@ -689,7 +800,7 @@ Item {
                         text: "PROMPT"
                         color: Style.Theme.texto_secundario
                         font.bold: true
-                        font.pixelSize: 9 * root.sx
+                        font.pixelSize: Math.max(11, 10 * root.sx)
                     }
                     ListView {
                         Layout.fillWidth: true
@@ -712,7 +823,7 @@ Item {
                         text: "SALIDA"
                         color: Style.Theme.texto_secundario
                         font.bold: true
-                        font.pixelSize: 9 * root.sx
+                        font.pixelSize: Math.max(11, 10 * root.sx)
                     }
                     ListView {
                         Layout.preferredWidth: 430 * root.sx
@@ -754,7 +865,7 @@ Item {
                         text: "AJUSTA LA ANIMACIÓN"
                         color: Style.Theme.texto_secundario
                         font.bold: true
-                        font.pixelSize: Math.max(9, 9 * root.sx)
+                        font.pixelSize: Math.max(11, 10 * root.sx)
                     }
 
                     Rectangle {
@@ -770,7 +881,7 @@ Item {
                             text: root.branchLabel()
                             color: root.stage.accent
                             font.bold: true
-                            font.pixelSize: Math.max(9, 9 * root.sx)
+                            font.pixelSize: Math.max(11, 10 * root.sx)
                         }
                     }
 
@@ -781,7 +892,7 @@ Item {
                         text: "CAPA"
                         color: Style.Theme.texto_secundario
                         font.bold: true
-                        font.pixelSize: 9 * root.sx
+                        font.pixelSize: Math.max(11, 10 * root.sx)
                     }
                     Stepper {
                         visible: root.stageIndex >= 1 && root.stageIndex <= 4
@@ -799,7 +910,7 @@ Item {
                         text: "CABEZA"
                         color: Style.Theme.texto_secundario
                         font.bold: true
-                        font.pixelSize: 9 * root.sx
+                        font.pixelSize: Math.max(11, 10 * root.sx)
                     }
                     Stepper {
                         visible: root.stageIndex === 1
@@ -982,9 +1093,9 @@ Item {
                     id: guidePanel
                     objectName: "inferencePedagogicalGuide"
                     visible: root.guideVisible
-                    Layout.preferredWidth: visible ? Math.max(300, 370 * root.sx) : 0
-                    Layout.minimumWidth: visible ? Math.max(280, 330 * root.sx) : 0
-                    Layout.maximumWidth: visible ? Math.max(320, 410 * root.sx) : 0
+                    Layout.preferredWidth: visible ? Math.max(370, 430 * root.sx) : 0
+                    Layout.minimumWidth: visible ? Math.max(340, 380 * root.sx) : 0
+                    Layout.maximumWidth: visible ? Math.max(400, 480 * root.sx) : 0
                     Layout.fillHeight: true
                     radius: 14 * root.sx
                     color: Style.Theme.surface
@@ -1020,11 +1131,19 @@ Item {
                                         text: root.currentProcessChapter.label
                                         color: root.stage.accent
                                         font.bold: true
-                                        font.pixelSize: Math.max(9, 9 * root.sx)
+                                        font.pixelSize: Math.max(11, 10 * root.sx)
                                     }
                                 }
 
                                 Item { Layout.fillWidth: true }
+
+                                Text {
+                                    text: "Operación " + (root.operationIndex + 1)
+                                          + " de " + root.flowSteps.length
+                                    color: Style.Theme.texto_secundario_fuerte
+                                    font.bold: true
+                                    font.pixelSize: Math.max(11, 11 * root.sx)
+                                }
                             }
 
                             Text {
@@ -1033,7 +1152,97 @@ Item {
                                 color: Style.Theme.texto_primario
                                 font.bold: true
                                 wrapMode: Text.WordWrap
-                                font.pixelSize: Math.max(18, 21 * Math.min(root.sx, root.sy))
+                                font.pixelSize: Math.max(20, 23 * Math.min(root.sx, root.sy))
+                            }
+
+                            Rectangle {
+                                objectName: "inferenceLocalContext"
+                                Layout.fillWidth: true
+                                implicitHeight: localContextColumn.implicitHeight + 22 * root.sy
+                                radius: 11 * root.sx
+                                color: Style.Theme.superficie_alterna
+                                border.color: Style.Theme.borde_medio
+
+                                ColumnLayout {
+                                    id: localContextColumn
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.top: parent.top
+                                    anchors.margins: 11 * root.sx
+                                    spacing: 7 * root.sy
+
+                                    Text {
+                                        text: "HILO DEL CÁLCULO"
+                                        color: Style.Theme.texto_secundario_fuerte
+                                        font.bold: true
+                                        font.letterSpacing: 0.5
+                                        font.pixelSize: Math.max(11, 10 * root.sx)
+                                    }
+
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 4 * root.sx
+
+                                        ContextStep {
+                                            objectName: "inferencePreviousStepText"
+                                            Layout.fillWidth: true
+                                            eyebrow: "ANTES"
+                                            stepText: root.previousStepLabel()
+                                            accent: Style.Theme.texto_secundario
+                                            sx: root.sx
+                                            sy: root.sy
+                                        }
+                                        Text {
+                                            text: "→"
+                                            color: Style.Theme.texto_terciario
+                                            font.bold: true
+                                            font.pixelSize: Math.max(13, 14 * root.sx)
+                                        }
+                                        ContextStep {
+                                            objectName: "inferenceCurrentStepText"
+                                            Layout.fillWidth: true
+                                            eyebrow: "AHORA"
+                                            stepText: root.operation.short || root.stage.short
+                                            accent: root.stage.accent
+                                            highlighted: true
+                                            sx: root.sx
+                                            sy: root.sy
+                                        }
+                                        Text {
+                                            text: "→"
+                                            color: Style.Theme.texto_terciario
+                                            font.bold: true
+                                            font.pixelSize: Math.max(13, 14 * root.sx)
+                                        }
+                                        ContextStep {
+                                            objectName: "inferenceFollowingStepText"
+                                            Layout.fillWidth: true
+                                            eyebrow: "DESPUÉS"
+                                            stepText: root.nextStepLabel()
+                                            accent: Style.Theme.texto_secundario
+                                            sx: root.sx
+                                            sy: root.sy
+                                        }
+                                    }
+
+                                    Rectangle {
+                                        Layout.fillWidth: true
+                                        Layout.preferredHeight: 1
+                                        color: Style.Theme.divisor
+                                    }
+
+                                    Text {
+                                        objectName: "inferenceInputOutputText"
+                                        Layout.fillWidth: true
+                                        text: "ENTRA  " + root.operationInputLabel()
+                                              + "   →   SALE  " + root.operationOutputLabel()
+                                        color: Style.Theme.texto_secundario_fuerte
+                                        font.bold: true
+                                        wrapMode: Text.WordWrap
+                                        lineHeight: 1.15
+                                        font.pixelSize: Math.max(12, 12 * root.sx)
+                                    }
+                                }
                             }
 
                             Rectangle {
@@ -1055,7 +1264,7 @@ Item {
                                         text: "IDEA CLAVE"
                                         color: root.stage.accent
                                         font.bold: true
-                                        font.pixelSize: Math.max(9, 9 * root.sx)
+                                        font.pixelSize: Math.max(11, 10 * root.sx)
                                     }
                                     Text {
                                         objectName: "inferenceEssentialExplanation"
@@ -1063,8 +1272,80 @@ Item {
                                         text: root.operation.operation || root.stage.concept
                                         color: Style.Theme.texto_secundario_fuerte
                                         wrapMode: Text.WordWrap
-                                        lineHeight: 1.18
-                                        font.pixelSize: Math.max(11, 11 * root.sx)
+                                        lineHeight: 1.24
+                                        font.pixelSize: Math.max(13, 13 * root.sx)
+                                    }
+                                }
+                            }
+
+                            Rectangle {
+                                objectName: "inferenceFormulaCard"
+                                Layout.fillWidth: true
+                                implicitHeight: formulaColumn.implicitHeight + 26 * root.sy
+                                radius: 12 * root.sx
+                                color: Qt.alpha(root.stage.accent, 0.08)
+                                border.color: root.stage.accent
+                                border.width: 2
+
+                                ColumnLayout {
+                                    id: formulaColumn
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.top: parent.top
+                                    anchors.margins: 13 * root.sx
+                                    spacing: 7 * root.sy
+
+                                    Text {
+                                        text: "FÓRMULA CLAVE DE ESTE PASO"
+                                        color: root.stage.accent
+                                        font.bold: true
+                                        font.letterSpacing: 0.5
+                                        font.pixelSize: Math.max(11, 10 * root.sx)
+                                    }
+
+                                    Text {
+                                        objectName: "inferenceFormulaText"
+                                        Layout.fillWidth: true
+                                        text: root.operation.formula || root.stage.formula
+                                        color: Style.Theme.texto_primario
+                                        font.family: "Cambria Math"
+                                        font.weight: Font.DemiBold
+                                        font.pixelSize: Math.max(17, 18 * root.sx)
+                                        horizontalAlignment: Text.AlignHCenter
+                                        wrapMode: Text.Wrap
+                                        lineHeight: 1.16
+                                    }
+
+                                    Text {
+                                        objectName: "inferenceFormulaExplanation"
+                                        Layout.fillWidth: true
+                                        text: "CÓMO LEERLA  ·  " + root.formulaReading()
+                                        color: Style.Theme.texto_secundario_fuerte
+                                        wrapMode: Text.WordWrap
+                                        lineHeight: 1.20
+                                        font.pixelSize: Math.max(12, 12 * root.sx)
+                                    }
+
+                                    Rectangle {
+                                        Layout.fillWidth: true
+                                        Layout.preferredHeight: 1
+                                        color: Qt.alpha(root.stage.accent, 0.28)
+                                    }
+
+                                    Text {
+                                        text: "POR QUÉ IMPORTA AQUÍ"
+                                        color: root.stage.accent
+                                        font.bold: true
+                                        font.pixelSize: Math.max(10, 10 * root.sx)
+                                    }
+                                    Text {
+                                        objectName: "inferencePurposeText"
+                                        Layout.fillWidth: true
+                                        text: root.operation.purpose || "—"
+                                        color: Style.Theme.texto_secundario_fuerte
+                                        wrapMode: Text.WordWrap
+                                        lineHeight: 1.22
+                                        font.pixelSize: Math.max(13, 13 * root.sx)
                                     }
                                 }
                             }
@@ -1088,7 +1369,7 @@ Item {
                                         text: "QUÉ OBSERVAR EN LA ANIMACIÓN"
                                         color: Style.Theme.info_texto
                                         font.bold: true
-                                        font.pixelSize: Math.max(9, 9 * root.sx)
+                                        font.pixelSize: Math.max(11, 10 * root.sx)
                                     }
                                     Text {
                                         objectName: "inferenceVisualGuide"
@@ -1096,8 +1377,20 @@ Item {
                                         text: root.operation.visualMeaning || root.stage.hint
                                         color: Style.Theme.texto_secundario_fuerte
                                         wrapMode: Text.WordWrap
+                                        lineHeight: 1.24
+                                        font.pixelSize: Math.max(13, 13 * root.sx)
+                                    }
+
+                                    Text {
+                                        objectName: "inferenceAnimationTakeaway"
+                                        Layout.fillWidth: true
+                                        text: "RESULTADO QUE DEBES RETENER  ·  "
+                                              + root.operationOutputLabel()
+                                        color: Style.Theme.info_texto
+                                        font.bold: true
+                                        wrapMode: Text.WordWrap
                                         lineHeight: 1.18
-                                        font.pixelSize: Math.max(11, 11 * root.sx)
+                                        font.pixelSize: Math.max(12, 12 * root.sx)
                                     }
                                 }
                             }
@@ -1119,8 +1412,8 @@ Item {
                                     text: "DESPUÉS  →  " + (root.operation.nextStep || "—")
                                     color: Style.Theme.aviso_texto
                                     wrapMode: Text.WordWrap
-                                    lineHeight: 1.16
-                                    font.pixelSize: Math.max(10, 10 * root.sx)
+                                    lineHeight: 1.20
+                                    font.pixelSize: Math.max(12, 12 * root.sx)
                                 }
                             }
 
@@ -1130,13 +1423,17 @@ Item {
                                 Layout.preferredHeight: Math.max(38, 42 * root.sy)
                                 text: root.detailsExpanded
                                       ? "Ocultar detalle técnico  ▴"
-                                      : "Profundizar: fórmula y datos  ▾"
+                                      : "Ver datos y ubicación técnica  ▾"
                                 font.bold: true
-                                font.pixelSize: Math.max(11, 11 * root.sx)
-                                onClicked: root.detailsExpanded = !root.detailsExpanded
+                                font.pixelSize: Math.max(12, 12 * root.sx)
+                                onClicked: {
+                                    root.detailsExpanded = !root.detailsExpanded
+                                    if (root.detailsExpanded)
+                                        root.sequencePlaying = false
+                                }
                                 Accessible.name: root.detailsExpanded
                                                  ? "Ocultar detalle técnico"
-                                                 : "Mostrar fórmula, datos y mapa técnico"
+                                                 : "Mostrar datos y mapa técnico"
                             }
 
                             ColumnLayout {
@@ -1146,23 +1443,6 @@ Item {
                                 visible: root.detailsExpanded
                                 spacing: 10 * root.sy
 
-                                InfoCard {
-                                    Layout.fillWidth: true
-                                    eyebrow: "FÓRMULA"
-                                    body: root.operation.formula || root.stage.formula
-                                    bodyObjectName: "inferenceFormulaText"
-                                    accent: root.stage.accent
-                                    monospace: true
-                                    sx: root.sx
-                                }
-                                InfoCard {
-                                    Layout.fillWidth: true
-                                    eyebrow: "POR QUÉ SE NECESITA"
-                                    body: root.operation.purpose || "—"
-                                    bodyObjectName: "inferencePurposeText"
-                                    accent: Style.Theme.acento
-                                    sx: root.sx
-                                }
                                 InfoCard {
                                     Layout.fillWidth: true
                                     eyebrow: "DATOS DE ESTA CAPTURA"
@@ -1187,8 +1467,8 @@ Item {
                                         text: "⚠  " + (root.operation.caveat || root.stage.caveat)
                                         color: Style.Theme.aviso_texto
                                         wrapMode: Text.WordWrap
-                                        lineHeight: 1.18
-                                        font.pixelSize: Math.max(10, 10 * root.sx)
+                                        lineHeight: 1.22
+                                        font.pixelSize: Math.max(12, 12 * root.sx)
                                     }
                                 }
 
@@ -1197,7 +1477,7 @@ Item {
                                     text: "UBICACIÓN TÉCNICA"
                                     color: Style.Theme.texto_secundario
                                     font.bold: true
-                                    font.pixelSize: Math.max(9, 9 * root.sx)
+                                    font.pixelSize: Math.max(11, 10 * root.sx)
                                 }
                                 TransformerMiniMap {
                                     objectName: "inferenceTransformerMiniMap"
@@ -1219,7 +1499,7 @@ Item {
                                     Layout.preferredHeight: Math.max(38, 44 * root.sy)
                                     text: "ⓘ  Abrir explicación completa"
                                     font.bold: true
-                                    font.pixelSize: Math.max(11, 11 * root.sx)
+                                    font.pixelSize: Math.max(12, 12 * root.sx)
                                     onClicked: root.theoryRequested(root.operation.conceptId || root.stage.conceptId)
                                     ToolTip.visible: hovered
                                     ToolTip.text: "Leer este concepto en una ventana amplia"
@@ -1265,14 +1545,14 @@ Item {
                                 text: root.operation.short || ""
                                 color: root.stage.accent
                                 font.bold: true
-                                font.pixelSize: Math.max(10, 10 * root.sx)
+                                font.pixelSize: Math.max(12, 12 * root.sx)
                             }
                             Item { Layout.fillWidth: true }
                             Text {
                                 text: "  " + (root.operationIndex + 1) + "/" + root.flowSteps.length
                                 color: Style.Theme.texto_secundario_fuerte
                                 font.bold: true
-                                font.pixelSize: Math.max(10, 10 * root.sx)
+                                font.pixelSize: Math.max(12, 12 * root.sx)
                             }
                         }
 
@@ -1289,9 +1569,9 @@ Item {
 
                     ActionPill {
                         objectName: "inferencePlaySequenceButton"
-                        Layout.preferredWidth: 116 * root.sx
+                        Layout.preferredWidth: 150 * root.sx
                         Layout.preferredHeight: 38 * root.sy
-                        label: root.sequencePlaying ? "\u23f8 Pausar" : "\u25b6 Reproducir"
+                        label: root.sequencePlaying ? "\u23f8 Pausar lectura" : "\u25b6 Recorrido guiado"
                         selected: root.sequencePlaying
                         accent: Style.Theme.acento
                         onClicked: {
@@ -1317,7 +1597,7 @@ Item {
                         textRole: "short"
                         currentIndex: root.operationIndex
                         displayText: "Ir al paso " + (root.operationIndex + 1)
-                        font.pixelSize: Math.max(10, 10 * root.sx)
+                        font.pixelSize: Math.max(11, 11 * root.sx)
                         onActivated: function(index) { root.selectOperation(index) }
                         Accessible.name: "Elegir cualquiera de las 31 operaciones"
                     }
@@ -1368,7 +1648,7 @@ Item {
             text: pill.label
             color: pill.selected ? "white" : (pill.enabled ? pill.accent : Style.Theme.texto_terciario)
             font.bold: true
-            font.pixelSize: Math.max(10, 10 * Math.min(root.sx, root.sy))
+            font.pixelSize: Math.max(11, 11 * Math.min(root.sx, root.sy))
         }
         MouseArea {
             anchors.fill: parent
@@ -1417,7 +1697,7 @@ Item {
                   ? tokenChip.token.texto : "—"
             color: tokenChip.selected ? "white" : Style.Theme.texto_secundario_fuerte
             font.bold: tokenChip.selected
-            font.pixelSize: Math.max(9, 10 * Math.min(tokenChip.sx, tokenChip.sy))
+            font.pixelSize: Math.max(11, 11 * Math.min(tokenChip.sx, tokenChip.sy))
         }
         MouseArea {
             anchors.fill: parent
@@ -1472,7 +1752,7 @@ Item {
         Rectangle {
             width: Math.max(34, 38 * stepper.sx); height: Math.max(26, 28 * stepper.sy); radius: 7 * stepper.sx
             color: stepper.accent
-            Text { anchors.centerIn: parent; text: stepper.value; color: Style.Theme.texto_sobre_color; font.bold: true; font.pixelSize: Math.max(9, 10 * stepper.sx) }
+            Text { anchors.centerIn: parent; text: stepper.value; color: Style.Theme.texto_sobre_color; font.bold: true; font.pixelSize: Math.max(11, 11 * stepper.sx) }
         }
         Rectangle {
             id: incrementButton
@@ -1505,6 +1785,54 @@ Item {
         }
     }
 
+    component ContextStep: Rectangle {
+        id: contextStep
+        property string eyebrow: ""
+        property string stepText: ""
+        property color accent: Style.Theme.texto_secundario
+        property bool highlighted: false
+        property real sx: 1
+        property real sy: 1
+
+        implicitWidth: 94 * sx
+        implicitHeight: contextStepColumn.implicitHeight + 14 * sy
+        radius: 8 * sx
+        color: highlighted ? Qt.alpha(accent, 0.12) : Style.Theme.surface
+        border.color: highlighted ? accent : Style.Theme.borde_suave
+        border.width: highlighted ? 2 : 1
+
+        ColumnLayout {
+            id: contextStepColumn
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: 7 * contextStep.sx
+            spacing: 2 * contextStep.sy
+
+            Text {
+                Layout.fillWidth: true
+                text: contextStep.eyebrow
+                color: contextStep.accent
+                font.bold: true
+                horizontalAlignment: Text.AlignHCenter
+                font.pixelSize: Math.max(9, 9 * contextStep.sx)
+            }
+            Text {
+                Layout.fillWidth: true
+                text: contextStep.stepText
+                color: contextStep.highlighted
+                       ? Style.Theme.texto_primario : Style.Theme.texto_secundario_fuerte
+                font.bold: contextStep.highlighted
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.WordWrap
+                maximumLineCount: 2
+                elide: Text.ElideRight
+                lineHeight: 1.12
+                font.pixelSize: Math.max(10, 10 * contextStep.sx)
+            }
+        }
+    }
+
     component InfoCard: Rectangle {
         id: infoCard
         property string eyebrow: ""
@@ -1528,7 +1856,7 @@ Item {
                 text: infoCard.eyebrow
                 color: infoCard.accent
                 font.bold: true
-                font.pixelSize: Math.max(9, 9 * infoCard.sx)
+                font.pixelSize: Math.max(11, 10 * infoCard.sx)
             }
             Text {
                 objectName: infoCard.bodyObjectName
@@ -1537,7 +1865,8 @@ Item {
                 color: Style.Theme.texto_secundario_fuerte
                 wrapMode: Text.WordWrap
                 font.family: infoCard.monospace ? "monospace" : "sans-serif"
-                font.pixelSize: Math.max(10, 10 * infoCard.sx)
+                lineHeight: 1.20
+                font.pixelSize: Math.max(12, 12 * infoCard.sx)
             }
         }
     }
