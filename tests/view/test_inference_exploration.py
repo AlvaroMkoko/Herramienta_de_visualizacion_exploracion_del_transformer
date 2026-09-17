@@ -117,6 +117,8 @@ def test_explorador_prioriza_mapa_y_resumen_con_detalle_bajo_demanda(qapp):
     purpose = window.findChild(QObject, "inferencePurposeText")
     advanced = window.findChild(QObject, "inferenceAdvancedDetails")
     technical_map = window.findChild(QObject, "inferenceTransformerMiniMap")
+    map_toggle = window.findChild(QObject, "inferenceLocationMapToggle")
+    pedagogical_scroll = window.findChild(QObject, "inferencePedagogicalScroll")
     reduced_motion = window.findChild(QObject, "inferenceReducedMotionToggle")
 
     assert process_map is not None
@@ -133,7 +135,11 @@ def test_explorador_prioriza_mapa_y_resumen_con_detalle_bajo_demanda(qapp):
     # La lectura principal conserva el hilo local y la formula relevante.
     assert panel.property("detailsExpanded") is False
     assert advanced is not None and advanced.property("visible") is False
-    assert technical_map is not None and technical_map.property("visible") is False
+    assert panel.property("locationMapVisible") is True
+    assert technical_map is not None and technical_map.property("visible") is True
+    assert map_toggle is not None and map_toggle.property("visible") is True
+    assert map_toggle.property("text") == "Ocultar mapa"
+    assert pedagogical_scroll is not None
     assert reduced_motion is not None and reduced_motion.property("visible") is True
     assert panel.property("guidedStepDuration") >= 9000
     assert local_context is not None and local_context.property("visible") is True
@@ -152,7 +158,7 @@ def test_explorador_prioriza_mapa_y_resumen_con_detalle_bajo_demanda(qapp):
     assert essential.property("font").pixelSize() >= 13
     assert visual_guide.property("font").pixelSize() >= 13
 
-    # Evidencia, matiz y mapa tecnico se conservan al profundizar.
+    # El mapa queda fijo mientras evidencia y matiz se muestran bajo demanda.
     panel.setProperty("detailsExpanded", True)
     qapp.processEvents()
     assert advanced.property("visible") is True
@@ -167,9 +173,29 @@ def test_explorador_prioriza_mapa_y_resumen_con_detalle_bajo_demanda(qapp):
         assert text_item is not None
         assert str(text_item.property("text")).strip()
 
+    # Ocultarlo libera espacio de lectura sin cerrar la explicación ni el detalle.
+    window.setProperty("visible", True)
+    QTest.qWait(50)
+    scroll_height_with_map = float(pedagogical_scroll.property("height"))
+    map_toggle.clicked.emit()
+    QTest.qWait(50)
+    qapp.processEvents()
+    assert panel.property("locationMapVisible") is False
+    assert technical_map.property("visible") is False
+    assert map_toggle.property("text") == "Mostrar mapa"
+    assert advanced.property("visible") is True
+    assert float(pedagogical_scroll.property("height")) > scroll_height_with_map
+
+    map_toggle.clicked.emit()
+    QTest.qWait(50)
+    qapp.processEvents()
+    assert panel.property("locationMapVisible") is True
+    assert technical_map.property("visible") is True
+
     panel.setProperty("operationIndex", 11)
     qapp.processEvents()
     assert panel.property("detailsExpanded") is False
+    assert panel.property("locationMapVisible") is True
 
     # La posicion macro cambia en los limites sin alterar los 31 pasos reales.
     for operation_index, chapter_index, local_step, chapter_size in (

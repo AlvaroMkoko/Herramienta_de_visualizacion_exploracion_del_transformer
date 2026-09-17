@@ -27,6 +27,7 @@ Item {
     property bool sequencePlaying: false
     property bool detailsExpanded: false
     property bool guideVisible: true
+    property bool locationMapVisible: true
     readonly property int guidedStepDuration: 9000
 
     // Las 31 operaciones siguen disponibles, pero la orientacion principal
@@ -1102,17 +1103,71 @@ Item {
                     border.color: root.stage.accent
                     border.width: 1
 
-                    ScrollView {
-                        id: pedagogicalScroll
+                    ColumnLayout {
                         anchors.fill: parent
                         anchors.margins: 14 * root.sx
-                        clip: true
-                        contentWidth: availableWidth
-                        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                        spacing: 8 * root.sy
 
-                        ColumnLayout {
-                            width: pedagogicalScroll.availableWidth
-                            spacing: 10 * root.sy
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: Math.max(30, 32 * root.sy)
+                            spacing: 6 * root.sx
+
+                            Text {
+                                Layout.fillWidth: true
+                                text: "UBICACIÓN EN EL TRANSFORMER"
+                                color: root.stage.accent
+                                font.bold: true
+                                font.letterSpacing: 0.5
+                                font.pixelSize: Math.max(11, 10 * root.sx)
+                            }
+
+                            Button {
+                                objectName: "inferenceLocationMapToggle"
+                                Layout.preferredHeight: Math.max(28, 30 * root.sy)
+                                text: root.locationMapVisible ? "Ocultar mapa" : "Mostrar mapa"
+                                flat: true
+                                font.bold: true
+                                font.pixelSize: Math.max(11, 10 * root.sx)
+                                onClicked: root.locationMapVisible = !root.locationMapVisible
+                                Accessible.name: text
+                                ToolTip.visible: hovered
+                                ToolTip.text: root.locationMapVisible
+                                              ? "Deja más espacio para leer la explicación"
+                                              : "Mantiene visible tu ubicación durante el recorrido"
+                            }
+                        }
+
+                        TransformerMiniMap {
+                            objectName: "inferenceTransformerMiniMap"
+                            visible: root.locationMapVisible
+                            Layout.fillWidth: true
+                            implicitHeight: root.locationMapVisible ? 272 * root.sy : 0
+                            Layout.preferredHeight: root.locationMapVisible ? 272 * root.sy : 0
+                            Layout.minimumHeight: root.locationMapVisible ? 220 * root.sy : 0
+                            Layout.maximumHeight: root.locationMapVisible ? 272 * root.sy : 0
+                            stageIndex: root.stageIndex
+                            branchIndex: root.branchIndex
+                            residualUsesFfn: root.residualUsesFfn
+                            operationId: String(root.operation.id || "")
+                            accent: root.stage.accent
+                            reducedMotion: root.reducedMotion
+                            sx: root.sx
+                            sy: root.sy
+                        }
+
+                        ScrollView {
+                            id: pedagogicalScroll
+                            objectName: "inferencePedagogicalScroll"
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            clip: true
+                            contentWidth: availableWidth
+                            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+
+                            ColumnLayout {
+                                width: pedagogicalScroll.availableWidth
+                                spacing: 10 * root.sy
 
                             RowLayout {
                                 Layout.fillWidth: true
@@ -1423,7 +1478,7 @@ Item {
                                 Layout.preferredHeight: Math.max(38, 42 * root.sy)
                                 text: root.detailsExpanded
                                       ? "Ocultar detalle técnico  ▴"
-                                      : "Ver datos y ubicación técnica  ▾"
+                                      : "Ver datos técnicos  ▾"
                                 font.bold: true
                                 font.pixelSize: Math.max(12, 12 * root.sx)
                                 onClicked: {
@@ -1433,7 +1488,7 @@ Item {
                                 }
                                 Accessible.name: root.detailsExpanded
                                                  ? "Ocultar detalle técnico"
-                                                 : "Mostrar datos y mapa técnico"
+                                                 : "Mostrar datos técnicos"
                             }
 
                             ColumnLayout {
@@ -1472,28 +1527,6 @@ Item {
                                     }
                                 }
 
-                                Text {
-                                    Layout.fillWidth: true
-                                    text: "UBICACIÓN TÉCNICA"
-                                    color: Style.Theme.texto_secundario
-                                    font.bold: true
-                                    font.pixelSize: Math.max(11, 10 * root.sx)
-                                }
-                                TransformerMiniMap {
-                                    objectName: "inferenceTransformerMiniMap"
-                                    visible: root.detailsExpanded
-                                    Layout.fillWidth: true
-                                    Layout.preferredHeight: 272 * root.sy
-                                    stageIndex: root.stageIndex
-                                    branchIndex: root.branchIndex
-                                    residualUsesFfn: root.residualUsesFfn
-                                    operationId: String(root.operation.id || "")
-                                    accent: root.stage.accent
-                                    reducedMotion: root.reducedMotion
-                                    sx: root.sx
-                                    sy: root.sy
-                                }
-
                                 Button {
                                     Layout.fillWidth: true
                                     Layout.preferredHeight: Math.max(38, 44 * root.sy)
@@ -1508,6 +1541,7 @@ Item {
                                 }
                             }
                         }
+                    }
                     }
                 }
             }
