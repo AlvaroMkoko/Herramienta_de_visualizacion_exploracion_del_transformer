@@ -128,6 +128,56 @@ def test_todos_los_botones_de_ayuda_apuntan_a_conceptos_existentes():
     assert missing == {}
 
 
+def test_lector_destaca_formula_y_separa_su_explicacion(qapp):
+    engine = QQmlEngine()
+    source = b"""
+import QtQuick
+import QtQuick.Controls
+import "components" as Components
+
+ApplicationWindow {
+    width: 1000
+    height: 740
+    visible: false
+    Components.ContextPanel {
+        anchors.fill: parent
+        expanded: true
+        closable: false
+        concepto: ({
+            "title": "Prueba de formula",
+            "short_description": "Una formula con lectura pedagogica.",
+            "explanation": "La explicacion principal presenta el concepto.",
+            "formula": "y = gamma * x + beta",
+            "mathematical": "gamma escala y beta desplaza cada coordenada.",
+            "steps": ["Calcular x", "Aplicar gamma", "Sumar beta"]
+        })
+    }
+}
+"""
+    component = QQmlComponent(engine)
+    component.setData(
+        source,
+        QUrl.fromLocalFile(str(QML_ROOT / "ContextPanelFormulaHost.qml")),
+    )
+    assert component.status() != QQmlComponent.Status.Error, _errors(component)
+    window = component.create()
+    assert window is not None, _errors(component)
+    qapp.processEvents()
+
+    formula = window.findChild(QObject, "theoryFormulaText")
+    mathematical = window.findChild(QObject, "theoryMathematicalExplanation")
+    assert formula is not None and formula.property("visible") is True
+    assert mathematical is not None and mathematical.property("visible") is True
+    assert formula.property("text") == "y = gamma * x + beta"
+    assert mathematical.property("text").startswith("gamma escala")
+    assert formula.property("font").pixelSize() >= 20
+    assert formula.property("font").bold() is True
+
+    window.deleteLater()
+    engine.deleteLater()
+    qapp.processEvents()
+
+
 def test_las_metricas_dinamicas_apuntan_a_conceptos_existentes():
     controller = TheoryController()
     missing = {

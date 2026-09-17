@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import "../styles" as Style
 
 QtObject {
     id: root
@@ -83,8 +82,268 @@ QtObject {
             nextStep: nextStep,
             caveat: caveat,
             duration: duration,
-            requiresDetail: requiresDetail
+            requiresDetail: requiresDetail,
+            visualElements: visualElementsFor(id, branchIndex, phase, residualUsesFfn),
+            symbolGlossary: symbolGlossaryFor(id, branchIndex, phase, residualUsesFfn),
+            interactionHelp: interactionHelpFor(id, phase)
         }
+    }
+
+    function guideItem(term, explanation) {
+        return { term: term, explanation: explanation }
+    }
+
+    function visualElementsFor(id, branch, phase, residualUsesFfn) {
+        var cross = branch === 2
+        if (id.indexOf("embedding") !== -1) {
+            return [
+                guideItem("Token e ID", "El texto es legible para ti; el ID es el entero que realmente entra al modelo."),
+                guideItem("Consulta de W_embed", "El ID selecciona una fila aprendida de la tabla de embeddings; no se multiplica como una cantidad."),
+                guideItem("Celdas d0, d1, …", "Son coordenadas del vector del token. El color resume signo y magnitud, no una palabra o concepto aislado."),
+                guideItem("Forma tokens × d_model", "Indica cuántos tokens hay y cuántas coordenadas tiene cada representación."),
+                guideItem("Norma y métricas", "‖E‖₂ resume el tamaño del vector; mínimo, máximo y media ayudan a comprobar su escala.")
+            ]
+        }
+        if (id.indexOf("position") !== -1) {
+            return [
+                guideItem("Círculo tenue", "Ubicación 2D aproximada del embedding antes de añadir posición."),
+                guideItem("Cuadrado", "Destino aproximado del mismo token después de sumar su señal posicional."),
+                guideItem("Flecha discontinua", "Desplazamiento producido por PE; une al mismo token antes y después de la suma."),
+                guideItem("Punto sólido", "Estado interpolado por la animación; al 100 % coincide con E + PE."),
+                guideItem("PC1, PC2 y color", "PC1/PC2 son ejes de PCA usados solo para dibujar; el color conserva la identidad de la posición.")
+            ]
+        }
+        if (phase === "qkv") {
+            return [
+                guideItem("Tarjeta Q", cross
+                          ? "Consulta de la última posición del decoder: expresa qué necesita encontrar en el prompt."
+                          : "Consulta de la última posición: expresa qué información busca."),
+                guideItem("Tarjeta K", cross
+                          ? "Clave destacada de la memoria del encoder: es el vector con el que se compara Q."
+                          : "Clave destacada de la secuencia: es el vector con el que se compara Q."),
+                guideItem("Tarjeta V", "Contenido asociado a esa misma clave; esto es lo que puede transferirse si recibe peso."),
+                guideItem("Filas H01, H02, …", "Cada fila es una cabeza de atención con sus propias proyecciones aprendidas."),
+                guideItem("Color y número de celda", "Muestran el valor firmado de una coordenada real; no son probabilidades.")
+            ]
+        }
+        if (phase === "scores") {
+            return [
+                guideItem("Fila H", "Compatibilidades calculadas por una cabeza para la última query."),
+                guideItem("Columna K", "Posición fuente que la query está evaluando; su índice es absoluto aunque se muestre una ventana."),
+                guideItem("Celda de score", "Producto Q·K escalado. Positivo favorece la compatibilidad y negativo la reduce, pero aún no es probabilidad."),
+                guideItem("Escala de color", "Compara signo y magnitud dentro de la matriz; el número de la celda es el dato preciso."),
+                guideItem("Forma original / valores mostrados", "Aclara cuándo ves una muestra de una matriz mayor y evita confundir recorte con cálculo.")
+            ]
+        }
+        if (phase === "mask") {
+            return [
+                guideItem("Scores antes", "Compatibilidades originales; todavía incluyen posiciones futuras."),
+                guideItem("Máscara triangular", "1 permite mirar esa posición y 0 la bloquea. La diagonal está permitida."),
+                guideItem("Scores enmascarados", "Copia usada por Softmax: cada posición prohibida se sustituye por −∞."),
+                guideItem("Triángulo bloqueado", "Representa j > i: una posición del futuro respecto de la query actual."),
+                guideItem("Tres tarjetas consecutivas", "Permiten comprobar que la máscara cambia la competencia, no los vectores Q, K o V.")
+            ]
+        }
+        if (phase === "softmax" && id !== "output_softmax") {
+            return [
+                guideItem("Nodo query", "Token que está consultando; desde él salen las conexiones."),
+                guideItem("Nodo key", cross ? "Token del prompt que puede aportar contexto." : "Token accesible con el que se compara la query."),
+                guideItem("Curva query → key", "Su grosor y opacidad representan el peso Aᵢⱼ calculado por Softmax."),
+                guideItem("Umbral", "Solo oculta curvas pequeñas para despejar el dibujo; no modifica los pesos ni el modelo."),
+                guideItem("Linterna y comparación de heads", "La linterna aísla una query; la cuadrícula permite comparar patrones de distintas cabezas.")
+            ]
+        }
+        if (phase === "weighted") {
+            return [
+                guideItem("Pesos A", "Distribución 0–1 que decide cuánto participa cada Value para la última query."),
+                guideItem("Contribuciones ‖AᵢⱼVⱼ‖", "Tamaño de cada Value después de escalarlo por su peso; no es el vector completo."),
+                guideItem("Contexto Z", "Suma vectorial de todas las contribuciones de una cabeza."),
+                guideItem("Filas H", "Cada cabeza realiza su propia mezcla y produce un contexto distinto."),
+                guideItem("Secuencia 1 → 2 → 3", "Se muestra peso, efecto sobre V y resultado para no confundir atención con selección de una sola key.")
+            ]
+        }
+        if (id.indexOf("multihead") !== -1) {
+            return [
+                guideItem("Proyección d_model", "Ancho total ya proyectado que se reorganiza en cabezas; no es un corte directo del embedding crudo."),
+                guideItem("Franjas H01, H02, …", "Particiones de ancho d_head; los colores mantienen su identidad durante split y concat."),
+                guideItem("‖z‖ por cabeza", "Tamaño de la salida real de esa cabeza para la query actual."),
+                guideItem("Concat", "Coloca las salidas una junto a otra y recupera d_model; todavía no mezcla sus coordenadas."),
+                guideItem("Malla Wᴼ", "Proyección aprendida que sí combina información entre cabezas y produce la actualización MHA.")
+            ]
+        }
+        if (id.indexOf("addnorm") !== -1) {
+            return [
+                guideItem("Ruta identidad x", "Atajo que conserva la entrada de la subcapa sin transformarla."),
+                guideItem("Ruta de subcapa Δx", residualUsesFfn
+                          ? "Cambio calculado por la FFN para la misma representación."
+                          : "Cambio calculado por la atención para la misma representación."),
+                guideItem("Nodo +", "Suma x y Δx coordenada a coordenada; no concatena ni promedia."),
+                guideItem("Caja LayerNorm", "Normaliza cada token a través de sus d_model coordenadas después de la suma: por eso es post-norm."),
+                guideItem("Cuatro tarjetas", "Muestran la distribución tras sumar, centrar, estandarizar y aplicar la transformación aprendida."),
+                guideItem("Puntos y eje cero", "Cada punto es una coordenada del vector; todas las tarjetas comparten escala para poder comparar el cambio."),
+                guideItem("μ y σ bajo cada tarjeta", "Son la media y la desviación del vector en esa fase; permiten comprobar el centrado y la estandarización."),
+                guideItem("γ media, β media y ε", "γ y β tienen un valor aprendido por coordenada; la cabecera resume sus medias. ε es una constante fija de estabilidad.")
+            ]
+        }
+        if (id.indexOf("ffn") !== -1) {
+            return [
+                guideItem("Una fila por token", "Cada token se procesa por separado; la FFN no mezcla posiciones."),
+                guideItem("Tira x", "Vector contextualizado de entrada con ancho d_model."),
+                guideItem("Expansión W₁x+b₁", "Proyección a d_ff, normalmente más ancho, que crea espacio para transformar rasgos."),
+                guideItem("Puerta de activación", "ReLU pone negativos en cero; GELU los atenúa suavemente. La escena usa la opción configurada."),
+                guideItem("Compresión W₂φ+b₂", "Regresa a d_model para que la conexión residual pueda sumar vectores del mismo tamaño."),
+                guideItem("Pesos compartidos", "Todos los tokens usan W₁, b₁, W₂ y b₂ iguales, aunque sus resultados sean distintos."),
+                guideItem("Franjas y ‖·‖", "Las franjas son coordenadas visibles del vector; ‖·‖ resume su tamaño completo en esa etapa.")
+            ]
+        }
+        if (id.indexOf("layers") !== -1) {
+            return [
+                guideItem("Piso X₀", "Representación que entra a la pila antes del primer bloque."),
+                guideItem("Pisos de capa", "Estado real de todos los tokens después de cada bloque Transformer."),
+                guideItem("Mismo color", "Identifica al mismo token a lo largo de la profundidad; no significa magnitud."),
+                guideItem("Halo", "Destaca el token elegido para seguir su trayectoria entre pisos."),
+                guideItem("PCA conjunto", "Todos los pisos comparten ejes 2D para comparar movimiento; PCA es una vista, no una capa."),
+                guideItem("Varianza conservada", "Porcentaje de información geométrica aproximada que retienen los dos ejes dibujados.")
+            ]
+        }
+        if (id === "linear_logits") {
+            return [
+                guideItem("h_final", "Estado de la última posición del decoder; resume el contexto disponible para esta predicción."),
+                guideItem("W_vocab + b", "Capa aprendida que produce un score por cada ID del vocabulario."),
+                guideItem("Histograma", "Resume todos los logits por intervalos; no es una distribución de probabilidades."),
+                guideItem("Mín., máx., media y desv.", "Describen rango, centro y dispersión de los scores para comprobar su escala."),
+                guideItem("Top capturado", "Candidatos con logits altos; la probabilidad mostrada pertenece al paso posterior de Softmax."),
+                guideItem("Barra de logit", "Compara preferencia relativa: puede ser negativa y no tiene que sumar uno.")
+            ]
+        }
+        return [
+            guideItem("Contexto", "Iteración autoregresiva seleccionada; cada contexto incluye un token más que el anterior."),
+            guideItem("Barra de probabilidad", "Valor real posterior a temperatura, filtros y Softmax para ese candidato."),
+            guideItem("Rango", "Posición del candidato al ordenar el top capturado de mayor a menor probabilidad."),
+            guideItem("Token elegido", "Resultado que se añade al contexto; puede ser el máximo o una muestra según el modo."),
+            guideItem("Masa fuera del top", "Probabilidad conjunta de los candidatos no listados; completa la suma hasta uno."),
+            guideItem("Filtros", "Indican las reglas activas de generación; no son capas aprendidas del Transformer.")
+        ]
+    }
+
+    function symbolGlossaryFor(id, branch, phase, residualUsesFfn) {
+        var cross = branch === 2
+        if (id.indexOf("embedding") !== -1)
+            return [guideItem("token_id", "entero asignado por el tokenizer"),
+                    guideItem("W_embed[token_id]", "fila aprendida elegida por ese ID"),
+                    guideItem("E", "vector de embedding escalado"),
+                    guideItem("d_model", "número de coordenadas de cada representación"),
+                    guideItem("√d_model", "factor que ajusta la escala del embedding"),
+                    guideItem("‖E‖₂", "longitud euclidiana del vector")]
+        if (id.indexOf("position") !== -1)
+            return [guideItem("E", "embedding que aporta identidad del token"),
+                    guideItem("PE", "vector que codifica su posición"),
+                    guideItem("X₀ / X_tgt", "resultado E + PE que entra al bloque"),
+                    guideItem("p", "índice de posición del token"),
+                    guideItem("PC1, PC2", "componentes principales usadas solo para visualizar")]
+        if (phase === "qkv")
+            return [guideItem("Q", "Query: lo que busca la posición actual"),
+                    guideItem("K", "Key: descripción usada para comparar posiciones"),
+                    guideItem("V", "Value: contenido que puede transferirse"),
+                    guideItem("Wᑫ, Wᵏ, Wᵛ", "matrices aprendidas que generan Q, K y V"),
+                    guideItem("H01…Hh", "índices de las cabezas de atención"),
+                    guideItem("d_head", "coordenadas que procesa cada cabeza"),
+                    guideItem("X / Y_dec / H_enc", cross
+                              ? "orígenes: estado del decoder y memoria del encoder"
+                              : "representación de entrada de la subcapa")]
+        if (phase === "scores")
+            return [guideItem("Sᵢⱼ", "score entre query i y key j"),
+                    guideItem("QKᵀ", "todos los productos query–key"),
+                    guideItem("ᵀ", "transposición de K para alinear el producto"),
+                    guideItem("i", "posición que consulta"),
+                    guideItem("j", "posición consultada"),
+                    guideItem("√d_head", "escala que evita scores excesivos")]
+        if (phase === "mask")
+            return [guideItem("i", "posición de la query"),
+                    guideItem("j", "posición de la key"),
+                    guideItem("j ≤ i", "pasado y posición actual permitidos"),
+                    guideItem("j > i", "futuro bloqueado"),
+                    guideItem("−∞", "valor que Softmax transforma en peso cero"),
+                    guideItem("S'", "scores después de aplicar la máscara")]
+        if (phase === "softmax" && id !== "output_softmax")
+            return [guideItem("Aᵢⱼ", "peso desde la query i hacia la key j"),
+                    guideItem("Softmax", "normalización exponencial por fila"),
+                    guideItem("Σⱼ Aᵢⱼ = 1", "todos los pesos accesibles de una query suman uno"),
+                    guideItem("0 ≤ Aᵢⱼ ≤ 1", "rango de cada peso"),
+                    guideItem("H", "cabeza cuyo patrón se visualiza")]
+        if (phase === "weighted")
+            return [guideItem("Aᵢⱼ", "peso asignado al Value j para la query i"),
+                    guideItem("Vⱼ", "contenido de la posición j"),
+                    guideItem("AᵢⱼVⱼ", "contribución vectorial ponderada"),
+                    guideItem("Zᵢ", "contexto resultante para la query i"),
+                    guideItem("Σⱼ", "suma sobre todas las keys accesibles"),
+                    guideItem("‖·‖₂", "tamaño de una contribución, no su dirección")]
+        if (id.indexOf("multihead") !== -1)
+            return [guideItem("h", "número total de cabezas"),
+                    guideItem("d_head", "ancho de una cabeza: d_model / h"),
+                    guideItem("Z₁…Zₕ", "salidas de contexto de las cabezas"),
+                    guideItem("Concat", "unión por la dimensión de características"),
+                    guideItem("Wᴼ", "proyección de salida aprendida"),
+                    guideItem("MHA", "resultado final de la atención multi-head")]
+        if (id.indexOf("addnorm") !== -1)
+            return [guideItem("x", "entrada original de la subcapa"),
+                    guideItem("Δx", "actualización producida por atención o FFN"),
+                    guideItem("μ", "media de las coordenadas de x + Δx"),
+                    guideItem("σ", "desviación estándar de esas coordenadas"),
+                    guideItem("ε", "constante pequeña que evita dividir entre cero"),
+                    guideItem("x̂", "vector centrado y estandarizado"),
+                    guideItem("γ", "escala aprendida por coordenada"),
+                    guideItem("β", "desplazamiento aprendido por coordenada"),
+                    guideItem("‖x‖₂ / ‖Δx‖₂", "tamaños de entrada y actualización"),
+                    guideItem("ratio", "‖Δx‖₂ dividido entre ‖x‖₂")]
+        if (id.indexOf("ffn") !== -1)
+            return [guideItem("x", "vector de un token"),
+                    guideItem("W₁, b₁", "proyección y sesgo de expansión"),
+                    guideItem("d_ff", "ancho interno de la FFN"),
+                    guideItem("φ", "activación ReLU o GELU configurada"),
+                    guideItem("W₂, b₂", "proyección y sesgo de compresión"),
+                    guideItem("d_model", "ancho de entrada y salida")]
+        if (id.indexOf("layers") !== -1)
+            return [guideItem("X₀", "estado antes de la primera capa"),
+                    guideItem("bloqueₗ", "capa Transformer número l"),
+                    guideItem("L", "cantidad total de capas"),
+                    guideItem("hidden state", "representación contextual de un token"),
+                    guideItem("PCA", "proyección visual a dos dimensiones")]
+        if (id === "linear_logits")
+            return [guideItem("h_final", "último estado del decoder"),
+                    guideItem("W_vocab", "matriz que puntúa cada token del vocabulario"),
+                    guideItem("b", "sesgo aprendido de cada token"),
+                    guideItem("|V|", "tamaño del vocabulario"),
+                    guideItem("logit", "score crudo previo a Softmax"),
+                    guideItem("desv.", "desviación estándar de los logits")]
+        return [guideItem("T", "temperatura; reescala logits antes de Softmax"),
+                guideItem("top-k", "conserva solo los k candidatos con mayor logit"),
+                guideItem("top-p", "conserva el conjunto mínimo cuya probabilidad acumulada alcanza p"),
+                guideItem("p(token|contexto)", "probabilidad condicional del siguiente token"),
+                guideItem("Σp = 1", "la masa total de probabilidad"),
+                guideItem("∼ p", "muestreo aleatorio según la distribución")]
+    }
+
+    function interactionHelpFor(id, phase) {
+        if (id.indexOf("embedding") !== -1)
+            return "Pulsa Reproducir para repetir el lookup y selecciona una fila de token para inspeccionar su vector y sus métricas."
+        if (id.indexOf("position") !== -1)
+            return "Arrastra el porcentaje de PE, alterna las dos nubes y pasa el cursor por un punto para identificar el token."
+        if (phase === "softmax" && id !== "output_softmax")
+            return "Ajusta el umbral solo para despejar curvas; pasa el cursor por una query para usar la linterna o abre Comparar heads."
+        if (phase === "qkv" || phase === "scores" || phase === "mask" || phase === "weighted")
+            return "Pulsa Reproducir para revelar las tarjetas en orden. Los selectores superiores cambian capa y cabeza sin alterar el significado de la escena."
+        if (id.indexOf("multihead") !== -1)
+            return "Pulsa Reproducir y sigue un mismo color desde la partición, pasando por su cabeza, hasta Concat y Wᴼ."
+        if (id.indexOf("addnorm") !== -1)
+            return "Activa o desactiva el atajo para comparar y selecciona cualquiera de las cuatro tarjetas para leer qué hace esa fase."
+        if (id.indexOf("ffn") !== -1)
+            return "Pulsa Respirar para repetir la expansión y compara filas: cambian los datos, pero los parámetros son compartidos."
+        if (id.indexOf("layers") !== -1)
+            return "Elige un token por su color y desplázate verticalmente para seguir su halo desde X₀ hasta la capa final."
+        if (id === "linear_logits")
+            return "Pulsa Reproducir para seguir h_final → Linear → logits y compara el histograma con el top capturado."
+        return "Usa ◀, ▶ o Carrera para cambiar de contexto; observa cómo el nuevo token modifica las probabilidades de la siguiente vuelta."
     }
 
     function sectionForBranch(branch) {

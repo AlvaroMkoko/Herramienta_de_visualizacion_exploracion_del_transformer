@@ -105,7 +105,7 @@ Item {
                 spacing: 7 * root.sy
 
                 Text {
-                    text: "1 · VECTOR COMPLETO · d_model = " + root.dModel
+                    text: "1 · PROYECCIÓN COMPLETA · d_model = " + root.dModel
                     color: Style.Theme.aviso_texto
                     font.bold: true
                     font.pixelSize: 9 * root.sx
@@ -116,6 +116,7 @@ Item {
                     Repeater {
                         model: root.numHeads
                         delegate: Rectangle {
+                            id: splitHead
                             required property int index
                             width: parent.width / root.numHeads
                             height: parent.height
@@ -124,7 +125,7 @@ Item {
                             border.width: 1
                             Text {
                                 anchors.centerIn: parent
-                                text: "H" + String(index + 1).padStart(2, "0")
+                                text: "H" + String(splitHead.index + 1).padStart(2, "0")
                                 color: Style.Theme.texto_sobre_color
                                 font.bold: true
                                 visible: parent.width > 34 * root.sx
@@ -135,8 +136,8 @@ Item {
                 }
                 Text {
                     Layout.fillWidth: true
-                    text: "Los segmentos forman una partición contigua. Ninguna cabeza recibe una copia de las "
-                          + root.dModel + " dimensiones."
+                    text: "Las proyecciones aprendidas se reorganizan en " + root.numHeads
+                          + " cabezas de " + root.dHead + " dimensiones; no se corta el embedding crudo."
                     color: Style.Theme.aviso_texto
                     horizontalAlignment: Text.AlignHCenter
                     font.pixelSize: 9 * root.sx

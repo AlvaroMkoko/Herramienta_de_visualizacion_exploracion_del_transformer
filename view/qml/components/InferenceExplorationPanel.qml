@@ -1405,6 +1405,79 @@ Item {
                                 }
                             }
 
+                            Button {
+                                id: fullExplanationButton
+                                objectName: "inferenceFullExplanationButton"
+                                property string targetConceptId: String(
+                                    root.operation.conceptId || root.stage.conceptId || "")
+                                Layout.fillWidth: true
+                                implicitHeight: fullExplanationContent.implicitHeight + 22 * root.sy
+                                padding: 11 * root.sx
+                                hoverEnabled: true
+                                onClicked: {
+                                    root.sequencePlaying = false
+                                    root.theoryRequested(fullExplanationButton.targetConceptId)
+                                }
+                                ToolTip.visible: hovered || activeFocus
+                                ToolTip.text: "Abre teoría, fórmula, pasos, dimensiones y ejemplos"
+                                Accessible.name: "Abrir explicación completa de "
+                                                 + (root.operation.title || root.stage.title)
+                                Accessible.description: "Incluye la teoría y la fórmula relacionadas con esta animación"
+
+                                background: Rectangle {
+                                    radius: 11 * root.sx
+                                    color: fullExplanationButton.down
+                                           ? Qt.alpha(root.stage.accent, 0.20)
+                                           : Qt.alpha(root.stage.accent, 0.09)
+                                    border.color: root.stage.accent
+                                    border.width: fullExplanationButton.activeFocus ? 2 : 1
+                                }
+
+                                contentItem: RowLayout {
+                                    id: fullExplanationContent
+                                    spacing: 10 * root.sx
+
+                                    Rectangle {
+                                        Layout.preferredWidth: 34 * root.sx
+                                        Layout.preferredHeight: 34 * root.sy
+                                        radius: height / 2
+                                        color: root.stage.accent
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: "ⓘ"
+                                            color: Style.Theme.texto_sobre_color
+                                            font.bold: true
+                                            font.pixelSize: Math.max(14, 15 * root.sx)
+                                        }
+                                    }
+                                    ColumnLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 2 * root.sy
+                                        Text {
+                                            Layout.fillWidth: true
+                                            text: "ABRIR EXPLICACIÓN COMPLETA"
+                                            color: root.stage.accent
+                                            font.bold: true
+                                            font.pixelSize: Math.max(11, 10 * root.sx)
+                                        }
+                                        Text {
+                                            Layout.fillWidth: true
+                                            text: "Teoría, fórmula, pasos y dimensiones de «"
+                                                  + (root.operation.short || root.stage.short) + "»"
+                                            color: Style.Theme.texto_secundario_fuerte
+                                            wrapMode: Text.WordWrap
+                                            font.pixelSize: Math.max(11, 11 * root.sx)
+                                        }
+                                    }
+                                    Text {
+                                        text: "→"
+                                        color: root.stage.accent
+                                        font.bold: true
+                                        font.pixelSize: Math.max(18, 20 * root.sx)
+                                    }
+                                }
+                            }
+
                             Rectangle {
                                 Layout.fillWidth: true
                                 implicitHeight: visualColumn.implicitHeight + 22 * root.sy
@@ -1446,6 +1519,159 @@ Item {
                                         wrapMode: Text.WordWrap
                                         lineHeight: 1.18
                                         font.pixelSize: Math.max(12, 12 * root.sx)
+                                    }
+                                }
+                            }
+
+                            Rectangle {
+                                objectName: "inferenceVisualDictionary"
+                                Layout.fillWidth: true
+                                implicitHeight: visualDictionaryColumn.implicitHeight + 24 * root.sy
+                                radius: 12 * root.sx
+                                color: Style.Theme.surface
+                                border.color: Qt.alpha(root.stage.accent, 0.55)
+                                border.width: 1
+
+                                ColumnLayout {
+                                    id: visualDictionaryColumn
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.top: parent.top
+                                    anchors.margins: 12 * root.sx
+                                    spacing: 8 * root.sy
+
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: "ENTIENDE TODO LO QUE VES"
+                                        color: root.stage.accent
+                                        font.bold: true
+                                        font.letterSpacing: 0.5
+                                        font.pixelSize: Math.max(11, 10 * root.sx)
+                                    }
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: "Cada elemento cumple una función en el cálculo o ayuda a leer datos reales:"
+                                        color: Style.Theme.texto_secundario_fuerte
+                                        wrapMode: Text.WordWrap
+                                        lineHeight: 1.18
+                                        font.pixelSize: Math.max(12, 12 * root.sx)
+                                    }
+                                    Text {
+                                        objectName: "inferenceRealDataExplanation"
+                                        Layout.fillWidth: true
+                                        text: "● Datos reales = números capturados del forward del token seleccionado; colores, tamaños y flechas solo ayudan a representarlos."
+                                        color: Style.Theme.exito_texto
+                                        font.bold: true
+                                        wrapMode: Text.WordWrap
+                                        lineHeight: 1.18
+                                        font.pixelSize: Math.max(11, 11 * root.sx)
+                                    }
+
+                                    Repeater {
+                                        objectName: "inferenceVisualElementsRepeater"
+                                        model: root.operation.visualElements || []
+
+                                        delegate: RowLayout {
+                                            id: visualElementRow
+                                            required property var modelData
+                                            Layout.fillWidth: true
+                                            spacing: 7 * root.sx
+
+                                            Rectangle {
+                                                Layout.preferredWidth: Math.max(104, 112 * root.sx)
+                                                Layout.preferredHeight: Math.max(28, visualTerm.implicitHeight + 10 * root.sy)
+                                                radius: 7 * root.sx
+                                                color: Qt.alpha(root.stage.accent, 0.10)
+                                                border.color: Qt.alpha(root.stage.accent, 0.35)
+
+                                                Text {
+                                                    id: visualTerm
+                                                    anchors.fill: parent
+                                                    anchors.margins: 5 * root.sx
+                                                    text: visualElementRow.modelData.term
+                                                    color: root.stage.accent
+                                                    font.bold: true
+                                                    wrapMode: Text.WordWrap
+                                                    verticalAlignment: Text.AlignVCenter
+                                                    font.pixelSize: Math.max(10, 10 * root.sx)
+                                                }
+                                            }
+                                            Text {
+                                                Layout.fillWidth: true
+                                                text: visualElementRow.modelData.explanation
+                                                color: Style.Theme.texto_secundario_fuerte
+                                                wrapMode: Text.WordWrap
+                                                lineHeight: 1.18
+                                                font.pixelSize: Math.max(11, 11 * root.sx)
+                                            }
+                                        }
+                                    }
+
+                                    Rectangle {
+                                        Layout.fillWidth: true
+                                        Layout.preferredHeight: 1
+                                        color: Style.Theme.divisor
+                                    }
+
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: "SÍMBOLOS Y ABREVIATURAS"
+                                        color: Style.Theme.texto_secundario_fuerte
+                                        font.bold: true
+                                        font.pixelSize: Math.max(11, 10 * root.sx)
+                                    }
+
+                                    Repeater {
+                                        objectName: "inferenceSymbolGlossaryRepeater"
+                                        model: root.operation.symbolGlossary || []
+
+                                        delegate: RowLayout {
+                                            id: symbolGlossaryRow
+                                            required property var modelData
+                                            Layout.fillWidth: true
+                                            spacing: 7 * root.sx
+
+                                            Text {
+                                                Layout.preferredWidth: Math.max(108, 118 * root.sx)
+                                                text: symbolGlossaryRow.modelData.term
+                                                color: root.stage.accent
+                                                font.family: "Cambria Math"
+                                                font.bold: true
+                                                wrapMode: Text.WordWrap
+                                                font.pixelSize: Math.max(12, 12 * root.sx)
+                                            }
+                                            Text {
+                                                Layout.fillWidth: true
+                                                text: "= " + symbolGlossaryRow.modelData.explanation
+                                                color: Style.Theme.texto_secundario_fuerte
+                                                wrapMode: Text.WordWrap
+                                                lineHeight: 1.18
+                                                font.pixelSize: Math.max(11, 11 * root.sx)
+                                            }
+                                        }
+                                    }
+
+                                    Rectangle {
+                                        Layout.fillWidth: true
+                                        implicitHeight: interactionHelpText.implicitHeight + 16 * root.sy
+                                        radius: 8 * root.sx
+                                        color: Style.Theme.info_fondo
+                                        border.color: "#93C5FD"
+
+                                        Text {
+                                            id: interactionHelpText
+                                            objectName: "inferenceInteractionHelp"
+                                            anchors.left: parent.left
+                                            anchors.right: parent.right
+                                            anchors.top: parent.top
+                                            anchors.margins: 8 * root.sx
+                                            text: "PRUÉBALO  ·  " + (root.operation.interactionHelp || "Observa el cambio paso a paso.")
+                                            color: Style.Theme.info_texto
+                                            font.bold: true
+                                            wrapMode: Text.WordWrap
+                                            lineHeight: 1.18
+                                            font.pixelSize: Math.max(11, 11 * root.sx)
+                                        }
                                     }
                                 }
                             }
@@ -1527,18 +1753,6 @@ Item {
                                     }
                                 }
 
-                                Button {
-                                    Layout.fillWidth: true
-                                    Layout.preferredHeight: Math.max(38, 44 * root.sy)
-                                    text: "ⓘ  Abrir explicación completa"
-                                    font.bold: true
-                                    font.pixelSize: Math.max(12, 12 * root.sx)
-                                    onClicked: root.theoryRequested(root.operation.conceptId || root.stage.conceptId)
-                                    ToolTip.visible: hovered
-                                    ToolTip.text: "Leer este concepto en una ventana amplia"
-                                    Accessible.name: "Abrir explicación completa de "
-                                                     + (root.operation.title || root.stage.title)
-                                }
                             }
                         }
                     }

@@ -53,7 +53,9 @@ Item {
     }
     readonly property string phaseFormula: {
         if (normalizedPhase === "qkv")
-            return "Q = XWQ   ·   K = XKVWK   ·   V = XKVWV"
+            return branchIndex === 2
+                    ? "Q = Y_dec Wᑫ   ·   K = H_enc Wᵏ   ·   V = H_enc Wᵛ"
+                    : "Q = X Wᑫ   ·   K = X Wᵏ   ·   V = X Wᵛ"
         if (normalizedPhase === "scores")
             return "S = QKᵀ / √d_head"
         if (normalizedPhase === "mask")

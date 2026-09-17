@@ -199,10 +199,11 @@ Rectangle {
                     visible: root.texto("formula") !== "" || root.texto("mathematical") !== ""
                     width: parent.width
                     height: visible ? formulaColumn.implicitHeight
-                                      + (root.expanded ? 28 : 20) * root.contentScale : 0
+                                      + (root.expanded ? 32 : 22) * root.contentScale : 0
                     radius: (root.expanded ? 10 : 7) * root.contentScale
                     color: Style.Theme.acento_fondo
-                    border.color: Style.Theme.acento_fondo
+                    border.color: Style.Theme.acento_alt
+                    border.width: 1
 
                     Column {
                         id: formulaColumn
@@ -215,13 +216,43 @@ Rectangle {
                         Text {
                             width: parent.width
                             visible: root.texto("formula") !== ""
-                            text: root.texto("formula")
-                            color: Style.Theme.acento_fuerte
-                            font.family: "monospace"
-                            font.pixelSize: (root.expanded ? 14 : 11) * root.contentScale
-                            wrapMode: Text.WrapAnywhere
+                            text: "FÓRMULA"
+                            color: Style.Theme.acento
+                            font.bold: true
+                            font.letterSpacing: 0.6
+                            font.pixelSize: (root.expanded ? 12 : 10) * root.contentScale
+                            Accessible.role: Accessible.Heading
                         }
                         Text {
+                            objectName: "theoryFormulaText"
+                            width: parent.width
+                            visible: root.texto("formula") !== ""
+                            text: root.texto("formula")
+                            color: Style.Theme.acento_fuerte
+                            font.family: "Cambria Math"
+                            font.bold: true
+                            font.pixelSize: (root.expanded ? 20 : 13) * root.contentScale
+                            lineHeight: root.expanded ? 1.22 : 1.08
+                            horizontalAlignment: Text.AlignHCenter
+                            wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+                        }
+                        Rectangle {
+                            visible: root.texto("formula") !== ""
+                                     && root.texto("mathematical") !== ""
+                            width: parent.width
+                            height: 1
+                            color: Qt.alpha(Style.Theme.acento, 0.25)
+                        }
+                        Text {
+                            width: parent.width
+                            visible: root.texto("mathematical") !== ""
+                            text: "CÓMO LEERLA"
+                            color: Style.Theme.texto_secundario_fuerte
+                            font.bold: true
+                            font.pixelSize: (root.expanded ? 11 : 9) * root.contentScale
+                        }
+                        Text {
+                            objectName: "theoryMathematicalExplanation"
                             width: parent.width
                             visible: root.texto("mathematical") !== ""
                             text: root.texto("mathematical")
@@ -268,9 +299,12 @@ Rectangle {
                         model: root.concepto && root.concepto.steps
                                ? root.concepto.steps : []
                         delegate: Text {
+                            id: stepDelegate
                             required property var modelData
+                            required property int index
                             width: parent.width
-                            text: "• " + String(modelData)
+                            text: (stepDelegate.index + 1) + ". "
+                                  + String(stepDelegate.modelData)
                             color: Style.Theme.texto_primario
                             font.pixelSize: (root.expanded ? 13 : 10) * root.contentScale
                             lineHeight: root.expanded ? 1.22 : 1.0

@@ -1,12 +1,12 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
 import "../styles" as Style
 
 Item {
     id: root
+    objectName: "residualLayerNormScene"
 
     property var sceneData: ({})
     property bool active: false
@@ -20,6 +20,37 @@ Item {
 
     readonly property var layerNorm: sceneData.layernorm || ({})
     readonly property var phases: layerNorm.fases || []
+    readonly property var selectedPhaseGuide: phaseGuide(selectedPhase)
+    readonly property string phasePedagogicalExplanation: selectedPhaseGuide.explanation
+
+    function phaseGuide(index) {
+        if (index === 0) {
+            return {
+                title: "1 · Sumar x + Δx",
+                formula: "u = x + Δx",
+                explanation: "Une la señal original x con la actualización Δx coordenada a coordenada. Esta tarjeta todavía no normaliza: muestra el vector que LayerNorm recibirá."
+            }
+        }
+        if (index === 1) {
+            return {
+                title: "2 · Centrar restando μ",
+                formula: "c = u − μ",
+                explanation: "μ es la media de las coordenadas de u. Restarla desplaza toda la nube para que quede centrada alrededor de cero sin cambiar su dispersión."
+            }
+        }
+        if (index === 2) {
+            return {
+                title: "3 · Estandarizar con σ y ε",
+                formula: "x̂ = c / √(var(u) + ε)",
+                explanation: "La división lleva la dispersión cerca de uno. σ resume esa dispersión y ε es una constante pequeña que evita una división por cero."
+            }
+        }
+        return {
+            title: "4 · Aplicar γ y β",
+            formula: "y = γ · x̂ + β",
+            explanation: "γ vuelve a escalar y β desplaza cada coordenada. Ambos parámetros se aprenden, así que el modelo conserva la capacidad de elegir la escala y el centro útiles."
+        }
+    }
 
     function valuesBounds() {
         var minimum = 1e30, maximum = -1e30
@@ -238,6 +269,9 @@ Item {
                     color: root.selectedPhase === index ? Style.Theme.acento_fondo : Style.Theme.superficie_alterna
                     border.color: root.selectedPhase === index ? Style.Theme.acento : Style.Theme.borde_suave
                     border.width: root.selectedPhase === index ? 2 : 1
+                    Accessible.role: Accessible.Button
+                    Accessible.name: root.phaseGuide(phaseCard.index).title
+                    Accessible.description: root.phaseGuide(phaseCard.index).explanation
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -300,6 +334,51 @@ Item {
                         }
                     }
                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.selectedPhase = phaseCard.index }
+                }
+            }
+        }
+
+        Rectangle {
+            objectName: "layerNormSelectedPhaseExplanation"
+            Layout.fillWidth: true
+            implicitHeight: selectedPhaseGuideColumn.implicitHeight + 18 * root.sy
+            radius: 9 * root.sx
+            color: Style.Theme.acento_fondo
+            border.color: Style.Theme.acento_alt
+
+            ColumnLayout {
+                id: selectedPhaseGuideColumn
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.margins: 9 * root.sx
+                spacing: 3 * root.sy
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Text {
+                        text: root.selectedPhaseGuide.title
+                        color: Style.Theme.acento_fuerte
+                        font.bold: true
+                        font.pixelSize: Math.max(10, 10 * root.sx)
+                    }
+                    Item { Layout.fillWidth: true }
+                    Text {
+                        text: root.selectedPhaseGuide.formula
+                        color: Style.Theme.acento_fuerte
+                        font.family: "Cambria Math"
+                        font.bold: true
+                        font.pixelSize: Math.max(11, 11 * root.sx)
+                    }
+                }
+                Text {
+                    objectName: "layerNormSelectedPhaseText"
+                    Layout.fillWidth: true
+                    text: root.phasePedagogicalExplanation
+                    color: Style.Theme.texto_secundario_fuerte
+                    wrapMode: Text.WordWrap
+                    lineHeight: 1.15
+                    font.pixelSize: Math.max(10, 10 * root.sx)
                 }
             }
         }

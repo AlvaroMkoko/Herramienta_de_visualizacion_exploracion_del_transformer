@@ -16,6 +16,7 @@ import torch
 
 from model.motor_llm.config import ConfiguracionTransformer
 from model.motor_llm.transformer import Transformer
+from viewmodel.theory_controller import TheoryController
 from viewmodel.visual_adapter import resumir_paso_inferencia
 
 
@@ -85,12 +86,73 @@ def test_explorador_conserva_siete_animaciones_y_agrega_recorrido(qapp):
     assert flow_steps[-2]["id"] == "linear_logits"
     assert flow_steps[-1]["id"] == "output_softmax"
     for step in flow_steps:
-        for field in ("operation", "visualMeaning", "purpose", "nextStep"):
+        for field in (
+            "operation",
+            "visualMeaning",
+            "purpose",
+            "nextStep",
+            "interactionHelp",
+        ):
             assert step[field].strip(), (step["id"], field)
+        for field in ("visualElements", "symbolGlossary"):
+            assert len(step[field]) >= 4, (step["id"], field)
+            for entry in step[field]:
+                assert entry["term"].strip(), (step["id"], field, "term")
+                assert entry["explanation"].strip(), (
+                    step["id"],
+                    field,
+                    "explanation",
+                )
 
     panel.setProperty("operationIndex", len(flow_steps) - 1)
     qapp.processEvents()
     assert panel.property("stageIndex") == 6
+
+    window.deleteLater()
+    engine.deleteLater()
+    qapp.processEvents()
+
+
+def test_todas_las_tarjetas_abren_una_explicacion_completa_y_coherente(qapp):
+    engine = QQmlEngine()
+    component, window, panel = _crear_panel(engine, qapp)
+    assert component is not None and panel is not None
+    button = window.findChild(QObject, "inferenceFullExplanationButton")
+    assert button is not None
+    assert button.property("visible") is True
+    assert panel.property("detailsExpanded") is False
+
+    theory = TheoryController()
+    received_concept_ids = []
+    panel.theoryRequested.connect(received_concept_ids.append)
+    flow_steps = _como_python(panel.property("flowSteps"))
+
+    for operation_index, operation in enumerate(flow_steps):
+        panel.setProperty("operationIndex", operation_index)
+        panel.setProperty("sequencePlaying", True)
+        qapp.processEvents()
+
+        expected_id = operation["conceptId"]
+        assert button.property("targetConceptId") == expected_id
+        concept = theory.obtenerConcepto(expected_id)
+        assert concept.get("existe") is True, operation["id"]
+        for field in (
+            "title",
+            "short_description",
+            "explanation",
+            "formula",
+            "mathematical",
+        ):
+            assert str(concept.get(field, "")).strip(), (operation["id"], field)
+        assert len(concept.get("steps", [])) >= 4, operation["id"]
+        assert len(concept.get("dimensions", {})) >= 2, operation["id"]
+
+        button.clicked.emit()
+        qapp.processEvents()
+        assert received_concept_ids[-1] == expected_id
+        assert panel.property("sequencePlaying") is False
+
+    assert len(received_concept_ids) == len(flow_steps)
 
     window.deleteLater()
     engine.deleteLater()
@@ -319,6 +381,38 @@ def test_minimapa_pasivo_sigue_cada_operacion_semantica(qapp):
     qapp.processEvents()
 
 
+def test_layernorm_explica_sus_cuatro_fases_y_simbolos(qapp):
+    engine = QQmlEngine()
+    component, window, panel = _crear_panel(engine, qapp)
+    assert component is not None and panel is not None
+    scene = window.findChild(QObject, "residualLayerNormScene")
+    explanation = window.findChild(QObject, "layerNormSelectedPhaseText")
+
+    assert scene is not None
+    assert explanation is not None
+
+    expected_symbols = (
+        ("x", "Δx"),
+        ("μ", "cero"),
+        ("σ", "ε"),
+        ("γ", "β"),
+    )
+    explanations = []
+    for phase_index, symbols in enumerate(expected_symbols):
+        scene.setProperty("selectedPhase", phase_index)
+        qapp.processEvents()
+        pedagogical_text = str(scene.property("phasePedagogicalExplanation"))
+        assert explanation.property("text") == pedagogical_text
+        assert all(symbol in pedagogical_text for symbol in symbols)
+        explanations.append(pedagogical_text)
+
+    assert len(set(explanations)) == 4
+
+    window.deleteLater()
+    engine.deleteLater()
+    qapp.processEvents()
+
+
 def test_explorador_acepta_un_forward_real_en_todo_el_recorrido(qapp):
     config = ConfiguracionTransformer(
         tamano_vocabulario=40,
@@ -388,6 +482,9 @@ def test_explorador_acepta_un_forward_real_en_todo_el_recorrido(qapp):
     input_output = window.findChild(QObject, "inferenceInputOutputText")
     previous_step = window.findChild(QObject, "inferencePreviousStepText")
     following_step = window.findChild(QObject, "inferenceFollowingStepText")
+    visual_elements = window.findChild(QObject, "inferenceVisualElementsRepeater")
+    symbol_glossary = window.findChild(QObject, "inferenceSymbolGlossaryRepeater")
+    interaction_help = window.findChild(QObject, "inferenceInteractionHelp")
     for operation_index, operation in enumerate(flow_steps):
         panel.setProperty("operationIndex", operation_index)
         qapp.processEvents()
@@ -400,6 +497,9 @@ def test_explorador_acepta_un_forward_real_en_todo_el_recorrido(qapp):
         assert "SALE" in input_output.property("text")
         assert str(previous_step.property("stepText")).strip()
         assert str(following_step.property("stepText")).strip()
+        assert visual_elements.property("count") == len(operation["visualElements"])
+        assert symbol_glossary.property("count") == len(operation["symbolGlossary"])
+        assert interaction_help.property("text").startswith("PRUÉBALO")
 
     assert window.findChild(QObject, "tokenEmbeddingScene") is not None
     assert window.findChild(QObject, "attentionComputationScene") is not None

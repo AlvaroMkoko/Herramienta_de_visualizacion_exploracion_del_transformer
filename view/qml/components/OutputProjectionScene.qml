@@ -146,7 +146,7 @@ Item {
                 }
                 Text {
                     Layout.fillWidth: true
-                    text: "h_final · W_vocab + b → un puntaje real por token"
+                    text: "h_final · W_vocabᵀ + b → un puntaje real por token"
                     color: Style.Theme.texto_secundario
                     elide: Text.ElideRight
                     font.pixelSize: Math.max(11, 11 * root.sx)
@@ -195,7 +195,7 @@ Item {
                 Layout.fillHeight: true
                 number: "2"
                 eyebrow: "PROYECCIÓN LINEAL"
-                title: "z = hW_vocab + b"
+                title: "z = hW_vocabᵀ + b"
                 detail: "Los pesos no se copian a la vista"
                 accent: "#2563EB"
                 emphasized: root.progress >= 0.28
