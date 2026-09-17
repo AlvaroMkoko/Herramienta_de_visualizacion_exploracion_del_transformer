@@ -406,10 +406,12 @@ PagePrincipal {
                     font.bold: true
                 }
 
-                TextField {
+                CampoTextoPrincipal {
                     id: campoNombre
                     Layout.fillWidth: true
                     Layout.preferredHeight: 35 * root.sy
+                    sx: root.sx
+                    sy: root.sy
                     placeholderText: "Nombre del modelo"
                 }
 

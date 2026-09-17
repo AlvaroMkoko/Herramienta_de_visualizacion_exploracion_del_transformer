@@ -288,8 +288,10 @@ PagePrincipal {
                         Layout.fillHeight: true
                         clip: true
 
-                        TextArea {
+                        AreaTextoPrincipal {
                             id: campoPrompt
+                            sx: root.sx
+                            sy: root.sy
                             placeholderText: "Escribe el inicio del texto que quieres completar…"
                             text: ""
                             wrapMode: TextEdit.Wrap
@@ -302,12 +304,6 @@ PagePrincipal {
                             rightPadding: 13 * root.sx
                             topPadding: 11 * root.sy
                             bottomPadding: 11 * root.sy
-                            background: Rectangle {
-                                color: Style.Theme.chip_fondo
-                                radius: 8 * root.sx
-                                border.color: campoPrompt.activeFocus ? Style.Theme.acento : Style.Theme.borde_suave
-                                border.width: campoPrompt.activeFocus ? 2 : 1
-                            }
                         }
                     }
                 }
@@ -358,8 +354,10 @@ PagePrincipal {
                         Layout.fillHeight: true
                         clip: true
 
-                        TextArea {
+                        AreaTextoPrincipal {
                             id: resultado
+                            sx: root.sx
+                            sy: root.sy
                             text: root.textoGenerado
                             placeholderText: "La respuesta aparecerá aquí mientras se genera."
                             readOnly: true
@@ -372,11 +370,6 @@ PagePrincipal {
                             rightPadding: 14 * root.sx
                             topPadding: 13 * root.sy
                             bottomPadding: 13 * root.sy
-                            background: Rectangle {
-                                color: Style.Theme.chip_fondo
-                                radius: 8 * root.sx
-                                border.color: Style.Theme.borde_suave
-                            }
                             onTextChanged: cursorPosition = length
                         }
                     }

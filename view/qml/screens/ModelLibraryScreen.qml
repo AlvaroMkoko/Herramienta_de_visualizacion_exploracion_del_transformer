@@ -512,10 +512,12 @@ PagePrincipal {
         height: 42 * root.sy
         spacing: 10 * root.sx
 
-        TextField {
+        CampoTextoPrincipal {
             id: campoBusqueda
             Layout.fillWidth: true
             Layout.preferredHeight: 40 * root.sy
+            sx: root.sx
+            sy: root.sy
             placeholderText: "Buscar por nombre, ruta, grupo, versión, etiqueta o tokenizador…"
             selectByMouse: true
             onTextChanged: root.reconstruirModelosVisibles()
@@ -1050,8 +1052,10 @@ PagePrincipal {
                     Layout.fillHeight: true
                     clip: true
 
-                    TextArea {
+                    AreaTextoPrincipal {
                         id: campoCodigo
+                        sx: root.sx
+                        sy: root.sy
                         placeholderText: "Pega aquí un código TVIS1:… o genera uno desde una tarjeta"
                         selectByMouse: true
                         wrapMode: TextEdit.WrapAnywhere
@@ -1065,10 +1069,12 @@ PagePrincipal {
                     Layout.fillHeight: true
                     spacing: 8 * root.sy
 
-                    TextField {
+                    CampoTextoPrincipal {
                         id: nombreCodigo
                         Layout.fillWidth: true
                         Layout.preferredHeight: 38 * root.sy
+                        sx: root.sx
+                        sy: root.sy
                         placeholderText: "Nombre del modelo"
                     }
 

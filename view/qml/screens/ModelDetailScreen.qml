@@ -1533,8 +1533,10 @@ PagePrincipal {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
                             clip: true
-                            TextArea {
+                            AreaTextoPrincipal {
                                 id: campoTextoTokenizador
+                                sx: root.sx
+                                sy: root.sy
                                 placeholderText: "Escribe una frase, símbolos, saltos de línea o texto multilingüe…"
                                 wrapMode: TextEdit.Wrap
                                 selectByMouse: true
@@ -1926,14 +1928,15 @@ PagePrincipal {
                                     anchors.fill: parent
                                     anchors.margins: 6 * root.sx
                                     clip: true
-                                    TextArea {
+                                    AreaTextoPrincipal {
                                         text: root.texto(root.campo(muestraSalud.modelData, ["salida", "output"], null), "Sin salida")
                                         readOnly: true
                                         selectByMouse: true
                                         wrapMode: TextEdit.Wrap
                                         color: Style.Theme.texto_primario
                                         font.pixelSize: 12 * Math.min(root.sx, root.sy)
-                                        background: Rectangle { color: "transparent" }
+                                        sx: root.sx
+                                        sy: root.sy
                                     }
                                 }
                             }
@@ -2030,10 +2033,12 @@ PagePrincipal {
                                 }
                             }
                             Text { text: "Nombre visible"; color: Style.Theme.texto_secundario; font.pixelSize: 10 * Math.min(root.sx, root.sy) }
-                            TextField {
+                            CampoTextoPrincipal {
                                 id: campoNombre
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 38 * root.sy
+                                sx: root.sx
+                                sy: root.sy
                                 placeholderText: "Nombre del modelo"
                             }
                             RowLayout {
@@ -2042,19 +2047,21 @@ PagePrincipal {
                                 ColumnLayout {
                                     Layout.fillWidth: true
                                     Text { text: "Grupo / experimento"; color: Style.Theme.texto_secundario; font.pixelSize: 10 * Math.min(root.sx, root.sy) }
-                                    TextField { id: campoGrupo; Layout.fillWidth: true; placeholderText: "Ej. ablación_dropout" }
+                                    CampoTextoPrincipal { id: campoGrupo; Layout.fillWidth: true; sx: root.sx; sy: root.sy; placeholderText: "Ej. ablación_dropout" }
                                 }
                                 ColumnLayout {
                                     Layout.preferredWidth: 220 * root.sx
                                     Text { text: "Versión"; color: Style.Theme.texto_secundario; font.pixelSize: 10 * Math.min(root.sx, root.sy) }
-                                    TextField { id: campoVersion; Layout.fillWidth: true; placeholderText: "Ej. v3 o época 12" }
+                                    CampoTextoPrincipal { id: campoVersion; Layout.fillWidth: true; sx: root.sx; sy: root.sy; placeholderText: "Ej. v3 o época 12" }
                                 }
                             }
                             Text { text: "Etiquetas (separadas por comas)"; color: Style.Theme.texto_secundario; font.pixelSize: 10 * Math.min(root.sx, root.sy) }
-                            TextField {
+                            CampoTextoPrincipal {
                                 id: campoTags
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 38 * root.sy
+                                sx: root.sx
+                                sy: root.sy
                                 placeholderText: "estable, español, experimento-2"
                             }
                             Text { text: "Notas"; color: Style.Theme.texto_secundario; font.pixelSize: 10 * Math.min(root.sx, root.sy) }
@@ -2062,8 +2069,10 @@ PagePrincipal {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
                                 clip: true
-                                TextArea {
+                                AreaTextoPrincipal {
                                     id: campoNotas
+                                    sx: root.sx
+                                    sy: root.sy
                                     placeholderText: "Hipótesis, cambios, resultados observados…"
                                     wrapMode: TextEdit.Wrap
                                     selectByMouse: true
@@ -2116,10 +2125,12 @@ PagePrincipal {
                                 wrapMode: Text.WordWrap
                                 font.pixelSize: 11 * Math.min(root.sx, root.sy)
                             }
-                            TextField {
+                            CampoTextoPrincipal {
                                 id: campoDuplicado
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 40 * root.sy
+                                sx: root.sx
+                                sy: root.sy
                                 placeholderText: "Nombre de la copia"
                             }
                             BotonPrincipal {

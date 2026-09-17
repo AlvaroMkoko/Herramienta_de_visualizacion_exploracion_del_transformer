@@ -648,8 +648,10 @@ PagePrincipal {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         clip: true
-                        TextArea {
+                        AreaTextoPrincipal {
                             id: campoPrompt
+                            sx: root.sx
+                            sy: root.sy
                             placeholderText: "Escribe el texto inicial que recibirán ambos modelos…"
                             wrapMode: TextEdit.Wrap
                             selectByMouse: true
@@ -901,7 +903,7 @@ PagePrincipal {
                                 anchors.fill: parent
                                 anchors.margins: 7 * root.sx
                                 clip: true
-                                TextArea {
+                                AreaTextoPrincipal {
                                     text: resultadoModelo.modelData.texto
                                     placeholderText: "La respuesta aparecerá aquí token a token…"
                                     readOnly: true
@@ -909,7 +911,8 @@ PagePrincipal {
                                     wrapMode: TextEdit.Wrap
                                     color: Style.Theme.texto_primario
                                     font.pixelSize: 15 * Math.min(root.sx, root.sy)
-                                    background: Rectangle { color: "transparent" }
+                                    sx: root.sx
+                                    sy: root.sy
                                 }
                             }
                         }

@@ -408,23 +408,19 @@ Rectangle {
                         wrapMode: Text.WordWrap
                     }
 
-                    TextArea {
+                    AreaTextoPrincipal {
                         id: explanationInput
                         objectName: "guidedExplanationInput"
                         width: parent.width
                         height: 118 * root.scaleFactor
+                        sx: root.scaleFactor
+                        sy: root.scaleFactor
                         placeholderText: "Escribe al menos una idea completa…"
                         wrapMode: TextEdit.Wrap
                         selectByMouse: true
                         activeFocusOnTab: true
                         Accessible.name: "Explicación de la actividad"
                         Accessible.description: String(root.value("explanationPrompt", ""))
-                        background: Rectangle {
-                            radius: 8 * root.scaleFactor
-                            color: Style.Theme.surface
-                            border.color: explanationInput.activeFocus ? Style.Theme.acento : Style.Theme.borde_suave
-                            border.width: explanationInput.activeFocus ? 2 : 1
-                        }
                     }
 
                     Text {

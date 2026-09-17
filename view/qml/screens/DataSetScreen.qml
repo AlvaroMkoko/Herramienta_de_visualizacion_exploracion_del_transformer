@@ -413,8 +413,10 @@ PagePrincipal {
                     Layout.fillWidth: true
                     spacing: 12 * root.sx
 
-                    CheckBox {
+                    CasillaPrincipal {
                         id: check
+                        sx: root.sx
+                        sy: root.sy
                         checked: selected
                         enabled: tarjetaDataset.puedeEntrenar
                                  && !root.datasetController.ocupado
@@ -445,26 +447,6 @@ PagePrincipal {
                                     tarjetaDataset.mkModel.remove(i)
                             }
                         }
-
-                        indicator: Rectangle {
-                            implicitWidth: 22 * root.sx
-                            implicitHeight: 22 * root.sy
-                            radius: 5 * root.sx
-                            color: check.checked ? Style.Theme.acento : Style.Theme.surface
-                            border.width: 1.5
-                            border.color: Style.Theme.acento
-
-                            Text {
-                                anchors.centerIn: parent
-                                text: "\u2713"
-                                visible: check.checked
-                                color: Style.Theme.texto_sobre_color
-                                font.pixelSize: 13 * Math.min(root.sx, root.sy)
-                                font.bold: true
-                            }
-                        }
-
-                        contentItem: Item { }
                     }
 
                     ColumnLayout {

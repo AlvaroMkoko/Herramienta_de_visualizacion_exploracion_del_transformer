@@ -468,32 +468,17 @@ PagePrincipal {
                 anchors.margins: 14 * root.uiScale
                 spacing: 14 * root.uiScale
 
-                Button {
+                BotonSecundario {
                     id: backButton
                     objectName: "guidedBackButton"
                     Layout.preferredWidth: 118 * root.uiScale
                     Layout.preferredHeight: 42 * root.uiScale
+                    sx: root.uiScale
+                    sy: root.uiScale
                     text: "← Inicio"
                     activeFocusOnTab: true
                     Accessible.name: "Volver al inicio"
                     Accessible.description: "Guarda el avance y regresa a la pantalla principal"
-
-                    background: Rectangle {
-                        radius: 9 * root.uiScale
-                        color: backButton.down ? Style.Theme.acento_fondo
-                                               : backButton.hovered ? Style.Theme.acento_fondo : Style.Theme.acento_fondo
-                        border.color: Style.Theme.acento_fondo
-                    }
-
-                    contentItem: Text {
-                        text: backButton.text
-                        color: Style.Theme.info_texto
-                        font.bold: true
-                        font.pixelSize: 12 * root.uiScale
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
-
                     onClicked: root.leaveScreen()
                 }
 
@@ -726,14 +711,15 @@ PagePrincipal {
 
                     Item { Layout.fillHeight: true }
 
-                    Button {
+                    BotonSecundario {
                         id: resetButton
                         objectName: "guidedResetProgressButton"
                         Layout.fillWidth: true
                         Layout.preferredHeight: 34 * root.uiScale
+                        sx: root.uiScale
+                        sy: root.uiScale
                         visible: root.completedUnitsCount > 0
                         text: "Reiniciar recorrido"
-                        flat: true
                         activeFocusOnTab: true
                         Accessible.name: text
                         onClicked: resetDialog.open()
@@ -844,11 +830,13 @@ PagePrincipal {
                     Layout.maximumHeight: 42 * root.uiScale
                     spacing: 8 * root.uiScale
 
-                    Button {
+                    BotonSecundario {
                         id: previousButton
                         objectName: "guidedPreviousConceptButton"
                         Layout.preferredWidth: 125 * root.uiScale
                         Layout.fillHeight: true
+                        sx: root.uiScale
+                        sy: root.uiScale
                         enabled: root.currentUnitIndex > 0 || root.currentConceptIndex > 0
                         text: "← Anterior"
                         activeFocusOnTab: true
@@ -865,11 +853,13 @@ PagePrincipal {
                         wrapMode: Text.WordWrap
                     }
 
-                    Button {
+                    BotonSecundario {
                         id: nextButton
                         objectName: "guidedNextConceptButton"
                         Layout.preferredWidth: 170 * root.uiScale
                         Layout.fillHeight: true
+                        sx: root.uiScale
+                        sy: root.uiScale
                         enabled: root.globalConceptNumber < root.totalCoreConcepts || root.currentConceptIndex < root.currentUnitConceptCount - 1
                                  || root.currentUnitCompleted
                         text: root.currentConceptIndex < root.currentUnitConceptCount - 1
@@ -882,14 +872,15 @@ PagePrincipal {
 
                     }
 
-                    Button {
+                    BotonSecundario {
                         id: repeatUnitButton
                         objectName: "guidedRepeatUnitButton"
                         Layout.fillWidth: true
                         Layout.preferredHeight: 34 * root.uiScale
+                        sx: root.uiScale
+                        sy: root.uiScale
                         visible: root.currentUnitCompleted
                         text: "Repetir esta unidad"
-                        flat: true
                         activeFocusOnTab: true
                         Accessible.name: text
                         Accessible.description: "Vuelve a habilitar la actividad de la unidad actual sin borrar el resto del avance"
