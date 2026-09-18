@@ -65,6 +65,7 @@ Page {
         hostWidth: root.width
         hostHeight: root.height
         theoryController: typeof mainViewModel !== "undefined"
+                          && mainViewModel
                           ? mainViewModel.theoryController : null
     }
 

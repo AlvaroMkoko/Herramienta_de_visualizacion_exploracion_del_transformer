@@ -29,6 +29,7 @@ PagePrincipal {
     property var fallbackCompletedUnitIds: []
 
     readonly property bool hasLearningController: typeof mainViewModel !== "undefined"
+                                                  && mainViewModel
                                                   && mainViewModel.learningController !== null
     readonly property var currentUnit: units[currentUnitIndex] || ({})
     readonly property int currentUnitConceptCount: currentUnit.conceptIds
@@ -419,7 +420,7 @@ PagePrincipal {
     }
 
     Connections {
-        target: typeof mainViewModel !== "undefined" ? mainViewModel.theoryController : null
+        target: typeof mainViewModel !== "undefined" && mainViewModel ? mainViewModel.theoryController : null
         ignoreUnknownSignals: true
 
         function onTeoriaRecargada() {
@@ -816,6 +817,7 @@ PagePrincipal {
                     concept: root.currentConcept
                     relatedConcepts: root.currentRelatedConcepts
                     loadError: typeof mainViewModel !== "undefined"
+                               && mainViewModel
                                ? mainViewModel.theoryController.errorCarga : ""
                     scaleFactor: root.uiScale
                     onDeepDiveRequested: function(conceptId) {

@@ -11,12 +11,9 @@ Popup {
     property var registros: []
     property string datasetNombre: ""
 
-    readonly property real viewportWidth: Overlay.overlay
-                                                   ? Overlay.overlay.width
-                                                   : (parent ? parent.width : 960)
-    readonly property real viewportHeight: Overlay.overlay
-                                                    ? Overlay.overlay.height
-                                                    : (parent ? parent.height : 720)
+    readonly property real viewportWidth: parent ? parent.width : 960
+    readonly property real viewportHeight: parent ? parent.height : 720
+
     readonly property real edgeMargin: viewportWidth < 640 || viewportHeight < 600
                                                ? 12 : 24
     readonly property real contentMargin: width < 520 ? 14 : 24
@@ -32,8 +29,7 @@ Popup {
         })
     }
 
-    parent: Overlay.overlay
-    anchors.centerIn: Overlay.overlay
+    anchors.centerIn: parent
     width: Math.max(1, Math.min(960, viewportWidth - edgeMargin * 2))
     height: Math.max(1, Math.min(720, viewportHeight - edgeMargin * 2))
     padding: 0
@@ -192,6 +188,8 @@ Popup {
                     width: recordsScroll.availableWidth
                     height: recordsScroll.availableHeight
                     model: popup.registros
+                    topMargin: 8
+                    bottomMargin: 8
                     spacing: 8
                     clip: true
                     reuseItems: true
@@ -199,16 +197,6 @@ Popup {
                     activeFocusOnTab: true
 
                     Accessible.name: "Registros de " + popup.datasetNombre
-
-                    header: Item {
-                        width: 1
-                        height: 8
-                    }
-
-                    footer: Item {
-                        width: 1
-                        height: 8
-                    }
 
                     delegate: Rectangle {
                         id: recordDelegate

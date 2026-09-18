@@ -9,6 +9,9 @@ Dialog {
     id: root
     objectName: "datasetCreatorDialog"
 
+    property real sx: 1
+    property real sy: 1
+
     property var datasetController: null
     property string validationMessage: ""
     readonly property int exampleCount: examplesModel.count

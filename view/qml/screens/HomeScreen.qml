@@ -23,6 +23,7 @@ PagePrincipal {
     ]
     
     readonly property var learningController: (typeof mainViewModel !== "undefined"
+                                               && mainViewModel
                                                && mainViewModel.learningController)
                                               ? mainViewModel.learningController
                                               : null
@@ -60,7 +61,7 @@ PagePrincipal {
     property int guidedProgressRevision: 0
 
     Connections {
-        target: typeof mainViewModel !== "undefined" ? mainViewModel.learningController : null
+        target: typeof mainViewModel !== "undefined" && mainViewModel ? mainViewModel.learningController : null
         ignoreUnknownSignals: true
         function onProgressChanged() { root.guidedProgressRevision += 1 }
     }

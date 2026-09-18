@@ -27,6 +27,8 @@ PagePrincipal {
 
     DatasetCreatorDialog {
         id: datasetCreatorDialog
+        sx: root.sx
+        sy: root.sy
         datasetController: root.datasetController
         onDatasetCreated: function(dataset) {
             root.incorporarDataset(dataset)

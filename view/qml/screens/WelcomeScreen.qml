@@ -24,6 +24,7 @@ PagePrincipal {
     // ─────────────────────────────────────────────────────────────
 
     readonly property var learningController: (typeof mainViewModel !== "undefined"
+                                               && mainViewModel
                                                && mainViewModel.learningController)
                                               ? mainViewModel.learningController
                                               : null
