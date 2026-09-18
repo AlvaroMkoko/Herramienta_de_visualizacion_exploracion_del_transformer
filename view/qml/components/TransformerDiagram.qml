@@ -11,7 +11,7 @@ Item {
     // is the persistent component chosen by the user.
     property string highlightedComponentId: ""
     property color flowColor: Style.Theme.texto_secundario
-    property color attentionColor: "#9a641b"
+    property color attentionColor: Style.Theme.modoOscuro ? "#FBBF24" : "#9a641b"
     property color residualColor: Style.Theme.acento
 
     readonly property string selectedComponentId: {

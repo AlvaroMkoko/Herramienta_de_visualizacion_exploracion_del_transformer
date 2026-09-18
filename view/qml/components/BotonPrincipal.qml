@@ -18,7 +18,7 @@ import "../styles" as Style
         property real size_text: 0.30
         // Permite que las pantallas con mucho contenido conserven una
         // tipografía legible aunque el alto del botón se reduzca al escalar.
-        property real minimum_text_size: 0
+        property real minimum_text_size: Style.Theme.smallSize
 
         id: button
         

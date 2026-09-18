@@ -360,6 +360,7 @@ PagePrincipal {
         currentStep: 1
         sx: root.sx
         sy: root.sy
+        compact: true
     }
 
     Item {
@@ -368,7 +369,7 @@ PagePrincipal {
         anchors.right: parent.right
         anchors.top: laboratoryProgress.bottom
         anchors.topMargin: 6 * root.sy
-        height: 72 * root.sy
+        height: 60 * root.sy
 
         BotonPrincipal {
             anchors.left: parent.left
@@ -389,7 +390,7 @@ PagePrincipal {
                 text: "Entrenamiento del Transformer"
                 color: Style.Theme.texto_primario
                 font.bold: true
-                font.pixelSize: 25 * Math.min(root.sx, root.sy)
+                font.pixelSize: 23 * Math.min(root.sx, root.sy)
             }
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -404,7 +405,7 @@ PagePrincipal {
             anchors.rightMargin: 26 * root.sx
             anchors.verticalCenter: parent.verticalCenter
             width: estadoTexto.implicitWidth + 28 * root.sx
-            height: 34 * root.sy
+            height: 30 * root.sy
             radius: height / 2
             color: root.trainingController.estaEntrenando
                    ? (root.trainingController.estaPausado ? Style.Theme.aviso_fondo : Style.Theme.exito_fondo)
@@ -426,7 +427,7 @@ PagePrincipal {
                        ? Style.Theme.aviso_texto
                        : (root.trainingController.estaEntrenando
                           ? (root.trainingController.estaPausado
-                             ? Style.Theme.aviso_texto : "#258F6F")
+                             ? Style.Theme.aviso_texto : Style.Theme.exito_texto)
                           : Style.Theme.texto_secundario)
                 font.bold: true
                 font.pixelSize: 12 * root.sx
@@ -441,35 +442,35 @@ PagePrincipal {
         anchors.bottom: parent.bottom
         anchors.leftMargin: 22 * root.sx
         anchors.rightMargin: 22 * root.sx
-        anchors.bottomMargin: 22 * root.sy
+        anchors.bottomMargin: 14 * root.sy
         spacing: 18 * root.sx
 
         RectanglePrincipal {
             id: mapaCard
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.minimumWidth: 850 * root.sx
+            Layout.minimumWidth: 720 * root.sx
             sx: root.sx
             sy: root.sy
 
             ColumnLayout {
                 anchors.fill: parent
-                anchors.margins: 18 * root.sx
-                spacing: 10 * root.sy
+                anchors.margins: 12 * root.sx
+                spacing: 7 * root.sy
 
                 RowLayout {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 78 * root.sy
-                    Layout.minimumHeight: 78 * root.sy
-                    Layout.maximumHeight: 78 * root.sy
+                    Layout.preferredHeight: 56 * root.sy
+                    Layout.minimumHeight: 56 * root.sy
+                    Layout.maximumHeight: 56 * root.sy
                     spacing: 10 * root.sx
 
                     Repeater {
                         model: [
                             { label: "ÉPOCA", value: (root.epocaSesionActual || 0) + " / " + (root.epocasSesionActual || root.epocasIniciales), color: Style.Theme.acento, help: "epoch_batch" },
                             { label: "PASO GLOBAL", value: String(root.pasoGlobalActual), color: Style.Theme.info_texto, help: "training_step" },
-                            { label: "PÉRDIDA", value: root.numero(root.perdidaActual, 4), color: "#258F6F", help: "cross_entropy" },
-                            { label: "Δ PÉRDIDA", value: (root.deltaPerdida > 0 ? "+" : "") + root.numero(root.deltaPerdida, 4), color: root.deltaPerdida <= 0 ? "#258F6F" : Style.Theme.aviso_texto, help: "loss_delta" },
+                            { label: "PÉRDIDA", value: root.numero(root.perdidaActual, 4), color: Style.Theme.exito_texto, help: "cross_entropy" },
+                            { label: "Δ PÉRDIDA", value: (root.deltaPerdida > 0 ? "+" : "") + root.numero(root.deltaPerdida, 4), color: root.deltaPerdida <= 0 ? Style.Theme.exito_texto : Style.Theme.aviso_texto, help: "loss_delta" },
                             { label: "GRADIENTE L2", value: root.numero(root.normaGradiente, 3), color: Style.Theme.aviso_texto, help: "gradient_norm_l2" }
                         ]
 
@@ -523,12 +524,12 @@ PagePrincipal {
 
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 62 * root.sy
-                    Layout.minimumHeight: 62 * root.sy
-                    Layout.maximumHeight: 62 * root.sy
+                    Layout.preferredHeight: 46 * root.sy
+                    Layout.minimumHeight: 46 * root.sy
+                    Layout.maximumHeight: 46 * root.sy
                     radius: 9 * root.sx
                     color: Style.Theme.aviso_fondo
-                    border.color: "#E7CD78"
+                    border.color: Style.Theme.warning
 
                     RowLayout {
                         anchors.fill: parent
@@ -540,22 +541,23 @@ PagePrincipal {
                             Layout.preferredWidth: 34 * root.sx
                             Layout.preferredHeight: 34 * root.sy
                             radius: 17 * root.sx
-                            color: "#E7CD78"
-                            Text { anchors.centerIn: parent; text: "↗"; font.bold: true; color: "#594A1C" }
+                            color: Style.Theme.aviso_fondo
+                            border.color: Style.Theme.warning
+                            Text { anchors.centerIn: parent; text: "↗"; font.bold: true; color: Style.Theme.aviso_texto }
                         }
                         ColumnLayout {
                             Layout.fillWidth: true
                             spacing: 1
                             Text {
                                 text: "Cambio más relevante · " + root.componenteRelevante
-                                color: "#594A1C"
+                                color: Style.Theme.aviso_texto
                                 font.bold: true
                                 font.pixelSize: 12 * root.sx
                             }
                             Text {
                                 Layout.fillWidth: true
                                 text: root.lecturaPerdida + " Intensidad RMS: " + root.numero(root.intensidadRelevante, 5)
-                                color: "#766529"
+                                color: Style.Theme.aviso_texto
                                 elide: Text.ElideRight
                                 font.pixelSize: 10 * root.sx
                             }
@@ -577,7 +579,6 @@ PagePrincipal {
                 Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    Layout.minimumHeight: 560 * root.sy
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -586,6 +587,9 @@ PagePrincipal {
                         TabBar {
                             id: barraPestanas
                             Layout.fillWidth: true
+                            Layout.preferredHeight: 34 * root.sy
+                            Layout.minimumHeight: 34 * root.sy
+                            Layout.maximumHeight: 34 * root.sy
 
                             onCurrentIndexChanged: {
                                 root.trainingController.activarNubeEmbeddings(barraPestanas.currentIndex === 2)
@@ -649,8 +653,8 @@ PagePrincipal {
         }
 
         ColumnLayout {
-            Layout.preferredWidth: 500 * root.sx
-            Layout.minimumWidth: 430 * root.sx
+            Layout.preferredWidth: 400 * root.sx
+            Layout.minimumWidth: 340 * root.sx
             Layout.fillHeight: true
             spacing: 12 * root.sy
 
@@ -661,13 +665,16 @@ PagePrincipal {
                 sy: root.sy
 
                 ScrollView {
+                    id: componentDetailsScroll
                     anchors.fill: parent
                     anchors.margins: 16 * root.sx
                     clip: true
                     contentWidth: availableWidth
+                    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                    ScrollBar.vertical.policy: ScrollBar.AlwaysOff
 
                     Column {
-                        width: parent.width
+                        width: componentDetailsScroll.availableWidth
                         spacing: 12 * root.sy
 
                         Rectangle {
@@ -687,7 +694,7 @@ PagePrincipal {
                                 Text {
                                     width: parent.width
                                     text: "Haz clic en cualquier componente del mapa."
-                                    color: "#5B4FA3"
+                                    color: Style.Theme.acento_texto
                                     font.bold: true
                                     font.pixelSize: 14 * root.sx
                                     wrapMode: Text.WordWrap
@@ -721,7 +728,7 @@ PagePrincipal {
                             spacing: 6 * root.sx
                             Text {
                                 text: "DATOS REALES · BATCH ACTUAL"
-                                color: "#258F6F"
+                                color: Style.Theme.exito_texto
                                 font.bold: true
                                 font.pixelSize: 11 * root.sx
                             }
@@ -830,7 +837,7 @@ PagePrincipal {
                                     }
                                     Text {
                                         text: "pico " + root.numero(layerDelegate.modelData.pico, 3)
-                                        color: "#7A5B28"
+                                        color: Style.Theme.aviso_texto
                                         font.pixelSize: 9 * root.sx
                                     }
                                 }
@@ -848,6 +855,29 @@ PagePrincipal {
                             wrapMode: Text.WordWrap
                         }
                     }
+                }
+
+                Rectangle {
+                    id: componentDetailsScrollIndicator
+                    readonly property real trackHeight: parent.height - 24 * root.sy
+                    readonly property real scrollRange: Math.max(
+                        1, componentDetailsScroll.contentHeight
+                           - componentDetailsScroll.availableHeight)
+                    width: Math.max(4, 5 * root.sx)
+                    height: Math.max(30 * root.sy,
+                                     trackHeight * Math.min(
+                                         1, componentDetailsScroll.availableHeight
+                                            / Math.max(1, componentDetailsScroll.contentHeight)))
+                    x: parent.width - width - 6 * root.sx
+                    y: 12 * root.sy
+                       + (trackHeight - height)
+                         * Math.max(0, Math.min(scrollRange,
+                             componentDetailsScroll.contentItem.contentY)) / scrollRange
+                    radius: width / 2
+                    color: Qt.alpha(Style.Theme.acento, 0.62)
+                    visible: componentDetailsScroll.contentHeight
+                             > componentDetailsScroll.availableHeight + 1
+                    z: 2
                 }
             }
 

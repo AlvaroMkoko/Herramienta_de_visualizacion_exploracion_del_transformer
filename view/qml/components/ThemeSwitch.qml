@@ -61,7 +61,9 @@ AbstractButton {
         id: sol
         width: 22; height: 22
         anchors.verticalCenter: parent.verticalCenter
-        x: 8
+        // En modo claro la perilla está a la izquierda; el sol ocupa el
+        // extremo contrario para que el control comunique su función.
+        x: control.width - width - 9
         opacity: control.checked ? 0 : 1
         Behavior on opacity { NumberAnimation { duration: 180 } }
 

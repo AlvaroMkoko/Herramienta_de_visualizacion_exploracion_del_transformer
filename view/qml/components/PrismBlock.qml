@@ -116,9 +116,11 @@ Item {
         Text {
             width: parent.width
             text: root.title
-            color: Qt.darker(root.accentColor, 1.45)
+            color: Style.Theme.modoOscuro
+                   ? Qt.lighter(root.accentColor, 1.75)
+                   : Qt.darker(root.accentColor, 1.45)
             font.bold: root.selected
-            font.pixelSize: root.title.length > 25 ? 11 : 12
+            font.pixelSize: root.title.length > 25 ? 13 : 15
             horizontalAlignment: Text.AlignHCenter
             elide: Text.ElideRight
         }
@@ -126,8 +128,10 @@ Item {
             visible: root.subtitle.length > 0
             width: parent.width
             text: root.subtitle
-            color: Qt.alpha(Qt.darker(root.accentColor, 1.35), 0.72)
-            font.pixelSize: 8
+            color: Style.Theme.modoOscuro
+                   ? Qt.alpha(Qt.lighter(root.accentColor, 1.9), 0.92)
+                   : Qt.alpha(Qt.darker(root.accentColor, 1.35), 0.82)
+            font.pixelSize: 10
             horizontalAlignment: Text.AlignHCenter
             elide: Text.ElideRight
         }

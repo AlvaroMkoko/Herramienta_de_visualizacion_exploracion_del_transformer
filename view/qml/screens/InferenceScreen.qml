@@ -251,7 +251,7 @@ PagePrincipal {
         ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.minimumWidth: 900 * root.sx
+            Layout.minimumWidth: 720 * root.sx
             spacing: 16 * root.sy
 
             RectanglePrincipal {
@@ -378,13 +378,14 @@ PagePrincipal {
         }
 
         ColumnLayout {
-            Layout.preferredWidth: 460 * root.sx
+            Layout.preferredWidth: 400 * root.sx
+            Layout.minimumWidth: 360 * root.sx
             Layout.fillHeight: true
-            spacing: 16 * root.sy
+            spacing: 12 * root.sy
 
             RectanglePrincipal {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 160 * root.sy
+                Layout.preferredHeight: 145 * root.sy
                 sx: root.sx
                 sy: root.sy
 
@@ -454,10 +455,17 @@ PagePrincipal {
                 sx: root.sx
                 sy: root.sy
 
-                ColumnLayout {
+                ScrollView {
+                    id: generationParametersScroll
                     anchors.fill: parent
-                    anchors.margins: 18 * root.sx
-                    spacing: 10 * root.sy
+                    anchors.margins: 14 * root.sx
+                    clip: true
+                    contentWidth: availableWidth
+                    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+
+                    ColumnLayout {
+                    width: generationParametersScroll.availableWidth
+                    spacing: 7 * root.sy
 
                     Text {
                         Layout.fillWidth: true
@@ -632,7 +640,7 @@ PagePrincipal {
 
                     BotonPrincipal {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 52 * root.sy
+                        Layout.preferredHeight: 44 * root.sy
                         text: root.tokenEnProceso
                               ? "Generando token…"
                               : (root.controller && root.controller.estaGenerando
@@ -653,7 +661,7 @@ PagePrincipal {
 
                         BotonPrincipal {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 46 * root.sy
+                            Layout.preferredHeight: 38 * root.sy
                             text: "■ Detener"
                             size_text: 0.24
                             enabled: root.controller && root.controller.estaGenerando
@@ -678,6 +686,7 @@ PagePrincipal {
                             controlSize: Math.max(22, 25 * Math.min(root.sx, root.sy))
                             onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
                         }
+                    }
                     }
                 }
             }

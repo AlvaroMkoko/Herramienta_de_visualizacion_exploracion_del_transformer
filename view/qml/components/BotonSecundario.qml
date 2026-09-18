@@ -24,7 +24,7 @@ Button {
     implicitHeight: 34 * sy
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus
-    font.pixelSize: 12 * sy
+    font.pixelSize: Math.max(Style.Theme.smallSize, 12 * sy)
 
     background: Rectangle {
         radius: 8 * control.sx

@@ -48,6 +48,13 @@ Item {
                                             ? snapshot.optimizador : ({})
     readonly property bool dataAvailable: Boolean(snapshot && snapshot.disponible)
 
+    // Las escenas contienen mucha información técnica. La geometría puede
+    // comprimirse, pero el texto nunca debe bajar del umbral legible.
+    function fontSize(baseSize, scale) {
+        var minimum = baseSize >= 11 ? 12 : 11
+        return Math.max(minimum, Math.round(baseSize * scale))
+    }
+
     readonly property var chapters: [
         { id: "preparation", label: "Preparación", short: "DATOS", first: 0, last: 0, color: "#7C3AED" },
         { id: "encoder", label: "Encoder", short: "ENCODER", first: 1, last: 3, color: "#2563EB" },
@@ -309,13 +316,13 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: 9 * root.sy
+        spacing: 5 * root.sy
 
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 48 * root.sy
-            Layout.minimumHeight: 48 * root.sy
-            Layout.maximumHeight: 48 * root.sy
+            Layout.preferredHeight: 38 * root.sy
+            Layout.minimumHeight: 38 * root.sy
+            Layout.maximumHeight: 38 * root.sy
             radius: 10 * root.sx
             color: Style.Theme.chip_fondo
             border.color: Qt.alpha(root.stage.color, 0.55)
@@ -348,7 +355,7 @@ Item {
                 Text {
                     text: (root.stageIndex + 1) + " / " + root.stages.length
                     color: Style.Theme.texto_secundario
-                    font.pixelSize: 10 * root.sx
+                    font.pixelSize: root.fontSize(10, root.sx)
                 }
                 Rectangle {
                     Layout.preferredWidth: scopeText.implicitWidth + 18 * root.sx
@@ -362,7 +369,7 @@ Item {
                         text: root.scopeLabel
                         color: root.scopeColor
                         font.bold: true
-                        font.pixelSize: 9 * root.sx
+                        font.pixelSize: root.fontSize(9, root.sx)
                     }
                 }
             }
@@ -371,9 +378,9 @@ Item {
         RowLayout {
             objectName: "trainingJourneyChapters"
             Layout.fillWidth: true
-            Layout.preferredHeight: 34 * root.sy
-            Layout.minimumHeight: 34 * root.sy
-            Layout.maximumHeight: 34 * root.sy
+            Layout.preferredHeight: 28 * root.sy
+            Layout.minimumHeight: 28 * root.sy
+            Layout.maximumHeight: 28 * root.sy
             spacing: 6 * root.sx
             Repeater {
                 model: root.chapters
@@ -399,13 +406,13 @@ Item {
                             color: chapterCard.index === root.chapterIndex
                                    ? chapterCard.modelData.color : Style.Theme.texto_secundario
                             font.bold: chapterCard.index === root.chapterIndex
-                            font.pixelSize: 9 * root.sx
+                            font.pixelSize: root.fontSize(9, root.sx)
                         }
                         Item { Layout.fillWidth: true }
                         Text {
                             text: (chapterCard.modelData.last - chapterCard.modelData.first + 1) + " pasos"
                             color: Style.Theme.texto_terciario
-                            font.pixelSize: 8 * root.sx
+                            font.pixelSize: root.fontSize(8, root.sx)
                         }
                     }
                     MouseArea {
@@ -422,9 +429,9 @@ Item {
 
         Flickable {
             Layout.fillWidth: true
-            Layout.preferredHeight: 40 * root.sy
-            Layout.minimumHeight: 40 * root.sy
-            Layout.maximumHeight: 40 * root.sy
+            Layout.preferredHeight: 32 * root.sy
+            Layout.minimumHeight: 32 * root.sy
+            Layout.maximumHeight: 32 * root.sy
             contentWidth: stageStrip.implicitWidth
             contentHeight: height
             clip: true
@@ -456,7 +463,7 @@ Item {
                             color: stageChip.index === root.stageIndex
                                    ? stageChip.modelData.color : Style.Theme.texto_secundario
                             font.bold: stageChip.index === root.stageIndex
-                            font.pixelSize: 9 * root.sx
+                            font.pixelSize: root.fontSize(9, root.sx)
                         }
                         MouseArea {
                             anchors.fill: parent
@@ -473,9 +480,9 @@ Item {
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 34 * root.sy
-            Layout.minimumHeight: 34 * root.sy
-            Layout.maximumHeight: 34 * root.sy
+            Layout.preferredHeight: 31 * root.sy
+            Layout.minimumHeight: 31 * root.sy
+            Layout.maximumHeight: 31 * root.sy
             spacing: 7 * root.sx
             SmallButton { label: "↺"; onClicked: root.resetJourney() }
             SmallButton { label: "←"; enabled: root.stageIndex > 0; onClicked: root.setStage(root.stageIndex - 1) }
@@ -490,7 +497,7 @@ Item {
             }
             SmallButton { label: "Siguiente →"; enabled: root.stageIndex < root.stages.length - 1; onClicked: root.setStage(root.stageIndex + 1) }
             Item { Layout.fillWidth: true }
-            Text { text: "Explicación"; color: Style.Theme.texto_secundario; font.pixelSize: 9 * root.sx }
+            Text { text: "Explicación"; color: Style.Theme.texto_secundario; font.pixelSize: root.fontSize(9, root.sx) }
             SelectorPrincipal {
                 Layout.preferredWidth: 135 * root.sx
                 sx: root.sx
@@ -541,10 +548,18 @@ Item {
                 color: Qt.alpha(root.stage.color, 0.07)
                 border.color: Qt.alpha(root.stage.color, 0.35)
 
-                ColumnLayout {
-                    id: explanationPanel
+                ScrollView {
+                    id: explanationScroll
                     anchors.fill: parent
                     anchors.margins: 13 * root.sx
+                    clip: true
+                    contentWidth: availableWidth
+                    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                    ScrollBar.vertical.policy: ScrollBar.AlwaysOff
+
+                    ColumnLayout {
+                    id: explanationPanel
+                    width: explanationScroll.availableWidth
                     spacing: 8 * root.sy
                     Rectangle {
                         Layout.fillWidth: true
@@ -560,7 +575,7 @@ Item {
                             text: "BLOQUE " + (root.chapterIndex + 1) + " · " + root.scopeLabel
                             color: root.scopeColor
                             font.bold: true
-                            font.pixelSize: 9 * root.sx
+                            font.pixelSize: root.fontSize(9, root.sx)
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
                             elide: Text.ElideRight
@@ -627,7 +642,7 @@ Item {
                                                                               : "MATEMÁTICO"))
                         color: root.stage.color
                         font.bold: true
-                        font.pixelSize: 8 * root.sx
+                        font.pixelSize: root.fontSize(8, root.sx)
                     }
                     Text {
                         Layout.fillWidth: true
@@ -635,7 +650,7 @@ Item {
                               : (root.explanationLevel === 1 ? root.stage.technical
                                                              : root.stage.mathematical)
                         color: Style.Theme.texto_secundario_fuerte
-                        font.pixelSize: 11 * root.sx
+                        font.pixelSize: root.fontSize(11, root.sx)
                         wrapMode: Text.WordWrap
                     }
                     Rectangle {
@@ -652,7 +667,7 @@ Item {
                                   ? root.stage.mathematical : root.stage.formula
                             color: root.stage.color
                             font.family: "monospace"
-                            font.pixelSize: 10 * root.sx
+                            font.pixelSize: root.fontSize(10, root.sx)
                             wrapMode: Text.WordWrap
                         }
                     }
@@ -662,9 +677,32 @@ Item {
                         text: "Datos del paso global " + root.globalStep
                               + " · no son valores simulados"
                         color: Style.Theme.texto_terciario
-                        font.pixelSize: 9 * root.sx
+                        font.pixelSize: root.fontSize(9, root.sx)
                         wrapMode: Text.WordWrap
                     }
+                    }
+                }
+
+                Rectangle {
+                    id: explanationScrollIndicator
+                    readonly property real trackHeight: parent.height - 20 * root.sy
+                    readonly property real scrollRange: Math.max(
+                        1, explanationScroll.contentHeight - explanationScroll.availableHeight)
+                    width: Math.max(4, 5 * root.sx)
+                    height: Math.max(30 * root.sy,
+                                     trackHeight * Math.min(
+                                         1, explanationScroll.availableHeight
+                                            / Math.max(1, explanationScroll.contentHeight)))
+                    x: parent.width - width - 5 * root.sx
+                    y: 10 * root.sy
+                       + (trackHeight - height)
+                         * Math.max(0, Math.min(scrollRange,
+                             explanationScroll.contentItem.contentY)) / scrollRange
+                    radius: width / 2
+                    color: Qt.alpha(root.scopeColor, 0.62)
+                    visible: explanationScroll.contentHeight
+                             > explanationScroll.availableHeight + 1
+                    z: 2
                 }
             }
 
@@ -849,7 +887,7 @@ Item {
                             anchors.horizontalCenter: parent.horizontalCenter
                             text: "El recorrido se habilita después de forward, backward y optimizer.step()."
                             color: Style.Theme.texto_secundario
-                            font.pixelSize: 11 * root.sx
+                            font.pixelSize: root.fontSize(11, root.sx)
                         }
                     }
                 }
@@ -873,7 +911,7 @@ Item {
             text: smallButton.text
             color: smallButton.primary ? Style.Theme.texto_sobre_color : Style.Theme.texto_primario
             font.bold: true
-            font.pixelSize: 9 * root.sx
+            font.pixelSize: root.fontSize(9, root.sx)
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
         }
@@ -906,14 +944,14 @@ Item {
                 text: stageFact.label
                 color: stageFact.accent
                 font.bold: true
-                font.pixelSize: 8 * stageFact.sx
+                font.pixelSize: root.fontSize(8, stageFact.sx)
             }
             Text {
                 Layout.fillWidth: true
                 text: stageFact.value
                 color: Style.Theme.texto_secundario_fuerte
                 wrapMode: Text.WordWrap
-                font.pixelSize: 9 * stageFact.sx
+                font.pixelSize: root.fontSize(9, stageFact.sx)
             }
         }
     }
@@ -931,8 +969,8 @@ Item {
         Column {
             anchors.centerIn: parent
             spacing: 1
-            Text { id: pillText; anchors.horizontalCenter: parent.horizontalCenter; text: tokenPill.label; color: tokenPill.accent; font.bold: true; font.pixelSize: 10 * root.sx }
-            Text { anchors.horizontalCenter: parent.horizontalCenter; text: tokenPill.caption; color: Style.Theme.texto_terciario; font.pixelSize: 8 * root.sx }
+            Text { id: pillText; anchors.horizontalCenter: parent.horizontalCenter; text: tokenPill.label; color: tokenPill.accent; font.bold: true; font.pixelSize: root.fontSize(10, root.sx) }
+            Text { anchors.horizontalCenter: parent.horizontalCenter; text: tokenPill.caption; color: Style.Theme.texto_terciario; font.pixelSize: root.fontSize(8, root.sx) }
         }
     }
 
@@ -959,7 +997,7 @@ Item {
             text: compactToken.label
             color: compactToken.accent
             font.bold: true
-            font.pixelSize: 9 * compactToken.scaleX
+            font.pixelSize: root.fontSize(9, compactToken.scaleX)
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
             elide: Text.ElideRight
@@ -983,7 +1021,7 @@ Item {
                 text: shiftBand.title
                 color: shiftBand.accent
                 font.bold: true
-                font.pixelSize: 8 * shiftBand.sx
+                font.pixelSize: root.fontSize(8, shiftBand.sx)
                 elide: Text.ElideRight
             }
             Flickable {
@@ -1037,7 +1075,7 @@ Item {
                     text: "Estas tres secuencias provienen del mismo ejemplo. PAD se excluye de las longitudes, la loss y la visualización."
                     color: Style.Theme.info_texto
                     wrapMode: Text.WordWrap
-                    font.pixelSize: 10 * tokenOverview.sx
+                    font.pixelSize: root.fontSize(10, tokenOverview.sx)
                 }
             }
             Item { Layout.fillHeight: true }
@@ -1056,7 +1094,7 @@ Item {
         Column {
             anchors.fill: parent
             spacing: 6 * sequenceRow.sy
-            Text { text: sequenceRow.title; color: sequenceRow.accent; font.bold: true; font.pixelSize: 9 * sequenceRow.sx }
+            Text { text: sequenceRow.title; color: sequenceRow.accent; font.bold: true; font.pixelSize: root.fontSize(9, sequenceRow.sx) }
             Flickable {
                 width: parent.width
                 height: 51 * sequenceRow.sy
@@ -1117,7 +1155,7 @@ Item {
                 Layout.fillWidth: true
                 Text { text: pcaScene.beforeLabel + "  →  " + pcaScene.afterLabel; color: Style.Theme.texto_primario; font.bold: true; font.pixelSize: 14 * pcaScene.sx }
                 Item { Layout.fillWidth: true }
-                Text { text: "PCA conjunto · varianza " + Math.round(Number(pcaScene.projection.varianza_conservada || 0) * 100) + "%"; color: Style.Theme.texto_secundario; font.pixelSize: 9 * pcaScene.sx }
+                Text { text: "PCA conjunto · varianza " + Math.round(Number(pcaScene.projection.varianza_conservada || 0) * 100) + "%"; color: Style.Theme.texto_secundario; font.pixelSize: root.fontSize(9, pcaScene.sx) }
             }
             Canvas {
                 id: chart
@@ -1147,7 +1185,7 @@ Item {
                 text: "PCA solo proyecta para dibujar. La operación real ocurrió en " + Number(pcaScene.projection.dimension_original || 0) + " dimensiones."
                 color: Style.Theme.aviso_texto
                 horizontalAlignment: Text.AlignHCenter
-                font.pixelSize: 9 * pcaScene.sx
+                font.pixelSize: root.fontSize(9, pcaScene.sx)
             }
         }
     }
@@ -1169,13 +1207,13 @@ Item {
                     text: "SHIFT · DESPLAZAMIENTO DE UNA POSICIÓN"
                     color: Style.Theme.aviso_texto
                     font.bold: true
-                    font.pixelSize: 10 * teacherScene.sx
+                    font.pixelSize: root.fontSize(10, teacherScene.sx)
                 }
                 Item { Layout.fillWidth: true }
                 Text {
                     text: "mismo ancho = misma posición"
                     color: Style.Theme.texto_terciario
-                    font.pixelSize: 8 * teacherScene.sx
+                    font.pixelSize: root.fontSize(8, teacherScene.sx)
                 }
             }
             Rectangle {
@@ -1209,7 +1247,7 @@ Item {
                 text: "PREFIJO QUE PUEDE VER  →  TOKEN QUE DEBE PREDECIR"
                 color: Style.Theme.texto_secundario
                 font.bold: true
-                font.pixelSize: 9 * teacherScene.sx
+                font.pixelSize: root.fontSize(9, teacherScene.sx)
             }
             ListView {
                 objectName: "teacherForcingRows"
@@ -1236,7 +1274,7 @@ Item {
                             Layout.preferredWidth: 27 * teacherScene.sx
                             text: "t=" + (forcingRow.index + 1)
                             color: Style.Theme.texto_terciario
-                            font.pixelSize: 8 * teacherScene.sx
+                            font.pixelSize: root.fontSize(8, teacherScene.sx)
                         }
                         Flickable {
                             Layout.fillWidth: true
@@ -1282,7 +1320,7 @@ Item {
                 Layout.fillWidth: true
                 text: "BOS inicia el decoder; EOS cierra el objetivo. La máscara causal impide consultar posiciones futuras."
                 color: Style.Theme.texto_secundario
-                font.pixelSize: 8 * teacherScene.sx
+                font.pixelSize: root.fontSize(8, teacherScene.sx)
                 wrapMode: Text.WordWrap
             }
         }
@@ -1303,7 +1341,7 @@ Item {
                 Layout.fillWidth: true
                 Text { text: maskScene.maskData.activa ? "Máscara causal real" : "Máscara causal desactivada (experimento)"; color: maskScene.maskData.activa ? Style.Theme.error_texto : Style.Theme.aviso_texto; font.bold: true; font.pixelSize: 14 * maskScene.sx }
                 Item { Layout.fillWidth: true }
-                Text { text: Number(maskScene.maskData.porcentaje_bloqueado || 0).toFixed(1) + "% bloqueado"; color: Style.Theme.texto_secundario; font.pixelSize: 10 * maskScene.sx }
+                Text { text: Number(maskScene.maskData.porcentaje_bloqueado || 0).toFixed(1) + "% bloqueado"; color: Style.Theme.texto_secundario; font.pixelSize: root.fontSize(10, maskScene.sx) }
             }
             Canvas {
                 id: maskCanvas
@@ -1400,17 +1438,17 @@ Item {
                     id: predictionRow
                     required property var modelData
                     Layout.fillWidth: true; Layout.preferredHeight: 39 * predictionScene.sy; spacing: 8 * predictionScene.sx
-                    Text { Layout.preferredWidth: 28 * predictionScene.sx; text: "#" + predictionRow.modelData.rango; color: Style.Theme.texto_terciario; font.pixelSize: 9 * predictionScene.sx }
-                    Text { Layout.preferredWidth: 115 * predictionScene.sx; text: "“" + predictionRow.modelData.texto + "”"; color: predictionRow.modelData.esperado ? Style.Theme.exito_texto : Style.Theme.texto_primario; font.bold: true; elide: Text.ElideRight; font.pixelSize: 11 * predictionScene.sx }
+                    Text { Layout.preferredWidth: 28 * predictionScene.sx; text: "#" + predictionRow.modelData.rango; color: Style.Theme.texto_terciario; font.pixelSize: root.fontSize(9, predictionScene.sx) }
+                    Text { Layout.preferredWidth: 115 * predictionScene.sx; text: "“" + predictionRow.modelData.texto + "”"; color: predictionRow.modelData.esperado ? Style.Theme.exito_texto : Style.Theme.texto_primario; font.bold: true; elide: Text.ElideRight; font.pixelSize: root.fontSize(11, predictionScene.sx) }
                     Rectangle {
                         Layout.fillWidth: true; Layout.preferredHeight: 16 * predictionScene.sy; radius: height / 2; color: Style.Theme.borde_medio
                         Rectangle { width: parent.width * Number(predictionRow.modelData.probabilidad || 0) / predictionScene.maximum; height: parent.height; radius: parent.radius; color: predictionRow.modelData.esperado ? Style.Theme.success : "#0F766E"; Behavior on width { NumberAnimation { duration: 420 } } }
                     }
-                    Text { Layout.preferredWidth: 62 * predictionScene.sx; text: (Number(predictionRow.modelData.probabilidad || 0) * 100).toFixed(2) + "%"; color: Style.Theme.texto_secundario; horizontalAlignment: Text.AlignRight; font.pixelSize: 10 * predictionScene.sx }
+                    Text { Layout.preferredWidth: 62 * predictionScene.sx; text: (Number(predictionRow.modelData.probabilidad || 0) * 100).toFixed(2) + "%"; color: Style.Theme.texto_secundario; horizontalAlignment: Text.AlignRight; font.pixelSize: root.fontSize(10, predictionScene.sx) }
                 }
             }
             Item { Layout.fillHeight: true }
-            Text { Layout.fillWidth: true; text: "El objetivo se marca en verde solo si aparece en Top‑5; su probabilidad exacta siempre se usa para calcular la loss."; color: Style.Theme.texto_secundario; wrapMode: Text.WordWrap; font.pixelSize: 9 * predictionScene.sx }
+            Text { Layout.fillWidth: true; text: "El objetivo se marca en verde solo si aparece en Top‑5; su probabilidad exacta siempre se usa para calcular la loss."; color: Style.Theme.texto_secundario; wrapMode: Text.WordWrap; font.pixelSize: root.fontSize(9, predictionScene.sx) }
         }
     }
 
@@ -1443,9 +1481,9 @@ Item {
         Layout.fillWidth: true; Layout.preferredHeight: 130 * sy; radius: 11 * sx
         color: Qt.alpha(accent, 0.09); border.color: Qt.alpha(accent, 0.4)
         Column { anchors.centerIn: parent; width: parent.width - 16 * metricCard.sx; spacing: 7 * metricCard.sy
-            Text { width: parent.width; text: metricCard.title; color: metricCard.accent; font.bold: true; horizontalAlignment: Text.AlignHCenter; font.pixelSize: 9 * metricCard.sx; wrapMode: Text.WordWrap }
+            Text { width: parent.width; text: metricCard.title; color: metricCard.accent; font.bold: true; horizontalAlignment: Text.AlignHCenter; font.pixelSize: root.fontSize(9, metricCard.sx); wrapMode: Text.WordWrap }
             Text { width: parent.width; text: metricCard.value; color: Style.Theme.texto_primario; font.bold: true; horizontalAlignment: Text.AlignHCenter; font.pixelSize: 18 * metricCard.sx; elide: Text.ElideRight }
-            Text { width: parent.width; text: metricCard.detail; color: Style.Theme.texto_secundario; horizontalAlignment: Text.AlignHCenter; font.pixelSize: 9 * metricCard.sx; wrapMode: Text.WordWrap }
+            Text { width: parent.width; text: metricCard.detail; color: Style.Theme.texto_secundario; horizontalAlignment: Text.AlignHCenter; font.pixelSize: root.fontSize(9, metricCard.sx); wrapMode: Text.WordWrap }
         }
     }
 
@@ -1473,7 +1511,7 @@ Item {
                             Layout.fillWidth: true; Layout.preferredHeight: 67 * backpropScene.sy; radius: 9 * backpropScene.sx
                             color: Qt.alpha(backpropBlock.index === 5 ? "#DC2626" : "#9333EA", 0.08 + 0.10 * Math.abs(Math.sin((backpropScene.pulse + backpropBlock.index / 6) * Math.PI)))
                             border.color: backpropBlock.index === 5 ? "#DC2626" : "#9333EA"
-                            Text { anchors.centerIn: parent; width: parent.width - 8; text: backpropBlock.modelData; color: backpropBlock.index === 5 ? "#DC2626" : "#9333EA"; font.bold: true; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap; font.pixelSize: 9 * root.sx }
+                            Text { anchors.centerIn: parent; width: parent.width - 8; text: backpropBlock.modelData; color: backpropBlock.index === 5 ? "#DC2626" : "#9333EA"; font.bold: true; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap; font.pixelSize: root.fontSize(9, root.sx) }
                         }
                         Text { visible: backpropBlock.index < 5; text: "←"; color: "#9333EA"; font.bold: true; font.pixelSize: 17 * root.sx }
                     }
@@ -1493,9 +1531,9 @@ Item {
         ColumnLayout {
             anchors.fill: parent; spacing: 7 * gradientScene.sy
             RowLayout { Layout.fillWidth: true
-                Text { text: "FAMILIA DE PARÁMETROS"; Layout.preferredWidth: 190 * gradientScene.sx; color: Style.Theme.texto_secundario; font.bold: true; font.pixelSize: 8 * gradientScene.sx }
-                Text { text: "NORMA L2 DEL GRADIENTE"; Layout.fillWidth: true; color: Style.Theme.texto_secundario; font.bold: true; font.pixelSize: 8 * gradientScene.sx }
-                Text { text: "RMS"; Layout.preferredWidth: 74 * gradientScene.sx; color: Style.Theme.texto_secundario; font.bold: true; font.pixelSize: 8 * gradientScene.sx }
+                Text { text: "FAMILIA DE PARÁMETROS"; Layout.preferredWidth: 190 * gradientScene.sx; color: Style.Theme.texto_secundario; font.bold: true; font.pixelSize: root.fontSize(8, gradientScene.sx) }
+                Text { text: "NORMA L2 DEL GRADIENTE"; Layout.fillWidth: true; color: Style.Theme.texto_secundario; font.bold: true; font.pixelSize: root.fontSize(8, gradientScene.sx) }
+                Text { text: "RMS"; Layout.preferredWidth: 74 * gradientScene.sx; color: Style.Theme.texto_secundario; font.bold: true; font.pixelSize: root.fontSize(8, gradientScene.sx) }
             }
             ListView {
                 Layout.fillWidth: true; Layout.fillHeight: true; clip: true; spacing: 5 * gradientScene.sy; model: gradientScene.updates
@@ -1503,11 +1541,11 @@ Item {
                     id: gradientRow
                     required property var modelData
                     width: ListView.view.width; height: 31 * gradientScene.sy; spacing: 8 * gradientScene.sx
-                    Text { Layout.preferredWidth: 190 * gradientScene.sx; text: gradientRow.modelData.etiqueta; color: Style.Theme.texto_primario; elide: Text.ElideRight; font.pixelSize: 9 * gradientScene.sx }
+                    Text { Layout.preferredWidth: 190 * gradientScene.sx; text: gradientRow.modelData.etiqueta; color: Style.Theme.texto_primario; elide: Text.ElideRight; font.pixelSize: root.fontSize(9, gradientScene.sx) }
                     Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 12 * gradientScene.sy; radius: height / 2; color: Style.Theme.borde_medio
                         Rectangle { width: parent.width * Math.min(1, Number(gradientRow.modelData.gradiente_norma_l2 || 0) / Math.max(1e-12, gradientScene.maximum)); height: parent.height; radius: parent.radius; color: "#C026D3" }
                     }
-                    Text { Layout.preferredWidth: 74 * gradientScene.sx; text: root.number(gradientRow.modelData.gradiente_rms, 2); color: Style.Theme.texto_secundario; horizontalAlignment: Text.AlignRight; font.pixelSize: 8 * gradientScene.sx }
+                    Text { Layout.preferredWidth: 74 * gradientScene.sx; text: root.number(gradientRow.modelData.gradiente_rms, 2); color: Style.Theme.texto_secundario; horizontalAlignment: Text.AlignRight; font.pixelSize: root.fontSize(8, gradientScene.sx) }
                 }
             }
         }
@@ -1525,9 +1563,9 @@ Item {
         ColumnLayout {
             anchors.fill: parent; spacing: 12 * optimizerScene.sy
             RowLayout { Layout.fillWidth: true
-                Text { text: "Parámetro inspeccionado"; color: Style.Theme.texto_secundario; font.pixelSize: 10 * optimizerScene.sx }
+                Text { text: "Parámetro inspeccionado"; color: Style.Theme.texto_secundario; font.pixelSize: root.fontSize(10, optimizerScene.sx) }
                 SelectorPrincipal { Layout.fillWidth: true; sx: root.sx; sy: root.sy; model: optimizerScene.updates.map(function(item) { return item.etiqueta }); currentIndex: optimizerScene.selectedIndex; onActivated: function(index) { optimizerScene.selected(index) } }
-                Text { text: String(optimizerScene.optimizer.nombre || "—") + " · LR " + root.number(optimizerScene.optimizer.tasa_aprendizaje, 2); color: "#047857"; font.bold: true; font.pixelSize: 10 * optimizerScene.sx }
+                Text { text: String(optimizerScene.optimizer.nombre || "—") + " · LR " + root.number(optimizerScene.optimizer.tasa_aprendizaje, 2); color: "#047857"; font.bold: true; font.pixelSize: root.fontSize(10, optimizerScene.sx) }
             }
             RowLayout {
                 Layout.fillWidth: true; Layout.fillHeight: true; spacing: 8 * optimizerScene.sx
@@ -1548,9 +1586,9 @@ Item {
                       : ""
                 color: Style.Theme.texto_secundario
                 wrapMode: Text.WordWrap
-                font.pixelSize: 9 * optimizerScene.sx
+                font.pixelSize: root.fontSize(9, optimizerScene.sx)
             }
-            Text { Layout.fillWidth: true; text: optimizerScene.optimizer.advertencia || ""; color: Style.Theme.aviso_texto; wrapMode: Text.WordWrap; font.pixelSize: 9 * optimizerScene.sx }
+            Text { Layout.fillWidth: true; text: optimizerScene.optimizer.advertencia || ""; color: Style.Theme.aviso_texto; wrapMode: Text.WordWrap; font.pixelSize: root.fontSize(9, optimizerScene.sx) }
         }
     }
 
@@ -1566,7 +1604,7 @@ Item {
             RowLayout { Layout.fillWidth: true
                 Text { text: "Pérdida observada durante el entrenamiento"; color: Style.Theme.texto_primario; font.bold: true; font.pixelSize: 14 * evolution.sx }
                 Item { Layout.fillWidth: true }
-                Text { text: evolution.history.length + " batches · actual " + Number(evolution.batchLoss).toFixed(4); color: "#1D4ED8"; font.bold: true; font.pixelSize: 10 * evolution.sx }
+                Text { text: evolution.history.length + " batches · actual " + Number(evolution.batchLoss).toFixed(4); color: "#1D4ED8"; font.bold: true; font.pixelSize: root.fontSize(10, evolution.sx) }
             }
             Canvas {
                 id: lossCanvas
@@ -1589,7 +1627,7 @@ Item {
                     ctx.fillText(max.toFixed(3), 2, 18); ctx.fillText(min.toFixed(3), 2, height - pad)
                 }
             }
-            Text { Layout.fillWidth: true; text: "Una subida local no implica que Adam haya aprendido al revés: el siguiente batch puede contener tokens más difíciles."; color: Style.Theme.texto_secundario; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap; font.pixelSize: 9 * evolution.sx }
+            Text { Layout.fillWidth: true; text: "Una subida local no implica que Adam haya aprendido al revés: el siguiente batch puede contener tokens más difíciles."; color: Style.Theme.texto_secundario; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap; font.pixelSize: root.fontSize(9, evolution.sx) }
         }
     }
 }

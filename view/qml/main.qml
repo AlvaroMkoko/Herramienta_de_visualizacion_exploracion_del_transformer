@@ -10,6 +10,9 @@ ApplicationWindow {
     visible: true
     width: Style.Theme.baseWidth
     height: Style.Theme.baseHeight
+    minimumWidth: Style.Theme.baseWidth
+    minimumHeight: Style.Theme.baseHeight
+    title: "Visualizador de Transformers"
 
     StackView {
         id: stack

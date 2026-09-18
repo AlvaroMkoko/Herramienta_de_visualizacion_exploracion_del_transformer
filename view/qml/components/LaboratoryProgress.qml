@@ -7,6 +7,7 @@ Rectangle {
     property int currentStep: 0
     property real sx: 1
     property real sy: 1
+    property bool compact: false
 
     readonly property int totalSteps: 3
     readonly property int normalizedCurrentStep: Math.max(
@@ -38,10 +39,12 @@ Rectangle {
         anchors.rightMargin: 20 * root.sx
         sx: root.sx
         sy: root.sy
-        baseCircleSize: 34
-        baseCircleSizeActive: 40
-        baseFontSize: 15
-        baseFontSizeActive: 16
+        baseCircleSize: root.compact ? 30 : 34
+        baseCircleSizeActive: root.compact ? 34 : 40
+        baseFontSize: root.compact ? 13 : 15
+        baseFontSizeActive: root.compact ? 14 : 16
+        baseVerticalPadding: root.compact ? 4 : 6
+        baseColumnSpacing: root.compact ? 4 : 6
         model: [
             {
                 title: root.stepTitles[0],

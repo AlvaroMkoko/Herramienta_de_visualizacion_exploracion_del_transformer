@@ -50,7 +50,8 @@ QtObject {
         "acento_suave":      "#EDE9FE",
 
         // ===== Neutros (los más repetidos: 58, 42, 36, 34, 27, 20 usos) =====
-        "texto_terciario":   "#94A3B8",
+        // Conserva contraste AA incluso sobre el extremo lavanda del fondo.
+        "texto_terciario":   "#526072",
         "divisor":           "#E5E7EB",
         "superficie_alterna":"#F8FAFC",
         "borde_suave":       "#CBD5E1",

@@ -24,15 +24,15 @@ PagePrincipal {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.leftMargin: 52 * root.sx
-        anchors.rightMargin: 52 * root.sx
-        anchors.topMargin: 34 * root.sy
-        anchors.bottomMargin: 38 * root.sy
-        spacing: 22 * root.sy
+        anchors.leftMargin: 40 * root.sx
+        anchors.rightMargin: 40 * root.sx
+        anchors.topMargin: 28 * root.sy
+        anchors.bottomMargin: 30 * root.sy
+        spacing: 16 * root.sy
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 82 * root.sy
+            Layout.preferredHeight: 74 * root.sy
             spacing: 20 * root.sx
 
             BotonPrincipal {
@@ -91,14 +91,14 @@ PagePrincipal {
                 objectName: "evaluationIntroContentCard"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.minimumWidth: 760 * root.sx
+                Layout.minimumWidth: 650 * root.sx
                 sx: root.sx
                 sy: root.sy
 
                 ColumnLayout {
                     anchors.fill: parent
-                    anchors.margins: 34 * root.sx
-                    spacing: 18 * root.sy
+                    anchors.margins: 24 * root.sx
+                    spacing: 12 * root.sy
 
                     Text {
                         Layout.fillWidth: true
@@ -152,7 +152,7 @@ PagePrincipal {
                             id: dimensionCard
                             required property var modelData
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 66 * root.sy
+                            Layout.preferredHeight: 54 * root.sy
                             radius: 9 * root.sx
                             color: Style.Theme.superficie_alterna
                             border.color: Style.Theme.borde_medio
@@ -192,15 +192,16 @@ PagePrincipal {
             }
 
             RectanglePrincipal {
-                Layout.preferredWidth: 600 * root.sx
+                Layout.preferredWidth: 400 * root.sx
+                Layout.minimumWidth: 360 * root.sx
                 Layout.fillHeight: true
                 sx: root.sx
                 sy: root.sy
 
                 ColumnLayout {
                     anchors.fill: parent
-                    anchors.margins: 32 * root.sx
-                    spacing: 18 * root.sy
+                    anchors.margins: 24 * root.sx
+                    spacing: 12 * root.sy
 
                     Text { text: "Antes de comenzar"; color: Style.Theme.texto_primario; font.pixelSize: 25 * root.sx; font.bold: true }
 
@@ -229,7 +230,7 @@ PagePrincipal {
 
                     Rectangle {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 96 * root.sy
+                        Layout.preferredHeight: 86 * root.sy
                         radius: 10 * root.sx
                         color: Style.Theme.chip_fondo
                         border.color: Style.Theme.chip_borde
@@ -288,7 +289,7 @@ PagePrincipal {
                     BotonPrincipal {
                         objectName: "evaluationStartButton"
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 58 * root.sy
+                        Layout.preferredHeight: 52 * root.sy
                         minimum_text_size: 13
                         text: root.evaluationController.hasPreviousResult
                               ? "Repetir " + root.evaluationController.title.toLowerCase()

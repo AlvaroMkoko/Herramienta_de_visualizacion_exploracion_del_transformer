@@ -15,11 +15,11 @@ Page {
     property string helpPanelObjectName: "theoryHelpPanel"
     readonly property bool theoryModalOpened: theoryHelpModal.opened
 
-    // // Resolución base del diseño
-    readonly property real baseWidth: 1920
-    readonly property real baseHeight: 1080
-    // readonly property real baseWidth: 1280
-    // readonly property real baseHeight: 820
+    // Resolución base real de la ventana. Mantener estos valores alineados
+    // con Theme evita que una fuente de 12 px termine renderizándose a 7–8 px
+    // al abrir la aplicación con su tamaño predeterminado.
+    readonly property real baseWidth: Style.Theme.baseWidth
+    readonly property real baseHeight: Style.Theme.baseHeight
 
     // Factores de escala
     readonly property real sx: width / baseWidth
