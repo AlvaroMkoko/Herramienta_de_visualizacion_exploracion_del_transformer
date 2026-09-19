@@ -32,7 +32,7 @@ Rectangle {
     radius: 14 * scaleFactor
     color: Style.Theme.surface
     border.width: 1
-    border.color: Style.Theme.acento_fondo
+    border.color: Style.Theme.borde_medio
     clip: true
 
     ColumnLayout {
@@ -108,8 +108,8 @@ Rectangle {
                     width: parent.width
                     height: visible ? errorLabel.implicitHeight + 22 * root.scaleFactor : 0
                     radius: 8 * root.scaleFactor
-                    color: Style.Theme.chip_fondo
-                    border.color: "#FCA5A5"
+                    color: Style.Theme.error_fondo
+                    border.color: Style.Theme.error
 
                     Text {
                         id: errorLabel
@@ -136,8 +136,17 @@ Rectangle {
                     width: parent.width
                     height: visible ? intuitionColumn.implicitHeight + 22 * root.scaleFactor : 0
                     radius: 9 * root.scaleFactor
-                    color: Style.Theme.acento_fondo
-                    border.color: Style.Theme.acento_fondo
+                    color: Style.Theme.concepto_fondo
+                    border.color: Qt.alpha(Style.Theme.concepto_texto, 0.38)
+
+                    Rectangle {
+                        anchors.left: parent.left
+                        anchors.top: parent.top
+                        anchors.bottom: parent.bottom
+                        width: 4 * root.scaleFactor
+                        radius: 2 * root.scaleFactor
+                        color: Style.Theme.concepto_texto
+                    }
 
                     Column {
                         id: intuitionColumn
@@ -150,7 +159,7 @@ Rectangle {
                         Text {
                             width: parent.width
                             text: "IDEA CLAVE"
-                            color: Style.Theme.acento
+                            color: Style.Theme.concepto_texto
                             font.bold: true
                             font.pixelSize: 10 * root.scaleFactor
                         }
@@ -158,7 +167,7 @@ Rectangle {
                         Text {
                             width: parent.width
                             text: root.textFor("intuition")
-                            color: Style.Theme.acento_fuerte
+                            color: Style.Theme.concepto_texto
                             font.italic: true
                             font.pixelSize: 12 * root.scaleFactor
                             wrapMode: Text.WordWrap
@@ -172,8 +181,8 @@ Rectangle {
                     width: parent.width
                     height: visible ? formulaColumn.implicitHeight + 22 * root.scaleFactor : 0
                     radius: 9 * root.scaleFactor
-                    color: Style.Theme.superficie_alterna
-                    border.color: Style.Theme.borde_medio
+                    color: Style.Theme.formula_fondo
+                    border.color: Qt.alpha(Style.Theme.formula_texto, 0.42)
 
                     Column {
                         id: formulaColumn
@@ -185,9 +194,17 @@ Rectangle {
 
                         Text {
                             width: parent.width
+                            text: "FÓRMULA / NOTACIÓN"
+                            color: Style.Theme.formula_texto
+                            font.bold: true
+                            font.pixelSize: 10 * root.scaleFactor
+                        }
+
+                        Text {
+                            width: parent.width
                             visible: root.textFor("formula") !== ""
                             text: root.textFor("formula")
-                            color: Style.Theme.acento_fuerte
+                            color: Style.Theme.formula_texto
                             font.family: "monospace"
                             font.pixelSize: 12 * root.scaleFactor
                             wrapMode: Text.WrapAnywhere
@@ -204,74 +221,99 @@ Rectangle {
                     }
                 }
 
-                Column {
+                Rectangle {
                     visible: root.stepsForConcept().length > 0
                     width: parent.width
-                    spacing: 6 * root.scaleFactor
+                    height: visible ? stepsColumn.implicitHeight + 22 * root.scaleFactor : 0
+                    radius: 9 * root.scaleFactor
+                    color: Style.Theme.proceso_fondo
+                    border.color: Qt.alpha(Style.Theme.proceso_texto, 0.38)
 
-                    Text {
-                        width: parent.width
-                        text: "PASO A PASO"
-                        color: "#25846A"
-                        font.bold: true
-                        font.pixelSize: 10 * root.scaleFactor
-                    }
+                    Column {
+                        id: stepsColumn
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.margins: 11 * root.scaleFactor
+                        spacing: 6 * root.scaleFactor
 
-                    Repeater {
-                        model: root.stepsForConcept()
-
-                        delegate: RowLayout {
-                            id: stepDelegate
-                            required property var modelData
-                            required property int index
+                        Text {
                             width: parent.width
-                            spacing: 8 * root.scaleFactor
+                            text: "PASO A PASO"
+                            color: Style.Theme.proceso_texto
+                            font.bold: true
+                            font.pixelSize: 10 * root.scaleFactor
+                        }
 
-                            Rectangle {
-                                Layout.preferredWidth: 22 * root.scaleFactor
-                                Layout.preferredHeight: 22 * root.scaleFactor
-                                radius: width / 2
-                                color: Style.Theme.chip_fondo
+                        Repeater {
+                            model: root.stepsForConcept()
+
+                            delegate: RowLayout {
+                                id: stepDelegate
+                                required property var modelData
+                                required property int index
+                                width: parent.width
+                                spacing: 8 * root.scaleFactor
+
+                                Rectangle {
+                                    Layout.preferredWidth: 22 * root.scaleFactor
+                                    Layout.preferredHeight: 22 * root.scaleFactor
+                                    radius: width / 2
+                                    color: Style.Theme.surface
+                                    border.color: Style.Theme.proceso_texto
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: String(stepDelegate.index + 1)
+                                        color: Style.Theme.proceso_texto
+                                        font.bold: true
+                                        font.pixelSize: 10 * root.scaleFactor
+                                    }
+                                }
 
                                 Text {
-                                    anchors.centerIn: parent
-                                    text: String(stepDelegate.index + 1)
-                                    color: "#26725D"
-                                    font.bold: true
-                                    font.pixelSize: 10 * root.scaleFactor
+                                    Layout.fillWidth: true
+                                    text: String(stepDelegate.modelData)
+                                    color: Style.Theme.texto_primario
+                                    font.pixelSize: 11 * root.scaleFactor
+                                    wrapMode: Text.WordWrap
                                 }
-                            }
-
-                            Text {
-                                Layout.fillWidth: true
-                                text: String(stepDelegate.modelData)
-                                color: Style.Theme.texto_primario
-                                font.pixelSize: 11 * root.scaleFactor
-                                wrapMode: Text.WordWrap
                             }
                         }
                     }
                 }
 
-                Column {
+                Rectangle {
                     visible: root.textFor("example") !== ""
                     width: parent.width
-                    spacing: 5 * root.scaleFactor
+                    height: visible ? exampleColumn.implicitHeight + 22 * root.scaleFactor : 0
+                    radius: 9 * root.scaleFactor
+                    color: Style.Theme.ejemplo_fondo
+                    border.color: Qt.alpha(Style.Theme.ejemplo_texto, 0.38)
 
-                    Text {
-                        width: parent.width
-                        text: "EJEMPLO"
-                        color: "#3979B7"
-                        font.bold: true
-                        font.pixelSize: 10 * root.scaleFactor
-                    }
+                    Column {
+                        id: exampleColumn
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.margins: 11 * root.scaleFactor
+                        spacing: 5 * root.scaleFactor
 
-                    Text {
-                        width: parent.width
-                        text: root.textFor("example")
-                        color: Style.Theme.texto_secundario
-                        font.pixelSize: 11 * root.scaleFactor
-                        wrapMode: Text.WordWrap
+                        Text {
+                            width: parent.width
+                            text: "EJEMPLO"
+                            color: Style.Theme.ejemplo_texto
+                            font.bold: true
+                            font.pixelSize: 10 * root.scaleFactor
+                        }
+
+                        Text {
+                            width: parent.width
+                            text: root.textFor("example")
+                            color: Style.Theme.texto_secundario_fuerte
+                            font.pixelSize: 11 * root.scaleFactor
+                            wrapMode: Text.WordWrap
+                        }
                     }
                 }
 

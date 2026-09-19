@@ -116,7 +116,9 @@ Item {
                     local: true,
                     valueLabel: "Q",
                     columnOffset: 0,
-                    accent: "#2563EB"
+                    accent: Style.Theme.matriz_query,
+                    fill: Style.Theme.matriz_query_fondo,
+                    conceptText: Style.Theme.matriz_query_texto
                 },
                 {
                     id: "k",
@@ -127,7 +129,9 @@ Item {
                     local: true,
                     valueLabel: "K",
                     columnOffset: 0,
-                    accent: Style.Theme.warning
+                    accent: Style.Theme.matriz_key,
+                    fill: Style.Theme.matriz_key_fondo,
+                    conceptText: Style.Theme.matriz_key_texto
                 },
                 {
                     id: "v",
@@ -138,7 +142,9 @@ Item {
                     local: true,
                     valueLabel: "V",
                     columnOffset: 0,
-                    accent: Style.Theme.acento
+                    accent: Style.Theme.matriz_value,
+                    fill: Style.Theme.matriz_value_fondo,
+                    conceptText: Style.Theme.matriz_value_texto
                 }
             ]
         }
@@ -411,7 +417,8 @@ Item {
                     Layout.minimumWidth: 220 * root.sx
                     Layout.minimumHeight: 210 * root.sy
                     radius: 11 * root.sx
-                    color: Style.Theme.surface
+                    color: matrixCard.modelData.fill !== undefined
+                           ? matrixCard.modelData.fill : Style.Theme.surface
                     border.color: revealed ? modelData.accent : Style.Theme.borde_suave
                     border.width: revealed ? 1.5 : 1
                     opacity: revealed ? 1 : 0.16
@@ -459,7 +466,9 @@ Item {
                                 Text {
                                     Layout.fillWidth: true
                                     text: matrixCard.modelData.title
-                                    color: Style.Theme.texto_primario
+                                    color: matrixCard.modelData.conceptText !== undefined
+                                           ? matrixCard.modelData.conceptText
+                                           : Style.Theme.texto_primario
                                     font.bold: true
                                     font.pixelSize: 10 * root.sx
                                     elide: Text.ElideRight

@@ -53,38 +53,37 @@ Item {
         return isFinite(result) ? result : 1
     }
 
-    function mix(a, b, amount) {
-        return Math.round(a + (b - a) * Math.max(0, Math.min(1, amount)))
-    }
-
-    function rgb(r, g, b) {
-        return "rgb(" + r + "," + g + "," + b + ")"
-    }
-
     function colorFor(value) {
         if (root.colorMode === "mask")
-            return Number(value) > 0 ? "#FFFFFF" : Style.Theme.borde_suave
+            return Number(value) > 0 ? Style.Theme.surface : Style.Theme.borde_suave
 
         var minimum = root.localScale ? root.dataMinimum : root.globalMinimum
         var maximum = root.localScale ? root.dataMaximum : root.globalMaximum
         if (root.colorMode === "diverging") {
             var limit = Math.max(Math.abs(minimum), Math.abs(maximum), 1e-12)
             var signed = Math.max(-1, Math.min(1, Number(value) / limit))
-            if (signed < 0) {
-                var negative = -signed
-                return root.rgb(root.mix(255, 0, negative),
-                                root.mix(255, 114, negative),
-                                root.mix(255, 178, negative))
-            }
-            return root.rgb(root.mix(255, 213, signed),
-                            root.mix(255, 94, signed),
-                            root.mix(255, 0, signed))
+            if (signed <= -0.60)
+                return Style.Theme.escala_div_neg2
+            if (signed < -0.12)
+                return Style.Theme.escala_div_neg1
+            if (signed <= 0.12)
+                return Style.Theme.escala_div_cero
+            if (signed < 0.60)
+                return Style.Theme.escala_div_pos1
+            return Style.Theme.escala_div_pos2
         }
 
         var normalized = (Number(value) - minimum) / Math.max(maximum - minimum, 1e-12)
-        return root.rgb(root.mix(255, 0, normalized),
-                        root.mix(255, 114, normalized),
-                        root.mix(255, 178, normalized))
+        normalized = Math.max(0, Math.min(1, normalized))
+        if (normalized < 0.20)
+            return Style.Theme.escala_sec_0
+        if (normalized < 0.40)
+            return Style.Theme.escala_sec_1
+        if (normalized < 0.60)
+            return Style.Theme.escala_sec_2
+        if (normalized < 0.80)
+            return Style.Theme.escala_sec_3
+        return Style.Theme.escala_sec_4
     }
 
     function choose(row, column) {

@@ -48,6 +48,36 @@ Rectangle {
         return root.value("trace", [])
     }
 
+    function stageBackground(index) {
+        return [Style.Theme.formula_fondo,
+                Style.Theme.ejemplo_fondo,
+                Style.Theme.concepto_fondo][Math.max(0, Math.min(2, index))]
+    }
+
+    function stageAccent(index) {
+        return [Style.Theme.formula_texto,
+                Style.Theme.ejemplo_texto,
+                Style.Theme.concepto_texto][Math.max(0, Math.min(2, index))]
+    }
+
+    function traceBackground(index) {
+        var total = root.trace().length
+        if (index === total - 1)
+            return Style.Theme.proceso_fondo
+        return [Style.Theme.ejemplo_fondo,
+                Style.Theme.concepto_fondo,
+                Style.Theme.formula_fondo][index % 3]
+    }
+
+    function traceAccent(index) {
+        var total = root.trace().length
+        if (index === total - 1)
+            return Style.Theme.proceso_texto
+        return [Style.Theme.ejemplo_texto,
+                Style.Theme.concepto_texto,
+                Style.Theme.formula_texto][index % 3]
+    }
+
         function predictionFeedback() {
         if (root.selectedPrediction < 0)
             return ""
@@ -66,7 +96,7 @@ Rectangle {
     radius: 14 * scaleFactor
     color: Style.Theme.surface
     border.width: 1
-    border.color: stage === 3 ? "#86D1B4" : Style.Theme.acento_fondo
+    border.color: stage === 3 ? Style.Theme.proceso_texto : Style.Theme.borde_medio
     clip: true
 
     onActivityChanged: {
@@ -135,16 +165,19 @@ Rectangle {
                     Layout.preferredHeight: 25 * root.scaleFactor
                     radius: height / 2
                     color: root.stage > stageDelegate.index || root.stage === 3
-                           ? Style.Theme.chip_fondo
-                           : root.stage === stageDelegate.index ? Style.Theme.acento_fondo : Style.Theme.chip_fondo
-                    border.color: root.stage === stageDelegate.index ? Style.Theme.acento_alt : "transparent"
+                           ? Style.Theme.proceso_fondo
+                           : root.stage === stageDelegate.index
+                             ? root.stageBackground(stageDelegate.index) : Style.Theme.chip_fondo
+                    border.color: root.stage === stageDelegate.index
+                                  ? root.stageAccent(stageDelegate.index) : "transparent"
 
                     Text {
                         anchors.centerIn: parent
                         text: stageDelegate.modelData
                         color: root.stage > stageDelegate.index || root.stage === 3
-                               ? Style.Theme.exito_texto
-                               : root.stage === stageDelegate.index ? Style.Theme.acento_fuerte : Style.Theme.texto_secundario
+                               ? Style.Theme.proceso_texto
+                               : root.stage === stageDelegate.index
+                                 ? root.stageAccent(stageDelegate.index) : Style.Theme.texto_secundario
                         font.bold: root.stage === stageDelegate.index
                         font.pixelSize: 9 * root.scaleFactor
                     }
@@ -294,8 +327,8 @@ Rectangle {
                         width: parent.width
                         height: observationColumn.implicitHeight + 22 * root.scaleFactor
                         radius: 9 * root.scaleFactor
-                        color: Style.Theme.superficie_alterna
-                        border.color: Style.Theme.borde_suave
+                        color: Style.Theme.ejemplo_fondo
+                        border.color: Qt.alpha(Style.Theme.ejemplo_texto, 0.38)
 
                         Column {
                             id: observationColumn
@@ -308,7 +341,7 @@ Rectangle {
                             Text {
                                 width: parent.width
                                 text: "OBSERVACIÓN SIN MODELO NI DATASET"
-                                color: Style.Theme.texto_secundario
+                                color: Style.Theme.ejemplo_texto
                                 font.bold: true
                                 font.pixelSize: 9 * root.scaleFactor
                             }
@@ -333,13 +366,13 @@ Rectangle {
                                         Layout.preferredWidth: 21 * root.scaleFactor
                                         Layout.preferredHeight: 21 * root.scaleFactor
                                         radius: 6 * root.scaleFactor
-                                        color: traceDelegate.index === root.trace().length - 1
-                                               ? Style.Theme.exito_fondo : Style.Theme.borde_medio
+                                        color: root.traceBackground(traceDelegate.index)
+                                        border.color: Qt.alpha(root.traceAccent(traceDelegate.index), 0.52)
 
                                         Text {
                                             anchors.centerIn: parent
                                             text: String(traceDelegate.index + 1)
-                                            color: Style.Theme.texto_secundario
+                                            color: root.traceAccent(traceDelegate.index)
                                             font.bold: true
                                             font.pixelSize: 9 * root.scaleFactor
                                         }
@@ -369,7 +402,7 @@ Rectangle {
                         width: parent.width
                         text: root.predictionFeedback()
                         color: root.selectedPrediction === Number(root.value("correctIndex", -1))
-                               ? Style.Theme.exito_texto : "#8B651D"
+                               ? Style.Theme.proceso_texto : Style.Theme.formula_texto
                         font.pixelSize: 11 * root.scaleFactor
                         font.bold: true
                         wrapMode: Text.WordWrap
@@ -395,7 +428,7 @@ Rectangle {
                     Text {
                         width: parent.width
                         text: "EXPLICA LO OBSERVADO"
-                        color: Style.Theme.acento_fuerte
+                        color: Style.Theme.concepto_texto
                         font.bold: true
                         font.pixelSize: 10 * root.scaleFactor
                     }
@@ -454,8 +487,8 @@ Rectangle {
                     width: parent.width
                     height: visible ? feedbackColumn.implicitHeight + 24 * root.scaleFactor : 0
                     radius: 10 * root.scaleFactor
-                    color: Style.Theme.superficie_alterna
-                    border.color: "#9BD5BD"
+                    color: Style.Theme.proceso_fondo
+                    border.color: Qt.alpha(Style.Theme.proceso_texto, 0.48)
 
                     Column {
                         id: feedbackColumn
@@ -478,7 +511,7 @@ Rectangle {
                             text: root.selectedPrediction < 0
                                   ? "Ya completaste esta actividad. Puedes repasar sus conceptos cuando quieras."
                                   : root.predictionFeedback()
-                            color: "#245F4C"
+                            color: Style.Theme.proceso_texto
                             font.pixelSize: 11 * root.scaleFactor
                             font.bold: true
                             wrapMode: Text.WordWrap
@@ -487,7 +520,7 @@ Rectangle {
                         Text {
                             width: parent.width
                             text: String(root.value("modelExplanation", ""))
-                            color: "#315D50"
+                            color: Style.Theme.texto_primario
                             font.pixelSize: 11 * root.scaleFactor
                             lineHeight: 1.15
                             wrapMode: Text.WordWrap
@@ -496,7 +529,7 @@ Rectangle {
                         Text {
                             width: parent.width
                             text: "Puedes comparar esta explicación con la tuya; no se califica la redacción."
-                            color: "#527268"
+                            color: Style.Theme.texto_secundario
                             font.italic: true
                             font.pixelSize: 9 * root.scaleFactor
                             wrapMode: Text.WordWrap

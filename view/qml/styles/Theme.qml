@@ -71,10 +71,25 @@ QtObject {
         "acento_fuerte": "#6D28D9",
         "acento_alt":    "#4F46E5",
 
-        // ===== Colores de matriz =====
-        "matriz_query":  "#56B4E9",
-        "matriz_key":    "#F0E442",
-        "matriz_value":  "#D55E00",
+        // ===== Lenguaje pedagógico =====
+        // El color comunica función, no importancia: concepto, transformación,
+        // ejemplo y resultado conservan el mismo rol en toda la aplicación.
+        "concepto_fondo": "#F5F3FF", "concepto_texto": "#6D28D9",
+        "formula_fondo":  "#FFF7ED", "formula_texto":  "#92400E",
+        "ejemplo_fondo":  "#EFF6FF", "ejemplo_texto":  "#1E40AF",
+        "proceso_fondo":  "#ECFDF5", "proceso_texto":  "#166534",
+
+        // ===== Query, Key y Value =====
+        // Identidades estables y distinguibles incluso sin depender solo del tono.
+        "matriz_query":       "#0072B2",
+        "matriz_query_fondo":"#E0F2FE",
+        "matriz_query_texto":"#075985",
+        "matriz_key":         "#C47F00",
+        "matriz_key_fondo":  "#FFF7D6",
+        "matriz_key_texto":  "#854D0E",
+        "matriz_value":       "#009E73",
+        "matriz_value_fondo":"#DCFCE7",
+        "matriz_value_texto":"#166534",
 
         // ===== Escalas de color =====
         "escala_sec_0":  "#F7FBFF",
@@ -84,11 +99,11 @@ QtObject {
         "escala_sec_4":  "#08306B",
 
         // ===== Escalas divergentes =====
-        "escala_div_neg2": "#B2182B",
-        "escala_div_neg1": "#EF8A62",
-        "escala_div_cero": "#F7F7F7",
-        "escala_div_pos1": "#67A9CF",
-        "escala_div_pos2": "#2166AC"
+        "escala_div_neg2": "#8C510A",
+        "escala_div_neg1": "#DFC27D",
+        "escala_div_cero": "#F5F5F5",
+        "escala_div_pos1": "#80CDC1",
+        "escala_div_pos2": "#01665E"
     })
 
     readonly property var paletaOscura: ({
@@ -139,10 +154,22 @@ QtObject {
         "acento_fuerte": "#C4B5FD",
         "acento_alt":    "#818CF8",
 
-        // ===== Colores de matriz =====
-        "matriz_query":  "#56B4E9",
-        "matriz_key":    "#F0E442",
-        "matriz_value":  "#D55E00",
+        // ===== Lenguaje pedagógico =====
+        "concepto_fondo": "#2A2342", "concepto_texto": "#C4B5FD",
+        "formula_fondo":  "#3A2A18", "formula_texto":  "#FBBF24",
+        "ejemplo_fondo":  "#16283F", "ejemplo_texto":  "#93C5FD",
+        "proceso_fondo":  "#153226", "proceso_texto":  "#86EFAC",
+
+        // ===== Query, Key y Value =====
+        "matriz_query":       "#56B4E9",
+        "matriz_query_fondo":"#102F42",
+        "matriz_query_texto":"#7DD3FC",
+        "matriz_key":         "#F0C84B",
+        "matriz_key_fondo":  "#3A2F17",
+        "matriz_key_texto":  "#FDE68A",
+        "matriz_value":       "#4ADE80",
+        "matriz_value_fondo":"#153226",
+        "matriz_value_texto":"#86EFAC",
 
         // ===== Escalas de color =====
         "escala_sec_0":  "#F7FBFF",
@@ -152,11 +179,11 @@ QtObject {
         "escala_sec_4":  "#08306B",
 
         // ===== Escalas divergentes =====
-        "escala_div_neg2": "#B2182B",
-        "escala_div_neg1": "#EF8A62",
-        "escala_div_cero": "#F7F7F7",
-        "escala_div_pos1": "#67A9CF",
-        "escala_div_pos2": "#2166AC"
+        "escala_div_neg2": "#8C510A",
+        "escala_div_neg1": "#DFC27D",
+        "escala_div_cero": "#F5F5F5",
+        "escala_div_pos1": "#80CDC1",
+        "escala_div_pos2": "#01665E"
     })
 
     readonly property var p: modoOscuro ? paletaOscura : paletaClara
@@ -204,6 +231,39 @@ QtObject {
     readonly property color acento_texto: p.acento_texto
     readonly property color acento_fuerte: p.acento_fuerte
     readonly property color acento_alt: p.acento_alt
+
+    // ========= Jerarquía didáctica =========
+    readonly property color concepto_fondo: p.concepto_fondo
+    readonly property color concepto_texto: p.concepto_texto
+    readonly property color formula_fondo: p.formula_fondo
+    readonly property color formula_texto: p.formula_texto
+    readonly property color ejemplo_fondo: p.ejemplo_fondo
+    readonly property color ejemplo_texto: p.ejemplo_texto
+    readonly property color proceso_fondo: p.proceso_fondo
+    readonly property color proceso_texto: p.proceso_texto
+
+    // ========= Identidades conceptuales Q / K / V =========
+    readonly property color matriz_query: p.matriz_query
+    readonly property color matriz_query_fondo: p.matriz_query_fondo
+    readonly property color matriz_query_texto: p.matriz_query_texto
+    readonly property color matriz_key: p.matriz_key
+    readonly property color matriz_key_fondo: p.matriz_key_fondo
+    readonly property color matriz_key_texto: p.matriz_key_texto
+    readonly property color matriz_value: p.matriz_value
+    readonly property color matriz_value_fondo: p.matriz_value_fondo
+    readonly property color matriz_value_texto: p.matriz_value_texto
+
+    // ========= Escalas para datos numéricos =========
+    readonly property color escala_sec_0: p.escala_sec_0
+    readonly property color escala_sec_1: p.escala_sec_1
+    readonly property color escala_sec_2: p.escala_sec_2
+    readonly property color escala_sec_3: p.escala_sec_3
+    readonly property color escala_sec_4: p.escala_sec_4
+    readonly property color escala_div_neg2: p.escala_div_neg2
+    readonly property color escala_div_neg1: p.escala_div_neg1
+    readonly property color escala_div_cero: p.escala_div_cero
+    readonly property color escala_div_pos1: p.escala_div_pos1
+    readonly property color escala_div_pos2: p.escala_div_pos2
 
     // ========= Tipografía =========
     readonly property int titleSize: 28

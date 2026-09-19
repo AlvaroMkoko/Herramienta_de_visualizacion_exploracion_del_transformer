@@ -673,18 +673,18 @@ Item {
                                 spacing: 7 * root.sx
                                 Repeater {
                                     model: [
-                                        { title: "Q · query actual", matrix: root.attentionData.q || [] },
-                                        { title: "K · key destacada " + Number(root.attentionData.key_destacada || 0), matrix: root.attentionData.k || [] },
-                                        { title: "V · misma key", matrix: root.attentionData.v || [] }
+                                        { title: "Q · query actual", matrix: root.attentionData.q || [], fill: Style.Theme.matriz_query_fondo, accent: Style.Theme.matriz_query_texto },
+                                        { title: "K · key destacada " + Number(root.attentionData.key_destacada || 0), matrix: root.attentionData.k || [], fill: Style.Theme.matriz_key_fondo, accent: Style.Theme.matriz_key_texto },
+                                        { title: "V · misma key", matrix: root.attentionData.v || [], fill: Style.Theme.matriz_value_fondo, accent: Style.Theme.matriz_value_texto }
                                     ]
                                     delegate: Rectangle {
                                         id: qkvPart
                                         required property var modelData
                                         Layout.fillWidth: true; Layout.fillHeight: true
-                                        radius: 8 * root.sx; color: Style.Theme.superficie_alterna; border.color: Style.Theme.borde_suave
+                                        radius: 8 * root.sx; color: qkvPart.modelData.fill; border.color: Qt.alpha(qkvPart.modelData.accent, 0.52)
                                         ColumnLayout {
                                             anchors.fill: parent; anchors.margins: 7 * root.sx
-                                            Text { text: qkvPart.modelData.title; color: Style.Theme.texto_primario; font.bold: true; font.pixelSize: 11 * root.sx }
+                                            Text { text: qkvPart.modelData.title; color: qkvPart.modelData.accent; font.bold: true; font.pixelSize: 11 * root.sx }
                                             ScientificMatrix {
                                                 Layout.fillWidth: true; Layout.fillHeight: true
                                                 matrix: qkvPart.modelData.matrix; colorMode: "diverging"
