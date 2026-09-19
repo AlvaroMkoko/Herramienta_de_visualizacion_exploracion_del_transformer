@@ -48,6 +48,7 @@ PagePrincipal {
     property string mensajeCheckpoint: ""
     property bool entrenamientoTerminado: false
     property bool fueCancelado: false
+    property bool advancedControlsVisible: false
     property var historialFinal: []
     property real perdidaFinalObtenida: 0
     property int epocasCompletadas: 0
@@ -467,11 +468,30 @@ PagePrincipal {
 
                     Repeater {
                         model: [
-                            { label: "ÉPOCA", value: (root.epocaSesionActual || 0) + " / " + (root.epocasSesionActual || root.epocasIniciales), color: Style.Theme.acento, help: "epoch_batch" },
-                            { label: "PASO GLOBAL", value: String(root.pasoGlobalActual), color: Style.Theme.info_texto, help: "training_step" },
-                            { label: "PÉRDIDA", value: root.numero(root.perdidaActual, 4), color: Style.Theme.exito_texto, help: "cross_entropy" },
-                            { label: "Δ PÉRDIDA", value: (root.deltaPerdida > 0 ? "+" : "") + root.numero(root.deltaPerdida, 4), color: root.deltaPerdida <= 0 ? Style.Theme.exito_texto : Style.Theme.aviso_texto, help: "loss_delta" },
-                            { label: "GRADIENTE L2", value: root.numero(root.normaGradiente, 3), color: Style.Theme.aviso_texto, help: "gradient_norm_l2" }
+                            {
+                                label: "PROGRESO",
+                                value: "Época " + (root.epocaSesionActual || 0) + " / "
+                                       + (root.epocasSesionActual || root.epocasIniciales),
+                                detail: "Paso global " + root.pasoGlobalActual,
+                                color: Style.Theme.acento,
+                                help: "epoch_batch"
+                            },
+                            {
+                                label: "PÉRDIDA",
+                                value: root.numero(root.perdidaActual, 4),
+                                detail: "Cambio " + (root.deltaPerdida > 0 ? "+" : "")
+                                        + root.numero(root.deltaPerdida, 4),
+                                color: root.deltaPerdida <= 0
+                                       ? Style.Theme.exito_texto : Style.Theme.aviso_texto,
+                                help: "cross_entropy"
+                            },
+                            {
+                                label: "GRADIENTE L2",
+                                value: root.numero(root.normaGradiente, 3),
+                                detail: "Intensidad de actualización",
+                                color: Style.Theme.aviso_texto,
+                                help: "gradient_norm_l2"
+                            }
                         ]
 
                         delegate: Rectangle {
@@ -485,7 +505,7 @@ PagePrincipal {
 
                             Column {
                                 anchors.centerIn: parent
-                                spacing: 3 * root.sy
+                                spacing: 1 * root.sy
                                 Row {
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     spacing: 1 * root.sx
@@ -514,7 +534,13 @@ PagePrincipal {
                                     text: summaryMetric.modelData.value
                                     color: summaryMetric.modelData.color
                                     font.bold: true
-                                    font.pixelSize: 18 * root.sx
+                                    font.pixelSize: 16 * root.sx
+                                }
+                                Text {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: summaryMetric.modelData.detail
+                                    color: Style.Theme.texto_secundario
+                                    font.pixelSize: 10 * root.sx
                                 }
                             }
 
@@ -549,7 +575,7 @@ PagePrincipal {
                             Layout.fillWidth: true
                             spacing: 1
                             Text {
-                                text: "Cambio más relevante · " + root.componenteRelevante
+                                text: "Lectura del batch · " + root.componenteRelevante
                                 color: Style.Theme.aviso_texto
                                 font.bold: true
                                 font.pixelSize: 12 * root.sx
@@ -565,11 +591,6 @@ PagePrincipal {
                         ConceptHelpButton {
                             objectName: "trainingLossHelpButton"
                             conceptId: "cross_entropy"
-                            controlSize: Math.max(24, 28 * Math.min(root.sx, root.sy))
-                            onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
-                        }
-                        ConceptHelpButton {
-                            conceptId: "gradient_norm_rms"
                             controlSize: Math.max(24, 28 * Math.min(root.sx, root.sy))
                             onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
                         }
@@ -590,15 +611,83 @@ PagePrincipal {
                             Layout.preferredHeight: 34 * root.sy
                             Layout.minimumHeight: 34 * root.sy
                             Layout.maximumHeight: 34 * root.sy
+                            spacing: 6 * root.sx
+                            background: Rectangle { color: "transparent" }
 
                             onCurrentIndexChanged: {
                                 root.trainingController.activarNubeEmbeddings(barraPestanas.currentIndex === 2)
                                 root.trainingController.activarVisualizacionPedagogica(barraPestanas.currentIndex === 0)
                             }
 
-                            TabButton { text: "Entrenamiento guiado" }
-                            TabButton { text: "Arquitectura" }
-                            TabButton { text: "Embeddings PCA 3D" }
+                            TabButton {
+                                id: guidedTab
+                                text: "Vista guiada"
+                                background: Rectangle {
+                                    radius: 7 * root.sx
+                                    color: guidedTab.checked
+                                           ? Style.Theme.acento_fondo
+                                           : Style.Theme.superficie_alterna
+                                    border.color: guidedTab.checked
+                                                  ? Style.Theme.acento
+                                                  : Style.Theme.borde_medio
+                                }
+                                contentItem: Text {
+                                    text: guidedTab.text
+                                    color: guidedTab.checked
+                                           ? Style.Theme.acento_fuerte
+                                           : Style.Theme.texto_secundario
+                                    font.bold: guidedTab.checked
+                                    font.pixelSize: 12 * root.sx
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                            }
+                            TabButton {
+                                id: architectureTab
+                                text: "Mapa de arquitectura"
+                                background: Rectangle {
+                                    radius: 7 * root.sx
+                                    color: architectureTab.checked
+                                           ? Style.Theme.acento_fondo
+                                           : Style.Theme.superficie_alterna
+                                    border.color: architectureTab.checked
+                                                  ? Style.Theme.acento
+                                                  : Style.Theme.borde_medio
+                                }
+                                contentItem: Text {
+                                    text: architectureTab.text
+                                    color: architectureTab.checked
+                                           ? Style.Theme.acento_fuerte
+                                           : Style.Theme.texto_secundario
+                                    font.bold: architectureTab.checked
+                                    font.pixelSize: 12 * root.sx
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                            }
+                            TabButton {
+                                id: embeddingsTab
+                                text: "Espacio de embeddings"
+                                background: Rectangle {
+                                    radius: 7 * root.sx
+                                    color: embeddingsTab.checked
+                                           ? Style.Theme.acento_fondo
+                                           : Style.Theme.superficie_alterna
+                                    border.color: embeddingsTab.checked
+                                                  ? Style.Theme.acento
+                                                  : Style.Theme.borde_medio
+                                }
+                                contentItem: Text {
+                                    text: embeddingsTab.text
+                                    color: embeddingsTab.checked
+                                           ? Style.Theme.acento_fuerte
+                                           : Style.Theme.texto_secundario
+                                    font.bold: embeddingsTab.checked
+                                    font.pixelSize: 12 * root.sx
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                            }
                         }
 
                         Item {
@@ -693,7 +782,7 @@ PagePrincipal {
                                 spacing: 8 * root.sy
                                 Text {
                                     width: parent.width
-                                    text: "Haz clic en cualquier componente del mapa."
+                                    text: "Tu ruta en esta pantalla"
                                     color: Style.Theme.acento_texto
                                     font.bold: true
                                     font.pixelSize: 14 * root.sx
@@ -701,10 +790,53 @@ PagePrincipal {
                                 }
                                 Text {
                                     width: parent.width
-                                    text: "Verás qué operación realiza, qué recibe, qué entrega y cómo están cambiando sus pesos durante el batch actual. El punto pulsante marca el bloque con mayor gradiente RMS."
+                                    text: "Avanza en este orden; no necesitas observar todo al mismo tiempo."
                                     color: Style.Theme.texto_secundario
-                                    font.pixelSize: 12 * root.sx
+                                    font.pixelSize: 11 * root.sx
                                     wrapMode: Text.WordWrap
+                                }
+                                Repeater {
+                                    model: root.pasosSesionCompletados > 0
+                                           ? [
+                                               "Lee la pérdida y el gradiente del batch.",
+                                               "Recorre un paso a la vez en la vista guiada.",
+                                               "Abre Arquitectura para inspeccionar un bloque."
+                                           ]
+                                           : [
+                                               "Inicia un batch y observa la pérdida.",
+                                               "Recorre un paso a la vez en la vista guiada.",
+                                               "Abre Arquitectura para inspeccionar un bloque."
+                                           ]
+                                    delegate: Row {
+                                        id: guideStep
+                                        required property int index
+                                        required property var modelData
+                                        width: vacioLayout.width
+                                        height: Math.max(28 * root.sy, guideStepText.implicitHeight)
+                                        spacing: 9 * root.sx
+                                        Rectangle {
+                                            width: 24 * root.sx
+                                            height: 24 * root.sy
+                                            radius: width / 2
+                                            color: Style.Theme.surface
+                                            border.color: Style.Theme.acento_alt
+                                            Text {
+                                                anchors.centerIn: parent
+                                                text: guideStep.index + 1
+                                                color: Style.Theme.acento_fuerte
+                                                font.bold: true
+                                                font.pixelSize: 11 * root.sx
+                                            }
+                                        }
+                                        Text {
+                                            id: guideStepText
+                                            width: guideStep.width - 33 * root.sx
+                                            text: guideStep.modelData
+                                            color: Style.Theme.texto_secundario_fuerte
+                                            font.pixelSize: 11 * root.sx
+                                            wrapMode: Text.WordWrap
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -893,6 +1025,15 @@ PagePrincipal {
                     anchors.margins: 12 * root.sx
                     spacing: 8 * root.sy
 
+                    Text {
+                        Layout.fillWidth: true
+                        text: "CONTROL DEL ENTRENAMIENTO"
+                        color: Style.Theme.acento_fuerte
+                        font.bold: true
+                        font.pixelSize: 10 * root.sx
+                        horizontalAlignment: Text.AlignHCenter
+                    }
+
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 6 * root.sx
@@ -978,7 +1119,19 @@ PagePrincipal {
                         }
                     }
 
+                    BotonSecundario {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 32 * root.sy
+                        sx: root.sx
+                        sy: root.sy
+                        text: root.advancedControlsVisible
+                              ? "Ocultar ajustes ↑"
+                              : "Ajustes de ejecución ↓"
+                        onClicked: root.advancedControlsVisible = !root.advancedControlsVisible
+                    }
+
                     RowLayout {
+                        visible: root.advancedControlsVisible
                         Layout.fillWidth: true
                         spacing: 8 * root.sx
 
@@ -1004,6 +1157,7 @@ PagePrincipal {
                     }
 
                     Text {
+                        visible: root.advancedControlsVisible
                         Layout.fillWidth: true
                         text: "Velocidad: " + root.etiquetaVelocidad
                               + (root.velocidadActual > 0
@@ -1015,6 +1169,7 @@ PagePrincipal {
                     }
 
                     RowLayout {
+                        visible: root.advancedControlsVisible
                         Layout.fillWidth: true
                         spacing: 5 * root.sx
                         Item { Layout.fillWidth: true }

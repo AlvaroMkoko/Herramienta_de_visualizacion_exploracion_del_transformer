@@ -306,27 +306,27 @@ PagePrincipal {
 
     BotonPrincipal {
         anchors.left: parent.left
-        anchors.leftMargin: 10 * sx
+        anchors.leftMargin: 20 * root.sx
         anchors.verticalCenter: laboratoryProgress.verticalCenter
-        width: 250 * sx
-        height: 40 * sy
-        text: " ↶ Volver al inicio"
+        width: 220 * root.sx
+        height: 40 * root.sy
+        text: "← Volver al inicio"
         z: 10
-        onClicked: {
-            stackView.pop()
-        }
+        onClicked: root.stackView.pop()
     }
 
     // --- PANEL IZQUIERDO: DATASETS ---
     Rectangle {
         id: rec_left
         width: 250 * sx
-        height: 700 * sy
         color: "transparent"
 
         anchors.left: parent.left
-        anchors.leftMargin: 20 * sx
-        anchors.verticalCenter: parent.verticalCenter
+        anchors.leftMargin: 20 * root.sx
+        anchors.top: laboratoryProgress.bottom
+        anchors.bottom: parent.bottom
+        anchors.topMargin: 10 * root.sy
+        anchors.bottomMargin: 20 * root.sy
 
         ColumnLayout {
             anchors.fill: parent

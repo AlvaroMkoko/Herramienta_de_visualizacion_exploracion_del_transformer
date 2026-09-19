@@ -226,6 +226,9 @@ Item {
             formula: "siguiente batch → siguiente época"
         }
     ]
+    readonly property var stageLabels: stages.map(function(item, index) {
+        return (index + 1) + " · " + item.short
+    })
     readonly property var stage: stages[Math.max(0, Math.min(stages.length - 1, stageIndex))]
 
     function layerModels() {
@@ -427,67 +430,44 @@ Item {
             }
         }
 
-        Flickable {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 32 * root.sy
-            Layout.minimumHeight: 32 * root.sy
-            Layout.maximumHeight: 32 * root.sy
-            contentWidth: stageStrip.implicitWidth
-            contentHeight: height
-            clip: true
-            boundsBehavior: Flickable.StopAtBounds
-
-            Row {
-                id: stageStrip
-                height: parent.height
-                spacing: 5 * root.sx
-                Repeater {
-                    model: root.stages
-                    delegate: Rectangle {
-                        id: stageChip
-                        required property int index
-                        required property var modelData
-                        width: stageLabel.implicitWidth + 18 * root.sx
-                        height: 32 * root.sy
-                        radius: height / 2
-                        color: stageChip.index === root.stageIndex
-                               ? Qt.alpha(stageChip.modelData.color, 0.18)
-                               : Style.Theme.superficie_alterna
-                        border.color: stageChip.index === root.stageIndex
-                                      ? stageChip.modelData.color : Style.Theme.borde_medio
-                        Text {
-                            id: stageLabel
-                            anchors.centerIn: parent
-                            text: root.scopeForStage(stageChip.index) + " · "
-                                  + (stageChip.index + 1) + " · " + stageChip.modelData.short
-                            color: stageChip.index === root.stageIndex
-                                   ? stageChip.modelData.color : Style.Theme.texto_secundario
-                            font.bold: stageChip.index === root.stageIndex
-                            font.pixelSize: root.fontSize(9, root.sx)
-                        }
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                root.playing = false
-                                root.setStage(stageChip.index)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 31 * root.sy
-            Layout.minimumHeight: 31 * root.sy
-            Layout.maximumHeight: 31 * root.sy
+            Layout.preferredHeight: 38 * root.sy
+            Layout.minimumHeight: 38 * root.sy
+            Layout.maximumHeight: 38 * root.sy
             spacing: 7 * root.sx
-            SmallButton { label: "↺"; onClicked: root.resetJourney() }
-            SmallButton { label: "←"; enabled: root.stageIndex > 0; onClicked: root.setStage(root.stageIndex - 1) }
             SmallButton {
-                label: root.playing ? "Pausar recorrido" : "▶ Reproducir recorrido"
+                Layout.preferredWidth: 32 * root.sx
+                label: "↺"
+                onClicked: root.resetJourney()
+            }
+            SmallButton {
+                Layout.preferredWidth: 32 * root.sx
+                label: "←"
+                enabled: root.stageIndex > 0
+                onClicked: root.setStage(root.stageIndex - 1)
+            }
+            SelectorPrincipal {
+                Layout.fillWidth: true
+                Layout.maximumWidth: 205 * root.sx
+                sx: root.sx
+                sy: root.sy
+                model: root.stageLabels
+                currentIndex: root.stageIndex
+                onActivated: function(index) {
+                    root.playing = false
+                    root.setStage(index)
+                }
+            }
+            SmallButton {
+                Layout.preferredWidth: 72 * root.sx
+                label: "Siguiente →"
+                enabled: root.stageIndex < root.stages.length - 1
+                onClicked: root.setStage(root.stageIndex + 1)
+            }
+            SmallButton {
+                Layout.preferredWidth: 105 * root.sx
+                label: root.playing ? "Ⅱ Pausar" : "▶ Recorrido"
                 primary: true
                 onClicked: {
                     if (!root.playing && root.stageIndex >= root.stages.length - 1)
@@ -495,17 +475,39 @@ Item {
                     root.playing = !root.playing
                 }
             }
-            SmallButton { label: "Siguiente →"; enabled: root.stageIndex < root.stages.length - 1; onClicked: root.setStage(root.stageIndex + 1) }
             Item { Layout.fillWidth: true }
-            Text { text: "Explicación"; color: Style.Theme.texto_secundario; font.pixelSize: root.fontSize(9, root.sx) }
+            Text {
+                text: "Nivel"
+                color: Style.Theme.texto_secundario
+                font.pixelSize: root.fontSize(9, root.sx)
+            }
             SelectorPrincipal {
-                Layout.preferredWidth: 135 * root.sx
+                Layout.preferredWidth: 125 * root.sx
                 sx: root.sx
                 sy: root.sy
                 model: ["Intuitiva", "Técnica", "Matemática"]
                 currentIndex: root.explanationLevel
                 onActivated: function(index) { root.explanationLevel = index }
             }
+        }
+
+        RowLayout {
+            readonly property bool hasContextSelectors:
+                root.stageIndex === 2 || root.stageIndex === 5
+                || root.stageIndex === 6 || root.stageIndex === 7
+                || root.stageIndex === 8
+            visible: hasContextSelectors
+            Layout.fillWidth: true
+            Layout.preferredHeight: visible ? 34 * root.sy : 0
+            Layout.minimumHeight: visible ? 34 * root.sy : 0
+            Layout.maximumHeight: visible ? 34 * root.sy : 0
+            spacing: 7 * root.sx
+            Text {
+                text: "Enfoca la visualización"
+                color: Style.Theme.texto_secundario
+                font.pixelSize: root.fontSize(9, root.sx)
+            }
+            Item { Layout.fillWidth: true }
             SelectorPrincipal {
                 visible: root.stageIndex === 2 || root.stageIndex === 5 || root.stageIndex === 6
                 Layout.preferredWidth: 105 * root.sx
