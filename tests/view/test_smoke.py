@@ -263,22 +263,32 @@ def test_entrenamiento_espera_el_boton_y_consulta_la_teoria_del_json(
     training_qml, qapp
 ):
     diagram = training_qml.findChild(QObject, "trainingTransformerDiagram")
+    detail_panel = training_qml.findChild(QObject, "trainingComponentDetailPanel")
+    detail_tab = training_qml.findChild(QObject, "trainingComponentDetailTab")
     summary = training_qml.findChild(QObject, "trainingConceptSummary")
     open_button = training_qml.findChild(QObject, "trainingOpenTheoryButton")
     modal = training_qml.findChild(QObject, "trainingTheoryModal")
     panel = training_qml.findChild(QObject, "trainingContextPanel")
 
     assert diagram is not None
+    assert detail_panel is not None
+    assert detail_tab is not None
     assert summary is not None
     assert open_button is not None
     assert modal is not None
     assert panel is not None
     assert panel.property("visible") is False
+    assert detail_panel.property("visible") is False
+    assert detail_tab.property("enabled") is False
+    diagram_height = diagram.property("height")
 
     _invocar(diagram, "selectComponent", "decoder_masked_attention")
     qapp.processEvents()
 
     concepto = _como_python(summary.property("concepto"))
+    assert detail_panel.property("visible") is True
+    assert detail_tab.property("checked") is True
+    assert diagram.property("height") == diagram_height
     assert summary.property("visible") is True
     assert panel.property("visible") is False
     assert modal.property("visible") is False
@@ -293,6 +303,8 @@ def test_entrenamiento_espera_el_boton_y_consulta_la_teoria_del_json(
 
     _invocar(diagram, "clearSelection")
     qapp.processEvents()
+    assert detail_panel.property("visible") is False
+    assert detail_tab.property("checked") is False
     assert panel.property("visible") is False
 
 

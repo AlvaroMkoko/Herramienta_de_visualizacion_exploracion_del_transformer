@@ -264,6 +264,9 @@ PagePrincipal {
                 selectedId = componentId
                 root.teoriaActual = root.previewTheoryComponent(componentId)
                 root.closeTheory()
+                // El detalle vive en el panel principal para no cubrir ni
+                // comprimir el mapa del Transformer.
+                barraPestanas.currentIndex = 2
             }
         }
 
@@ -271,6 +274,8 @@ PagePrincipal {
             selectedId = ""
             root.teoriaActual = ({})
             root.closeTheory()
+            if (barraPestanas.currentIndex === 2)
+                barraPestanas.currentIndex = 0
         }
 
         function showOverview() {
@@ -665,6 +670,34 @@ PagePrincipal {
                                     verticalAlignment: Text.AlignVCenter
                                 }
                             }
+                            TabButton {
+                                id: componentDetailTab
+                                objectName: "trainingComponentDetailTab"
+                                text: localBridge.selectedId === ""
+                                      ? "Detalle del bloque"
+                                      : "Detalle seleccionado"
+                                enabled: localBridge.selectedId !== ""
+                                opacity: enabled ? 1 : 0.5
+                                background: Rectangle {
+                                    radius: 7 * root.sx
+                                    color: componentDetailTab.checked
+                                           ? Style.Theme.acento_fondo
+                                           : Style.Theme.superficie_alterna
+                                    border.color: componentDetailTab.checked
+                                                  ? Style.Theme.acento
+                                                  : Style.Theme.borde_medio
+                                }
+                                contentItem: Text {
+                                    text: componentDetailTab.text
+                                    color: componentDetailTab.checked
+                                           ? Style.Theme.acento_fuerte
+                                           : Style.Theme.texto_secundario
+                                    font.bold: componentDetailTab.checked
+                                    font.pixelSize: 12 * root.sx
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                            }
                         }
 
                         Item {
@@ -710,12 +743,14 @@ PagePrincipal {
         }
 
         ColumnLayout {
+            objectName: "trainingSidebar"
             Layout.preferredWidth: 400 * root.sx
             Layout.minimumWidth: 340 * root.sx
             Layout.fillHeight: true
             spacing: 12 * root.sy
 
             RectanglePrincipal {
+                objectName: "trainingArchitectureCard"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 sx: root.sx
@@ -747,7 +782,7 @@ PagePrincipal {
 
                     Text {
                         Layout.fillWidth: true
-                        text: "Haz clic en un bloque para ver sus datos reales del batch actual."
+                        text: "Selecciona un bloque; su detalle aparecerá en el panel grande."
                         color: Style.Theme.texto_secundario
                         font.pixelSize: 10 * root.sx
                         wrapMode: Text.WordWrap
@@ -762,107 +797,19 @@ PagePrincipal {
                         trainingMode: true
                         highlightedComponentId: root.componenteRelevanteId
                     }
-
-                    Rectangle {
-                        id: rutaPantalla
-                        objectName: "trainingRouteHint"
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: visible ? vacioLayoutNuevo.implicitHeight + 20 * root.sy : 0
-                        visible: localBridge.selectedId === ""
-                        radius: 9 * root.sx
-                        color: Style.Theme.acento_fondo
-
-                        Column {
-                            id: vacioLayoutNuevo
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.verticalCenter: parent.verticalCenter
-                            anchors.margins: 12 * root.sx
-                            spacing: 6 * root.sy
-
-                            Text {
-                                width: parent.width
-                                text: "Tu ruta en esta pantalla"
-                                color: Style.Theme.acento_texto
-                                font.bold: true
-                                font.pixelSize: 13 * root.sx
-                                wrapMode: Text.WordWrap
-                            }
-                            Text {
-                                width: parent.width
-                                text: "Avanza en este orden; no necesitas observar todo al mismo tiempo."
-                                color: Style.Theme.texto_secundario
-                                font.pixelSize: 10 * root.sx
-                                wrapMode: Text.WordWrap
-                            }
-                            Repeater {
-                                model: [
-                                    "Lee la pérdida y el gradiente del batch.",
-                                    "Recorre un paso a la vez en la vista guiada.",
-                                    "Abre un bloque para inspeccionar sus datos."
-                                ]
-                                delegate: Row {
-                                    id: pasoRuta
-                                    required property int index
-                                    required property var modelData
-                                    width: vacioLayoutNuevo.width
-                                    height: Math.max(24 * root.sy, textoPaso.implicitHeight)
-                                    spacing: 7 * root.sx
-                                    Rectangle {
-                                        width: 22 * root.sx
-                                        height: 22 * root.sy
-                                        radius: width / 2
-                                        color: Style.Theme.surface
-                                        border.color: Style.Theme.acento_alt
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: pasoRuta.index + 1
-                                            color: Style.Theme.acento_fuerte
-                                            font.bold: true
-                                            font.pixelSize: 10 * root.sx
-                                        }
-                                    }
-                                    Text {
-                                        id: textoPaso
-                                        width: pasoRuta.width - 29 * root.sx
-                                        text: pasoRuta.modelData
-                                        color: Style.Theme.texto_secundario_fuerte
-                                        font.pixelSize: 10 * root.sx
-                                        wrapMode: Text.WordWrap
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                DetalleComponentePopover {
-                    id: detalleComponente
-                    objectName: "trainingComponentDetailPopover"
-                    parent: mapaArquitectura
-                    x: 8 * root.sx
-                    y: Math.max(8 * root.sy, parent.height - height - 12 * root.sy)
-                    width: Math.max(0, parent.width - 16 * root.sx)
-                    height: Math.min(parent.height * 0.62, 500 * root.sy)
-                    sx: root.sx
-                    sy: root.sy
-                    componenteId: localBridge.selectedId
-                    concepto: root.teoriaActual
-                    datosComponente: root.componenteActual
-                    prediccionesTop: root.prediccionesTop
-                    onAbrirTeoriaSolicitada: root.mostrarTeoriaComponente(localBridge.selectedId)
-                    onCerrarSolicitado: localBridge.clearSelection()
                 }
 
                 ScrollView {
                     id: componentDetailsScroll
-                    visible: false
+                    objectName: "trainingComponentDetailPanel"
+                    parent: trainingViewStack
+                    visible: barraPestanas.currentIndex === 2
                     anchors.fill: parent
-                    anchors.margins: 16 * root.sx
+                    anchors.margins: 8 * root.sx
                     clip: true
                     contentWidth: availableWidth
                     ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-                    ScrollBar.vertical.policy: ScrollBar.AlwaysOff
+                    ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
                     Column {
                         width: componentDetailsScroll.availableWidth
@@ -1094,6 +1041,7 @@ PagePrincipal {
             }
 
             RectanglePrincipal {
+                objectName: "trainingControlsCard"
                 Layout.fillWidth: true
                 Layout.preferredHeight: controlesEntrenamiento.implicitHeight + 24 * root.sy
                 sx: root.sx

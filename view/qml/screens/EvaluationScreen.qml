@@ -15,6 +15,7 @@ PagePrincipal {
     readonly property var currentQuestion: evaluationController.currentQuestion
     readonly property bool showingResult: evaluationController.finished
     property string errorMessage: ""
+    property int questionAtTop: 0
 
     function returnToLearningPath() {
         if (root.stackView.depth >= 3)
@@ -26,11 +27,21 @@ PagePrincipal {
     Component.onCompleted: {
         if (!evaluationController.isActive && !evaluationController.finished)
             evaluationController.startEvaluation(assessmentType)
+        root.questionAtTop = evaluationController.currentQuestionNumber
     }
 
     Connections {
         target: root.evaluationController
         function onError(message) { root.errorMessage = message }
+        function onStateChanged() {
+            const questionNumber = root.evaluationController.currentQuestionNumber
+            if (questionNumber === root.questionAtTop)
+                return
+
+            root.questionAtTop = questionNumber
+            if (questionScroll.ScrollBar.vertical)
+                questionScroll.ScrollBar.vertical.position = 0
+        }
     }
 
     ColumnLayout {
@@ -156,102 +167,137 @@ PagePrincipal {
                     }
                 }
 
-                Text {
-                    objectName: "evaluationQuestionPrompt"
+                ScrollView {
+                    id: questionScroll
+                    objectName: "evaluationQuestionScroll"
                     Layout.fillWidth: true
-                    text: root.currentQuestion.prompt || ""
-                    color: Style.Theme.texto_primario
-                    font.pixelSize: 26 * root.sx
-                    font.bold: true
-                    lineHeight: 1.18
-                    wrapMode: Text.WordWrap
-                }
+                    Layout.fillHeight: true
+                    clip: true
+                    contentWidth: availableWidth
+                    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                    ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
-                Text {
-                    text: "Selecciona una respuesta:"
-                    color: Style.Theme.texto_secundario
-                    font.pixelSize: 14 * root.sx
-                }
+                    ColumnLayout {
+                        width: questionScroll.availableWidth
+                        spacing: 14 * root.sy
 
-                Repeater {
-                    id: optionsRepeater
-                    objectName: "evaluationOptionsRepeater"
-                    model: root.currentQuestion.options || []
-                    delegate: Button {
-                        id: optionButton
-                        required property var modelData
-                        readonly property bool selected:
-                            root.evaluationController.selectedOptionId === modelData.id
-                        objectName: "evaluationOption_" + modelData.id
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 80 * root.sy
-                        hoverEnabled: true
-                        focusPolicy: Qt.StrongFocus
-                        Accessible.name: modelData.id.toUpperCase() + ". " + modelData.text
-                        onClicked: root.evaluationController.selectAnswer(modelData.id)
-
-                        background: Rectangle {
-                            radius: 10 * root.sx
-                            color: optionButton.selected
-                                   ? Style.Theme.acento_fondo
-                                   : (optionButton.hovered
-                                      ? Style.Theme.superficie_alterna
-                                      : Style.Theme.surface)
-                            border.width: optionButton.selected ? 2 : 1
-                            border.color: optionButton.selected
-                                          ? Style.Theme.acento
-                                          : Style.Theme.borde_medio
+                        Text {
+                            objectName: "evaluationQuestionPrompt"
+                            Layout.fillWidth: true
+                            text: root.currentQuestion.prompt || ""
+                            color: Style.Theme.texto_primario
+                            font.pixelSize: 26 * root.sx
+                            font.bold: true
+                            lineHeight: 1.18
+                            wrapMode: Text.WordWrap
                         }
 
-                        contentItem: RowLayout {
-                            spacing: 13 * root.sx
-                            Rectangle {
-                                Layout.preferredWidth: 38 * root.sx
-                                Layout.preferredHeight: 38 * root.sy
-                                radius: width / 2
-                                color: optionButton.selected
-                                       ? Style.Theme.acento
-                                       : Style.Theme.chip_fondo
-                                border.color: optionButton.selected
-                                              ? Style.Theme.acento
-                                              : Style.Theme.chip_borde
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: optionButton.modelData.id.toUpperCase()
+                        Text {
+                            text: "Selecciona una respuesta:"
+                            color: Style.Theme.texto_secundario
+                            font.pixelSize: 14 * root.sx
+                        }
+
+                        Repeater {
+                            id: optionsRepeater
+                            objectName: "evaluationOptionsRepeater"
+                            model: root.currentQuestion.options || []
+                            delegate: Button {
+                                id: optionButton
+                                required property var modelData
+                                readonly property bool selected:
+                                    root.evaluationController.selectedOptionId === modelData.id
+                                objectName: "evaluationOption_" + modelData.id
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: Math.max(72 * root.sy,
+                                                                 optionText.implicitHeight + 24 * root.sy)
+                                hoverEnabled: true
+                                focusPolicy: Qt.StrongFocus
+                                Accessible.name: modelData.id.toUpperCase() + ". " + modelData.text
+                                onClicked: root.evaluationController.selectAnswer(modelData.id)
+
+                                background: Rectangle {
+                                    radius: 10 * root.sx
                                     color: optionButton.selected
-                                           ? Style.Theme.texto_sobre_color
-                                           : Style.Theme.texto_secundario_fuerte
-                                    font.pixelSize: 14 * root.sx
-                                    font.bold: true
+                                           ? Style.Theme.acento_fondo
+                                           : (optionButton.hovered
+                                              ? Style.Theme.superficie_alterna
+                                              : Style.Theme.surface)
+                                    border.width: optionButton.selected ? 2 : 1
+                                    border.color: optionButton.selected
+                                                  ? Style.Theme.acento
+                                                  : Style.Theme.borde_medio
+                                }
+
+                                contentItem: RowLayout {
+                                    spacing: 13 * root.sx
+                                    Rectangle {
+                                        Layout.preferredWidth: 38 * root.sx
+                                        Layout.preferredHeight: 38 * root.sy
+                                        radius: width / 2
+                                        color: optionButton.selected
+                                               ? Style.Theme.acento
+                                               : Style.Theme.chip_fondo
+                                        border.color: optionButton.selected
+                                                      ? Style.Theme.acento
+                                                      : Style.Theme.chip_borde
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: optionButton.modelData.id.toUpperCase()
+                                            color: optionButton.selected
+                                                   ? Style.Theme.texto_sobre_color
+                                                   : Style.Theme.texto_secundario_fuerte
+                                            font.pixelSize: 14 * root.sx
+                                            font.bold: true
+                                        }
+                                    }
+                                    Text {
+                                        id: optionText
+                                        Layout.fillWidth: true
+                                        text: optionButton.modelData.text
+                                        color: Style.Theme.texto_primario
+                                        font.pixelSize: 17 * root.sx
+                                        wrapMode: Text.WordWrap
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
                                 }
                             }
-                            Text {
-                                Layout.fillWidth: true
-                                text: optionButton.modelData.text
-                                color: Style.Theme.texto_primario
-                                font.pixelSize: 17 * root.sx
-                                wrapMode: Text.WordWrap
-                                verticalAlignment: Text.AlignVCenter
-                            }
+                        }
+
+                        Item {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 2 * root.sy
                         }
                     }
                 }
 
-                Item { Layout.fillHeight: true }
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 1
+                    color: Style.Theme.divisor
+                }
 
                 RowLayout {
+                    objectName: "evaluationActions"
                     Layout.fillWidth: true
+                    Layout.minimumHeight: 54 * root.sy
+                    Layout.preferredHeight: 54 * root.sy
                     spacing: 12 * root.sx
 
                     Text {
                         Layout.fillWidth: true
-                        text: root.evaluationController.canContinue
+                        text: root.errorMessage !== ""
+                              ? root.errorMessage
+                              : root.evaluationController.canContinue
                               ? "Respuesta seleccionada"
                               : "Selecciona una opción para continuar"
-                        color: root.evaluationController.canContinue
+                        color: root.errorMessage !== ""
+                               ? Style.Theme.error_texto
+                               : root.evaluationController.canContinue
                                ? Style.Theme.exito_texto
                                : Style.Theme.texto_secundario
                         font.pixelSize: 13 * root.sx
+                        wrapMode: Text.WordWrap
                     }
 
                     BotonPrincipal {
@@ -269,13 +315,6 @@ PagePrincipal {
                     }
                 }
 
-                Text {
-                    visible: root.errorMessage !== ""
-                    Layout.fillWidth: true
-                    text: root.errorMessage
-                    color: Style.Theme.error_texto
-                    wrapMode: Text.WordWrap
-                }
             }
         }
 
