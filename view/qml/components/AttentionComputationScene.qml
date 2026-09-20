@@ -305,7 +305,7 @@ Item {
                     Layout.fillWidth: true
                     text: root.phaseFormula
                     color: Style.Theme.texto_secundario
-                    font.family: "monospace"
+                    font.family: Style.Theme.fuente_mono
                     font.pixelSize: Math.max(11, 10 * root.sx)
                     elide: Text.ElideRight
                 }

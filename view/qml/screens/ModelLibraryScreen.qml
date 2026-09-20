@@ -1059,7 +1059,7 @@ PagePrincipal {
                         placeholderText: "Pega aquí un código TVIS1:… o genera uno desde una tarjeta"
                         selectByMouse: true
                         wrapMode: TextEdit.WrapAnywhere
-                        font.family: "monospace"
+                        font.family: Style.Theme.fuente_mono
                         font.pixelSize: 11 * Math.min(root.sx, root.sy)
                     }
                 }

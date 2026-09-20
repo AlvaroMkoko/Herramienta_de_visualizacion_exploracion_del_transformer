@@ -668,7 +668,7 @@ Item {
                             text: root.explanationLevel === 2
                                   ? root.stage.mathematical : root.stage.formula
                             color: root.stage.color
-                            font.family: "monospace"
+                            font.family: Style.Theme.fuente_mono
                             font.pixelSize: root.fontSize(10, root.sx)
                             wrapMode: Text.WordWrap
                         }

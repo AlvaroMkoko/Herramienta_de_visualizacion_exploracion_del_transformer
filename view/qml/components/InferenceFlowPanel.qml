@@ -1098,7 +1098,7 @@ Item {
             anchors.top: parent.top; anchors.margins: 8 * infoSection.sx
             spacing: 3 * infoSection.sx
             Text { text: infoSection.title; color: infoSection.accent; font.bold: true; font.pixelSize: 9 * infoSection.sx }
-            Text { width: parent.width; text: infoSection.body; color: Style.Theme.texto_secundario_fuerte; wrapMode: Text.WordWrap; font.family: infoSection.monospace ? "monospace" : "sans-serif"; font.pixelSize: 9 * infoSection.sx }
+            Text { width: parent.width; text: infoSection.body; color: Style.Theme.texto_secundario_fuerte; wrapMode: Text.WordWrap; font.family: infoSection.monospace ? Style.Theme.fuente_mono : Style.Theme.fuente_interfaz; font.pixelSize: 9 * infoSection.sx }
         }
     }
 

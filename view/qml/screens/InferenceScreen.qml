@@ -726,8 +726,11 @@ PagePrincipal {
             selectedIndex: root.indicePasoVisualizado
             canGenerateNext: Boolean(root.controller && root.controller.estaGenerando)
             tokenProcessing: root.tokenEnProceso
-            sx: root.sx
-            sy: root.sy
+            // El explorador ya gana espacio al crecer el modal. Escalar tambien
+            // sus minimos y controles hacia arriba mantenia (y ampliaba) el
+            // desbordamiento en pantallas grandes.
+            sx: Math.min(1, root.sx)
+            sy: Math.min(1, root.sy)
             onCloseRequested: flujoInferencia.close()
             onNextTokenRequested: root.generarSiguienteToken()
             onTheoryRequested: function(conceptId) { root.openTheoryConcept(conceptId) }

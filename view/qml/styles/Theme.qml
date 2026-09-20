@@ -266,6 +266,17 @@ QtObject {
     readonly property color escala_div_pos2: p.escala_div_pos2
 
     // ========= Tipografía =========
+    // Evita que Qt/DirectWrite elija fuentes bitmap heredadas (por ejemplo,
+    // 8514oem) como sustitucion de familias genericas en Windows.
+    readonly property string fuente_interfaz: Qt.platform.os === "windows"
+                                               ? "Segoe UI" : "sans-serif"
+    readonly property string fuente_mono: Qt.platform.os === "windows"
+                                          ? "Consolas" : "monospace"
+    readonly property string fuente_simbolos: Qt.platform.os === "windows"
+                                              ? "Segoe UI Symbol" : fuente_interfaz
+    readonly property string fuente_emoji: Qt.platform.os === "windows"
+                                           ? "Segoe UI Emoji" : fuente_simbolos
+
     readonly property int titleSize: 28
     readonly property int subtitleSize: 22
     readonly property int bodySize: 16

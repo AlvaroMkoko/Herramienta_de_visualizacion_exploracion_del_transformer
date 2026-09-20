@@ -230,7 +230,7 @@ Dialog {
                                 text: fieldCard.modelData.name
                                 color: Style.Theme.texto_primario
                                 font.bold: true
-                                font.family: Qt.platform.os === "windows" ? "Consolas" : "monospace"
+                                font.family: Style.Theme.fuente_mono
                                 font.pixelSize: 13
                                 wrapMode: Text.WordWrap
                             }
@@ -332,7 +332,7 @@ Dialog {
                                     text: formatCard.modelData.code
                                     textFormat: Text.PlainText
                                     color: Style.Theme.chip_texto
-                                    font.family: Qt.platform.os === "windows" ? "Consolas" : "monospace"
+                                    font.family: Style.Theme.fuente_mono
                                     font.pixelSize: 12
                                     wrapMode: Text.WrapAnywhere
                                 }

@@ -9,8 +9,9 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("QSG_RHI_BACKEND", "software")
 os.environ.setdefault("QT_QUICK_CONTROLS_STYLE", "Basic")
 
-from PySide6.QtCore import QObject, QUrl
+from PySide6.QtCore import QObject, QPointF, QUrl
 from PySide6.QtQml import QJSValue, QQmlComponent, QQmlEngine
+from PySide6.QtQuick import QQuickItem
 from PySide6.QtTest import QTest
 import torch
 
@@ -68,6 +69,59 @@ def _crear_panel(engine: QQmlEngine, qapp):
     assert window is not None, _errores(component)
     qapp.processEvents()
     return component, window, window.findChild(QObject, "inferenceExplorationPanel")
+
+
+def _assert_item_dentro_del_panel(panel, item, margen=0.5):
+    assert isinstance(panel, QQuickItem)
+    assert isinstance(item, QQuickItem)
+    posicion = item.mapToItem(panel, QPointF(0, 0))
+    assert posicion.x() >= -margen
+    assert posicion.y() >= -margen
+    assert posicion.x() + item.width() <= panel.width() + margen
+    assert posicion.y() + item.height() <= panel.height() + margen
+
+
+def test_explorador_respeta_limites_del_modal_en_resolucion_base(qapp):
+    engine = QQmlEngine()
+    _, window, panel = _crear_panel(engine, qapp)
+    window.setProperty("width", 1230)
+    window.setProperty("height", 772)
+    # Q/K/V activa tambien la fila opcional de ajustes, el caso vertical
+    # mas exigente del recorrido principal.
+    panel.setProperty("operationIndex", 2)
+    # El boton de siguiente token completa tambien el caso horizontal mas
+    # exigente de la cabecera.
+    panel.setProperty("canGenerateNext", True)
+    window.setProperty("visible", True)
+    QTest.qWait(50)
+    qapp.processEvents()
+
+    animation = window.findChild(QQuickItem, "inferenceAnimationViewport")
+    guide = window.findChild(QQuickItem, "inferencePedagogicalGuide")
+    for object_name in (
+        "inferenceProcessMap",
+        "inferenceNextTokenButton",
+        "inferenceAnimationViewport",
+        "inferencePedagogicalGuide",
+        "inferenceReducedMotionToggle",
+        "inferenceGuideToggle",
+        "inferenceCloseButton",
+        "inferencePreviousOperationButton",
+        "inferencePlaySequenceButton",
+        "inferenceOperationSelector",
+        "inferenceNextOperationButton",
+    ):
+        item = window.findChild(QQuickItem, object_name)
+        assert item is not None, object_name
+        _assert_item_dentro_del_panel(panel, item)
+
+    animation_position = animation.mapToItem(panel, QPointF(0, 0))
+    guide_position = guide.mapToItem(panel, QPointF(0, 0))
+    assert animation_position.x() + animation.width() <= guide_position.x() + 0.5
+
+    window.deleteLater()
+    engine.deleteLater()
+    qapp.processEvents()
 
 
 def test_explorador_conserva_siete_animaciones_y_agrega_recorrido(qapp):
