@@ -14,14 +14,11 @@ PagePrincipal {
     readonly property real minimumFlowWidth: 1160
     readonly property int totalPlatformStages: 5
     readonly property var platformStageOrder: [1, 2, 3, 4, 5]
-    readonly property var platformStageAvailability: [
-        true,                                                   // 1 pre-test
-        true,                                                   // 2 recorrido guiado
-        !root.requireGuidedBeforeLabs || root.guidedCompleted,   // 3 laboratorios
-        true,                                                   // 4 post-test
-        true                                                    // 5 resultados
-    ]
-    
+    readonly property var progressController: (typeof mainViewModel !== "undefined"
+                                               && mainViewModel
+                                               && mainViewModel.progressController)
+                                              ? mainViewModel.progressController
+                                              : null
     readonly property var learningController: (typeof mainViewModel !== "undefined"
                                                && mainViewModel
                                                && mainViewModel.learningController)
@@ -44,53 +41,68 @@ PagePrincipal {
                                                    ? "Continuar recorrido"
                                                    : "Comenzar recorrido"
 
-    // ─────────────────────────────────────────────────────────────
-    // CONFIGURACIÓN: poner en false para desbloquear los laboratorios
-    // sin necesidad de completar el recorrido guiado (útil durante el
-    // desarrollo y para demostraciones).
-    readonly property bool requireGuidedBeforeLabs: true
-    // ─────────────────────────────────────────────────────────────
-
-    readonly property bool guidedCompleted: {
-        var dependency = guidedProgressRevision
-        if (typeof mainViewModel === "undefined" || !mainViewModel.learningController)
-            return false
-        return mainViewModel.learningController.completedUnitsCount
-               >= mainViewModel.learningController.totalUnits
-    }
-    property int guidedProgressRevision: 0
+    property int progresoRevision: 0
 
     Connections {
-        target: typeof mainViewModel !== "undefined" && mainViewModel ? mainViewModel.learningController : null
+        target: root.progressController
         ignoreUnknownSignals: true
-        function onProgressChanged() { root.guidedProgressRevision += 1 }
+        function onProgresoCambio() { root.progresoRevision += 1 }
+    }
+
+    Connections {
+        target: root.progressController
+        ignoreUnknownSignals: true
+        function onBanderasCambio() { root.progresoRevision += 1 }
     }
 
     function isPlatformStageAvailable(stageOrder) {
-        return stageOrder >= 1 && stageOrder <= totalPlatformStages
-                ? platformStageAvailability[stageOrder - 1]
-                : false
+        var dependency = root.progresoRevision
+        if (!root.progressController)
+            return true
+        return root.progressController.etapaDisponible(stageOrder)
+    }
+
+    function motivoBloqueoEtapa(stageOrder) {
+        var dependency = root.progresoRevision
+        return root.progressController
+               ? root.progressController.motivoBloqueo(stageOrder) : ""
+    }
+
+    function abrirEtapa(stageOrder, accion) {
+        if (!root.isPlatformStageAvailable(stageOrder))
+            return false
+        accion()
+        return true
     }
 
     function openGuidedLearning() {
-        root.stackView.push("GuidedLearningScreen.qml", {
-            "stackView": root.stackView
+        root.abrirEtapa(2, function() {
+            root.stackView.push("GuidedLearningScreen.qml", {
+                "stackView": root.stackView
+            })
         })
     }
 
     function openTestModule(stageOrder, moduleTitle, moduleDescription) {
-        root.stackView.push("ModulePlaceholderScreen.qml", {
-            "stackView": root.stackView,
-            "stageNumber": stageOrder,
-            "moduleTitle": moduleTitle,
-            "moduleDescription": moduleDescription
+        root.abrirEtapa(stageOrder, function() {
+            if (stageOrder === 5 && root.progressController)
+                root.progressController.registrarSeguimientoVisitado()
+            root.stackView.push("ModulePlaceholderScreen.qml", {
+                "stackView": root.stackView,
+                "stageNumber": stageOrder,
+                "moduleTitle": moduleTitle,
+                "moduleDescription": moduleDescription
+            })
         })
     }
 
     function openEvaluation(assessmentType) {
-        root.stackView.push("EvaluationIntroScreen.qml", {
-            "stackView": root.stackView,
-            "assessmentType": assessmentType
+        var orden = assessmentType === "pre" ? 1 : 4
+        root.abrirEtapa(orden, function() {
+            root.stackView.push("EvaluationIntroScreen.qml", {
+                "stackView": root.stackView,
+                "assessmentType": assessmentType
+            })
         })
     }
 
@@ -453,6 +465,10 @@ PagePrincipal {
                                         Layout.preferredHeight: 42
                                         implicitWidth: 0
                                         visible: stageContainer.kind === "guided"
+                                        enabled: stageContainer.stageAvailable
+                                        opacity: enabled ? 1 : 0.45
+                                        ToolTip.visible: hovered && !enabled
+                                        ToolTip.text: root.motivoBloqueoEtapa(stageContainer.stageOrder)
                                         text: root.guidedActionLabel
                                         focusPolicy: Qt.StrongFocus
                                         Accessible.name: text
@@ -486,6 +502,10 @@ PagePrincipal {
                                         Layout.preferredHeight: 42
                                         implicitWidth: 0
                                         visible: stageContainer.kind === "evaluation"
+                                        enabled: stageContainer.stageAvailable
+                                        opacity: enabled ? 1 : 0.45
+                                        ToolTip.visible: hovered && !enabled
+                                        ToolTip.text: root.motivoBloqueoEtapa(stageContainer.stageOrder)
                                         text: stageContainer.assessmentType === "pre"
                                               ? "Entrar al pre-test"
                                               : "Entrar al post-test"
@@ -522,6 +542,10 @@ PagePrincipal {
                                         Layout.preferredHeight: 42
                                         implicitWidth: 0
                                         visible: stageContainer.stagePlaceholder
+                                        enabled: stageContainer.stageAvailable
+                                        opacity: enabled ? 1 : 0.45
+                                        ToolTip.visible: hovered && !enabled
+                                        ToolTip.text: root.motivoBloqueoEtapa(stageContainer.stageOrder)
                                         text: "Abrir vista de prueba"
                                         focusPolicy: Qt.StrongFocus
                                         Accessible.name: "Abrir " + stageContainer.title
@@ -570,12 +594,16 @@ PagePrincipal {
                                             enabled: stageContainer.stageAvailable
                                             opacity: enabled ? 1 : 0.45
                                             ToolTip.visible: hovered && !enabled
-                                            ToolTip.text: "Este laboratorio está bloqueado. Completa el recorrido guiado para desbloquearlo."
+                                            ToolTip.text: root.motivoBloqueoEtapa(3)
 
                                             Accessible.description: "Abre el laboratorio de configuración y entrenamiento"
-                                            onClicked: root.stackView.push("SetupScreen.qml", {
-                                                "stackView": root.stackView
-                                            })
+                                            onClicked: {
+                                                if (root.progressController)
+                                                    root.progressController.registrarLaboratorioAbierto("entrenamiento")
+                                                root.stackView.push("SetupScreen.qml", {
+                                                    "stackView": root.stackView
+                                                })
+                                            }
 
                                             background: Rectangle {
                                                 radius: 8
@@ -616,12 +644,16 @@ PagePrincipal {
                                             enabled: stageContainer.stageAvailable
                                             opacity: enabled ? 1 : 0.45
                                             ToolTip.visible: hovered && !enabled
-                                            ToolTip.text: "Este laboratorio está bloqueado. Completa el recorrido guiado para desbloquearlo."
+                                            ToolTip.text: root.motivoBloqueoEtapa(3)
 
                                             Accessible.description: "Abre la biblioteca de modelos"
-                                            onClicked: root.stackView.push("ModelLibraryScreen.qml", {
-                                                "stackView": root.stackView
-                                            })
+                                            onClicked: {
+                                                if (root.progressController)
+                                                    root.progressController.registrarLaboratorioAbierto("biblioteca")
+                                                root.stackView.push("ModelLibraryScreen.qml", {
+                                                    "stackView": root.stackView
+                                                })
+                                            }
 
                                             background: Rectangle {
                                                 radius: 8
@@ -662,12 +694,16 @@ PagePrincipal {
                                             enabled: stageContainer.stageAvailable
                                             opacity: enabled ? 1 : 0.45
                                             ToolTip.visible: hovered && !enabled
-                                            ToolTip.text: "Este laboratorio está bloqueado. Completa el recorrido guiado para desbloquearlo."
+                                            ToolTip.text: root.motivoBloqueoEtapa(3)
 
                                             Accessible.description: "Abre el laboratorio de comparación"
-                                            onClicked: root.stackView.push("ComparisonScreen.qml", {
-                                                "stackView": root.stackView
-                                            })
+                                            onClicked: {
+                                                if (root.progressController)
+                                                    root.progressController.registrarLaboratorioAbierto("comparacion")
+                                                root.stackView.push("ComparisonScreen.qml", {
+                                                    "stackView": root.stackView
+                                                })
+                                            }
                                             
                                             background: Rectangle {
                                                 radius: 8
@@ -780,12 +816,12 @@ PagePrincipal {
                         property string eyebrow: "DIAGNÓSTICO"
                         property string title: "Pre-test"
                         property string description: "Identificará tus conocimientos previos para personalizar la experiencia."
-                        property string stageStatus: "Disponible"
-                        property bool stageAvailable: true
+                        property bool stageAvailable: root.isPlatformStageAvailable(1)
+                        property string stageStatus: stageAvailable ? "Disponible" : "Bloqueado"
                         property string stageRoute: "EvaluationIntroScreen.qml"
                         property string kind: "evaluation"
                         property string accentColor: Style.Theme.info
-                        property string note: "20 preguntas · 4 dimensiones · Forma A"
+                        property string note: stageAvailable ? "8 preguntas · 2 dimensiones · Forma A" : root.motivoBloqueoEtapa(1)
                         property bool stagePlaceholder: false
                         property string testButtonName: "pretestOpenButton"
                         property string assessmentType: "pre"
@@ -802,8 +838,8 @@ PagePrincipal {
                         property string eyebrow: "APRENDIZAJE"
                         property string title: "Recorrido guiado"
                         property string description: "Comprende el Transformer paso a paso mediante explicaciones y actividades."
-                        property string stageStatus: "Disponible"
-                        property bool stageAvailable: true
+                        property bool stageAvailable: root.isPlatformStageAvailable(2)
+                        property string stageStatus: stageAvailable ? "Disponible" : "Bloqueado"
                         property string stageRoute: "GuidedLearningScreen.qml"
                         property string kind: "guided"
                         property string accentColor: Style.Theme.acento
@@ -829,7 +865,7 @@ PagePrincipal {
                         property string stageRoute: ""
                         property string kind: "labs"
                         property string accentColor: Style.Theme.acento
-                        property string note: stageAvailable ? "Elige un laboratorio." : "Completa el recorrdio guiado para desploquearlo."
+                        property string note: stageAvailable ? "Elige un laboratorio." : root.motivoBloqueoEtapa(3)
                         property bool stagePlaceholder: false
                         property string testButtonName: ""
                         property string assessmentType: ""
@@ -846,12 +882,12 @@ PagePrincipal {
                         property string eyebrow: "EVALUACIÓN"
                         property string title: "Post-test"
                         property string description: "Comprobará cuánto aprendiste después del recorrido y la práctica."
-                        property string stageStatus: "Disponible"
-                        property bool stageAvailable: true
+                        property bool stageAvailable: root.isPlatformStageAvailable(4)
+                        property string stageStatus: stageAvailable ? "Disponible" : "Bloqueado"
                         property string stageRoute: "EvaluationIntroScreen.qml"
                         property string kind: "evaluation"
                         property string accentColor: Style.Theme.acento
-                        property string note: "20 preguntas · 4 dimensiones · Forma B"
+                        property string note: stageAvailable ? "8 preguntas · 2 dimensiones · Forma B" : root.motivoBloqueoEtapa(4)
                         property bool stagePlaceholder: false
                         property string testButtonName: "posttestOpenButton"
                         property string assessmentType: "post"
@@ -868,12 +904,12 @@ PagePrincipal {
                         property string eyebrow: "SEGUIMIENTO"
                         property string title: "Progreso y resultados"
                         property string description: "Reunirá tus avances, resultados y recomendaciones de estudio."
-                        property string stageStatus: "Vista de prueba"
-                        property bool stageAvailable: true
+                        property bool stageAvailable: root.isPlatformStageAvailable(5)
+                        property string stageStatus: stageAvailable ? "Disponible" : "Bloqueado"
                         property string stageRoute: "ModulePlaceholderScreen.qml"
                         property string kind: "placeholder"
                         property string accentColor: Style.Theme.warning
-                        property string note: "Funcionalidad pendiente; navegación habilitada."
+                        property string note: stageAvailable ? "Compara tu pre-test con tu post-test." : root.motivoBloqueoEtapa(5)
                         property bool stagePlaceholder: true
                         property string testButtonName: "resultsOpenButton"
                         property string assessmentType: ""
@@ -882,6 +918,80 @@ PagePrincipal {
                         Layout.minimumWidth: 214
                         Layout.preferredWidth: 230
                         sourceComponent: stageDelegateComponent
+                    }
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.leftMargin: root.pageMargin
+                Layout.rightMargin: root.pageMargin
+                spacing: 10
+
+                Item { Layout.fillWidth: true }
+
+                BotonSecundario {
+                    id: resetProgressButton
+                    objectName: "homeResetProgressButton"
+                    Layout.preferredWidth: 180
+                    Layout.preferredHeight: 38
+                    variante: "peligro"
+                    text: "Borrar progreso"
+                    enabled: root.progressController
+                             ? root.progressController.flujoCompleto : false
+                    opacity: enabled ? 1 : 0.45
+                    focusPolicy: Qt.StrongFocus
+                    Accessible.name: text
+                    Accessible.description: "Borra el progreso del recorrido guiado y los resultados de las evaluaciones"
+                    ToolTip.visible: hovered && !enabled
+                    ToolTip.text: "Disponible cuando completes los cinco pasos de la ruta ("
+                                  + (root.progressController
+                                     ? root.progressController.pasosCompletados : 0)
+                                  + " de 5)."
+                    onClicked: confirmarBorrado.open()
+                }
+            }
+
+            Dialog {
+                id: confirmarBorrado
+                objectName: "homeResetProgressDialog"
+                title: "¿Borrar todo tu progreso?"
+                modal: true
+                width: Math.min(520, root.width - 40)
+                anchors.centerIn: Overlay.overlay
+
+                contentItem: ColumnLayout {
+                    spacing: 12
+                    Label {
+                        Layout.fillWidth: true
+                        text: "Se eliminarán las unidades completadas del recorrido guiado y los resultados del pre-test y del post-test. Esta acción no se puede deshacer."
+                        color: Style.Theme.texto_secundario
+                        wrapMode: Text.WordWrap
+                    }
+                }
+
+                footer: DialogButtonBox {
+                    alignment: Qt.AlignRight
+                    standardButtons: DialogButtonBox.NoButton
+
+                    BotonSecundario {
+                        objectName: "homeResetCancelButton"
+                        text: "Cancelar"
+                        DialogButtonBox.buttonRole: DialogButtonBox.RejectRole
+                        onClicked: confirmarBorrado.reject()
+                    }
+
+                    BotonSecundario {
+                        objectName: "homeResetConfirmButton"
+                        text: "Borrar progreso"
+                        variante: "peligro"
+                        focus: false
+                        DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole
+                        onClicked: {
+                            if (root.progressController)
+                                root.progressController.borrarTodoElProgreso()
+                            confirmarBorrado.accept()
+                        }
                     }
                 }
             }

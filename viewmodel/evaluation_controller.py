@@ -2,9 +2,16 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import Property, QObject, Signal, Slot
+from PySide6.QtCore import (
+    Property,
+    QObject,
+    QStandardPaths,
+    Signal,
+    Slot,
+)
 
 from model.evaluacion import (
     EvaluationManager,
@@ -13,6 +20,11 @@ from model.evaluacion import (
     QuestionBankError,
     ResultsRepository,
 )
+
+
+def _ruta_resultados() -> Path:
+    base = QStandardPaths.writableLocation(QStandardPaths.AppDataLocation)
+    return Path(base) / "resultados_evaluacion.json"
 
 
 class EvaluationController(QObject):
@@ -31,7 +43,7 @@ class EvaluationController(QObject):
         super().__init__(parent)
         self._bank = question_bank or QuestionBank()
         self._manager = EvaluationManager(self._bank)
-        self._repository = repository or ResultsRepository()
+        self._repository = repository or ResultsRepository(_ruta_resultados())
         self._assessment_type = "pre"
         self._assessment_info: dict[str, Any] = {}
         self._selected_option_id = ""
@@ -142,6 +154,71 @@ class EvaluationController(QObject):
     def previousResult(self) -> dict[str, Any]:
         return self._repository.latest(self._assessment_type)
 
+    @Property("QVariantMap", notify=stateChanged)
+    def preResult(self) -> dict[str, Any]:
+        return self._repository.latest("pre")
+
+    @Property("QVariantMap", notify=stateChanged)
+    def postResult(self) -> dict[str, Any]:
+        return self._repository.latest("post")
+
+    @Property(bool, notify=stateChanged)
+    def hasPre(self) -> bool:
+        return bool(self._repository.latest("pre"))
+
+    @Property(bool, notify=stateChanged)
+    def hasPost(self) -> bool:
+        return bool(self._repository.latest("post"))
+
+    @Property("QVariantList", notify=stateChanged)
+    def history(self) -> list[dict[str, Any]]:
+        return self._repository.get_history()
+
+    @Property("QVariantMap", notify=stateChanged)
+    def improvement(self) -> dict[str, Any]:
+        pre = self._repository.latest("pre")
+        post = self._repository.latest("post")
+        if not pre or not post:
+            return {"disponible": False}
+
+        pre_dimensions = {
+            dimension.get("id"): dimension
+            for dimension in pre.get("dimensions", [])
+            if dimension.get("id")
+        }
+        post_dimensions = {
+            dimension.get("id"): dimension
+            for dimension in post.get("dimensions", [])
+            if dimension.get("id")
+        }
+        dimensiones = []
+        for dimension_id, pre_dimension in pre_dimensions.items():
+            post_dimension = post_dimensions.get(dimension_id)
+            if post_dimension is None:
+                continue
+            pre_percentage = float(pre_dimension.get("percentage", 0))
+            post_percentage = float(post_dimension.get("percentage", 0))
+            dimensiones.append(
+                {
+                    "id": dimension_id,
+                    "name": post_dimension.get(
+                        "name", pre_dimension.get("name", dimension_id)
+                    ),
+                    "pre_percentage": pre_percentage,
+                    "post_percentage": post_percentage,
+                    "delta_percentage": post_percentage - pre_percentage,
+                }
+            )
+        pre_percentage = float(pre.get("percentage", 0))
+        post_percentage = float(post.get("percentage", 0))
+        return {
+            "disponible": True,
+            "pre_percentage": pre_percentage,
+            "post_percentage": post_percentage,
+            "delta_percentage": post_percentage - pre_percentage,
+            "dimensions": dimensiones,
+        }
+
     @Slot(str)
     def prepareEvaluation(self, assessment_type: str) -> None:
         try:
@@ -199,3 +276,9 @@ class EvaluationController(QObject):
         self.stateChanged.emit()
         if result:
             self.evaluationCompleted.emit(dict(result))
+
+    @Slot()
+    def borrarHistorial(self) -> None:
+        self._repository.clear()
+        self._result = {}
+        self.stateChanged.emit()

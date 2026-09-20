@@ -33,15 +33,18 @@ La pantalla de inicio presenta la evolución prevista de la plataforma educativa
 2. **Recorrido guiado** — disponible. Organiza 18 conceptos esenciales en seis
    unidades, incluida una guía del contrato de datasets, y combina lectura con
    el ciclo *predecir → observar → explicar*.
-3. **Laboratorios** — entrenamiento, apertura de modelos y comparación siguen
-   disponibles como accesos directos para experimentar libremente.
+3. **Laboratorios** — entrenamiento, apertura de modelos y comparación se
+  habilitan al completar el recorrido guiado; cada opción queda registrada al
+  abrirse.
 4. **Post-test** — evaluación final equivalente, con resultado total y por dimensión.
 5. **Progreso y resultados** — seguimiento integral; por ahora se muestra como
    módulo futuro.
 
-Durante el desarrollo, las cinco etapas pueden abrirse sin requisitos de
-progreso. El seguimiento integral conserva una vista placeholder; el pre-test
-y el post-test ya cuentan con flujo de entrada, resolución y resultados.
+La ruta aplica guardias secuenciales: pre-test, recorrido, laboratorios,
+post-test y seguimiento. El interruptor de ruta estricta se conserva en la
+configuración para demostraciones y desarrollo. El seguimiento integral
+conserva una vista placeholder; el pre-test y el post-test ya cuentan con flujo
+de entrada, resolución y resultados persistidos localmente.
 
 El recorrido guiado guarda localmente las unidades completadas y la última
 posición visitada. No requiere un dataset ni un modelo entrenado para comenzar.
@@ -57,8 +60,9 @@ El flujo de los laboratorios es:
    compatibilidad de entrenamiento. Se pueden seleccionar varios y se combinan
    en un solo corpus.
 3. **Entrenamiento** — métricas en vivo, controles de pausa/reanudación y de
-   velocidad, y tres pestañas: recorrido pedagógico del batch real, diagrama
-   del Transformer y nube PCA 3D de embeddings.
+  velocidad, y dos pestañas: recorrido pedagógico del batch real y nube PCA 3D
+  de embeddings. El mapa de arquitectura permanece visible junto a las
+  métricas y sus detalles se abren al seleccionar un bloque.
 4. **Resultados** — resumen del entrenamiento, curva de pérdida y opciones de
    guardado.
 5. **Inferencia** — generación token a token con temperatura, top-k, top-p,

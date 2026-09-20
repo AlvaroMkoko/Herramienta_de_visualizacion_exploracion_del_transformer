@@ -28,6 +28,7 @@ from .evaluation_controller import EvaluationController
 from .inference_controller import InferenceController
 from .learning_controller import LearningController
 from .model_library_controller import ModelLibraryController
+from .progress_controller import ProgressController
 from .setup_controller import SetupController
 from .theory_controller import TheoryController
 from .training_controller import TrainingController
@@ -97,6 +98,9 @@ class MainViewModel(QObject):
             self._model_library_controller, self
         )
         self._evaluation_controller = EvaluationController(self)
+        self._progress_controller = ProgressController(
+            self._learning_controller, self._evaluation_controller, self
+        )
         self._training_controller: TrainingController | None = None
         self._inference_controller: InferenceController | None = None
         self._transformer_bridge = TransformerBridge(self)
@@ -166,6 +170,10 @@ class MainViewModel(QObject):
     @Property(QObject, constant=True)
     def evaluationController(self) -> EvaluationController:
         return self._evaluation_controller
+
+    @Property(QObject, constant=True)
+    def progressController(self) -> ProgressController:
+        return self._progress_controller
 
     @Property(QObject, notify=trainingControllerCambio)
     def trainingController(self) -> TrainingController | None:

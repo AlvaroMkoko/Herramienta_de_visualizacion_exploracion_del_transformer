@@ -615,7 +615,7 @@ PagePrincipal {
                             background: Rectangle { color: "transparent" }
 
                             onCurrentIndexChanged: {
-                                root.trainingController.activarNubeEmbeddings(barraPestanas.currentIndex === 2)
+                                root.trainingController.activarNubeEmbeddings(barraPestanas.currentIndex === 1)
                                 root.trainingController.activarVisualizacionPedagogica(barraPestanas.currentIndex === 0)
                             }
 
@@ -637,29 +637,6 @@ PagePrincipal {
                                            ? Style.Theme.acento_fuerte
                                            : Style.Theme.texto_secundario
                                     font.bold: guidedTab.checked
-                                    font.pixelSize: 12 * root.sx
-                                    horizontalAlignment: Text.AlignHCenter
-                                    verticalAlignment: Text.AlignVCenter
-                                }
-                            }
-                            TabButton {
-                                id: architectureTab
-                                text: "Mapa de arquitectura"
-                                background: Rectangle {
-                                    radius: 7 * root.sx
-                                    color: architectureTab.checked
-                                           ? Style.Theme.acento_fondo
-                                           : Style.Theme.superficie_alterna
-                                    border.color: architectureTab.checked
-                                                  ? Style.Theme.acento
-                                                  : Style.Theme.borde_medio
-                                }
-                                contentItem: Text {
-                                    text: architectureTab.text
-                                    color: architectureTab.checked
-                                           ? Style.Theme.acento_fuerte
-                                           : Style.Theme.texto_secundario
-                                    font.bold: architectureTab.checked
                                     font.pixelSize: 12 * root.sx
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
@@ -712,18 +689,9 @@ PagePrincipal {
                                 sy: root.sy
                             }
 
-                            TransformerDiagram {
-                                objectName: "trainingTransformerDiagram"
-                                anchors.fill: parent
-                                visible: barraPestanas.currentIndex === 1
-                                bridge: localBridge
-                                trainingMode: true
-                                highlightedComponentId: root.componenteRelevanteId
-                            }
-
                             NubeEmbeddings3D {
                                 anchors.fill: parent
-                                visible: barraPestanas.currentIndex === 2
+                                visible: barraPestanas.currentIndex === 1
                                 puntos: root.nubeEmbeddings.puntos || []
                                 etiquetas: root.nubeEmbeddings.etiquetas || []
                                 varianzaConservada: Number(root.nubeEmbeddings.varianza_conservada || 0)
@@ -732,7 +700,7 @@ PagePrincipal {
                                 dimensiones: root.nubeEmbeddings.dimensiones || []
                                 // Solo rota sola cuando la pestaña esta visible,
                                 // para no repintar un Canvas que nadie ve.
-                                rotacionAutomatica: barraPestanas.currentIndex === 2
+                                rotacionAutomatica: barraPestanas.currentIndex === 1
                                 onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
                             }
                         }
@@ -753,8 +721,142 @@ PagePrincipal {
                 sx: root.sx
                 sy: root.sy
 
+                ColumnLayout {
+                    id: mapaPanelLayout
+                    anchors.fill: parent
+                    anchors.margins: 12 * root.sx
+                    spacing: 8 * root.sy
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6 * root.sx
+                        Text {
+                            Layout.fillWidth: true
+                            text: "MAPA DE ARQUITECTURA"
+                            color: Style.Theme.acento_fuerte
+                            font.bold: true
+                            font.pixelSize: 10 * root.sx
+                        }
+                        ConceptHelpButton {
+                            objectName: "trainingMapHelpButton"
+                            conceptId: "arquitectura_transformer"
+                            controlSize: Math.max(22, 25 * Math.min(root.sx, root.sy))
+                            onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                        }
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: "Haz clic en un bloque para ver sus datos reales del batch actual."
+                        color: Style.Theme.texto_secundario
+                        font.pixelSize: 10 * root.sx
+                        wrapMode: Text.WordWrap
+                    }
+
+                    TransformerDiagram {
+                        id: mapaArquitectura
+                        objectName: "trainingTransformerDiagram"
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        bridge: localBridge
+                        trainingMode: true
+                        highlightedComponentId: root.componenteRelevanteId
+                    }
+
+                    Rectangle {
+                        id: rutaPantalla
+                        objectName: "trainingRouteHint"
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: visible ? vacioLayoutNuevo.implicitHeight + 20 * root.sy : 0
+                        visible: localBridge.selectedId === ""
+                        radius: 9 * root.sx
+                        color: Style.Theme.acento_fondo
+
+                        Column {
+                            id: vacioLayoutNuevo
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.margins: 12 * root.sx
+                            spacing: 6 * root.sy
+
+                            Text {
+                                width: parent.width
+                                text: "Tu ruta en esta pantalla"
+                                color: Style.Theme.acento_texto
+                                font.bold: true
+                                font.pixelSize: 13 * root.sx
+                                wrapMode: Text.WordWrap
+                            }
+                            Text {
+                                width: parent.width
+                                text: "Avanza en este orden; no necesitas observar todo al mismo tiempo."
+                                color: Style.Theme.texto_secundario
+                                font.pixelSize: 10 * root.sx
+                                wrapMode: Text.WordWrap
+                            }
+                            Repeater {
+                                model: [
+                                    "Lee la pérdida y el gradiente del batch.",
+                                    "Recorre un paso a la vez en la vista guiada.",
+                                    "Abre un bloque para inspeccionar sus datos."
+                                ]
+                                delegate: Row {
+                                    id: pasoRuta
+                                    required property int index
+                                    required property var modelData
+                                    width: vacioLayoutNuevo.width
+                                    height: Math.max(24 * root.sy, textoPaso.implicitHeight)
+                                    spacing: 7 * root.sx
+                                    Rectangle {
+                                        width: 22 * root.sx
+                                        height: 22 * root.sy
+                                        radius: width / 2
+                                        color: Style.Theme.surface
+                                        border.color: Style.Theme.acento_alt
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: pasoRuta.index + 1
+                                            color: Style.Theme.acento_fuerte
+                                            font.bold: true
+                                            font.pixelSize: 10 * root.sx
+                                        }
+                                    }
+                                    Text {
+                                        id: textoPaso
+                                        width: pasoRuta.width - 29 * root.sx
+                                        text: pasoRuta.modelData
+                                        color: Style.Theme.texto_secundario_fuerte
+                                        font.pixelSize: 10 * root.sx
+                                        wrapMode: Text.WordWrap
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                DetalleComponentePopover {
+                    id: detalleComponente
+                    objectName: "trainingComponentDetailPopover"
+                    parent: mapaArquitectura
+                    x: 8 * root.sx
+                    y: Math.max(8 * root.sy, parent.height - height - 12 * root.sy)
+                    width: Math.max(0, parent.width - 16 * root.sx)
+                    height: Math.min(parent.height * 0.62, 500 * root.sy)
+                    sx: root.sx
+                    sy: root.sy
+                    componenteId: localBridge.selectedId
+                    concepto: root.teoriaActual
+                    datosComponente: root.componenteActual
+                    prediccionesTop: root.prediccionesTop
+                    onAbrirTeoriaSolicitada: root.mostrarTeoriaComponente(localBridge.selectedId)
+                    onCerrarSolicitado: localBridge.clearSelection()
+                }
+
                 ScrollView {
                     id: componentDetailsScroll
+                    visible: false
                     anchors.fill: parent
                     anchors.margins: 16 * root.sx
                     clip: true
@@ -989,28 +1091,6 @@ PagePrincipal {
                     }
                 }
 
-                Rectangle {
-                    id: componentDetailsScrollIndicator
-                    readonly property real trackHeight: parent.height - 24 * root.sy
-                    readonly property real scrollRange: Math.max(
-                        1, componentDetailsScroll.contentHeight
-                           - componentDetailsScroll.availableHeight)
-                    width: Math.max(4, 5 * root.sx)
-                    height: Math.max(30 * root.sy,
-                                     trackHeight * Math.min(
-                                         1, componentDetailsScroll.availableHeight
-                                            / Math.max(1, componentDetailsScroll.contentHeight)))
-                    x: parent.width - width - 6 * root.sx
-                    y: 12 * root.sy
-                       + (trackHeight - height)
-                         * Math.max(0, Math.min(scrollRange,
-                             componentDetailsScroll.contentItem.contentY)) / scrollRange
-                    radius: width / 2
-                    color: Qt.alpha(Style.Theme.acento, 0.62)
-                    visible: componentDetailsScroll.contentHeight
-                             > componentDetailsScroll.availableHeight + 1
-                    z: 2
-                }
             }
 
             RectanglePrincipal {

@@ -24,9 +24,8 @@ class LearningController(QObject):
 
     def __init__(self, parent: QObject | None = None, settings: QSettings | None = None):
         super().__init__(parent)
-        self._settings = settings or QSettings(
-            "TransformerVisualizer", "LearningPlatform"
-        )
+        self._settings = settings if settings is not None else QSettings()
+        self._migrar_desde_almacen_anterior()
         self._completed_unit_ids = self._read_completed_units()
         self._last_unit_index = self._bounded_int(
             self._settings.value("guided/last_unit_index", 0),
@@ -38,6 +37,26 @@ class LearningController(QObject):
             0,
             self._CONCEPTS_PER_UNIT - 1,
         )
+
+    def _migrar_desde_almacen_anterior(self) -> None:
+        """Copia una sola vez el progreso del almacen anterior."""
+        if self._settings.value("guided/migrado", False, type=bool):
+            return
+        if self._settings.contains("guided/completed_unit_ids"):
+            self._settings.setValue("guided/migrado", True)
+            self._settings.sync()
+            return
+
+        anterior = QSettings("TransformerVisualizer", "LearningPlatform")
+        for clave in (
+            "guided/completed_unit_ids",
+            "guided/last_unit_index",
+            "guided/last_concept_index",
+        ):
+            if anterior.contains(clave):
+                self._settings.setValue(clave, anterior.value(clave))
+        self._settings.setValue("guided/migrado", True)
+        self._settings.sync()
 
     @staticmethod
     def _bounded_int(value, minimum: int, maximum: int) -> int:
