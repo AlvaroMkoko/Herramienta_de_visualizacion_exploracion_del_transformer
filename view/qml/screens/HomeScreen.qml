@@ -821,7 +821,7 @@ PagePrincipal {
                         property string stageRoute: "EvaluationIntroScreen.qml"
                         property string kind: "evaluation"
                         property string accentColor: Style.Theme.info
-                        property string note: stageAvailable ? "8 preguntas · 2 dimensiones · Forma A" : root.motivoBloqueoEtapa(1)
+                        property string note: stageAvailable ? "20 preguntas · 5 dimensiones · Forma A" : root.motivoBloqueoEtapa(1)
                         property bool stagePlaceholder: false
                         property string testButtonName: "pretestOpenButton"
                         property string assessmentType: "pre"
@@ -887,7 +887,7 @@ PagePrincipal {
                         property string stageRoute: "EvaluationIntroScreen.qml"
                         property string kind: "evaluation"
                         property string accentColor: Style.Theme.acento
-                        property string note: stageAvailable ? "8 preguntas · 2 dimensiones · Forma B" : root.motivoBloqueoEtapa(4)
+                        property string note: stageAvailable ? "20 preguntas · 5 dimensiones · Forma B" : root.motivoBloqueoEtapa(4)
                         property bool stagePlaceholder: false
                         property string testButtonName: "posttestOpenButton"
                         property string assessmentType: "post"
