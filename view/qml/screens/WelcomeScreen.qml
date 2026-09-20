@@ -138,6 +138,7 @@ PagePrincipal {
                                 anchors.centerIn: parent
                                 text: "◆"
                                 color: Style.Theme.acento
+                                font.family: Style.Theme.fuente_simbolos
                                 font.pixelSize: 22
                                 font.bold: true
                             }
@@ -249,6 +250,9 @@ PagePrincipal {
                                     anchors.centerIn: parent
                                     text: root.labsUnlocked ? "▤" : "🔒"
                                     color: Style.Theme.chip_texto
+                                    font.family: root.labsUnlocked
+                                                 ? Style.Theme.fuente_simbolos
+                                                 : Style.Theme.fuente_emoji
                                     font.pixelSize: 20
                                     font.bold: true
                                 }

@@ -36,15 +36,19 @@ Rectangle {
             spacing: 8 * root.sx
 
             Text {
+                Layout.minimumWidth: 0
                 text: "MAPA DEL PROCESO"
                 color: Style.Theme.texto_secundario
                 font.bold: true
+                elide: Text.ElideRight
                 font.letterSpacing: 0.6
                 font.pixelSize: Math.max(11, 11 * root.sx)
             }
 
             Text {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
+                Layout.preferredWidth: 1
                 text: "Sigue una sola operaci\u00f3n; el mapa mantiene visible el recorrido completo."
                 color: Style.Theme.texto_secundario
                 elide: Text.ElideRight
@@ -52,12 +56,16 @@ Rectangle {
             }
 
             Text {
+                Layout.minimumWidth: 0
+                Layout.maximumWidth: 250 * root.sx
                 text: root.chapters.length
                       ? "Etapa " + (root.currentIndex + 1) + " de " + root.chapters.length
                         + "  ·  paso " + root.currentStep + " de " + root.currentStepCount
                       : ""
                 color: root.accent
                 font.bold: true
+                elide: Text.ElideRight
+                horizontalAlignment: Text.AlignRight
                 font.pixelSize: Math.max(11, 11 * root.sx)
             }
         }

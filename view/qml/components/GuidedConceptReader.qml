@@ -205,7 +205,7 @@ Rectangle {
                             visible: root.textFor("formula") !== ""
                             text: root.textFor("formula")
                             color: Style.Theme.formula_texto
-                            font.family: "monospace"
+                            font.family: Style.Theme.fuente_mono
                             font.pixelSize: 12 * root.scaleFactor
                             wrapMode: Text.WrapAnywhere
                         }

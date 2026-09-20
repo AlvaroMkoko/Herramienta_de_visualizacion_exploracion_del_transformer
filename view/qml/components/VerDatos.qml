@@ -232,8 +232,7 @@ Popup {
                             textFormat: Text.PlainText
                             color: Style.Theme.texto_secundario_fuerte
                             wrapMode: Text.Wrap
-                            font.family: Qt.platform.os === "windows"
-                                         ? "Consolas" : "monospace"
+                            font.family: Style.Theme.fuente_mono
                             font.pixelSize: 12
                         }
                     }

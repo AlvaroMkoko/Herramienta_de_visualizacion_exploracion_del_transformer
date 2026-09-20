@@ -948,7 +948,7 @@ PagePrincipal {
                                             Layout.preferredWidth: modelData.w * 100
                                             text: root.texto(modelData.v, "No registrado")
                                             color: Style.Theme.texto_primario
-                                            font.family: "monospace"
+                                            font.family: Style.Theme.fuente_mono
                                             font.pixelSize: 10 * Math.min(root.sx, root.sy)
                                             elide: Text.ElideRight
                                         }
@@ -1003,7 +1003,7 @@ PagePrincipal {
                                         Layout.preferredWidth: 300 * root.sx
                                         text: root.campo(filaTensor.modelData, ["nombre", "name", "tensor"], "Tensor")
                                         color: Style.Theme.texto_primario
-                                        font.family: "monospace"
+                                        font.family: Style.Theme.fuente_mono
                                         font.pixelSize: 10 * Math.min(root.sx, root.sy)
                                         elide: Text.ElideMiddle
                                     }
@@ -1013,7 +1013,7 @@ PagePrincipal {
                                                                                ["shape", "forma", "dimensiones", "valor"], null),
                                                                      "no registrado")
                                         color: Style.Theme.texto_secundario
-                                        font.family: "monospace"
+                                        font.family: Style.Theme.fuente_mono
                                         font.pixelSize: 10 * Math.min(root.sx, root.sy)
                                         elide: Text.ElideRight
                                     }
@@ -1629,7 +1629,7 @@ PagePrincipal {
                             Layout.fillWidth: true
                             text: root.especialesComoTexto()
                             color: Style.Theme.aviso_texto
-                            font.family: "monospace"
+                            font.family: Style.Theme.fuente_mono
                             font.pixelSize: 11 * Math.min(root.sx, root.sy)
                             elide: Text.ElideRight
                         }
@@ -1687,7 +1687,7 @@ PagePrincipal {
                                         Layout.preferredWidth: 120 * root.sx
                                         text: root.campo(tokenItem.modelData, ["id", "tokenId"], "—")
                                         color: Style.Theme.acento_fuerte
-                                        font.family: "monospace"
+                                        font.family: Style.Theme.fuente_mono
                                         font.bold: true
                                         font.pixelSize: 11 * Math.min(root.sx, root.sy)
                                     }
@@ -1695,7 +1695,7 @@ PagePrincipal {
                                         Layout.fillWidth: true
                                         text: root.tokenVisible(root.campo(tokenItem.modelData, ["texto", "text", "token"], null))
                                         color: Style.Theme.texto_primario
-                                        font.family: "monospace"
+                                        font.family: Style.Theme.fuente_mono
                                         elide: Text.ElideRight
                                         font.pixelSize: 11 * Math.min(root.sx, root.sy)
                                     }
@@ -2284,7 +2284,9 @@ PagePrincipal {
                                     text: root.texto(integridadMetrica.modelData.v, "No registrado")
                                     color: Style.Theme.texto_primario
                                     font.bold: true
-                                    font.family: integridadMetrica.modelData.mono ? "monospace" : "sans-serif"
+                                    font.family: integridadMetrica.modelData.mono
+                                                 ? Style.Theme.fuente_mono
+                                                 : Style.Theme.fuente_interfaz
                                     elide: integridadMetrica.modelData.mono ? Text.ElideMiddle : Text.ElideRight
                                     font.pixelSize: 12 * Math.min(root.sx, root.sy)
                                     ToolTip.visible: integridadHover.containsMouse && integridadMetrica.modelData.mono

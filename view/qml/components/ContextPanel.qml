@@ -343,7 +343,7 @@ Rectangle {
                                 Layout.preferredWidth: parent.width * 0.42
                                 text: dimensionDelegate.modelData.valor
                                 color: Style.Theme.texto_primario
-                                font.family: "monospace"
+                                font.family: Style.Theme.fuente_mono
                                 font.pixelSize: (root.expanded ? 13 : 9) * root.contentScale
                                 horizontalAlignment: Text.AlignRight
                                 wrapMode: Text.WrapAnywhere

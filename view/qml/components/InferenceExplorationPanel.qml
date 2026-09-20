@@ -678,10 +678,11 @@ Item {
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: 16 * root.sx
-            spacing: 10 * root.sy
+            spacing: 8 * root.sy
 
             RowLayout {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 Layout.preferredHeight: 50 * root.sy
                 spacing: 10 * root.sx
 
@@ -694,41 +695,56 @@ Item {
                         anchors.centerIn: parent
                         text: "✦"
                         color: Style.Theme.texto_sobre_color
+                        font.family: Style.Theme.fuente_simbolos
                         font.pixelSize: 20 * Math.min(root.sx, root.sy)
                     }
                 }
 
                 ColumnLayout {
                     Layout.fillWidth: true
+                    Layout.minimumWidth: 0
+                    Layout.preferredWidth: 1
                     spacing: 1 * root.sy
                     Text {
+                        Layout.fillWidth: true
                         text: "Cómo se genera el siguiente token"
                         color: Style.Theme.texto_primario
                         font.bold: true
+                        elide: Text.ElideRight
                         font.pixelSize: 23 * Math.min(root.sx, root.sy)
                     }
                     Text {
+                        Layout.fillWidth: true
                         text: root.currentSnapshot
                               ? "Explicando el token " + root.currentSnapshot.paso + "/" + root.snapshots.length
                                 + ": “" + root.currentSnapshot.token_elegido.texto + "”"
                               : "Genera un token para capturar su recorrido"
                         color: Style.Theme.texto_secundario
+                        elide: Text.ElideRight
                         font.pixelSize: Math.max(12, 13 * Math.min(root.sx, root.sy))
                     }
                 }
 
                 Rectangle {
-                    Layout.preferredWidth: dataChipText.implicitWidth + 24 * root.sx
+                    Layout.preferredWidth: Math.min(180, dataChipText.implicitWidth + 24 * root.sx)
+                    Layout.minimumWidth: 130
+                    Layout.maximumWidth: 180
                     Layout.preferredHeight: 32 * root.sy
                     radius: height / 2
                     color: root.operationDataAvailable ? Style.Theme.exito_fondo : Style.Theme.aviso_fondo
                     border.color: root.operationDataAvailable ? "#86EFAC" : "#FCD34D"
+                    clip: true
                     Text {
                         id: dataChipText
-                        anchors.centerIn: parent
+                        anchors.fill: parent
+                        anchors.leftMargin: 10 * root.sx
+                        anchors.rightMargin: 10 * root.sx
                         text: root.operationDataAvailable ? "● Datos reales" : "Captura no disponible"
                         color: root.operationDataAvailable ? Style.Theme.exito_texto : Style.Theme.aviso_texto
                         font.bold: true
+                        elide: Text.ElideRight
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
                         font.pixelSize: Math.max(11, 11 * Math.min(root.sx, root.sy))
                     }
                 }
@@ -737,6 +753,8 @@ Item {
                     objectName: "inferenceNextTokenButton"
                     visible: root.canGenerateNext || root.tokenProcessing
                     Layout.preferredWidth: 150 * root.sx
+                    Layout.minimumWidth: 130 * root.sx
+                    Layout.maximumWidth: 150 * root.sx
                     Layout.preferredHeight: 36 * root.sy
                     label: root.tokenProcessing ? "Calculando…" : "+ Siguiente token"
                     enabled: root.canGenerateNext && !root.tokenProcessing
@@ -746,6 +764,8 @@ Item {
                 CasillaPrincipal {
                     objectName: "inferenceReducedMotionToggle"
                     Layout.preferredWidth: Math.max(142, 166 * root.sx)
+                    Layout.minimumWidth: 142
+                    Layout.maximumWidth: 166
                     text: "Reducir movimiento"
                     checked: root.reducedMotion
                     font.pixelSize: Math.max(11, 11 * root.sx)
@@ -755,6 +775,8 @@ Item {
                 ActionPill {
                     objectName: "inferenceGuideToggle"
                     Layout.preferredWidth: Math.max(145, 190 * root.sx)
+                    Layout.minimumWidth: 145
+                    Layout.maximumWidth: 190
                     Layout.preferredHeight: 36 * root.sy
                     label: root.guideVisible
                            ? "Ocultar explicación"
@@ -765,6 +787,8 @@ Item {
                 ActionPill {
                     objectName: "inferenceCloseButton"
                     Layout.preferredWidth: 42 * root.sx
+                    Layout.minimumWidth: 42 * root.sx
+                    Layout.maximumWidth: 42 * root.sx
                     Layout.preferredHeight: 36 * root.sy
                     label: "✕"
                     accent: Style.Theme.error
@@ -774,7 +798,7 @@ Item {
 
             InferenceProcessMap {
                 Layout.fillWidth: true
-                Layout.preferredHeight: Math.max(64, 96 * root.sy)
+                Layout.preferredHeight: Math.max(64, 80 * root.sy)
                 chapters: root.processChapters
                 currentIndex: root.processChapterIndex
                 currentStep: root.chapterStep
@@ -787,7 +811,7 @@ Item {
 
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 58 * root.sy
+                Layout.preferredHeight: 54 * root.sy
                 radius: 11 * root.sx
                 color: Style.Theme.surface
                 border.color: Style.Theme.borde_medio
@@ -851,7 +875,7 @@ Item {
 
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: visible ? 48 * root.sy : 0
+                Layout.preferredHeight: visible ? 44 * root.sy : 0
                 visible: root.stageIndex >= 1 && root.stageIndex <= 4
                 radius: 11 * root.sx
                 color: Style.Theme.surface
@@ -939,14 +963,18 @@ Item {
             RowLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.minimumHeight: 560 * root.sy
+                // La altura restante pertenece a la escena. Un minimo de 560 px
+                // expulsaba la navegacion inferior del modal de 1280x820.
+                Layout.minimumHeight: 320 * root.sy
                 spacing: 10 * root.sx
 
                 Rectangle {
                     objectName: "inferenceAnimationViewport"
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    Layout.minimumWidth: 1120 * root.sx
+                    // La guia comparte la fila con la escena. Este minimo permite
+                    // que ambas se contraigan sin solaparse en la ventana base.
+                    Layout.minimumWidth: 640 * root.sx
                     radius: 14 * root.sx
                     color: Style.Theme.surface
                     border.color: Style.Theme.borde_medio
@@ -1094,9 +1122,11 @@ Item {
                     id: guidePanel
                     objectName: "inferencePedagogicalGuide"
                     visible: root.guideVisible
-                    Layout.preferredWidth: visible ? Math.max(370, 430 * root.sx) : 0
-                    Layout.minimumWidth: visible ? Math.max(340, 380 * root.sx) : 0
-                    Layout.maximumWidth: visible ? Math.max(400, 480 * root.sx) : 0
+                    Layout.preferredWidth: visible
+                                           ? Math.max(330, Math.min(400, root.width * 0.28))
+                                           : 0
+                    Layout.minimumWidth: visible ? 310 : 0
+                    Layout.maximumWidth: visible ? 400 : 0
                     Layout.fillHeight: true
                     radius: 14 * root.sx
                     color: Style.Theme.surface
@@ -1762,7 +1792,7 @@ Item {
 
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: Math.max(56, 76 * root.sy)
+                Layout.preferredHeight: Math.max(56, 64 * root.sy)
                 radius: 12 * root.sx
                 color: Style.Theme.surface
                 border.color: Style.Theme.borde_medio
@@ -1873,6 +1903,7 @@ Item {
         activeFocusOnTab: enabled && visible
         implicitWidth: pillText.implicitWidth + 24 * root.sx
         implicitHeight: 32 * root.sy
+        clip: true
         radius: height / 2
         color: !enabled ? Style.Theme.superficie_alterna : (selected ? accent : "#FFFFFF")
         border.color: !enabled ? Style.Theme.borde_suave : accent
@@ -1892,10 +1923,15 @@ Item {
         }
         Text {
             id: pillText
-            anchors.centerIn: parent
+            anchors.fill: parent
+            anchors.leftMargin: 8 * root.sx
+            anchors.rightMargin: 8 * root.sx
             text: pill.label
             color: pill.selected ? "white" : (pill.enabled ? pill.accent : Style.Theme.texto_terciario)
             font.bold: true
+            elide: Text.ElideRight
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
             font.pixelSize: Math.max(11, 11 * Math.min(root.sx, root.sy))
         }
         MouseArea {
@@ -2112,7 +2148,9 @@ Item {
                 text: infoCard.body
                 color: Style.Theme.texto_secundario_fuerte
                 wrapMode: Text.WordWrap
-                font.family: infoCard.monospace ? "monospace" : "sans-serif"
+                font.family: infoCard.monospace
+                             ? Style.Theme.fuente_mono
+                             : Style.Theme.fuente_interfaz
                 lineHeight: 1.20
                 font.pixelSize: Math.max(12, 12 * infoCard.sx)
             }

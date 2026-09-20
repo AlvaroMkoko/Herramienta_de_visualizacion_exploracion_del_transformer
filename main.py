@@ -25,7 +25,7 @@ os.environ["QSG_RHI_BACKEND"] = "opengl"
 
 from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterType
 from PySide6.QtQuickControls2 import QQuickStyle
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QFont, QIcon
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import QCoreApplication
 
@@ -36,12 +36,30 @@ from viewmodel.main_viewmodel import MainViewModel
 def main() -> None:
     QQuickStyle.setStyle("Basic")
 
-    app = QApplication(sys.argv)
-
-    app.setWindowIcon(QIcon("view/assets/icono.ico"))
-
+    # Deben establecerse antes de crear QApplication para que tanto QSettings
+    # como el backend de fuentes nazcan con la identidad correcta.
     QCoreApplication.setOrganizationName("TT")
     QCoreApplication.setApplicationName("TransformerVisualizer")
+
+    app = QApplication(sys.argv)
+
+    if sys.platform == "win32":
+        # Algunas instalaciones de Windows aun registran fuentes bitmap
+        # heredadas como 8514oem. DirectWrite no puede convertirlas en una
+        # QFontFace moderna y emite advertencias al buscar glifos de respaldo.
+        # Una pila TrueType explicita evita esa seleccion sin ocultar otros
+        # avisos de fuentes que si requieren atencion.
+        fuente_interfaz = QFont(app.font())
+        fuente_interfaz.setFamilies(
+            ["Segoe UI", "Segoe UI Symbol", "Segoe UI Emoji", "Arial"]
+        )
+        fuente_interfaz.setStyleStrategy(
+            QFont.StyleStrategy.PreferOutline
+            | QFont.StyleStrategy.PreferAntialias
+        )
+        app.setFont(fuente_interfaz)
+
+    app.setWindowIcon(QIcon("view/assets/icono.ico"))
 
     # `main_view_model` se queda vivo mientras dure `app.exec()` porque
     # el contexto de QML mantiene una referencia a él (setContextProperty).
