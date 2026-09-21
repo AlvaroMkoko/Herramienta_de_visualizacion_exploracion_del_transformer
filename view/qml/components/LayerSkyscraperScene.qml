@@ -52,13 +52,6 @@ Item {
         return result
     }
 
-    function reversedFloors() {
-        var result = []
-        for (var i = floors.length - 1; i >= 0; --i)
-            result.push(floors[i])
-        return result
-    }
-
     function tokenForPoint(localIndex) {
         var absolutePosition = positionOffset + localIndex
         for (var i = 0; i < tokens.length; ++i) {
@@ -155,7 +148,7 @@ Item {
                 Text { text: "↕"; color: Style.Theme.acento; font.bold: true; font.pixelSize: 15 * root.sx }
                 Text {
                     Layout.fillWidth: true
-                    text: "Desplázate para subir de capa. El halo identifica “"
+                    text: "Recorre de X₀ a la capa final. El halo identifica “"
                           + (root.tokenForPoint(root.selectedToken).texto || "token") + "” en todos los pisos."
                     color: Style.Theme.acento_fuerte
                     font.pixelSize: 10 * root.sx
@@ -183,17 +176,18 @@ Item {
                 spacing: 10 * root.sy
 
                 Repeater {
-                    model: root.reversedFloors()
+                    model: root.floors
                     delegate: Rectangle {
                         id: floorCard
                         required property var modelData
                         required property int index
+                        readonly property bool finalFloor: floorCard.index === root.floors.length - 1
                         Layout.fillWidth: true
                         Layout.preferredHeight: 154 * root.sy
                         radius: 12 * root.sx
-                        color: floorCard.index === 0 ? Style.Theme.acento_fondo : Style.Theme.superficie_alterna
-                        border.color: floorCard.index === 0 ? Style.Theme.acento : Style.Theme.borde_suave
-                        border.width: floorCard.index === 0 ? 2 : 1
+                        color: floorCard.finalFloor ? Style.Theme.acento_fondo : Style.Theme.superficie_alterna
+                        border.color: floorCard.finalFloor ? Style.Theme.acento : Style.Theme.borde_suave
+                        border.width: floorCard.finalFloor ? 2 : 1
 
                         RowLayout {
                             anchors.fill: parent
@@ -204,28 +198,28 @@ Item {
                                 Layout.preferredWidth: 104 * root.sx
                                 Layout.fillHeight: true
                                 radius: 10 * root.sx
-                                color: floorCard.index === 0 ? Style.Theme.acento : Style.Theme.acento_fondo
+                                color: floorCard.finalFloor ? Style.Theme.acento : Style.Theme.acento_fondo
                                 Column {
                                     anchors.centerIn: parent
                                     spacing: 4 * root.sy
                                     Text {
                                         anchors.horizontalCenter: parent.horizontalCenter
                                         text: floorCard.modelData.capa === 0 ? "ENTRADA" : "CAPA"
-                                        color: floorCard.index === 0 ? Style.Theme.acento_alt : Style.Theme.acento
+                                        color: floorCard.finalFloor ? Style.Theme.acento_alt : Style.Theme.acento
                                         font.bold: true
                                         font.pixelSize: 9 * root.sx
                                     }
                                     Text {
                                         anchors.horizontalCenter: parent.horizontalCenter
                                         text: floorCard.modelData.capa === 0 ? "X₀" : floorCard.modelData.capa
-                                        color: floorCard.index === 0 ? "white" : Style.Theme.acento_fuerte
+                                        color: floorCard.finalFloor ? "white" : Style.Theme.acento_fuerte
                                         font.bold: true
                                         font.pixelSize: 30 * Math.min(root.sx, root.sy)
                                     }
                                     Text {
                                         anchors.horizontalCenter: parent.horizontalCenter
                                         text: (floorCard.modelData.puntos || []).length + " tokens"
-                                        color: floorCard.index === 0 ? Style.Theme.acento_fondo : Style.Theme.acento
+                                        color: floorCard.finalFloor ? Style.Theme.acento_fondo : Style.Theme.acento
                                         font.pixelSize: 9 * root.sx
                                     }
                                 }
@@ -292,7 +286,11 @@ Item {
                                 spacing: 4 * root.sy
                                 Text {
                                     Layout.fillWidth: true
-                                    text: floorCard.index === 0 ? "Estado contextual final" : "Representación intermedia"
+                                    text: floorCard.modelData.capa === 0
+                                          ? "Entrada sin contextualizar"
+                                          : (floorCard.finalFloor
+                                             ? "Estado contextual final"
+                                             : "Representación intermedia")
                                     color: Style.Theme.texto_primario
                                     font.bold: true
                                     wrapMode: Text.WordWrap

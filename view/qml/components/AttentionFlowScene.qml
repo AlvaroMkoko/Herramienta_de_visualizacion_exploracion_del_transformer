@@ -259,6 +259,36 @@ Item {
                                 ctx.lineWidth = (0.7 + normalized * 6.2) * root.sx
                                 ctx.stroke()
 
+                                // La punta permanece visible con movimiento reducido:
+                                // la dirección query → key no depende de las partículas.
+                                var arrowPoint
+                                var beforeArrow
+                                if (root.crossAttention) {
+                                    arrowPoint = cubicPoint(startX, qY, startX, c1y,
+                                                            endX, c2y, endX, kY, 0.94)
+                                    beforeArrow = cubicPoint(startX, qY, startX, c1y,
+                                                             endX, c2y, endX, kY, 0.89)
+                                } else {
+                                    arrowPoint = quadraticPoint(startX, qY,
+                                                                (startX + endX) / 2,
+                                                                qY - lift, endX, kY, 0.94)
+                                    beforeArrow = quadraticPoint(startX, qY,
+                                                                 (startX + endX) / 2,
+                                                                 qY - lift, endX, kY, 0.89)
+                                }
+                                var angle = Math.atan2(arrowPoint.y - beforeArrow.y,
+                                                       arrowPoint.x - beforeArrow.x)
+                                var arrowSize = (4 + normalized * 2.5) * root.sx
+                                ctx.beginPath()
+                                ctx.moveTo(arrowPoint.x, arrowPoint.y)
+                                ctx.lineTo(arrowPoint.x - Math.cos(angle - 0.55) * arrowSize,
+                                           arrowPoint.y - Math.sin(angle - 0.55) * arrowSize)
+                                ctx.lineTo(arrowPoint.x - Math.cos(angle + 0.55) * arrowSize,
+                                           arrowPoint.y - Math.sin(angle + 0.55) * arrowSize)
+                                ctx.closePath()
+                                ctx.fillStyle = Qt.alpha(color, 0.30 + normalized * 0.70)
+                                ctx.fill()
+
                                 if (!root.reducedMotion) {
                                     var t = (root.particlePhase + (q * 0.13 + k * 0.07)) % 1
                                     var point

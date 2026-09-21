@@ -63,10 +63,14 @@ Item {
         return "A = softmax(S')   ·   Zᵢ = Σⱼ AᵢⱼVⱼ"
     }
     readonly property string phaseExplanation: {
-        if (normalizedPhase === "qkv")
-            return "Muestra exacta del forward: Q pertenece a la última consulta; K y V pertenecen a la key destacada por la atención media."
+        if (normalizedPhase === "qkv") {
+            var qkvOrigin = branchIndex === 2
+                    ? "Q procede del decoder; K y V, del encoder."
+                    : "Todas las posiciones producen Q, K y V."
+            return qkvOrigin + " La escena amplía la última query y una key destacada; no limita el cálculo a esos dos vectores."
+        }
         if (normalizedPhase === "scores")
-            return "Los scores son compatibilidades firmadas, todavía no probabilidades. Cada fila corresponde a una cabeza."
+            return "La escena amplía los scores de la última query. El modelo calcula una fila por cada query; aquí cada fila visible corresponde a una cabeza y todavía no contiene probabilidades."
         if (normalizedPhase === "mask")
             return "La máscara se aplica antes de Softmax. Las celdas bloqueadas pasan a −∞ para recibir probabilidad cero."
         return "Softmax produce los pesos A. Las contribuciones muestran ‖AᵢⱼVⱼ‖ y la salida por cabeza es el contexto Z de la query actual."
@@ -109,8 +113,8 @@ Item {
             return [
                 {
                     id: "q",
-                    title: "Q · última query",
-                    subtitle: "Cabezas × componentes de la consulta actual",
+                    title: "Q · PREGUNTA · última query",
+                    subtitle: "Qué necesita encontrar la consulta actual",
                     matrix: safeMatrix(data.q),
                     mode: "diverging",
                     local: true,
@@ -122,8 +126,8 @@ Item {
                 },
                 {
                     id: "k",
-                    title: "K · key destacada " + key,
-                    subtitle: "Misma posición fuente en todas las cabezas",
+                    title: "K · COMPARA · key " + key,
+                    subtitle: "Cómo se identifica esa posición fuente",
                     matrix: safeMatrix(data.k),
                     mode: "diverging",
                     local: true,
@@ -135,8 +139,8 @@ Item {
                 },
                 {
                     id: "v",
-                    title: "V · key destacada " + key,
-                    subtitle: "Información transportada por esa misma key",
+                    title: "V · TRANSPORTA · key " + key,
+                    subtitle: "Qué contenido puede aportar esa misma posición",
                     matrix: safeMatrix(data.v),
                     mode: "diverging",
                     local: true,
@@ -153,8 +157,8 @@ Item {
             return [
                 {
                     id: "scores",
-                    title: "Scores crudos · query actual",
-                    subtitle: "QKᵀ/√d_head antes de aplicar la máscara",
+                    title: "Q compara con cada K",
+                    subtitle: "Scores QKᵀ/√d_head de la última query",
                     matrix: safeMatrix(data.scores),
                     mode: "diverging",
                     local: true,

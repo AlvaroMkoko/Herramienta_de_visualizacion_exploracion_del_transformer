@@ -473,13 +473,13 @@ Item {
                         Layout.fillWidth: true
                         Text {
                             Layout.fillWidth: true
-                            text: "TOP CAPTURADO"
+                            text: "TOP · REFERENCIA DEL PASO SIGUIENTE"
                             color: Style.Theme.texto_secundario
                             font.bold: true
                             font.pixelSize: 9 * root.sx
                         }
                         Text {
-                            text: "logit de Linear · probabilidad posterior"
+                            text: "logit crudo · p posterior a filtros y Softmax"
                             color: Style.Theme.texto_secundario
                             font.pixelSize: Math.max(9, 9 * root.sx)
                         }

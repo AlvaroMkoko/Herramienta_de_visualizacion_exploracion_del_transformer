@@ -334,6 +334,45 @@ def test_explorador_prioriza_mapa_y_resumen_con_detalle_bajo_demanda(qapp):
     qapp.processEvents()
 
 
+def test_la_guia_visual_precede_a_la_formula_y_aclara_la_muestra_qkv(qapp):
+    engine = QQmlEngine()
+    _, window, panel = _crear_panel(engine, qapp)
+    panel.setProperty("operationIndex", 2)
+    window.setProperty("visible", True)
+    QTest.qWait(50)
+    qapp.processEvents()
+
+    visual_guide = window.findChild(QQuickItem, "inferenceVisualGuide")
+    formula_card = window.findChild(QQuickItem, "inferenceFormulaCard")
+    assert visual_guide is not None
+    assert formula_card is not None
+    assert visual_guide.mapToItem(panel, QPointF(0, 0)).y() < formula_card.mapToItem(
+        panel, QPointF(0, 0)
+    ).y()
+    assert "todas las posiciones" in str(visual_guide.property("text"))
+
+    window.deleteLater()
+    engine.deleteLater()
+    qapp.processEvents()
+
+
+def test_formula_de_salida_distingue_greedy_de_muestreo(qapp):
+    engine = QQmlEngine()
+    _, window, panel = _crear_panel(engine, qapp)
+    flow_steps = _como_python(panel.property("flowSteps"))
+    panel.setProperty("operationIndex", len(flow_steps) - 1)
+    qapp.processEvents()
+
+    formula = window.findChild(QObject, "inferenceFormulaText")
+    assert formula is not None
+    assert "argmax" in str(formula.property("text"))
+    assert "∼ p" in str(formula.property("text"))
+
+    window.deleteLater()
+    engine.deleteLater()
+    qapp.processEvents()
+
+
 def test_panel_de_explicacion_se_puede_ocultar_para_ampliar_la_animacion(qapp):
     engine = QQmlEngine()
     _, window, panel = _crear_panel(engine, qapp)
@@ -529,6 +568,12 @@ def test_explorador_acepta_un_forward_real_en_todo_el_recorrido(qapp):
     panel.setProperty("snapshots", [snapshot])
     panel.setProperty("detailForward", detail)
     panel.setProperty("selectedIndex", 0)
+    panel.setProperty("operationIndex", 30)
+    qapp.processEvents()
+
+    softmax_scene = window.findChild(QObject, "softmaxRaceScene")
+    assert softmax_scene is not None
+    assert softmax_scene.property("candidateCount") > 0
 
     flow_steps = _como_python(panel.property("flowSteps"))
     formula = window.findChild(QObject, "inferenceFormulaText")

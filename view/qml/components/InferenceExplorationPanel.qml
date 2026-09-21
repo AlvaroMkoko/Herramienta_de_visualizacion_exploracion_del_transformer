@@ -1364,6 +1364,51 @@ Item {
                             }
 
                             Rectangle {
+                                Layout.fillWidth: true
+                                implicitHeight: visualColumn.implicitHeight + 22 * root.sy
+                                radius: 10 * root.sx
+                                color: Style.Theme.chip_fondo
+                                border.color: "#93C5FD"
+
+                                ColumnLayout {
+                                    id: visualColumn
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.top: parent.top
+                                    anchors.margins: 11 * root.sx
+                                    spacing: 5 * root.sy
+
+                                    Text {
+                                        text: "QUÉ OBSERVAR AHORA"
+                                        color: Style.Theme.info_texto
+                                        font.bold: true
+                                        font.pixelSize: Math.max(11, 10 * root.sx)
+                                    }
+                                    Text {
+                                        objectName: "inferenceVisualGuide"
+                                        Layout.fillWidth: true
+                                        text: root.operation.visualMeaning || root.stage.hint
+                                        color: Style.Theme.texto_secundario_fuerte
+                                        wrapMode: Text.WordWrap
+                                        lineHeight: 1.24
+                                        font.pixelSize: Math.max(13, 13 * root.sx)
+                                    }
+
+                                    Text {
+                                        objectName: "inferenceAnimationTakeaway"
+                                        Layout.fillWidth: true
+                                        text: "AL FINAL DEBES VER  ·  "
+                                              + root.operationOutputLabel()
+                                        color: Style.Theme.info_texto
+                                        font.bold: true
+                                        wrapMode: Text.WordWrap
+                                        lineHeight: 1.18
+                                        font.pixelSize: Math.max(12, 12 * root.sx)
+                                    }
+                                }
+                            }
+
+                            Rectangle {
                                 objectName: "inferenceFormulaCard"
                                 Layout.fillWidth: true
                                 implicitHeight: formulaColumn.implicitHeight + 26 * root.sy
@@ -1504,51 +1549,6 @@ Item {
                                         color: root.stage.accent
                                         font.bold: true
                                         font.pixelSize: Math.max(18, 20 * root.sx)
-                                    }
-                                }
-                            }
-
-                            Rectangle {
-                                Layout.fillWidth: true
-                                implicitHeight: visualColumn.implicitHeight + 22 * root.sy
-                                radius: 10 * root.sx
-                                color: Style.Theme.chip_fondo
-                                border.color: "#93C5FD"
-
-                                ColumnLayout {
-                                    id: visualColumn
-                                    anchors.left: parent.left
-                                    anchors.right: parent.right
-                                    anchors.top: parent.top
-                                    anchors.margins: 11 * root.sx
-                                    spacing: 5 * root.sy
-
-                                    Text {
-                                        text: "QUÉ OBSERVAR EN LA ANIMACIÓN"
-                                        color: Style.Theme.info_texto
-                                        font.bold: true
-                                        font.pixelSize: Math.max(11, 10 * root.sx)
-                                    }
-                                    Text {
-                                        objectName: "inferenceVisualGuide"
-                                        Layout.fillWidth: true
-                                        text: root.operation.visualMeaning || root.stage.hint
-                                        color: Style.Theme.texto_secundario_fuerte
-                                        wrapMode: Text.WordWrap
-                                        lineHeight: 1.24
-                                        font.pixelSize: Math.max(13, 13 * root.sx)
-                                    }
-
-                                    Text {
-                                        objectName: "inferenceAnimationTakeaway"
-                                        Layout.fillWidth: true
-                                        text: "RESULTADO QUE DEBES RETENER  ·  "
-                                              + root.operationOutputLabel()
-                                        color: Style.Theme.info_texto
-                                        font.bold: true
-                                        wrapMode: Text.WordWrap
-                                        lineHeight: 1.18
-                                        font.pixelSize: Math.max(12, 12 * root.sx)
                                     }
                                 }
                             }

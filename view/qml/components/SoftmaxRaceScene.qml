@@ -7,6 +7,7 @@ import "../styles" as Style
 
 Item {
     id: root
+    objectName: "softmaxRaceScene"
 
     property var snapshots: []
     property int initialStep: -1
@@ -21,6 +22,7 @@ Item {
                                         ? snapshots[stepIndex] : null
     readonly property real topSum: probabilitySum()
     readonly property real maxProbability: currentMaximum()
+    readonly property int candidateCount: raceModel.count
 
     signal stepSelected(int index)
 
@@ -195,7 +197,9 @@ Item {
                 }
                 Text {
                     Layout.fillWidth: true
-                    text: "Contexto hasta aquí:  " + root.contextText()
+                    text: root.snapshots.length < 2
+                          ? "Primera distribución: genera otro token para comparar cómo cambia."
+                          : "Contexto hasta aquí:  " + root.contextText()
                     color: Style.Theme.texto_secundario
                     elide: Text.ElideLeft
                     font.pixelSize: Math.max(11, 11 * root.sx)
@@ -281,7 +285,7 @@ Item {
                         Text { text: "RANGO"; Layout.preferredWidth: 54 * root.sx; color: Style.Theme.texto_secundario; font.bold: true; font.pixelSize: Math.max(9, 9 * root.sx) }
                         Text { text: "CANDIDATO"; Layout.preferredWidth: 125 * root.sx; color: Style.Theme.texto_secundario; font.bold: true; font.pixelSize: Math.max(9, 9 * root.sx) }
                         Text { text: "PROBABILIDAD REAL"; Layout.fillWidth: true; color: Style.Theme.texto_secundario; font.bold: true; font.pixelSize: Math.max(9, 9 * root.sx) }
-                        Text { text: "%"; Layout.preferredWidth: 58 * root.sx; color: Style.Theme.texto_secundario; font.bold: true; horizontalAlignment: Text.AlignRight; font.pixelSize: Math.max(9, 9 * root.sx) }
+                        Text { text: "PROB. / ESTADO"; Layout.preferredWidth: 94 * root.sx; color: Style.Theme.texto_secundario; font.bold: true; horizontalAlignment: Text.AlignRight; font.pixelSize: Math.max(9, 9 * root.sx) }
                     }
 
                     ListView {
@@ -361,8 +365,11 @@ Item {
                                     }
                                 }
                                 Text {
-                                    Layout.preferredWidth: 58 * root.sx
-                                    text: (horseRow.probability * 100).toFixed(horseRow.probability < 0.01 ? 2 : 1) + "%"
+                                    Layout.preferredWidth: 94 * root.sx
+                                    text: horseRow.captured
+                                          ? (horseRow.probability * 100).toFixed(
+                                                horseRow.probability < 0.01 ? 2 : 1) + "%"
+                                          : "fuera del top"
                                     color: horseRow.captured ? Style.Theme.texto_primario : Style.Theme.texto_terciario
                                     font.bold: true
                                     horizontalAlignment: Text.AlignRight

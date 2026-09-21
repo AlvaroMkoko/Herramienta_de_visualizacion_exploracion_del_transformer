@@ -51,7 +51,7 @@ QtObject {
         step(
             "output_softmax", "output", "Softmax + token", 6, 1, 9, "", false,
             "seleccion_token", "La distribución elige el siguiente token",
-            "p = softmax(filtros(logits / T)); token \u223c p",
+            "p = softmax(filtros(logits / T)); token = argmax(p) o token \u223c p",
             "Softmax convierte los logits elegibles en probabilidades; el modo configurado decide cómo sale el token final.",
             "Compara la longitud de las barras y localiza la marca de token elegido. «Resto» reúne la probabilidad que no cabe en el top visible.",
             "La distribución permite elegir el máximo en modo greedy o muestrear cuando esa opción está activa.",
@@ -213,7 +213,8 @@ QtObject {
                 guideItem("Histograma", "Resume todos los logits por intervalos; no es una distribución de probabilidades."),
                 guideItem("Mín., máx., media y desv.", "Describen rango, centro y dispersión de los scores para comprobar su escala."),
                 guideItem("Top capturado", "Candidatos con logits altos; la probabilidad mostrada pertenece al paso posterior de Softmax."),
-                guideItem("Barra de logit", "Compara preferencia relativa: puede ser negativa y no tiene que sumar uno.")
+                guideItem("Logit numérico", "Es la preferencia cruda de Linear: puede ser negativa y no tiene que sumar uno."),
+                guideItem("Barra de probabilidad", "Es una referencia del paso posterior de Softmax; no es la magnitud del logit.")
             ]
         }
         return [
@@ -421,24 +422,24 @@ QtObject {
             operation = cross
                 ? "Q procede del decoder, mientras K y V se proyectan desde la salida final del encoder."
                 : "La misma representación se proyecta con tres matrices aprendidas y se divide por cabezas."
-            visual = "Compara las tres tiras: Q representa lo que busca la posición actual; K y V pertenecen a la key destacada. Los colores son valores reales, recortados a las dimensiones visibles."
+            visual = "La escena amplía una muestra: Q es la última query y K/V pertenecen a una key destacada. El cálculo real proyecta todas las posiciones; los colores son coordenadas reales visibles."
             purpose = cross
                 ? "Separar los orígenes permite que la generación consulte la memoria codificada del prompt."
                 : "Q expresa qué se busca, K con qué se compara y V qué información puede transferirse."
             next = "Q y K se multiplican para formar los scores escalados."
-            caveat = "K y V son la key destacada, no todas las posiciones del tensor completo."
+            caveat = "Es una ampliación, no una restricción del modelo: se calculan todas las queries, keys y values; aquí se muestra una query y una key."
             concept = cross ? "origen_qkv_cross" : "query_key_value"
         } else if (phase === "scores") {
             shortLabel = cross ? "Scores cruzados" : (causal ? "Scores causales" : "Scores encoder")
             title = label + ": calcula compatibilidades"
             formula = "S = QK\u1d40 / \u221ad_head"
             operation = "Cada query se compara con las keys y el producto se escala por la raíz de d_head."
-            visual = "Lee cada celda como una compatibilidad Q↔K. El color indica signo y magnitud del score real; todavía no representa una probabilidad."
+            visual = "La escena amplía la fila de la última query: cada celda es su compatibilidad con una key. El color indica signo y magnitud; todavía no es probabilidad."
             purpose = "El escalamiento evita valores extremos que saturarían Softmax."
             next = causal
                 ? "La máscara causal bloquea el futuro antes de Softmax."
                 : "Los scores válidos se normalizan mediante Softmax."
-            caveat = "La ventana conserva las keys finales cuando la secuencia supera el límite visual."
+            caveat = "El modelo calcula una fila por cada query. La escena amplía la última y conserva las keys finales cuando la secuencia supera el límite visual."
             concept = "producto_qk"
         } else if (phase === "mask") {
             shortLabel = "Máscara causal"
@@ -542,7 +543,7 @@ QtObject {
             encoder
                 ? "El bloque de atención, residual, FFN y residual se repite L veces con parámetros distintos."
                 : "Cada capa repite atención causal, atención cruzada y FFN con sus tres Add & Norm.",
-            "Sigue el mismo color de abajo arriba: cada piso es el estado real del mismo token después de otra capa. La cercanía 2D es una aproximación de PCA.",
+            "Empieza en X₀ y avanza hacia la capa final: cada piso muestra el estado real del mismo token después de otro bloque. La cercanía 2D es una aproximación de PCA.",
             "La profundidad refina progresivamente la representación antes de entregarla al siguiente módulo.",
             encoder
                 ? "La salida final queda disponible como memoria K/V para la atención cruzada."

@@ -23,7 +23,13 @@ Item {
     readonly property int hiddenDimension: tokenRows.length
                                                    ? Number(tokenRows[0].dimension_oculta || 0) : 0
     readonly property int outputDimension: tokenRows.length
-                                                   ? Number(tokenRows[0].dimension_salida || 0) : 0
+                                                    ? Number(tokenRows[0].dimension_salida || 0) : 0
+    // Conserva la relación d_ff/d_model sin permitir que una configuración
+    // muy ancha expulse el resto del recorrido fuera de la escena.
+    readonly property real hiddenVisualRatio: inputDimension > 0
+                                                   ? Math.max(1, Math.min(2,
+                                                       hiddenDimension / inputDimension))
+                                                   : 1
 
     function tokenFor(position, fallbackIndex) {
         for (var i = 0; i < tokens.length; ++i) {
@@ -193,7 +199,8 @@ Item {
                             Text { text: "→"; color: Style.Theme.texto_terciario; font.bold: true; font.pixelSize: 18 * root.sx }
 
                             VectorStrip {
-                                Layout.preferredWidth: (150 + 150 * root.progress) * root.sx
+                                Layout.preferredWidth: 150 * (1 + (root.hiddenVisualRatio - 1)
+                                                                 * root.progress) * root.sx
                                 Layout.fillHeight: true
                                 values: tokenRow.modelData.preactivacion || []
                                 dimension: tokenRow.modelData.dimension_oculta
