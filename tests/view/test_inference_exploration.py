@@ -188,6 +188,68 @@ def test_logits_mantiene_histograma_y_candidatos_en_el_area_visible(qapp):
     qapp.processEvents()
 
 
+def test_softmax_revela_eleccion_y_conserva_el_token_elegido_visible(qapp):
+    predictions = [
+        {
+            "token_id": token_id,
+            "texto": f"tok{token_id}",
+            "probabilidad": 0.20 - token_id * 0.01,
+            "rango": token_id + 1,
+            "elegido": token_id == 10,
+        }
+        for token_id in range(11)
+    ]
+    snapshot = {
+        "predicciones_top": predictions,
+        "token_elegido": {
+            "token_id": 10,
+            "texto": "tok10",
+            "probabilidad": 0.10,
+            "rango": 11,
+        },
+        "tokens_salida": [{"texto": "tok10"}],
+        "modo_muestreo": "muestreo",
+        "filtros": "Sin filtros",
+    }
+
+    engine = QQmlEngine()
+    _, window, panel = _crear_panel(engine, qapp)
+    window.setProperty("width", 1230)
+    window.setProperty("height", 772)
+    panel.setProperty("snapshots", [snapshot])
+    panel.setProperty("selectedIndex", 0)
+    panel.setProperty("reducedMotion", True)
+    panel.setProperty("operationIndex", 30)
+    window.setProperty("visible", True)
+    QTest.qWait(50)
+    qapp.processEvents()
+
+    scene = window.findChild(QQuickItem, "softmaxRaceScene")
+    candidates_panel = window.findChild(QQuickItem, "softmaxCandidatesPanel")
+    selection_column = window.findChild(QQuickItem, "softmaxSelectionColumn")
+    chosen_card = window.findChild(QQuickItem, "softmaxChosenTokenCard")
+    return_card = window.findChild(QQuickItem, "softmaxReturnToDecoder")
+    assert scene is not None
+    assert scene.property("candidateCount") == 10
+    assert scene.property("chosenCandidateVisible") is True
+    assert scene.property("probabilityReveal") == 1.0
+    assert scene.property("selectionReveal") == 1.0
+    assert scene.property("returnReveal") == 1.0
+    for item in (candidates_panel, selection_column, chosen_card, return_card):
+        assert item is not None
+        assert item.width() > 0
+        assert item.height() > 0
+        _assert_item_dentro_del_panel(scene, item)
+    candidates_position = candidates_panel.mapToItem(scene, QPointF(0, 0))
+    selection_position = selection_column.mapToItem(scene, QPointF(0, 0))
+    assert candidates_position.x() + candidates_panel.width() < selection_position.x()
+    assert candidates_panel.width() > selection_column.width()
+
+    window.deleteLater()
+    engine.deleteLater()
+    qapp.processEvents()
+
+
 def test_explorador_conserva_siete_animaciones_y_agrega_recorrido(qapp):
     engine = QQmlEngine()
     _, window, panel = _crear_panel(engine, qapp)
@@ -208,6 +270,11 @@ def test_explorador_conserva_siete_animaciones_y_agrega_recorrido(qapp):
     assert "Barra de logit" in logits_terms
     assert "Barra de probabilidad" not in logits_terms
     assert "nace en cero" in logits_step["visualMeaning"]
+    softmax_step = flow_steps[-1]
+    softmax_terms = {entry["term"] for entry in softmax_step["visualElements"]}
+    assert "Barra relativa" in softmax_terms
+    assert "Retorno al decoder" in softmax_terms
+    assert "probabilidad real" in softmax_step["visualMeaning"]
     for step in flow_steps:
         for field in (
             "operation",

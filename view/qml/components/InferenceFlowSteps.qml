@@ -53,7 +53,7 @@ QtObject {
             "seleccion_token", "La distribución elige el siguiente token",
             "p = softmax(filtros(logits / T)); token = argmax(p) o token \u223c p",
             "Softmax convierte los logits elegibles en probabilidades; el modo configurado decide cómo sale el token final.",
-            "Compara la longitud de las barras y localiza la marca de token elegido. «Resto» reúne la probabilidad que no cabe en el top visible.",
+            "Primero crecen las barras relativas; después el token elegido se vuelve verde y entra al contexto del decoder. El porcentaje numérico conserva la probabilidad real.",
             "La distribución permite elegir el máximo en modo greedy o muestrear cuando esa opción está activa.",
             "El token elegido se añade al contexto del decoder y comienza otra vuelta autoregresiva.",
             "Temperatura, top-k y top-p solo intervienen cuando están activos; son reglas de generación, no capas aprendidas.",
@@ -219,9 +219,10 @@ QtObject {
         }
         return [
             guideItem("Contexto", "Iteración autoregresiva seleccionada; cada contexto incluye un token más que el anterior."),
-            guideItem("Barra de probabilidad", "Valor real posterior a temperatura, filtros y Softmax para ese candidato."),
+            guideItem("Barra relativa", "Compara cada probabilidad con la mayor del paso; el porcentaje numérico de la derecha es el valor real."),
             guideItem("Rango", "Posición del candidato al ordenar el top capturado de mayor a menor probabilidad."),
             guideItem("Token elegido", "Resultado que se añade al contexto; puede ser el máximo o una muestra según el modo."),
+            guideItem("Retorno al decoder", "El bloque final muestra el token incorporándose al contexto que alimentará la siguiente iteración."),
             guideItem("Masa fuera del top", "Probabilidad conjunta de los candidatos no listados; completa la suma hasta uno."),
             guideItem("Filtros", "Indican las reglas activas de generación; no son capas aprendidas del Transformer.")
         ]
