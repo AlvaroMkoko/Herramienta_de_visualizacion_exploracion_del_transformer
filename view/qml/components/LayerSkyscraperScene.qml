@@ -62,8 +62,13 @@ Item {
     }
 
     function tokenColor(localIndex, total) {
-        var ratio = total <= 1 ? 0 : localIndex / (total - 1)
-        return Qt.hsla(0.72 - 0.62 * ratio, 0.70, 0.50, 1)
+        var palette = Style.Theme.identidades_inferencia
+        return palette[Math.max(0, Number(localIndex || 0)) % palette.length]
+    }
+
+    function tokenTextColor(localIndex) {
+        var palette = Style.Theme.texto_identidades_inferencia
+        return palette[Math.max(0, Number(localIndex || 0)) % palette.length]
     }
 
     onTrajectoryChanged: {
@@ -98,7 +103,7 @@ Item {
 
             Text {
                 text: "SIGUE UN TOKEN"
-                color: Style.Theme.acento
+                color: Style.Theme.inferencia_foco
                 font.bold: true
                 font.pixelSize: 9 * root.sx
             }
@@ -123,7 +128,9 @@ Item {
                         id: choiceText
                         anchors.centerIn: parent
                         text: root.tokenForPoint(tokenChoice.index).texto || "∅"
-                        color: root.selectedToken === tokenChoice.index ? "white" : Style.Theme.texto_secundario_fuerte
+                        color: root.selectedToken === tokenChoice.index
+                               ? root.tokenTextColor(tokenChoice.index)
+                               : Style.Theme.texto_secundario_fuerte
                         font.bold: true
                         font.pixelSize: 9 * root.sx
                     }
@@ -140,23 +147,23 @@ Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 38 * root.sy
             radius: 9 * root.sx
-            color: Style.Theme.acento_fondo
-            border.color: Style.Theme.acento_alt
+            color: Style.Theme.info_fondo
+            border.color: Style.Theme.inferencia_estructura
             RowLayout {
                 anchors.fill: parent
                 anchors.margins: 8 * root.sx
-                Text { text: "↕"; color: Style.Theme.acento; font.bold: true; font.pixelSize: 15 * root.sx }
+                Text { text: "↕"; color: Style.Theme.inferencia_estructura; font.bold: true; font.pixelSize: 15 * root.sx }
                 Text {
                     Layout.fillWidth: true
                     text: "Recorre de X₀ a la capa final. El halo identifica “"
                           + (root.tokenForPoint(root.selectedToken).texto || "token") + "” en todos los pisos."
-                    color: Style.Theme.acento_fuerte
+                    color: Style.Theme.info_texto
                     font.pixelSize: 10 * root.sx
                 }
                 Text {
                     text: "varianza conservada "
                           + (Number(root.trajectory.varianza_conservada || 0) * 100).toFixed(1) + "%"
-                    color: Style.Theme.acento
+                    color: Style.Theme.inferencia_estructura
                     font.bold: true
                     font.pixelSize: 9 * root.sx
                 }
@@ -185,8 +192,10 @@ Item {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 154 * root.sy
                         radius: 12 * root.sx
-                        color: floorCard.finalFloor ? Style.Theme.acento_fondo : Style.Theme.superficie_alterna
-                        border.color: floorCard.finalFloor ? Style.Theme.acento : Style.Theme.borde_suave
+                        color: floorCard.finalFloor ? Style.Theme.exito_fondo : Style.Theme.superficie_alterna
+                        border.color: floorCard.finalFloor
+                                      ? Style.Theme.inferencia_resultado
+                                      : Style.Theme.borde_suave
                         border.width: floorCard.finalFloor ? 2 : 1
 
                         RowLayout {
@@ -198,28 +207,36 @@ Item {
                                 Layout.preferredWidth: 104 * root.sx
                                 Layout.fillHeight: true
                                 radius: 10 * root.sx
-                                color: floorCard.finalFloor ? Style.Theme.acento : Style.Theme.acento_fondo
+                                color: floorCard.finalFloor
+                                       ? Style.Theme.inferencia_resultado
+                                       : Style.Theme.info_fondo
                                 Column {
                                     anchors.centerIn: parent
                                     spacing: 4 * root.sy
                                     Text {
                                         anchors.horizontalCenter: parent.horizontalCenter
                                         text: floorCard.modelData.capa === 0 ? "ENTRADA" : "CAPA"
-                                        color: floorCard.finalFloor ? Style.Theme.acento_alt : Style.Theme.acento
+                                        color: floorCard.finalFloor
+                                               ? Style.Theme.inferencia_sobre_resultado
+                                               : Style.Theme.inferencia_estructura
                                         font.bold: true
                                         font.pixelSize: 9 * root.sx
                                     }
                                     Text {
                                         anchors.horizontalCenter: parent.horizontalCenter
                                         text: floorCard.modelData.capa === 0 ? "X₀" : floorCard.modelData.capa
-                                        color: floorCard.finalFloor ? "white" : Style.Theme.acento_fuerte
+                                        color: floorCard.finalFloor
+                                               ? Style.Theme.inferencia_sobre_resultado
+                                               : Style.Theme.inferencia_estructura
                                         font.bold: true
                                         font.pixelSize: 30 * Math.min(root.sx, root.sy)
                                     }
                                     Text {
                                         anchors.horizontalCenter: parent.horizontalCenter
                                         text: (floorCard.modelData.puntos || []).length + " tokens"
-                                        color: floorCard.finalFloor ? Style.Theme.acento_fondo : Style.Theme.acento
+                                        color: floorCard.finalFloor
+                                               ? Style.Theme.inferencia_sobre_resultado
+                                               : Style.Theme.inferencia_estructura
                                         font.pixelSize: 9 * root.sx
                                     }
                                 }
@@ -261,9 +278,9 @@ Item {
                                             if (i === root.selectedToken) {
                                                 ctx.beginPath()
                                                 ctx.arc(x, y, 10 * root.sx, 0, Math.PI * 2)
-                                                ctx.fillStyle = "#334F46E5"
+                                                ctx.fillStyle = Qt.alpha(Style.Theme.inferencia_foco, 0.20)
                                                 ctx.fill()
-                                                ctx.strokeStyle = Style.Theme.acento
+                                                ctx.strokeStyle = Style.Theme.inferencia_foco
                                                 ctx.lineWidth = 2.5 * root.sx
                                                 ctx.stroke()
                                             }
@@ -307,7 +324,7 @@ Item {
                                 }
                                 Text {
                                     text: "PCA conjunto · ejes fijos"
-                                    color: Style.Theme.acento
+                                    color: Style.Theme.inferencia_estructura
                                     font.bold: true
                                     font.pixelSize: 9 * root.sx
                                 }

@@ -29,6 +29,14 @@ Item {
     property bool guideVisible: true
     property bool locationMapVisible: true
     readonly property int guidedStepDuration: 9000
+    readonly property var pedagogicalColors: [
+        { label: "Estructura / flujo", mark: "→", accent: Style.Theme.inferencia_estructura, onAccent: Style.Theme.inferencia_sobre_estructura },
+        { label: "Contexto", mark: "↔", accent: Style.Theme.inferencia_contexto, onAccent: Style.Theme.inferencia_sobre_contexto },
+        { label: "Transformación", mark: "⚙", accent: Style.Theme.inferencia_transformacion, onAccent: Style.Theme.inferencia_sobre_transformacion },
+        { label: "Foco / selección", mark: "◆", accent: Style.Theme.inferencia_foco, onAccent: Style.Theme.inferencia_sobre_foco },
+        { label: "Resultado", mark: "✓", accent: Style.Theme.inferencia_resultado, onAccent: Style.Theme.inferencia_sobre_resultado },
+        { label: "Solo error", mark: "!", accent: Style.Theme.inferencia_error, onAccent: Style.Theme.inferencia_sobre_error }
+    ]
 
     // Las 31 operaciones siguen disponibles, pero la orientacion principal
     // se resume en cuatro etapas que corresponden al recorrido completo.
@@ -37,25 +45,29 @@ Item {
             id: "encoder",
             label: "Encoder",
             caption: "comprende el prompt",
-            accent: "#2563EB"
+            accent: Style.Theme.inferencia_estructura,
+            onAccent: Style.Theme.inferencia_sobre_estructura
         },
         {
             id: "decoder_causal",
             label: "Decoder causal",
             caption: "usa lo ya generado",
-            accent: Style.Theme.acento
+            accent: Style.Theme.inferencia_transformacion,
+            onAccent: Style.Theme.inferencia_sobre_transformacion
         },
         {
             id: "cross_attention",
             label: "Decoder + contexto",
             caption: "consulta el prompt y refina",
-            accent: Style.Theme.aviso_texto
+            accent: Style.Theme.inferencia_contexto,
+            onAccent: Style.Theme.inferencia_sobre_contexto
         },
         {
             id: "output",
             label: "Salida",
             caption: "elige el próximo token",
-            accent: Style.Theme.error
+            accent: Style.Theme.inferencia_foco,
+            onAccent: Style.Theme.inferencia_sobre_foco
         }
     ]
     readonly property int processChapterIndex: chapterForOperation(operationIndex)
@@ -147,7 +159,8 @@ Item {
             conceptId: "combinacion_embedding_pe",
             eyebrow: "01 · DEL ID AL VECTOR",
             title: "El orden deforma el significado",
-            accent: Style.Theme.acento,
+            accent: Style.Theme.inferencia_estructura,
+            onAccent: Style.Theme.inferencia_sobre_estructura,
             concept: "Cada token parte de su embedding escalado. Al sumar el encoding posicional, el vector se desplaza de verdad: no recibe una etiqueta aparte.",
             formula: "X₀ = E · √d_model + PE",
             hint: "Reproduce la transición o arrastra el control. El color sigue el índice posicional.",
@@ -158,7 +171,8 @@ Item {
             conceptId: "formula_attention_completa",
             eyebrow: "02 · SELF-ATTENTION",
             title: "La información viaja entre tokens",
-            accent: "#0284C7",
+            accent: Style.Theme.inferencia_contexto,
+            onAccent: Style.Theme.inferencia_sobre_contexto,
             concept: "Cada curva sale de una query y llega a la key que consulta. El grosor y la opacidad provienen del peso de atención real de la cabeza elegida.",
             formula: "A = softmax(QKᵀ / √d_head + máscara)",
             hint: "Pasa el cursor sobre un token para activar la vista linterna. También puedes comparar todas las cabezas.",
@@ -169,7 +183,8 @@ Item {
             conceptId: "problema_multi_head",
             eyebrow: "03 · MULTI-HEAD",
             title: "Una partición, no varias copias",
-            accent: Style.Theme.warning,
+            accent: Style.Theme.inferencia_transformacion,
+            onAccent: Style.Theme.inferencia_sobre_transformacion,
             concept: "d_model se divide en h subespacios de d_head dimensiones. Las cabezas trabajan en paralelo, se concatenan y Wᴼ vuelve a mezclar sus resultados.",
             formula: "MHA = Concat(head₁ … headₕ) Wᴼ",
             hint: "Sigue un color desde el segmento original hasta concat; la malla final representa Wᴼ.",
@@ -180,7 +195,8 @@ Item {
             conceptId: "que_es_ffn",
             eyebrow: "04 · EXPANDIR Y COMPRIMIR",
             title: "La misma red, respuestas distintas",
-            accent: "#DB2777",
+            accent: Style.Theme.inferencia_transformacion,
+            onAccent: Style.Theme.inferencia_sobre_transformacion,
             concept: "Cada token atraviesa de forma independiente los mismos pesos: primero se expande a d_ff, aplica la activación real y vuelve a d_model.",
             formula: "FFN(x) = W₂ φ(W₁x + b₁) + b₂",
             hint: "Compara hasta tres tokens en paralelo y observa cómo cambia su patrón aunque compartan la red.",
@@ -191,7 +207,8 @@ Item {
             conceptId: "flujo_add_norm",
             eyebrow: "05 · CONSERVAR Y ESTABILIZAR",
             title: "Un atajo para la señal original",
-            accent: "#059669",
+            accent: Style.Theme.inferencia_resultado,
+            onAccent: Style.Theme.inferencia_sobre_resultado,
             concept: "La ruta identidad conserva x mientras la subcapa calcula Δx. Se suman —no se concatenan— y LayerNorm recentra, reescala y aplica γ y β.",
             formula: "y = LayerNorm(x + Dropout(Δx))",
             hint: "Alterna el atajo para comparar. Debajo, recorre las cuatro fases reales de LayerNorm.",
@@ -202,7 +219,8 @@ Item {
             conceptId: "contextualizacion",
             eyebrow: "06 · TRAYECTORIA POR CAPAS",
             title: "El contexto reorganiza cada piso",
-            accent: Style.Theme.acento,
+            accent: Style.Theme.inferencia_estructura,
+            onAccent: Style.Theme.inferencia_sobre_estructura,
             concept: "Cada piso proyecta los hidden states de una capa. Selecciona un token y síguelo mientras cambia su vecindario a través del Transformer.",
             formula: "X₀ → bloque₁(X₀) → … → bloque_L(X)",
             hint: "Desplázate verticalmente; el token resaltado conserva identidad y color en todos los pisos.",
@@ -213,7 +231,8 @@ Item {
             conceptId: "seleccion_token",
             eyebrow: "07 · SIGUIENTE TOKEN",
             title: "El contexto cambia la clasificación",
-            accent: Style.Theme.error,
+            accent: Style.Theme.inferencia_foco,
+            onAccent: Style.Theme.inferencia_sobre_foco,
             concept: "Cada vuelta autoregresiva produce una nueva distribución. Las barras cambian de longitud y rango cuando el contexto favorece candidatos distintos.",
             formula: "p(token | contexto) = softmax(logits filtrados)",
             hint: "Reproduce el historial o avanza contexto por contexto para seguir a cada candidato.",
@@ -694,7 +713,7 @@ Item {
                     Text {
                         anchors.centerIn: parent
                         text: "✦"
-                        color: Style.Theme.texto_sobre_color
+                        color: root.stage.onAccent || Style.Theme.texto_sobre_acento
                         font.family: Style.Theme.fuente_simbolos
                         font.pixelSize: 20 * Math.min(root.sx, root.sy)
                     }
@@ -804,6 +823,7 @@ Item {
                 currentStep: root.chapterStep
                 currentStepCount: root.chapterStepCount
                 accent: root.processAccent
+                accentText: root.currentProcessChapter.onAccent
                 sx: root.sx
                 sy: root.sy
                 onChapterSelected: function(index) { root.selectChapter(index) }
@@ -838,7 +858,8 @@ Item {
                             required property var modelData
                             token: modelData
                             selected: false
-                            accent: root.stage.accent
+                            accent: Style.Theme.inferencia_estructura
+                            onAccent: Style.Theme.inferencia_sobre_estructura
                             sx: root.sx
                             sy: root.sy
                         }
@@ -864,7 +885,8 @@ Item {
                             token: modelData.token_elegido
                             selected: index === root.selectedIndex
                             interactive: true
-                            accent: root.stage.accent
+                            accent: Style.Theme.inferencia_resultado
+                            onAccent: Style.Theme.inferencia_sobre_resultado
                             sx: root.sx
                             sy: root.sy
                             onClicked: root.selectSnapshot(index)
@@ -925,6 +947,7 @@ Item {
                         minimum: 1
                         maximum: Math.max(1, Number(root.metadata.num_layers || 1))
                         accent: root.stage.accent
+                        foreground: root.stage.onAccent
                         sx: root.sx
                         sy: root.sy
                         onValueRequested: function(value) { root.layerIndex = value - 1 }
@@ -943,6 +966,7 @@ Item {
                         minimum: 1
                         maximum: Math.max(1, Number(root.metadata.num_heads || 1))
                         accent: root.stage.accent
+                        foreground: root.stage.onAccent
                         sx: root.sx
                         sy: root.sy
                         onValueRequested: function(value) { root.headIndex = value - 1 }
@@ -957,6 +981,70 @@ Item {
                         accent: root.stage.accent
                         onClicked: root.toggleResidualStep()
                     }
+                }
+            }
+
+            Rectangle {
+                objectName: "inferenceColorLegend"
+                Layout.fillWidth: true
+                Layout.preferredHeight: Math.max(30, 32 * root.sy)
+                radius: 9 * root.sx
+                color: Style.Theme.superficie_alterna
+                border.color: Style.Theme.borde_suave
+                Accessible.name: "Código de color pedagógico de la inferencia"
+                Accessible.description: "Azul estructura, turquesa contexto, violeta transformación, naranja foco, verde resultado y rojo solo error"
+
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 10 * root.sx
+                    anchors.rightMargin: 10 * root.sx
+                    spacing: 12 * root.sx
+
+                    Text {
+                        text: "COLOR = FUNCIÓN"
+                        color: Style.Theme.texto_secundario_fuerte
+                        font.bold: true
+                        font.pixelSize: Math.max(9, 9 * root.sx)
+                    }
+
+                    Rectangle {
+                        Layout.preferredWidth: 1
+                        Layout.preferredHeight: 16 * root.sy
+                        color: Style.Theme.divisor
+                    }
+
+                    Repeater {
+                        objectName: "inferenceColorLegendRepeater"
+                        model: root.pedagogicalColors
+                        delegate: RowLayout {
+                            id: colorRole
+                            required property var modelData
+                            required property int index
+                            spacing: 4 * root.sx
+
+                            Rectangle {
+                                Layout.preferredWidth: 17 * root.sx
+                                Layout.preferredHeight: 17 * root.sy
+                                radius: 5 * root.sx
+                                color: colorRole.modelData.accent
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: colorRole.modelData.mark
+                                    color: colorRole.modelData.onAccent
+                                    font.bold: true
+                                    font.pixelSize: Math.max(9, 9 * root.sx)
+                                }
+                            }
+                            Text {
+                                text: colorRole.modelData.label
+                                color: Style.Theme.texto_secundario_fuerte
+                                font.bold: colorRole.index === 3 || colorRole.index === 4
+                                font.pixelSize: Math.max(9, 9 * root.sx)
+                            }
+                        }
+                    }
+
+                    Item { Layout.fillWidth: true }
                 }
             }
 
@@ -1520,7 +1608,7 @@ Item {
                                         Text {
                                             anchors.centerIn: parent
                                             text: "ⓘ"
-                                            color: Style.Theme.texto_sobre_color
+                                            color: root.stage.onAccent || Style.Theme.texto_sobre_acento
                                             font.bold: true
                                             font.pixelSize: Math.max(14, 15 * root.sx)
                                         }
@@ -1927,7 +2015,8 @@ Item {
             anchors.leftMargin: 8 * root.sx
             anchors.rightMargin: 8 * root.sx
             text: pill.label
-            color: pill.selected ? "white" : (pill.enabled ? pill.accent : Style.Theme.texto_terciario)
+            color: pill.selected ? Style.Theme.texto_sobre_acento
+                                 : (pill.enabled ? pill.accent : Style.Theme.texto_terciario)
             font.bold: true
             elide: Text.ElideRight
             horizontalAlignment: Text.AlignHCenter
@@ -1951,6 +2040,7 @@ Item {
         property bool selected: false
         property bool interactive: false
         property color accent: Style.Theme.acento
+        property color onAccent: Style.Theme.texto_sobre_acento
         property real sx: 1
         property real sy: 1
         signal clicked()
@@ -1979,7 +2069,7 @@ Item {
             anchors.centerIn: parent
             text: tokenChip.token && tokenChip.token.texto !== undefined
                   ? tokenChip.token.texto : "—"
-            color: tokenChip.selected ? "white" : Style.Theme.texto_secundario_fuerte
+            color: tokenChip.selected ? tokenChip.onAccent : Style.Theme.texto_secundario_fuerte
             font.bold: tokenChip.selected
             font.pixelSize: Math.max(11, 11 * Math.min(tokenChip.sx, tokenChip.sy))
         }
@@ -2000,6 +2090,7 @@ Item {
         property int minimum: 1
         property int maximum: 1
         property color accent: Style.Theme.acento
+        property color foreground: Style.Theme.texto_sobre_acento
         property real sx: 1
         property real sy: 1
         signal valueRequested(int value)
@@ -2036,7 +2127,7 @@ Item {
         Rectangle {
             width: Math.max(34, 38 * stepper.sx); height: Math.max(26, 28 * stepper.sy); radius: 7 * stepper.sx
             color: stepper.accent
-            Text { anchors.centerIn: parent; text: stepper.value; color: Style.Theme.texto_sobre_color; font.bold: true; font.pixelSize: Math.max(11, 11 * stepper.sx) }
+            Text { anchors.centerIn: parent; text: stepper.value; color: stepper.foreground; font.bold: true; font.pixelSize: Math.max(11, 11 * stepper.sx) }
         }
         Rectangle {
             id: incrementButton

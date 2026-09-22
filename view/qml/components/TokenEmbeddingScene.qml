@@ -104,8 +104,8 @@ Item {
         var numeric = Number(value)
         var ratio = maximum > 0 ? Math.min(1, Math.abs(numeric) / maximum) : 0
         return numeric >= 0
-                ? Qt.rgba(0.15, 0.39, 0.92, 0.18 + ratio * 0.74)
-                : Qt.rgba(0.88, 0.18, 0.31, 0.18 + ratio * 0.74)
+                ? Qt.alpha(Style.Theme.escala_div_pos2, 0.18 + ratio * 0.74)
+                : Qt.alpha(Style.Theme.escala_div_neg2, 0.18 + ratio * 0.74)
     }
 
     function reveal(start, span) {
@@ -201,7 +201,8 @@ Item {
                 eyebrow: "TOKEN / ID"
                 title: root.tokenText(root.tokenAt(root.safeRow))
                 detail: "id " + root.tokenIdText(root.tokenAt(root.safeRow))
-                accent: Style.Theme.acento
+                accent: Style.Theme.inferencia_estructura
+                onAccent: Style.Theme.inferencia_sobre_estructura
                 emphasized: true
                 sx: root.sx
                 sy: root.sy
@@ -221,7 +222,8 @@ Item {
                 eyebrow: "LOOKUP + ESCALA"
                 title: "Embedding(id) × √d_model"
                 detail: "La fila aprendida se lleva a la escala del modelo"
-                accent: "#DB2777"
+                accent: Style.Theme.inferencia_transformacion
+                onAccent: Style.Theme.inferencia_sobre_transformacion
                 emphasized: root.progress >= 0.26
                 sx: root.sx
                 sy: root.sy
@@ -244,7 +246,8 @@ Item {
                 detail: Number.isFinite(root.selectedNorm)
                         ? "‖x‖₂ = " + root.formatNumber(root.selectedNorm)
                         : "Norma no disponible"
-                accent: "#2563EB"
+                accent: Style.Theme.inferencia_resultado
+                onAccent: Style.Theme.inferencia_sobre_resultado
                 emphasized: root.progress >= 0.55
                 sx: root.sx
                 sy: root.sy
@@ -294,8 +297,10 @@ Item {
                             width: ListView.view.width
                             height: 43 * root.sy
                             radius: 8 * root.sx
-                            color: index === root.safeRow ? Style.Theme.acento_fondo : "#FFFFFF"
-                            border.color: index === root.safeRow ? Style.Theme.acento : Style.Theme.borde_medio
+                            color: index === root.safeRow ? Style.Theme.aviso_fondo : Style.Theme.surface
+                            border.color: index === root.safeRow
+                                          ? Style.Theme.inferencia_foco
+                                          : Style.Theme.borde_medio
                             border.width: index === root.safeRow ? 2 : 1
 
                             RowLayout {
@@ -307,13 +312,17 @@ Item {
                                     Layout.preferredWidth: 34 * root.sx
                                     Layout.preferredHeight: 28 * root.sy
                                     radius: 7 * root.sx
-                                    color: tokenRow.index === root.safeRow ? Style.Theme.acento : Style.Theme.borde_suave
+                                    color: tokenRow.index === root.safeRow
+                                           ? Style.Theme.inferencia_foco
+                                           : Style.Theme.borde_suave
                                     Text {
                                         anchors.centerIn: parent
                                         text: tokenRow.rowToken
                                               && tokenRow.rowToken.posicion !== undefined
                                               ? "p" + tokenRow.rowToken.posicion : "—"
-                                        color: Style.Theme.texto_sobre_color
+                                        color: tokenRow.index === root.safeRow
+                                               ? Style.Theme.inferencia_sobre_foco
+                                               : Style.Theme.texto_secundario
                                         font.bold: true
                                         font.pixelSize: Math.max(9, 9 * root.sx)
                                     }
@@ -341,7 +350,9 @@ Item {
                                 Text {
                                     text: Number.isFinite(tokenRow.rowNorm)
                                           ? "‖x‖ " + root.formatNumber(tokenRow.rowNorm) : "—"
-                                    color: Style.Theme.acento_fuerte
+                                    color: root.safeRow === tokenRow.index
+                                           ? Style.Theme.inferencia_foco
+                                           : Style.Theme.texto_secundario_fuerte
                                     font.bold: true
                                     font.pixelSize: Math.max(9, 9 * root.sx)
                                 }
@@ -378,7 +389,7 @@ Item {
                 Layout.fillHeight: true
                 radius: 12 * root.sx
                 color: Style.Theme.superficie_alterna
-                border.color: Style.Theme.acento_alt
+                border.color: Style.Theme.inferencia_resultado
                 clip: true
 
                 ColumnLayout {
@@ -392,7 +403,7 @@ Item {
                             Layout.fillWidth: true
                             text: "VECTOR CAPTURADO · "
                                   + root.tokenText(root.tokenAt(root.safeRow))
-                            color: Style.Theme.acento_fuerte
+                            color: Style.Theme.inferencia_resultado
                             font.bold: true
                             elide: Text.ElideRight
                             font.pixelSize: 10 * root.sx
@@ -400,7 +411,7 @@ Item {
                         Text {
                             text: root.matrixData && root.matrixData.displayed_shape
                                   ? String(root.matrixData.displayed_shape) : "—"
-                            color: Style.Theme.acento_fuerte
+                            color: Style.Theme.inferencia_resultado
                             font.bold: true
                             font.pixelSize: 9 * root.sx
                         }
@@ -426,7 +437,9 @@ Item {
                             height: vectorStrip.height
                             radius: 7 * root.sx
                             color: root.cellColor(modelData, maximum)
-                            border.color: Number(modelData) >= 0 ? "#60A5FA" : "#FB7185"
+                            border.color: Number(modelData) >= 0
+                                          ? Style.Theme.escala_div_pos2
+                                          : Style.Theme.escala_div_neg2
                             opacity: root.reveal(0.50 + Math.min(index, 20) * 0.012, 0.26)
 
                             Column {
@@ -530,7 +543,7 @@ Item {
                                            * root.reveal(0.62, 0.30)
                                     height: parent.height
                                     radius: parent.radius
-                                    color: "#2563EB"
+                                    color: Style.Theme.inferencia_resultado
                                     Behavior on width {
                                         NumberAnimation {
                                             duration: root.reducedMotion ? 0 : 240
@@ -541,7 +554,7 @@ Item {
                             }
                             Text {
                                 text: root.formatNumber(root.selectedNorm)
-                                color: "#1E3A8A"
+                                color: Style.Theme.inferencia_estructura
                                 font.bold: true
                                 font.pixelSize: 9 * root.sx
                             }
@@ -556,7 +569,7 @@ Item {
             Layout.preferredHeight: 38 * root.sy
             radius: 9 * root.sx
             color: Style.Theme.aviso_fondo
-            border.color: "#FDBA74"
+            border.color: Style.Theme.inferencia_foco
             Text {
                 anchors.centerIn: parent
                 width: parent.width - 20 * root.sx
@@ -582,13 +595,13 @@ Item {
         implicitWidth: buttonText.implicitWidth + 22 * sx
         implicitHeight: 32 * sy
         radius: 8 * sx
-        color: Style.Theme.acento
-        border.color: Style.Theme.acento_fuerte
+        color: Style.Theme.inferencia_estructura
+        border.color: Style.Theme.inferencia_estructura
         Text {
             id: buttonText
             anchors.centerIn: parent
             text: sceneButton.label
-            color: Style.Theme.texto_sobre_color
+            color: Style.Theme.inferencia_sobre_estructura
             font.bold: true
             font.pixelSize: 9 * sceneButton.sx
         }
@@ -605,7 +618,8 @@ Item {
         property string eyebrow: ""
         property string title: ""
         property string detail: ""
-        property color accent: Style.Theme.acento
+        property color accent: Style.Theme.inferencia_estructura
+        property color onAccent: Style.Theme.inferencia_sobre_estructura
         property bool emphasized: false
         property real sx: 1
         property real sy: 1
@@ -629,7 +643,7 @@ Item {
                 Text {
                     anchors.centerIn: parent
                     text: stageCard.step
-                    color: Style.Theme.texto_sobre_color
+                    color: stageCard.onAccent
                     font.bold: true
                     font.pixelSize: 9 * stageCard.sx
                 }
@@ -675,20 +689,20 @@ Item {
             width: parent.width - 8 * flowArrow.sx
             height: 3 * flowArrow.sy
             radius: height / 2
-            color: Style.Theme.acento_alt
+            color: Style.Theme.inferencia_estructura
             opacity: 0.35 + flowArrow.progress * 0.65
             Rectangle {
                 width: parent.width * flowArrow.progress
                 height: parent.height
                 radius: parent.radius
-                color: Style.Theme.acento
+                color: Style.Theme.inferencia_estructura
             }
         }
         Text {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             text: "›"
-            color: Style.Theme.acento
+            color: Style.Theme.inferencia_estructura
             opacity: 0.35 + flowArrow.progress * 0.65
             font.bold: true
             font.pixelSize: 23 * flowArrow.sx
@@ -703,7 +717,7 @@ Item {
         property real sy: 1
         radius: 8 * sx
         color: Style.Theme.surface
-        border.color: Style.Theme.acento_alt
+        border.color: Style.Theme.inferencia_estructura
         Column {
             anchors.centerIn: parent
             width: parent.width - 8 * metricChip.sx
@@ -711,7 +725,7 @@ Item {
             Text {
                 width: parent.width
                 text: metricChip.value
-                color: Style.Theme.acento_fuerte
+                color: Style.Theme.inferencia_estructura
                 font.bold: true
                 horizontalAlignment: Text.AlignHCenter
                 elide: Text.ElideRight

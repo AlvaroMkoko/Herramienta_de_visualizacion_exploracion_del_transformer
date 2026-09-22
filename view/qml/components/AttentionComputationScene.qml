@@ -121,6 +121,7 @@ Item {
                     valueLabel: "Q",
                     columnOffset: 0,
                     accent: Style.Theme.matriz_query,
+                    onAccent: Style.Theme.matriz_query_sobre,
                     fill: Style.Theme.matriz_query_fondo,
                     conceptText: Style.Theme.matriz_query_texto
                 },
@@ -134,6 +135,7 @@ Item {
                     valueLabel: "K",
                     columnOffset: 0,
                     accent: Style.Theme.matriz_key,
+                    onAccent: Style.Theme.matriz_key_sobre,
                     fill: Style.Theme.matriz_key_fondo,
                     conceptText: Style.Theme.matriz_key_texto
                 },
@@ -147,6 +149,7 @@ Item {
                     valueLabel: "V",
                     columnOffset: 0,
                     accent: Style.Theme.matriz_value,
+                    onAccent: Style.Theme.matriz_value_sobre,
                     fill: Style.Theme.matriz_value_fondo,
                     conceptText: Style.Theme.matriz_value_texto
                 }
@@ -164,7 +167,8 @@ Item {
                     local: true,
                     valueLabel: "score",
                     columnOffset: keyOffset,
-                    accent: "#0284C7"
+                    accent: Style.Theme.inferencia_estructura,
+                    onAccent: Style.Theme.inferencia_sobre_estructura
                 }
             ]
         }
@@ -180,7 +184,8 @@ Item {
                     local: true,
                     valueLabel: "score S",
                     columnOffset: keyOffset,
-                    accent: "#0284C7"
+                    accent: Style.Theme.inferencia_estructura,
+                    onAccent: Style.Theme.inferencia_sobre_estructura
                 },
                 {
                     id: "mask",
@@ -194,7 +199,8 @@ Item {
                     local: false,
                     valueLabel: "permitido",
                     columnOffset: branchIndex === 1 ? 0 : keyOffset,
-                    accent: Style.Theme.error
+                    accent: Style.Theme.inferencia_foco,
+                    onAccent: Style.Theme.inferencia_sobre_foco
                 },
                 {
                     id: "masked_scores",
@@ -205,7 +211,8 @@ Item {
                     local: true,
                     valueLabel: "score S'",
                     columnOffset: keyOffset,
-                    accent: Style.Theme.aviso_texto
+                    accent: Style.Theme.inferencia_transformacion,
+                    onAccent: Style.Theme.inferencia_sobre_transformacion
                 }
             ]
         }
@@ -220,7 +227,8 @@ Item {
                 local: false,
                 valueLabel: "Aᵢⱼ",
                 columnOffset: keyOffset,
-                accent: "#059669"
+                accent: Style.Theme.inferencia_contexto,
+                onAccent: Style.Theme.inferencia_sobre_contexto
             },
             {
                 id: "contributions",
@@ -231,7 +239,8 @@ Item {
                 local: true,
                 valueLabel: "‖AᵢⱼVⱼ‖",
                 columnOffset: keyOffset,
-                accent: "#DB2777"
+                accent: Style.Theme.matriz_value,
+                onAccent: Style.Theme.matriz_value_sobre
             },
             {
                 id: "head_output",
@@ -242,7 +251,8 @@ Item {
                 local: true,
                 valueLabel: "Z",
                 columnOffset: 0,
-                accent: Style.Theme.acento
+                accent: Style.Theme.inferencia_resultado,
+                onAccent: Style.Theme.inferencia_sobre_resultado
             }
         ]
     }
@@ -320,7 +330,7 @@ Item {
                 Layout.preferredHeight: 30 * root.sy
                 radius: 8 * root.sx
                 color: Style.Theme.chip_fondo
-                border.color: "#93C5FD"
+                border.color: Style.Theme.inferencia_estructura
 
                 Text {
                     id: branchText
@@ -338,14 +348,14 @@ Item {
                 Layout.preferredHeight: 31 * root.sy
                 radius: 8 * root.sx
                 color: Style.Theme.surface
-                border.color: "#0284C7"
+                border.color: Style.Theme.inferencia_estructura
                 Accessible.role: Accessible.Button
                 Accessible.name: "Reproducir cálculo de atención"
 
                 Text {
                     anchors.centerIn: parent
                     text: "↺ Reproducir"
-                    color: "#0369A1"
+                    color: Style.Theme.inferencia_estructura
                     font.bold: true
                     font.pixelSize: 9 * root.sx
                 }
@@ -375,7 +385,9 @@ Item {
                     Layout.preferredHeight: 24 * root.sy
                     radius: height / 2
                     color: root.hasAnyData ? Style.Theme.exito_fondo : Style.Theme.aviso_fondo
-                    border.color: root.hasAnyData ? "#86EFAC" : "#FCD34D"
+                    border.color: root.hasAnyData
+                                  ? Style.Theme.inferencia_resultado
+                                  : Style.Theme.inferencia_foco
                     Text {
                         id: truthText
                         anchors.centerIn: parent
@@ -459,7 +471,7 @@ Item {
                                 Text {
                                     anchors.centerIn: parent
                                     text: matrixCard.index + 1
-                                    color: Style.Theme.texto_sobre_color
+                                    color: matrixCard.modelData.onAccent
                                     font.bold: true
                                     font.pixelSize: Math.max(9, 9 * root.sx)
                                 }
@@ -566,7 +578,8 @@ Item {
                         width: 9 * root.sx
                         height: 9 * root.sy
                         radius: Math.min(width, height) / 2
-                        color: root.revealStep >= index + 1 ? "#0284C7" : Style.Theme.borde_suave
+                        color: root.revealStep >= index + 1
+                               ? Style.Theme.inferencia_estructura : Style.Theme.borde_suave
                     }
                 }
             }

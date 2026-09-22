@@ -31,6 +31,11 @@ Item {
                                                        hiddenDimension / inputDimension))
                                                    : 1
 
+    function tokenColor(index) {
+        var palette = Style.Theme.identidades_inferencia
+        return palette[Math.max(0, Number(index || 0)) % palette.length]
+    }
+
     function tokenFor(position, fallbackIndex) {
         for (var i = 0; i < tokens.length; ++i) {
             if (Number(tokens[i].posicion) === Number(position))
@@ -85,7 +90,7 @@ Item {
                 Text {
                     text: root.inputDimension + " → " + root.hiddenDimension + " → "
                           + root.outputDimension + " · la misma FFN se aplica por separado a cada token"
-                    color: "#DB2777"
+                    color: Style.Theme.inferencia_transformacion
                     font.bold: true
                     font.pixelSize: Math.max(11, 11 * root.sx)
                 }
@@ -94,8 +99,8 @@ Item {
                 Layout.preferredWidth: 112 * root.sx
                 Layout.preferredHeight: 32 * root.sy
                 radius: 8 * root.sx
-                color: "#DB2777"
-                Text { anchors.centerIn: parent; text: "↺ Respirar"; color: Style.Theme.texto_sobre_color; font.bold: true; font.pixelSize: 9 * root.sx }
+                color: Style.Theme.inferencia_transformacion
+                Text { anchors.centerIn: parent; text: "↺ Respirar"; color: Style.Theme.inferencia_sobre_transformacion; font.bold: true; font.pixelSize: 9 * root.sx }
                 MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.replay() }
             }
         }
@@ -105,17 +110,17 @@ Item {
             Layout.preferredHeight: 54 * root.sy
             radius: 10 * root.sx
             color: Style.Theme.chip_fondo
-            border.color: "#F9A8D4"
+            border.color: Style.Theme.inferencia_transformacion
             RowLayout {
                 anchors.fill: parent
                 anchors.margins: 8 * root.sx
                 spacing: 8 * root.sx
-                StageLabel { Layout.preferredWidth: 154 * root.sx; title: "ENTRADA"; subtitle: "d_model = " + root.inputDimension; accent: "#0284C7"; sx: root.sx }
+                StageLabel { Layout.preferredWidth: 154 * root.sx; title: "ENTRADA"; subtitle: "d_model = " + root.inputDimension; accent: Style.Theme.inferencia_estructura; sx: root.sx }
                 Text { text: "→"; color: Style.Theme.texto_terciario; font.bold: true; font.pixelSize: 18 * root.sx }
-                StageLabel { Layout.fillWidth: true; title: "EXPANSIÓN W₁"; subtitle: "d_ff = " + root.hiddenDimension; accent: "#DB2777"; sx: root.sx }
-                StageLabel { Layout.preferredWidth: 150 * root.sx; title: root.activationName.toUpperCase(); subtitle: root.activationName.toLowerCase().indexOf("relu") >= 0 ? "negativos → 0" : "atenuación suave"; accent: Style.Theme.warning; sx: root.sx }
+                StageLabel { Layout.fillWidth: true; title: "EXPANSIÓN W₁"; subtitle: "d_ff = " + root.hiddenDimension; accent: Style.Theme.inferencia_transformacion; sx: root.sx }
+                StageLabel { Layout.preferredWidth: 150 * root.sx; title: root.activationName.toUpperCase(); subtitle: root.activationName.toLowerCase().indexOf("relu") >= 0 ? "negativos → 0" : "atenuación suave"; accent: Style.Theme.inferencia_foco; sx: root.sx }
                 Text { text: "→"; color: Style.Theme.texto_terciario; font.bold: true; font.pixelSize: 18 * root.sx }
-                StageLabel { Layout.preferredWidth: 154 * root.sx; title: "PROYECCIÓN W₂"; subtitle: "d_model = " + root.outputDimension; accent: "#059669"; sx: root.sx }
+                StageLabel { Layout.preferredWidth: 154 * root.sx; title: "PROYECCIÓN W₂"; subtitle: "d_model = " + root.outputDimension; accent: Style.Theme.inferencia_resultado; sx: root.sx }
             }
         }
 
@@ -135,11 +140,11 @@ Item {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 28 * root.sy
                     radius: 7 * root.sx
-                    color: Style.Theme.error_fondo
+                    color: Style.Theme.acento_fondo
                     Text {
                         anchors.centerIn: parent
                         text: "PESOS COMPARTIDOS · W₁, b₁, " + root.activationName + ", W₂, b₂"
-                        color: "#9D174D"
+                        color: Style.Theme.inferencia_transformacion
                         font.bold: true
                         font.pixelSize: 9 * root.sx
                     }
@@ -156,7 +161,7 @@ Item {
                         Layout.minimumHeight: 100 * root.sy
                         radius: 10 * root.sx
                         color: Style.Theme.surface
-                        border.color: ["#7DD3FC", "#F9A8D4", "#86EFAC"][tokenRow.index % 3]
+                        border.color: root.tokenColor(tokenRow.index)
 
                         RowLayout {
                             anchors.fill: parent
@@ -167,7 +172,7 @@ Item {
                                 Layout.preferredWidth: 92 * root.sx
                                 Layout.fillHeight: true
                                 radius: 8 * root.sx
-                                color: [Style.Theme.info_fondo, Style.Theme.error_fondo, Style.Theme.exito_fondo][tokenRow.index % 3]
+                                color: Qt.alpha(root.tokenColor(tokenRow.index), 0.10)
                                 Column {
                                     anchors.centerIn: parent
                                     width: parent.width - 10 * root.sx
@@ -192,7 +197,7 @@ Item {
                                 dimension: tokenRow.modelData.dimension_entrada
                                 normValue: Number(tokenRow.modelData.norma_entrada || 0)
                                 label: "x"
-                                accent: "#0284C7"
+                                accent: Style.Theme.inferencia_estructura
                                 sx: root.sx; sy: root.sy
                             }
 
@@ -206,7 +211,7 @@ Item {
                                 dimension: tokenRow.modelData.dimension_oculta
                                 normValue: Number(tokenRow.modelData.norma_preactivacion || 0)
                                 label: "W₁x+b₁"
-                                accent: "#DB2777"
+                                accent: Style.Theme.inferencia_transformacion
                                 sx: root.sx; sy: root.sy
                                 Behavior on Layout.preferredWidth { NumberAnimation { duration: root.reducedMotion ? 0 : 380; easing.type: Easing.OutCubic } }
                             }
@@ -230,7 +235,7 @@ Item {
                                 dimension: tokenRow.modelData.dimension_salida
                                 normValue: Number(tokenRow.modelData.norma_salida || 0)
                                 label: "W₂φ+b₂"
-                                accent: "#059669"
+                                accent: Style.Theme.inferencia_resultado
                                 sx: root.sx; sy: root.sy
                                 opacity: 0.18 + 0.82 * root.progress
                             }
@@ -257,7 +262,7 @@ Item {
             Layout.preferredHeight: 38 * root.sy
             radius: 9 * root.sx
             color: Style.Theme.aviso_fondo
-            border.color: "#FDBA74"
+            border.color: Style.Theme.inferencia_foco
             Text {
                 anchors.centerIn: parent
                 text: root.activationName.toLowerCase().indexOf("relu") >= 0
@@ -273,7 +278,7 @@ Item {
         id: stageLabel
         property string title: ""
         property string subtitle: ""
-        property color accent: "#DB2777"
+        property color accent: Style.Theme.inferencia_transformacion
         property real sx: 1
         spacing: 1 * sx
         Text { width: parent.width; text: stageLabel.title; color: stageLabel.accent; font.bold: true; horizontalAlignment: Text.AlignHCenter; font.pixelSize: 9 * stageLabel.sx }
@@ -286,7 +291,7 @@ Item {
         property int dimension: 0
         property real normValue: 0
         property string label: ""
-        property color accent: "#0284C7"
+        property color accent: Style.Theme.inferencia_estructura
         property real sx: 1
         property real sy: 1
         radius: 8 * sx
@@ -317,8 +322,10 @@ Item {
                     for (var j = 0; j < cellValues.length; ++j) {
                         var value = Number(cellValues[j] || 0)
                         ctx.fillStyle = value >= 0
-                                ? Qt.alpha("#F97316", 0.16 + 0.84 * Math.abs(value) / maximum)
-                                : Qt.alpha("#0284C7", 0.16 + 0.84 * Math.abs(value) / maximum)
+                                ? Qt.alpha(Style.Theme.escala_div_pos2,
+                                           0.16 + 0.84 * Math.abs(value) / maximum)
+                                : Qt.alpha(Style.Theme.escala_div_neg2,
+                                           0.16 + 0.84 * Math.abs(value) / maximum)
                         ctx.fillRect(j * cellWidth, 0, Math.max(1, cellWidth + 0.3), height)
                     }
                 }
@@ -336,7 +343,7 @@ Item {
         property real sy: 1
         radius: 8 * sx
         color: Style.Theme.aviso_fondo
-        border.color: Style.Theme.warning
+        border.color: Style.Theme.inferencia_foco
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: 5 * gate.sx
@@ -349,7 +356,7 @@ Item {
                     ctx.strokeStyle = Style.Theme.borde_suave; ctx.lineWidth = 1
                     ctx.beginPath(); ctx.moveTo(0, midY); ctx.lineTo(width, midY); ctx.stroke()
                     ctx.beginPath(); ctx.moveTo(midX, 0); ctx.lineTo(midX, height); ctx.stroke()
-                    ctx.strokeStyle = Style.Theme.warning; ctx.lineWidth = 2 * gate.sx; ctx.beginPath()
+                    ctx.strokeStyle = Style.Theme.inferencia_foco; ctx.lineWidth = 2 * gate.sx; ctx.beginPath()
                     for (var i = 0; i <= 48; ++i) {
                         var x = -3 + i / 48 * 6
                         var y

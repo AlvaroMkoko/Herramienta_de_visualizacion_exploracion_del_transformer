@@ -13,6 +13,7 @@ Rectangle {
     property int currentStep: 1
     property int currentStepCount: 1
     property color accent: Style.Theme.acento
+    property color accentText: Style.Theme.texto_sobre_acento
     property real sx: 1
     property real sy: 1
     readonly property bool keyboardNavigationEnabled: true
@@ -123,7 +124,9 @@ Rectangle {
                                : (chapterDelegate.completed ? Style.Theme.surface : Style.Theme.superficie_alterna)
                         border.color: chapterDelegate.current
                                       ? root.accent
-                                      : (chapterDelegate.completed ? "#86EFAC" : Style.Theme.borde_suave)
+                                      : (chapterDelegate.completed
+                                         ? Style.Theme.inferencia_resultado
+                                         : Style.Theme.borde_suave)
                         border.width: activeFocus ? 3 : (chapterDelegate.current ? 2 : 1)
 
                         Accessible.role: Accessible.Button
@@ -152,13 +155,18 @@ Rectangle {
                                 radius: width / 2
                                 color: chapterDelegate.current
                                        ? root.accent
-                                       : (chapterDelegate.completed ? Style.Theme.success : Style.Theme.borde_medio)
+                                       : (chapterDelegate.completed
+                                          ? Style.Theme.inferencia_resultado
+                                          : Style.Theme.borde_medio)
 
                                 Text {
                                     anchors.centerIn: parent
                                     text: chapterDelegate.completed ? "\u2713" : chapterDelegate.index + 1
-                                    color: chapterDelegate.current || chapterDelegate.completed
-                                           ? "#FFFFFF" : Style.Theme.texto_secundario
+                                    color: chapterDelegate.current
+                                           ? root.accentText
+                                           : (chapterDelegate.completed
+                                              ? Style.Theme.inferencia_sobre_resultado
+                                              : Style.Theme.texto_secundario)
                                     font.bold: true
                                     font.pixelSize: Math.max(11, 11 * root.sx)
                                 }
@@ -201,7 +209,9 @@ Rectangle {
                         visible: chapterDelegate.index < root.chapters.length - 1
                         Layout.preferredWidth: visible ? Math.max(12, 14 * root.sx) : 0
                         text: "\u2192"
-                        color: chapterDelegate.completed ? Style.Theme.success : Style.Theme.texto_terciario
+                        color: chapterDelegate.completed
+                               ? Style.Theme.inferencia_resultado
+                               : Style.Theme.texto_terciario
                         font.bold: true
                         font.pixelSize: Math.max(12, 14 * root.sx)
                     }

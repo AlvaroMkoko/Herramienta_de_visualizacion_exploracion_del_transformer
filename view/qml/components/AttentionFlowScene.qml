@@ -32,9 +32,9 @@ Item {
     readonly property int keyCount: queryCount && matrix[0] ? matrix[0].length : 0
     readonly property int queryOffset: Number(flow.inicio_queries || 0)
     readonly property int keyOffset: Number(flow.inicio_keys || 0)
-    readonly property var palettes: ["#0284C7", Style.Theme.acento, Style.Theme.warning, "#059669",
-                                     "#DB2777", Style.Theme.acento, Style.Theme.error, "#0891B2",
-                                     Style.Theme.acento, "#65A30D", "#EA580C", "#0F766E"]
+    // Cada cabeza conserva una identidad fría estable. H01, H02… siguen
+    // visibles para que el significado no dependa exclusivamente del color.
+    readonly property var palettes: Style.Theme.identidades_inferencia
 
     signal headSelected(int index)
 
@@ -150,7 +150,7 @@ Item {
                 anchors.fill: parent
                 anchors.margins: 8 * root.sx
                 spacing: 10 * root.sx
-                Text { text: "UMBRAL"; color: "#0369A1"; font.bold: true; font.pixelSize: 9 * root.sx }
+                Text { text: "UMBRAL"; color: Style.Theme.inferencia_estructura; font.bold: true; font.pixelSize: 9 * root.sx }
 
                 SliderPrincipal {
                     id: thresholdSlider
@@ -163,7 +163,7 @@ Item {
                     onMoved: root.threshold = value
                 }
 
-                Text { text: "≥ " + root.threshold.toFixed(3); color: "#075985"; font.bold: true; font.pixelSize: 10 * root.sx }
+                Text { text: "≥ " + root.threshold.toFixed(3); color: Style.Theme.inferencia_estructura; font.bold: true; font.pixelSize: 10 * root.sx }
                 Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: Style.Theme.info_fondo }
                 Text {
                     Layout.fillWidth: true
@@ -227,10 +227,11 @@ Item {
                         var kY = keyY()
 
                         if (root.crossAttention) {
-                            ctx.fillStyle = Style.Theme.texto_secundario
+                            ctx.fillStyle = Style.Theme.matriz_key_texto
                             ctx.font = "bold " + Math.max(8, 9 * root.sx) + "px sans-serif"
-                            ctx.fillText("KEYS · prompt", 12 * root.sx, 14 * root.sy)
-                            ctx.fillText("QUERIES · decoder", 12 * root.sx, height - 6 * root.sy)
+                            ctx.fillText("K · KEYS DEL ENCODER (prompt)", 12 * root.sx, 14 * root.sy)
+                            ctx.fillStyle = Style.Theme.matriz_query_texto
+                            ctx.fillText("Q · QUERIES DEL DECODER", 12 * root.sx, height - 6 * root.sy)
                         }
 
                         for (var q = 0; q < root.queryCount; ++q) {
@@ -341,15 +342,21 @@ Item {
                                * (parent.width - 84 * root.sx) - width / 2
                             y: parent.height - 43 * root.sy
                             radius: 7 * root.sx
-                            color: root.focusedQuery === index ? root.colorForHead(root.headIndex) : "#FFFFFF"
-                            border.color: root.colorForHead(root.headIndex)
+                            color: root.focusedQuery === index
+                                   ? Style.Theme.matriz_query
+                                   : Style.Theme.matriz_query_fondo
+                            border.color: root.crossAttention
+                                          ? Style.Theme.matriz_query
+                                          : Style.Theme.matriz_key
                             border.width: root.focusedQuery === index ? 2 : 1
                             z: 2
                             Text {
                                 id: queryLabel
                                 anchors.centerIn: parent
                                 text: root.queryToken(queryChip.index).texto || "∅"
-                                color: root.focusedQuery === queryChip.index ? "white" : Style.Theme.texto_primario
+                                color: root.focusedQuery === queryChip.index
+                                       ? Style.Theme.matriz_query_sobre
+                                       : Style.Theme.matriz_query_texto
                                 font.bold: true
                                 font.pixelSize: Math.max(9, 9 * root.sx)
                                 elide: Text.ElideRight
@@ -375,14 +382,14 @@ Item {
                                * (parent.width - 84 * root.sx) - width / 2
                             y: 8 * root.sy
                             radius: 7 * root.sx
-                            color: Style.Theme.surface
-                            border.color: Style.Theme.texto_terciario
+                            color: Style.Theme.matriz_key_fondo
+                            border.color: Style.Theme.matriz_key
                             z: 2
                             Text {
                                 id: keyLabel
                                 anchors.centerIn: parent
                                 text: root.keyToken(keyChip.index).texto || "∅"
-                                color: Style.Theme.texto_primario
+                                color: Style.Theme.matriz_key_texto
                                 font.bold: true
                                 font.pixelSize: Math.max(9, 9 * root.sx)
                                 elide: Text.ElideRight
@@ -426,7 +433,7 @@ Item {
             Layout.preferredHeight: 38 * root.sy
             radius: 9 * root.sx
             color: Style.Theme.aviso_fondo
-            border.color: "#FDBA74"
+            border.color: Style.Theme.inferencia_foco
             Text {
                 anchors.centerIn: parent
                 text: "Las conexiones bajo el umbral se ocultan para evitar saturación · la dirección es query → key."
@@ -446,9 +453,9 @@ Item {
         implicitWidth: buttonText.implicitWidth + 22 * sx
         implicitHeight: 32 * sy
         radius: 8 * sx
-        color: primary ? "#0284C7" : "#FFFFFF"
-        border.color: "#0284C7"
-        Text { id: buttonText; anchors.centerIn: parent; text: flowButton.label; color: flowButton.primary ? "white" : "#0369A1"; font.bold: true; font.pixelSize: 9 * flowButton.sx }
+        color: primary ? Style.Theme.inferencia_estructura : Style.Theme.surface
+        border.color: Style.Theme.inferencia_estructura
+        Text { id: buttonText; anchors.centerIn: parent; text: flowButton.label; color: flowButton.primary ? Style.Theme.inferencia_sobre_estructura : Style.Theme.inferencia_estructura; font.bold: true; font.pixelSize: 9 * flowButton.sx }
         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: flowButton.clicked() }
     }
 
@@ -458,7 +465,7 @@ Item {
         property var matrix: []
         property bool crossAttention: false
         property real threshold: 0.05
-        property color accent: "#0284C7"
+        property color accent: Style.Theme.inferencia_estructura
         property bool selected: false
         property real sx: 1
         property real sy: 1

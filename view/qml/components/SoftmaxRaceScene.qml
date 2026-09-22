@@ -236,28 +236,28 @@ Item {
             Layout.preferredHeight: 44 * root.sy
             radius: 10 * root.sx
             color: Style.Theme.chip_fondo
-            border.color: "#FCA5A5"
+            border.color: Style.Theme.inferencia_foco
             RowLayout {
                 anchors.fill: parent
                 anchors.margins: 8 * root.sx
                 Text {
                     text: "CONTEXTO " + (root.stepIndex + 1) + " / " + root.snapshots.length
-                    color: Style.Theme.error_texto
+                    color: Style.Theme.inferencia_foco
                     font.bold: true
                     font.pixelSize: 10 * root.sx
                 }
-                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 6 * root.sy; radius: height / 2; color: Style.Theme.error_fondo
+                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 6 * root.sy; radius: height / 2; color: Style.Theme.aviso_fondo
                     Rectangle {
                         width: parent.width * (root.snapshots.length ? (root.stepIndex + 1) / root.snapshots.length : 0)
                         height: parent.height
                         radius: parent.radius
-                        color: Style.Theme.error
+                        color: Style.Theme.inferencia_foco
                         Behavior on width { NumberAnimation { duration: root.reducedMotion ? 0 : 360; easing.type: Easing.InOutCubic } }
                     }
                 }
                 Text {
                     text: root.snapshot ? root.snapshot.modo_muestreo + " · " + root.snapshot.filtros : "—"
-                    color: Style.Theme.error_texto
+                    color: Style.Theme.inferencia_foco
                     font.pixelSize: 9 * root.sx
                 }
             }
@@ -315,8 +315,10 @@ Item {
                             width: ListView.view.width
                             height: 42 * root.sy
                             radius: 8 * root.sx
-                            color: horseRow.chosen ? Style.Theme.exito_fondo : "#FFFFFF"
-                            border.color: horseRow.chosen ? Style.Theme.success : Style.Theme.borde_medio
+                            color: horseRow.chosen ? Style.Theme.exito_fondo : Style.Theme.surface
+                            border.color: horseRow.chosen
+                                          ? Style.Theme.inferencia_resultado
+                                          : Style.Theme.borde_medio
 
                             RowLayout {
                                 anchors.fill: parent
@@ -326,11 +328,13 @@ Item {
                                     Layout.preferredWidth: 42 * root.sx
                                     Layout.preferredHeight: 27 * root.sy
                                     radius: 7 * root.sx
-                                    color: horseRow.captured ? Style.Theme.error : Style.Theme.borde_suave
+                                    color: horseRow.captured
+                                           ? Style.Theme.inferencia_estructura
+                                           : Style.Theme.borde_suave
                                     Text {
                                         anchors.centerIn: parent
                                         text: horseRow.captured ? "#" + horseRow.rank : "—"
-                                        color: Style.Theme.texto_sobre_color
+                                        color: Style.Theme.inferencia_sobre_estructura
                                         font.bold: true
                                         font.pixelSize: 9 * root.sx
                                     }
@@ -355,7 +359,9 @@ Item {
                                         width: parent.width * Math.min(1, horseRow.probability / root.maxProbability)
                                         height: parent.height
                                         radius: height / 2
-                                        color: horseRow.chosen ? Style.Theme.success : Style.Theme.error
+                                        color: horseRow.chosen
+                                               ? Style.Theme.inferencia_resultado
+                                               : Style.Theme.inferencia_estructura
                                         Behavior on width {
                                             NumberAnimation {
                                                 duration: root.reducedMotion ? 0 : 620
@@ -391,7 +397,7 @@ Item {
                     Layout.preferredHeight: 142 * root.sy
                     radius: 12 * root.sx
                     color: Style.Theme.superficie_alterna
-                    border.color: "#6EE7B7"
+                    border.color: Style.Theme.inferencia_resultado
                     Column {
                         anchors.centerIn: parent
                         width: parent.width - 24 * root.sx
@@ -424,12 +430,12 @@ Item {
                     Layout.preferredHeight: 104 * root.sy
                     radius: 12 * root.sx
                     color: Style.Theme.aviso_fondo
-                    border.color: "#FDBA74"
+                    border.color: Style.Theme.inferencia_foco
                     Column {
                         anchors.centerIn: parent
                         width: parent.width - 22 * root.sx
                         spacing: 4 * root.sy
-                        Text { text: "MASA FUERA DEL TOP"; color: "#C2410C"; font.bold: true; font.pixelSize: 9 * root.sx }
+                        Text { text: "MASA FUERA DEL TOP"; color: Style.Theme.inferencia_foco; font.bold: true; font.pixelSize: 9 * root.sx }
                         Text { text: ((1 - root.topSum) * 100).toFixed(2) + "%"; color: Style.Theme.aviso_texto; font.bold: true; font.pixelSize: 24 * root.sx }
                         Text { width: parent.width; text: "Completa la distribución hasta Σp = 1."; color: Style.Theme.aviso_texto; wrapMode: Text.WordWrap; font.pixelSize: 9 * root.sx }
                     }
@@ -465,13 +471,17 @@ Item {
         implicitWidth: primary ? 98 * sx : 38 * sx
         implicitHeight: 32 * sy
         radius: 8 * sx
-        color: !enabled ? Style.Theme.superficie_alterna : (primary ? Style.Theme.error : "#FFFFFF")
-        border.color: !enabled ? Style.Theme.borde_suave : Style.Theme.error
+        color: !enabled ? Style.Theme.superficie_alterna
+                        : (primary ? Style.Theme.inferencia_foco : Style.Theme.surface)
+        border.color: !enabled ? Style.Theme.borde_suave : Style.Theme.inferencia_foco
         opacity: enabled ? 1 : 0.55
         Text {
             anchors.centerIn: parent
             text: raceButton.label
-            color: raceButton.primary && raceButton.enabled ? "white" : (raceButton.enabled ? Style.Theme.error_texto : Style.Theme.texto_terciario)
+            color: raceButton.primary && raceButton.enabled
+                   ? Style.Theme.inferencia_sobre_foco
+                   : (raceButton.enabled ? Style.Theme.inferencia_foco
+                                         : Style.Theme.texto_terciario)
             font.bold: true
             font.pixelSize: 9 * raceButton.sx
         }

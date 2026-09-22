@@ -10,6 +10,7 @@ os.environ.setdefault("QSG_RHI_BACKEND", "software")
 os.environ.setdefault("QT_QUICK_CONTROLS_STYLE", "Basic")
 
 from PySide6.QtCore import QObject, QPointF, QUrl
+from PySide6.QtGui import QColor
 from PySide6.QtQml import QJSValue, QQmlComponent, QQmlEngine
 from PySide6.QtQuick import QQuickItem
 from PySide6.QtTest import QTest
@@ -26,11 +27,15 @@ HOST = b"""\
 import QtQuick
 import QtQuick.Controls
 import "components" as Components
+import "styles" as Style
 
 ApplicationWindow {
     width: 1920
     height: 1080
     visible: false
+    property bool requestedDarkMode: false
+    onRequestedDarkModeChanged: Style.Theme.modoOscuro = requestedDarkMode
+    Component.onCompleted: Style.Theme.modoOscuro = requestedDarkMode
 
     Components.InferenceExplorationPanel {
         anchors.fill: parent
@@ -49,6 +54,24 @@ def _errores(component: QQmlComponent) -> str:
 
 def _como_python(valor):
     return valor.toVariant() if isinstance(valor, QJSValue) else valor
+
+
+def _luminancia_relativa(color: QColor) -> float:
+    def lineal(channel: float) -> float:
+        return channel / 12.92 if channel <= 0.04045 else ((channel + 0.055) / 1.055) ** 2.4
+
+    return (
+        0.2126 * lineal(color.redF())
+        + 0.7152 * lineal(color.greenF())
+        + 0.0722 * lineal(color.blueF())
+    )
+
+
+def _contraste(first: QColor, second: QColor) -> float:
+    lighter, darker = sorted(
+        (_luminancia_relativa(first), _luminancia_relativa(second)), reverse=True
+    )
+    return (lighter + 0.05) / (darker + 0.05)
 
 
 class _TokenizerVisual:
@@ -124,6 +147,47 @@ def test_explorador_respeta_limites_del_modal_en_resolucion_base(qapp):
     qapp.processEvents()
 
 
+def test_logits_mantiene_histograma_y_candidatos_en_el_area_visible(qapp):
+    engine = QQmlEngine()
+    _, window, panel = _crear_panel(engine, qapp)
+    window.setProperty("width", 1230)
+    window.setProperty("height", 772)
+    panel.setProperty("operationIndex", 29)
+    panel.setProperty("reducedMotion", True)
+    window.setProperty("visible", True)
+    QTest.qWait(50)
+    qapp.processEvents()
+
+    scene = window.findChild(QQuickItem, "outputProjectionScene")
+    distribution = window.findChild(QQuickItem, "outputDistributionColumn")
+    candidates = window.findChild(QQuickItem, "outputCandidatePanel")
+    histogram = window.findChild(QQuickItem, "outputLogitsHistogram")
+    assert scene is not None
+    for item in (distribution, candidates, histogram):
+        assert item is not None
+        assert item.width() > 0
+        assert item.height() > 0
+        _assert_item_dentro_del_panel(scene, item)
+
+    distribution_position = distribution.mapToItem(scene, QPointF(0, 0))
+    candidates_position = candidates.mapToItem(scene, QPointF(0, 0))
+    assert distribution_position.x() + distribution.width() < candidates_position.x()
+
+    scene.setProperty(
+        "hiddenData",
+        {"matriz": {"valores": [[-1.0, -0.2, 0.2, 1.0]]}},
+    )
+    qapp.processEvents()
+    for value in (-1.0, -0.2, 0.2, 1.0):
+        background = QColor(scene.hiddenColor(value))
+        foreground = QColor(scene.hiddenTextColor(value))
+        assert _contraste(background, foreground) >= 4.5
+
+    window.deleteLater()
+    engine.deleteLater()
+    qapp.processEvents()
+
+
 def test_explorador_conserva_siete_animaciones_y_agrega_recorrido(qapp):
     engine = QQmlEngine()
     _, window, panel = _crear_panel(engine, qapp)
@@ -139,6 +203,11 @@ def test_explorador_conserva_siete_animaciones_y_agrega_recorrido(qapp):
     assert flow_steps[11]["id"] == "decoder_embedding"
     assert flow_steps[-2]["id"] == "linear_logits"
     assert flow_steps[-1]["id"] == "output_softmax"
+    logits_step = flow_steps[-2]
+    logits_terms = {entry["term"] for entry in logits_step["visualElements"]}
+    assert "Barra de logit" in logits_terms
+    assert "Barra de probabilidad" not in logits_terms
+    assert "nace en cero" in logits_step["visualMeaning"]
     for step in flow_steps:
         for field in (
             "operation",
@@ -350,6 +419,60 @@ def test_la_guia_visual_precede_a_la_formula_y_aclara_la_muestra_qkv(qapp):
         panel, QPointF(0, 0)
     ).y()
     assert "todas las posiciones" in str(visual_guide.property("text"))
+
+    window.deleteLater()
+    engine.deleteLater()
+    qapp.processEvents()
+
+
+def test_codigo_de_color_pedagogico_es_visible_y_consistente(qapp):
+    engine = QQmlEngine()
+    _, window, panel = _crear_panel(engine, qapp)
+
+    legend = window.findChild(QObject, "inferenceColorLegend")
+    legend_items = window.findChild(QObject, "inferenceColorLegendRepeater")
+    colors = _como_python(panel.property("pedagogicalColors"))
+    assert legend is not None and legend.property("visible") is True
+    assert legend_items is not None and legend_items.property("count") == 6
+    assert [entry["label"] for entry in colors] == [
+        "Estructura / flujo",
+        "Contexto",
+        "Transformación",
+        "Foco / selección",
+        "Resultado",
+        "Solo error",
+    ]
+    assert len({str(entry["accent"]) for entry in colors}) == len(colors)
+
+    chapters = _como_python(panel.property("processChapters"))
+    stages = _como_python(panel.property("stages"))
+    assert chapters[0]["accent"] == colors[0]["accent"]  # Encoder = estructura
+    assert chapters[2]["accent"] == colors[1]["accent"]  # Cross-attn = contexto
+    assert chapters[3]["accent"] == colors[3]["accent"]  # Salida = foco
+    assert stages[-1]["accent"] == colors[3]["accent"]
+
+    panel.setProperty("operationIndex", 2)
+    qapp.processEvents()
+    attention_scene = window.findChild(QObject, "attentionComputationScene")
+    qkv_cards = _como_python(attention_scene.property("phaseCards"))
+    assert [card["id"] for card in qkv_cards] == ["q", "k", "v"]
+    assert len({str(card["accent"]) for card in qkv_cards}) == 3
+
+    # El texto que se dibuja sobre cada color cumple AA para texto normal
+    # tanto en la paleta clara como en la oscura.
+    for dark_mode in (False, True):
+        window.setProperty("requestedDarkMode", dark_mode)
+        qapp.processEvents()
+        colors = _como_python(panel.property("pedagogicalColors"))
+        for entry in colors:
+            assert _contraste(QColor(entry["accent"]), QColor(entry["onAccent"])) >= 4.5
+
+        qkv_cards = _como_python(attention_scene.property("phaseCards"))
+        for card in qkv_cards:
+            assert _contraste(QColor(card["accent"]), QColor(card["onAccent"])) >= 4.5
+
+    window.setProperty("requestedDarkMode", False)
+    qapp.processEvents()
 
     window.deleteLater()
     engine.deleteLater()

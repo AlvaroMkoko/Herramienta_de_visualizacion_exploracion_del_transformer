@@ -37,7 +37,7 @@ Item {
                                     || histogramCounts.length > 0
                                     || candidates.length > 0
     readonly property real histogramMaximum: maximum(histogramCounts, false)
-    readonly property real candidateMaximumProbability: maximumCandidate("probabilidad", false)
+    readonly property real candidateMaximumAbsoluteLogit: maximumCandidate("logit", true)
 
     function maximum(values, absolute) {
         var result = 0
@@ -83,9 +83,35 @@ Item {
         var maximumValue = maximum(finalHidden, true)
         var numeric = Number(value)
         var ratio = maximumValue > 0 ? Math.min(1, Math.abs(numeric) / maximumValue) : 0
-        return numeric >= 0
-                ? Qt.rgba(0.15, 0.39, 0.92, 0.18 + ratio * 0.72)
-                : Qt.rgba(0.88, 0.18, 0.31, 0.18 + ratio * 0.72)
+        var target = numeric >= 0
+                ? Style.Theme.escala_div_pos2 : Style.Theme.escala_div_neg2
+        return mixColor(Style.Theme.escala_div_cero, target, 0.24 + ratio * 0.76)
+    }
+
+    function mixColor(startColor, endColor, amount) {
+        var ratio = Math.max(0, Math.min(1, amount))
+        return Qt.rgba(
+                    startColor.r + (endColor.r - startColor.r) * ratio,
+                    startColor.g + (endColor.g - startColor.g) * ratio,
+                    startColor.b + (endColor.b - startColor.b) * ratio,
+                    1)
+    }
+
+    function linearColorChannel(channel) {
+        return channel <= 0.04045
+                ? channel / 12.92
+                : Math.pow((channel + 0.055) / 1.055, 2.4)
+    }
+
+    function colorLuminance(color) {
+        return 0.2126 * linearColorChannel(color.r)
+                + 0.7152 * linearColorChannel(color.g)
+                + 0.0722 * linearColorChannel(color.b)
+    }
+
+    function hiddenTextColor(value) {
+        return colorLuminance(hiddenColor(value)) < 0.20
+                ? Style.Theme.texto_sobre_color : "#111827"
     }
 
     function replay() {
@@ -174,9 +200,10 @@ Item {
                 title: root.hiddenData && root.hiddenData.shape
                        ? String(root.hiddenData.shape) : "Sin captura"
                 detail: root.finalHidden.length
-                        ? root.finalHidden.length + " dimensiones visibles"
-                        : "La última posición alimenta Linear"
-                accent: Style.Theme.acento
+                        ? root.finalHidden.length + " dims visibles · tras atender al encoder"
+                        : "La última posición del decoder alimenta Linear"
+                accent: Style.Theme.inferencia_contexto
+                onAccent: Style.Theme.inferencia_sobre_contexto
                 emphasized: true
                 sx: root.sx
                 sy: root.sy
@@ -185,7 +212,7 @@ Item {
             FlowArrow {
                 Layout.preferredWidth: 44 * root.sx
                 progress: root.reveal(0.10, 0.20)
-                accent: Style.Theme.acento
+                accent: Style.Theme.inferencia_contexto
                 sx: root.sx
                 sy: root.sy
             }
@@ -195,9 +222,10 @@ Item {
                 Layout.fillHeight: true
                 number: "2"
                 eyebrow: "PROYECCIÓN LINEAL"
-                title: "z = hW_vocabᵀ + b"
+                title: "logits = h_final W_vocabᵀ + b"
                 detail: "Los pesos no se copian a la vista"
-                accent: "#2563EB"
+                accent: Style.Theme.inferencia_transformacion
+                onAccent: Style.Theme.inferencia_sobre_transformacion
                 emphasized: root.progress >= 0.28
                 sx: root.sx
                 sy: root.sy
@@ -206,7 +234,7 @@ Item {
             FlowArrow {
                 Layout.preferredWidth: 44 * root.sx
                 progress: root.reveal(0.38, 0.20)
-                accent: "#2563EB"
+                accent: Style.Theme.inferencia_transformacion
                 sx: root.sx
                 sy: root.sy
             }
@@ -220,7 +248,8 @@ Item {
                        ? String(root.logitsData.shape) : "Sin captura"
                 detail: root.histogram && root.histogram.total !== undefined
                         ? root.histogram.total + " valores resumidos" : "Puntajes sin normalizar"
-                accent: Style.Theme.error
+                accent: Style.Theme.inferencia_foco
+                onAccent: Style.Theme.inferencia_sobre_foco
                 emphasized: root.progress >= 0.58
                 sx: root.sx
                 sy: root.sy
@@ -229,20 +258,24 @@ Item {
 
         RowLayout {
             Layout.fillWidth: true
+            Layout.maximumWidth: parent.width
             Layout.fillHeight: true
             spacing: 10 * root.sx
 
             ColumnLayout {
+                objectName: "outputDistributionColumn"
+                Layout.minimumWidth: 300 * root.sx
                 Layout.preferredWidth: 390 * root.sx
+                Layout.maximumWidth: 430 * root.sx
                 Layout.fillHeight: true
-                spacing: 8 * root.sy
+                spacing: 6 * root.sy
 
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 92 * root.sy
+                    Layout.preferredHeight: 58 * root.sy
                     radius: 12 * root.sx
-                    color: Style.Theme.acento_fondo
-                    border.color: Style.Theme.acento_alt
+                    color: Style.Theme.info_fondo
+                    border.color: Style.Theme.inferencia_contexto
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -252,15 +285,15 @@ Item {
                             Layout.fillWidth: true
                             Text {
                                 Layout.fillWidth: true
-                                text: "h FINAL · MUESTRA EXACTA"
-                                color: Style.Theme.acento_fuerte
+                                text: "h FINAL DEL DECODER · TRAS ATENCIÓN AL ENCODER"
+                                color: Style.Theme.inferencia_contexto
                                 font.bold: true
                                 font.pixelSize: Math.max(9, 9 * root.sx)
                             }
                             Text {
                                 text: root.hiddenMatrix && root.hiddenMatrix.displayed_shape
                                       ? String(root.hiddenMatrix.displayed_shape) : "—"
-                                color: Style.Theme.acento
+                                color: Style.Theme.inferencia_contexto
                                 font.pixelSize: Math.max(9, 9 * root.sx)
                             }
                         }
@@ -277,11 +310,13 @@ Item {
                                 id: hiddenCell
                                 required property var modelData
                                 required property int index
-                                width: 38 * root.sx
+                                width: 44 * root.sx
                                 height: hiddenStrip.height
                                 radius: 6 * root.sx
                                 color: root.hiddenColor(modelData)
-                                border.color: Number(modelData) >= 0 ? Style.Theme.acento_alt : "#FB7185"
+                                border.color: Number(modelData) >= 0
+                                              ? Style.Theme.escala_div_pos2
+                                              : Style.Theme.escala_div_neg2
                                 opacity: root.reveal(Math.min(index, 18) * 0.012, 0.30)
                                 Column {
                                     anchors.centerIn: parent
@@ -290,17 +325,18 @@ Item {
                                     Text {
                                         width: parent.width
                                         text: "d" + hiddenCell.index
-                                        color: Style.Theme.texto_secundario
+                                        color: root.hiddenTextColor(hiddenCell.modelData)
+                                        font.bold: true
                                         horizontalAlignment: Text.AlignHCenter
-                                        font.pixelSize: Math.max(9, 8 * root.sx)
+                                        font.pixelSize: Math.max(9, 8.5 * root.sx)
                                     }
                                     Text {
                                         width: parent.width
                                         text: root.formatNumber(hiddenCell.modelData)
-                                        color: Style.Theme.texto_primario
+                                        color: root.hiddenTextColor(hiddenCell.modelData)
                                         font.bold: true
                                         horizontalAlignment: Text.AlignHCenter
-                                        font.pixelSize: Math.max(9, 8 * root.sx)
+                                        font.pixelSize: Math.max(9, 8.5 * root.sx)
                                     }
                                 }
                             }
@@ -320,26 +356,27 @@ Item {
                     Layout.fillHeight: true
                     radius: 12 * root.sx
                     color: Style.Theme.fondo
-                    border.color: "#FCA5A5"
+                    border.color: Style.Theme.inferencia_foco
 
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: 10 * root.sx
-                        spacing: 7 * root.sy
+                        anchors.margins: 6 * root.sx
+                        spacing: 3 * root.sy
 
                         RowLayout {
                             Layout.fillWidth: true
                             Text {
                                 Layout.fillWidth: true
-                                text: "DISTRIBUCIÓN DE LOGITS"
-                                color: Style.Theme.error_texto
+                                text: "HISTOGRAMA DE LOGITS"
+                                color: Style.Theme.inferencia_foco
                                 font.bold: true
                                 font.pixelSize: 9 * root.sx
                             }
                             Text {
-                                text: root.logitsData && root.logitsData.dtype
-                                      ? String(root.logitsData.dtype) : "—"
-                                color: Style.Theme.error_texto
+                                text: "altura = tokens · "
+                                      + (root.logitsData && root.logitsData.dtype
+                                         ? String(root.logitsData.dtype) : "—")
+                                color: Style.Theme.inferencia_foco
                                 font.pixelSize: Math.max(9, 9 * root.sx)
                             }
                         }
@@ -349,14 +386,15 @@ Item {
                             objectName: "outputLogitsHistogram"
                             Layout.fillWidth: true
                             Layout.fillHeight: true
-                            Layout.minimumHeight: 120 * root.sy
+                            Layout.minimumHeight: 28 * root.sy
 
                             Rectangle {
                                 anchors.left: parent.left
                                 anchors.right: parent.right
                                 anchors.bottom: parent.bottom
+                                anchors.bottomMargin: 16 * root.sy
                                 height: 1
-                                color: "#FCA5A5"
+                                color: Qt.alpha(Style.Theme.inferencia_foco, 0.45)
                             }
 
                             Repeater {
@@ -382,8 +420,40 @@ Item {
                                                          + Math.min(index, 16) * 0.012,
                                                          0.28))
                                     radius: 3 * root.sx
-                                    color: Style.Theme.error
+                                    color: root.histogramEdges.length > index + 1
+                                           && (Number(root.histogramEdges[index])
+                                               + Number(root.histogramEdges[index + 1])) / 2 < 0
+                                           ? Style.Theme.escala_div_neg2
+                                           : Style.Theme.escala_div_pos2
                                     opacity: 0.82
+                                }
+                            }
+
+                            Rectangle {
+                                readonly property real minimumLogit: root.histogramEdges.length
+                                        ? Number(root.histogramEdges[0]) : 0
+                                readonly property real maximumLogit: root.histogramEdges.length
+                                        ? Number(root.histogramEdges[root.histogramEdges.length - 1]) : 0
+                                visible: root.histogramCounts.length > 0
+                                         && minimumLogit < 0 && maximumLogit > 0
+                                x: Math.max(0, Math.min(parent.width - width,
+                                    (-minimumLogit / (maximumLogit - minimumLogit))
+                                    * parent.width))
+                                anchors.top: parent.top
+                                anchors.bottom: parent.bottom
+                                anchors.bottomMargin: 16 * root.sy
+                                width: Math.max(1, root.sx)
+                                color: Style.Theme.texto_primario
+                                opacity: 0.7
+
+                                Text {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    anchors.top: parent.top
+                                    anchors.topMargin: 2 * root.sy
+                                    text: "0"
+                                    color: Style.Theme.texto_primario
+                                    font.bold: true
+                                    font.pixelSize: Math.max(9, 8 * root.sx)
                                 }
                             }
 
@@ -393,7 +463,7 @@ Item {
                                 anchors.bottomMargin: 2 * root.sy
                                 text: root.histogramEdges.length
                                       ? root.formatNumber(root.histogramEdges[0]) : "—"
-                                color: Style.Theme.error_texto
+                                color: Style.Theme.inferencia_foco
                                 font.pixelSize: Math.max(9, 8 * root.sx)
                             }
                             Text {
@@ -403,7 +473,15 @@ Item {
                                 text: root.histogramEdges.length
                                       ? root.formatNumber(root.histogramEdges[
                                           root.histogramEdges.length - 1]) : "—"
-                                color: Style.Theme.error_texto
+                                color: Style.Theme.inferencia_foco
+                                font.pixelSize: Math.max(9, 8 * root.sx)
+                            }
+                            Text {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                anchors.bottom: parent.bottom
+                                anchors.bottomMargin: 2 * root.sy
+                                text: "eje x: valor del logit →"
+                                color: Style.Theme.texto_secundario
                                 font.pixelSize: Math.max(9, 8 * root.sx)
                             }
                             Text {
@@ -417,7 +495,7 @@ Item {
 
                         RowLayout {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 45 * root.sy
+                            Layout.preferredHeight: 28 * root.sy
                             spacing: 5 * root.sx
                             MetricChip {
                                 Layout.fillWidth: true
@@ -457,6 +535,9 @@ Item {
             }
 
             Rectangle {
+                objectName: "outputCandidatePanel"
+                Layout.minimumWidth: 300 * root.sx
+                Layout.preferredWidth: 360 * root.sx
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 radius: 12 * root.sx
@@ -473,13 +554,13 @@ Item {
                         Layout.fillWidth: true
                         Text {
                             Layout.fillWidth: true
-                            text: "TOP · REFERENCIA DEL PASO SIGUIENTE"
-                            color: Style.Theme.texto_secundario
+                            text: "LOGITS DE CANDIDATOS CAPTURADOS"
+                            color: Style.Theme.inferencia_foco
                             font.bold: true
                             font.pixelSize: 9 * root.sx
                         }
                         Text {
-                            text: "logit crudo · p posterior a filtros y Softmax"
+                            text: "barra centrada en 0 · sin Softmax"
                             color: Style.Theme.texto_secundario
                             font.pixelSize: Math.max(9, 9 * root.sx)
                         }
@@ -498,15 +579,16 @@ Item {
                             id: candidateRow
                             required property var modelData
                             required property int index
-                            readonly property bool chosen: Boolean(modelData.elegido)
                             readonly property real logit: Number(modelData.logit)
-                            readonly property real probability: Number(modelData.probabilidad || 0)
+                            readonly property real logitFraction: root.candidateMaximumAbsoluteLogit > 0
+                                    ? Math.min(1, Math.abs(logit)
+                                               / root.candidateMaximumAbsoluteLogit) : 0
                             width: ListView.view.width
                             height: 51 * root.sy
                             radius: 8 * root.sx
-                            color: chosen ? Style.Theme.exito_fondo : "#FFFFFF"
-                            border.color: chosen ? Style.Theme.success : Style.Theme.borde_medio
-                            border.width: chosen ? 2 : 1
+                            color: Style.Theme.surface
+                            border.color: Style.Theme.borde_medio
+                            border.width: 1
                             opacity: root.reveal(0.64 + Math.min(index, 8) * 0.025, 0.22)
 
                             RowLayout {
@@ -518,13 +600,13 @@ Item {
                                     Layout.preferredWidth: 36 * root.sx
                                     Layout.preferredHeight: 28 * root.sy
                                     radius: 7 * root.sx
-                                    color: candidateRow.chosen ? Style.Theme.success : Style.Theme.error
+                                    color: Style.Theme.inferencia_estructura
                                     Text {
                                         anchors.centerIn: parent
                                         text: candidateRow.modelData.rango !== undefined
                                               ? "#" + candidateRow.modelData.rango
                                               : String(candidateRow.index + 1)
-                                        color: Style.Theme.texto_sobre_color
+                                        color: Style.Theme.inferencia_sobre_estructura
                                         font.bold: true
                                         font.pixelSize: Math.max(9, 9 * root.sx)
                                     }
@@ -559,16 +641,16 @@ Item {
                                         Layout.fillWidth: true
                                         Text {
                                             text: "logit " + root.formatNumber(candidateRow.logit)
-                                            color: candidateRow.logit >= 0 ? Style.Theme.info_texto : "#BE123C"
+                                            color: candidateRow.logit >= 0
+                                                   ? Style.Theme.escala_div_pos2
+                                                   : Style.Theme.escala_div_neg2
                                             font.bold: true
                                             font.pixelSize: Math.max(9, 9 * root.sx)
                                         }
                                         Item { Layout.fillWidth: true }
                                         Text {
-                                            text: (candidateRow.probability * 100).toFixed(
-                                                      candidateRow.probability < 0.01 ? 2 : 1) + "%"
-                                            color: candidateRow.chosen ? Style.Theme.exito_texto : Style.Theme.texto_secundario
-                                            font.bold: true
+                                            text: "preferencia cruda · no es %"
+                                            color: Style.Theme.texto_secundario
                                             font.pixelSize: Math.max(9, 9 * root.sx)
                                         }
                                     }
@@ -582,20 +664,28 @@ Item {
                                             color: Style.Theme.borde_medio
                                         }
                                         Rectangle {
-                                            width: parent.width
-                                                   * (root.candidateMaximumProbability > 0
-                                                      ? Math.min(1,
-                                                         candidateRow.probability
-                                                         / root.candidateMaximumProbability) : 0)
+                                            anchors.horizontalCenter: parent.horizontalCenter
+                                            width: Math.max(1, root.sx)
+                                            height: parent.height
+                                            color: Style.Theme.texto_primario
+                                            opacity: 0.7
+                                        }
+                                        Rectangle {
+                                            readonly property real animatedWidth:
+                                                    (parent.width / 2 - 2 * root.sx)
+                                                    * candidateRow.logitFraction
+                                                    * root.reveal(0.64
+                                                        + Math.min(candidateRow.index, 8) * 0.025,
+                                                        0.22)
+                                            x: candidateRow.logit >= 0
+                                               ? parent.width / 2
+                                               : parent.width / 2 - animatedWidth
+                                            width: animatedWidth
                                             height: parent.height
                                             radius: height / 2
-                                            color: candidateRow.chosen ? Style.Theme.success : "#2563EB"
-                                            Behavior on width {
-                                                NumberAnimation {
-                                                    duration: root.reducedMotion ? 0 : 400
-                                                    easing.type: Easing.OutCubic
-                                                }
-                                            }
+                                            color: candidateRow.logit >= 0
+                                                   ? Style.Theme.escala_div_pos2
+                                                   : Style.Theme.escala_div_neg2
                                         }
                                     }
                                 }
@@ -621,15 +711,15 @@ Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 40 * root.sy
             radius: 9 * root.sx
-            color: root.hasData ? Style.Theme.aviso_fondo : Style.Theme.superficie_alterna
-            border.color: root.hasData ? "#FDBA74" : Style.Theme.borde_suave
+            color: root.hasData ? Style.Theme.info_fondo : Style.Theme.superficie_alterna
+            border.color: root.hasData ? Style.Theme.inferencia_estructura : Style.Theme.borde_suave
             Text {
                 anchors.centerIn: parent
                 width: parent.width - 20 * root.sx
                 text: root.hasData
-                      ? "El histograma resume todos los logits; el top conserva logits reales y probabilidades posteriores. Linear aún no elige el token."
+                      ? "Linear produce un logit por token: las barras muestran signo y magnitud desde 0. Todavía no hay probabilidades ni token elegido."
                       : "Aún no hay una captura de salida para este paso de inferencia."
-                color: root.hasData ? Style.Theme.aviso_texto : Style.Theme.texto_secundario
+                color: root.hasData ? Style.Theme.info_texto : Style.Theme.texto_secundario
                 horizontalAlignment: Text.AlignHCenter
                 elide: Text.ElideRight
                 font.pixelSize: 9 * root.sx
@@ -646,13 +736,13 @@ Item {
         implicitWidth: buttonText.implicitWidth + 22 * sx
         implicitHeight: 32 * sy
         radius: 8 * sx
-        color: Style.Theme.error
-        border.color: Style.Theme.error_texto
+        color: Style.Theme.inferencia_transformacion
+        border.color: Style.Theme.inferencia_transformacion
         Text {
             id: buttonText
             anchors.centerIn: parent
             text: sceneButton.label
-            color: Style.Theme.texto_sobre_color
+            color: Style.Theme.inferencia_sobre_transformacion
             font.bold: true
             font.pixelSize: 9 * sceneButton.sx
         }
@@ -669,7 +759,8 @@ Item {
         property string eyebrow: ""
         property string title: ""
         property string detail: ""
-        property color accent: "#2563EB"
+        property color accent: Style.Theme.inferencia_estructura
+        property color onAccent: Style.Theme.inferencia_sobre_estructura
         property bool emphasized: false
         property real sx: 1
         property real sy: 1
@@ -693,7 +784,7 @@ Item {
                 Text {
                     anchors.centerIn: parent
                     text: pipelineCard.number
-                    color: Style.Theme.texto_sobre_color
+                    color: pipelineCard.onAccent
                     font.bold: true
                     font.pixelSize: 9 * pipelineCard.sx
                 }
@@ -731,7 +822,7 @@ Item {
     component FlowArrow: Item {
         id: flowArrow
         property real progress: 0
-        property color accent: "#2563EB"
+        property color accent: Style.Theme.inferencia_estructura
         property real sx: 1
         property real sy: 1
         Layout.fillHeight: true
@@ -767,7 +858,7 @@ Item {
         property real sy: 1
         radius: 7 * sx
         color: Style.Theme.surface
-        border.color: Style.Theme.error_fondo
+        border.color: Style.Theme.inferencia_foco
         Column {
             anchors.centerIn: parent
             width: parent.width - 6 * metricChip.sx
@@ -775,7 +866,7 @@ Item {
             Text {
                 width: parent.width
                 text: metricChip.value
-                color: Style.Theme.error_texto
+                color: Style.Theme.inferencia_foco
                 font.bold: true
                 horizontalAlignment: Text.AlignHCenter
                 elide: Text.ElideRight

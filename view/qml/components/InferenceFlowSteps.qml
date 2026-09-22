@@ -43,7 +43,7 @@ QtObject {
             "capa_linear_salida", "El estado se proyecta al vocabulario",
             "logits = h_final W_vocab\u1d40 + b",
             "Linear toma el último estado del decoder y calcula un score crudo para cada token del vocabulario.",
-            "Sigue el vector h_final hacia W_vocab: al otro lado aparece una barra por candidato. Su altura es el logit real, todavía no una probabilidad.",
+            "Sigue h_final desde el decoder hacia W_vocab: cada barra nace en cero y su longitud representa un logit real, todavía no una probabilidad.",
             "Esta proyección convierte un único vector de ancho d_model en |V| alternativas que pueden compararse.",
             "Después se excluyen los IDs reservados y, si están activos, se aplican temperatura, top-k o top-p.",
             "Un logit solo indica preferencia relativa: todavía puede ser negativo y no tiene que sumar uno.",
@@ -212,9 +212,9 @@ QtObject {
                 guideItem("W_vocab + b", "Capa aprendida que produce un score por cada ID del vocabulario."),
                 guideItem("Histograma", "Resume todos los logits por intervalos; no es una distribución de probabilidades."),
                 guideItem("Mín., máx., media y desv.", "Describen rango, centro y dispersión de los scores para comprobar su escala."),
-                guideItem("Top capturado", "Candidatos con logits altos; la probabilidad mostrada pertenece al paso posterior de Softmax."),
+                guideItem("Candidatos visibles", "Tokens capturados para inspección; en esta escena solo se representa su logit crudo."),
                 guideItem("Logit numérico", "Es la preferencia cruda de Linear: puede ser negativa y no tiene que sumar uno."),
-                guideItem("Barra de probabilidad", "Es una referencia del paso posterior de Softmax; no es la magnitud del logit.")
+                guideItem("Barra de logit", "Nace en el cero central: va a la izquierda si el logit es negativo y a la derecha si es positivo.")
             ]
         }
         return [

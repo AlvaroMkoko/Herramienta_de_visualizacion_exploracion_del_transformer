@@ -72,8 +72,8 @@ Item {
     }
 
     function colorAt(localIndex) {
-        var ratio = count <= 1 ? 0 : localIndex / (count - 1)
-        return Qt.hsla(0.74 - ratio * 0.66, 0.72, 0.50, 1)
+        var palette = Style.Theme.identidades_inferencia
+        return palette[Math.max(0, Number(localIndex || 0)) % palette.length]
     }
 
     function replay() {
@@ -152,13 +152,13 @@ Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 50 * root.sy
             radius: 10 * root.sx
-            color: Style.Theme.acento_fondo
-            border.color: Style.Theme.acento_alt
+            color: Style.Theme.info_fondo
+            border.color: Style.Theme.inferencia_estructura
             RowLayout {
                 anchors.fill: parent
                 anchors.margins: 9 * root.sx
                 spacing: 10 * root.sx
-                Text { text: "E · √d"; color: Style.Theme.acento_fuerte; font.bold: true; font.pixelSize: 10 * root.sx }
+                Text { text: "E · √d"; color: Style.Theme.inferencia_estructura; font.bold: true; font.pixelSize: 10 * root.sx }
                 
                 SliderPrincipal {
                     id: progressSlider
@@ -176,11 +176,11 @@ Item {
 
                 Text {
                     text: "+ " + Math.round(root.progress * 100) + "% PE"
-                    color: Style.Theme.acento
+                    color: Style.Theme.inferencia_foco
                     font.bold: true
                     font.pixelSize: 10 * root.sx
                 }
-                Text { text: "X₀"; color: Style.Theme.acento_fuerte; font.bold: true; font.pixelSize: 10 * root.sx }
+                Text { text: "X₀"; color: Style.Theme.inferencia_resultado; font.bold: true; font.pixelSize: 10 * root.sx }
             }
         }
 
@@ -189,7 +189,7 @@ Item {
             Layout.fillHeight: true
             radius: 12 * root.sx
             color: Style.Theme.superficie_alterna
-            border.color: Style.Theme.acento_alt
+            border.color: Style.Theme.inferencia_estructura
             clip: true
 
             Canvas {
@@ -328,7 +328,7 @@ Item {
             Layout.preferredHeight: 38 * root.sy
             radius: 9 * root.sx
             color: Style.Theme.aviso_fondo
-            border.color: "#FDBA74"
+            border.color: Style.Theme.inferencia_foco
             Text {
                 anchors.centerIn: parent
                 width: parent.width - 20 * root.sx
@@ -352,9 +352,9 @@ Item {
         implicitWidth: buttonText.implicitWidth + 22 * sx
         implicitHeight: 32 * sy
         radius: 8 * sx
-        color: primary || selected ? Style.Theme.acento : "#FFFFFF"
-        border.color: Style.Theme.acento
-        Text { id: buttonText; anchors.centerIn: parent; text: sceneButton.label; color: sceneButton.primary || sceneButton.selected ? "white" : Style.Theme.acento_fuerte; font.bold: true; font.pixelSize: 9 * sceneButton.sx }
+        color: primary || selected ? Style.Theme.inferencia_estructura : Style.Theme.surface
+        border.color: Style.Theme.inferencia_estructura
+        Text { id: buttonText; anchors.centerIn: parent; text: sceneButton.label; color: sceneButton.primary || sceneButton.selected ? Style.Theme.inferencia_sobre_estructura : Style.Theme.inferencia_estructura; font.bold: true; font.pixelSize: 9 * sceneButton.sx }
         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: sceneButton.clicked() }
     }
 
@@ -367,7 +367,7 @@ Item {
         Canvas {
             width: 13 * legend.sx; height: 13 * legend.sx
             onPaint: {
-                var ctx = getContext("2d"); ctx.reset(); ctx.strokeStyle = Style.Theme.acento; ctx.fillStyle = "#337C3AED"; ctx.lineWidth = 1.5
+                var ctx = getContext("2d"); ctx.reset(); ctx.strokeStyle = Style.Theme.inferencia_estructura; ctx.fillStyle = Qt.alpha(Style.Theme.inferencia_estructura, 0.20); ctx.lineWidth = 1.5
                 if (legend.square) { ctx.fillRect(2, 2, width - 4, height - 4); ctx.strokeRect(2, 2, width - 4, height - 4) }
                 else { ctx.beginPath(); ctx.arc(width / 2, height / 2, width / 2 - 2, 0, Math.PI * 2); ctx.fill(); ctx.stroke() }
             }

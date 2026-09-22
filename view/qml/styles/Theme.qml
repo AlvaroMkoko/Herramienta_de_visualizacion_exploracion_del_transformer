@@ -79,17 +79,36 @@ QtObject {
         "ejemplo_fondo":  "#EFF6FF", "ejemplo_texto":  "#1E40AF",
         "proceso_fondo":  "#ECFDF5", "proceso_texto":  "#166534",
 
+        // ===== Código cromático de inferencia =====
+        // Base fría para estructura; naranja solo para el foco actual;
+        // verde para resultados confirmados y rojo exclusivamente para error.
+        "inferencia_estructura":    "#2563EB",
+        "inferencia_contexto":      "#0F766E",
+        "inferencia_transformacion":"#7C3AED",
+        "inferencia_foco":          "#D97706",
+        "inferencia_resultado":     "#15803D",
+        "inferencia_error":         "#DC2626",
+        "inferencia_sobre_estructura":    "#FFFFFF",
+        "inferencia_sobre_contexto":      "#FFFFFF",
+        "inferencia_sobre_transformacion":"#FFFFFF",
+        "inferencia_sobre_foco":          "#111827",
+        "inferencia_sobre_resultado":     "#FFFFFF",
+        "inferencia_sobre_error":         "#FFFFFF",
+
         // ===== Query, Key y Value =====
         // Identidades estables y distinguibles incluso sin depender solo del tono.
         "matriz_query":       "#0072B2",
         "matriz_query_fondo":"#E0F2FE",
         "matriz_query_texto":"#075985",
+        "matriz_query_sobre":"#FFFFFF",
         "matriz_key":         "#C47F00",
         "matriz_key_fondo":  "#FFF7D6",
         "matriz_key_texto":  "#854D0E",
+        "matriz_key_sobre":  "#111827",
         "matriz_value":       "#009E73",
         "matriz_value_fondo":"#DCFCE7",
         "matriz_value_texto":"#166534",
+        "matriz_value_sobre":"#111827",
 
         // ===== Escalas de color =====
         "escala_sec_0":  "#F7FBFF",
@@ -160,16 +179,33 @@ QtObject {
         "ejemplo_fondo":  "#16283F", "ejemplo_texto":  "#93C5FD",
         "proceso_fondo":  "#153226", "proceso_texto":  "#86EFAC",
 
+        // ===== Código cromático de inferencia =====
+        "inferencia_estructura":    "#60A5FA",
+        "inferencia_contexto":      "#2DD4BF",
+        "inferencia_transformacion":"#A78BFA",
+        "inferencia_foco":          "#FBBF24",
+        "inferencia_resultado":     "#4ADE80",
+        "inferencia_error":         "#F87171",
+        "inferencia_sobre_estructura":    "#111827",
+        "inferencia_sobre_contexto":      "#111827",
+        "inferencia_sobre_transformacion":"#111827",
+        "inferencia_sobre_foco":          "#111827",
+        "inferencia_sobre_resultado":     "#111827",
+        "inferencia_sobre_error":         "#111827",
+
         // ===== Query, Key y Value =====
         "matriz_query":       "#56B4E9",
         "matriz_query_fondo":"#102F42",
         "matriz_query_texto":"#7DD3FC",
+        "matriz_query_sobre":"#111827",
         "matriz_key":         "#F0C84B",
         "matriz_key_fondo":  "#3A2F17",
         "matriz_key_texto":  "#FDE68A",
+        "matriz_key_sobre":  "#111827",
         "matriz_value":       "#4ADE80",
         "matriz_value_fondo":"#153226",
         "matriz_value_texto":"#86EFAC",
+        "matriz_value_sobre":"#111827",
 
         // ===== Escalas de color =====
         "escala_sec_0":  "#F7FBFF",
@@ -242,16 +278,50 @@ QtObject {
     readonly property color proceso_fondo: p.proceso_fondo
     readonly property color proceso_texto: p.proceso_texto
 
+    // ========= Código cromático de las animaciones de inferencia =========
+    readonly property color inferencia_estructura: p.inferencia_estructura
+    readonly property color inferencia_contexto: p.inferencia_contexto
+    readonly property color inferencia_transformacion: p.inferencia_transformacion
+    readonly property color inferencia_foco: p.inferencia_foco
+    readonly property color inferencia_resultado: p.inferencia_resultado
+    readonly property color inferencia_error: p.inferencia_error
+    readonly property color inferencia_sobre_estructura: p.inferencia_sobre_estructura
+    readonly property color inferencia_sobre_contexto: p.inferencia_sobre_contexto
+    readonly property color inferencia_sobre_transformacion: p.inferencia_sobre_transformacion
+    readonly property color inferencia_sobre_foco: p.inferencia_sobre_foco
+    readonly property color inferencia_sobre_resultado: p.inferencia_sobre_resultado
+    readonly property color inferencia_sobre_error: p.inferencia_sobre_error
+
+    // Paleta cualitativa fría para identidades (cabezas/tokens). Las etiquetas
+    // H01, H02… y el texto siguen siendo la señal principal: el color solo ayuda.
+    readonly property var identidades_inferencia: modoOscuro
+            ? ["#56B4E9", "#C4B5FD", "#34D399", "#22D3EE",
+               "#818CF8", "#2DD4BF", "#7DD3FC", "#A78BFA",
+               "#6EE7B7", "#93C5FD", "#67E8F9", "#DDD6FE"]
+            : ["#0072B2", "#6D28D9", "#009E73", "#0891B2",
+               "#4F46E5", "#0F766E", "#0369A1", "#7C3AED",
+               "#047857", "#4338CA", "#0E7490", "#5B21B6"]
+    readonly property var texto_identidades_inferencia: modoOscuro
+            ? ["#111827", "#111827", "#111827", "#111827",
+               "#111827", "#111827", "#111827", "#111827",
+               "#111827", "#111827", "#111827", "#111827"]
+            : ["#FFFFFF", "#FFFFFF", "#111827", "#111827",
+               "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF",
+               "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF"]
+
     // ========= Identidades conceptuales Q / K / V =========
     readonly property color matriz_query: p.matriz_query
     readonly property color matriz_query_fondo: p.matriz_query_fondo
     readonly property color matriz_query_texto: p.matriz_query_texto
+    readonly property color matriz_query_sobre: p.matriz_query_sobre
     readonly property color matriz_key: p.matriz_key
     readonly property color matriz_key_fondo: p.matriz_key_fondo
     readonly property color matriz_key_texto: p.matriz_key_texto
+    readonly property color matriz_key_sobre: p.matriz_key_sobre
     readonly property color matriz_value: p.matriz_value
     readonly property color matriz_value_fondo: p.matriz_value_fondo
     readonly property color matriz_value_texto: p.matriz_value_texto
+    readonly property color matriz_value_sobre: p.matriz_value_sobre
 
     // ========= Escalas para datos numéricos =========
     readonly property color escala_sec_0: p.escala_sec_0
