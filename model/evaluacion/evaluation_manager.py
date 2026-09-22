@@ -1,4 +1,10 @@
-"""Estado de dominio para una ejecución de pre-test o post-test."""
+"""Estado de dominio para una ejecución de pre-test o post-test (esquema v2).
+
+Cambio respecto a v1: ``submit_answer`` ya no recibe el id de una opción, sino
+la respuesta completa del reactivo, cuya forma depende de su tipo (ver
+:mod:`model.evaluacion.scorers`). Eso es lo que permite que un mismo flujo
+soporte opción múltiple, ordenamientos, clasificaciones y reactivos por etapas.
+"""
 
 from __future__ import annotations
 
@@ -7,6 +13,7 @@ from typing import Any
 
 from .metrics import compute_metrics
 from .question_bank import QuestionBank
+from .scorers import es_respuesta_completa
 
 
 class EvaluationStateError(ValueError):
@@ -19,7 +26,7 @@ class EvaluationManager:
         self.assessment_type = ""
         self.assessment: dict[str, Any] = {}
         self.questions: list[dict[str, Any]] = []
-        self.answers: dict[str, str] = {}
+        self.answers: dict[str, Any] = {}
         self.current_index = 0
         self.result: dict[str, Any] = {}
 
@@ -30,6 +37,10 @@ class EvaluationManager:
         self.answers = {}
         self.current_index = 0
         self.result = {}
+
+    # ------------------------------------------------------------------
+    # Estado
+    # ------------------------------------------------------------------
 
     @property
     def active(self) -> bool:
@@ -50,24 +61,37 @@ class EvaluationManager:
         question = self.current_question
         return self.question_bank.public_question(question) if question else {}
 
-    def submit_answer(self, question_id: str, option_id: str) -> dict[str, Any]:
+    @property
+    def is_last_question(self) -> bool:
+        return bool(self.questions) and self.current_index == len(self.questions) - 1
+
+    def is_answer_complete(self, respuesta: Any) -> bool:
+        """¿La respuesta en curso habilita el botón de continuar?"""
+        question = self.current_question
+        return bool(question) and es_respuesta_completa(question, respuesta)
+
+    # ------------------------------------------------------------------
+    # Avance
+    # ------------------------------------------------------------------
+
+    def submit_answer(self, question_id: str, respuesta: Any) -> dict[str, Any]:
+        """Registra la respuesta y avanza. Devuelve ``{}`` salvo en el último
+        reactivo, donde devuelve el resultado calculado."""
         if not self.active:
             raise EvaluationStateError("No hay una evaluación activa.")
+
         question = self.current_question
         if question_id != question["id"]:
-            raise EvaluationStateError("La respuesta no corresponde a la pregunta actual.")
-        valid_options = {option["id"] for option in question["options"]}
-        if option_id not in valid_options:
-            raise EvaluationStateError("La opción elegida no existe.")
-
-        self.answers[question_id] = option_id
-        if self.current_index == len(self.questions) - 1:
-            self.result = compute_metrics(
-                self.assessment_type,
-                self.questions,
-                self.answers,
-                self.question_bank.dimensions,
+            raise EvaluationStateError(
+                "La respuesta no corresponde a la pregunta actual."
             )
+        if not es_respuesta_completa(question, respuesta):
+            raise EvaluationStateError("La respuesta está incompleta.")
+
+        self.answers[question_id] = deepcopy(respuesta)
+
+        if self.is_last_question:
+            self.result = self.score_evaluation()
             return deepcopy(self.result)
 
         self.current_index += 1
@@ -75,12 +99,12 @@ class EvaluationManager:
 
     def score_evaluation(self) -> dict[str, Any]:
         if len(self.answers) != len(self.questions):
-            raise EvaluationStateError("La evaluación todavía tiene preguntas pendientes.")
-        if not self.result:
-            self.result = compute_metrics(
-                self.assessment_type,
-                self.questions,
-                self.answers,
-                self.question_bank.dimensions,
+            raise EvaluationStateError(
+                "La evaluación todavía tiene preguntas pendientes."
             )
-        return deepcopy(self.result)
+        return compute_metrics(
+            self.assessment_type,
+            self.questions,
+            self.answers,
+            self.question_bank.dimensions,
+        )

@@ -1,8 +1,16 @@
 """Dominio de las evaluaciones conceptuales pre-test y post-test."""
 
 from .evaluation_manager import EvaluationManager, EvaluationStateError
+from .metrics import RESULT_SCHEMA_VERSION, compute_metrics
 from .question_bank import QuestionBank, QuestionBankError
 from .results_repository import ResultsRepository
+from .scorers import (
+    ScoringError,
+    TIPOS_SOPORTADOS,
+    calificar,
+    es_respuesta_completa,
+    normalizar_texto,
+)
 
 __all__ = [
     "EvaluationManager",
@@ -10,4 +18,11 @@ __all__ = [
     "QuestionBank",
     "QuestionBankError",
     "ResultsRepository",
+    "ScoringError",
+    "TIPOS_SOPORTADOS",
+    "RESULT_SCHEMA_VERSION",
+    "calificar",
+    "compute_metrics",
+    "es_respuesta_completa",
+    "normalizar_texto",
 ]
