@@ -7,6 +7,7 @@ import "../styles" as Style
 
 Item {
     id: root
+    objectName: "multiHeadSplitScene"
 
     property var metadata: ({})
     property var attentionData: ({})
@@ -15,6 +16,8 @@ Item {
     property real sx: 1
     property real sy: 1
     property real animationProgress: 0
+    readonly property bool compact: width < 700 || height < 420
+    readonly property bool veryCompact: height < 340
 
     readonly property int numHeads: Math.max(1, Number(metadata.num_heads || 1))
     readonly property int dModel: Math.max(1, Number(metadata.d_model || 1))
@@ -74,14 +77,16 @@ Item {
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 48 * root.sy
+            Layout.preferredHeight: (root.compact ? 40 : 48) * root.sy
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 1 * root.sy
                 Text {
+                    Layout.fillWidth: true
                     text: "Split → procesamiento independiente → concat → Wᴼ"
                     color: Style.Theme.texto_primario
                     font.bold: true
+                    elide: Text.ElideRight
                     font.pixelSize: Math.max(18, 18 * Math.min(root.sx, root.sy))
                 }
                 Text {
@@ -103,8 +108,8 @@ Item {
 
             ColumnLayout {
                 anchors.fill: parent
-                anchors.margins: 13 * root.sx
-                spacing: 7 * root.sy
+                anchors.margins: (root.compact ? 9 : 13) * root.sx
+                spacing: (root.compact ? 4 : 7) * root.sy
 
                 Text {
                     text: "1 · PROYECCIÓN COMPLETA · d_model = " + root.dModel
@@ -113,6 +118,7 @@ Item {
                     font.pixelSize: 9 * root.sx
                 }
                 Row {
+                    objectName: "multiHeadProjection"
                     Layout.fillWidth: true
                     Layout.preferredHeight: 42 * root.sy
                     Repeater {
@@ -137,6 +143,7 @@ Item {
                     }
                 }
                 Text {
+                    visible: !root.veryCompact
                     Layout.fillWidth: true
                     text: "Las proyecciones aprendidas se reorganizan en " + root.numHeads
                           + " cabezas de " + root.dHead + " dimensiones; no se corta el embedding crudo."
@@ -148,7 +155,7 @@ Item {
                 Canvas {
                     id: fanCanvas
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 55 * root.sy
+                    Layout.preferredHeight: (root.compact ? 34 : 55) * root.sy
                     onPaint: {
                         var ctx = getContext("2d"); ctx.reset()
                         var progress = root.reveal(0.08, 0.27)
@@ -177,8 +184,9 @@ Item {
                     opacity: root.reveal(0.18, 0.18)
                 }
                 ScrollView {
+                    objectName: "multiHeadCards"
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 105 * root.sy
+                    Layout.preferredHeight: (root.compact ? 82 : 105) * root.sy
                     contentWidth: headRow.implicitWidth
                     contentHeight: availableHeight
                     ScrollBar.vertical.policy: ScrollBar.AlwaysOff
@@ -230,8 +238,9 @@ Item {
                 }
 
                 RowLayout {
+                    objectName: "multiHeadMerge"
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 88 * root.sy
+                    Layout.preferredHeight: (root.compact ? 72 : 88) * root.sy
                     spacing: 10 * root.sx
                     opacity: root.reveal(0.52, 0.18)
 
@@ -257,7 +266,7 @@ Item {
                     Text { text: "→"; color: Style.Theme.inferencia_transformacion; font.bold: true; font.pixelSize: 24 * root.sx }
 
                     Rectangle {
-                        Layout.preferredWidth: 150 * root.sx
+                        Layout.preferredWidth: (root.compact ? 104 : 150) * root.sx
                         Layout.fillHeight: true
                         radius: 9 * root.sx
                         color: Style.Theme.surface
@@ -282,7 +291,7 @@ Item {
                     Text { text: "→"; color: Style.Theme.inferencia_transformacion; font.bold: true; font.pixelSize: 24 * root.sx }
 
                     ColumnLayout {
-                        Layout.preferredWidth: 215 * root.sx
+                        Layout.preferredWidth: (root.compact ? 150 : 215) * root.sx
                         spacing: 4 * root.sy
                         Text { text: "4 · SALIDA PROYECTADA"; color: Style.Theme.inferencia_resultado; font.bold: true; font.pixelSize: 9 * root.sx }
                         Rectangle {
@@ -316,19 +325,6 @@ Item {
             }
         }
 
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 38 * root.sy
-            radius: 9 * root.sx
-            color: Style.Theme.info_fondo
-            border.color: Style.Theme.inferencia_estructura
-            Text {
-                anchors.centerIn: parent
-                text: "Los colores identifican particiones durante split y concat; Wᴼ puede mezclar información entre todas ellas."
-                color: Style.Theme.info_texto
-                font.pixelSize: 9 * root.sx
-            }
-        }
     }
 
     component ReplayButton: Rectangle {

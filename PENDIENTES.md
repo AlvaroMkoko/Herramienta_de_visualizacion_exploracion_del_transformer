@@ -19,3 +19,10 @@
 ## .......Hacer que toda la aplicacion contenga los colores adecuados y que estos se mantengan a lo largo de las pantallas
 ## .......Fuente de letra debe cambiarse
 ## .......Mejorar las animaciones del Transformer
+
+
+.................
+## Detectar mas pantallas para mover las cosas y que no este amontonado 
+## Debe contener una pequeña introduccion 
+## En las explicaciones debe haber una sinematica para que no solo sea texto
+## En el entrenamiento reducir la carga visual 

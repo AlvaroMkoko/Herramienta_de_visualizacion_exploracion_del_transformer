@@ -7,6 +7,7 @@ import "../styles" as Style
 
 Item {
     id: root
+    objectName: "attentionFlowScene"
 
     property var attentionData: ({})
     property var queryTokens: []
@@ -21,6 +22,7 @@ Item {
     property int focusedQuery: -1
     property bool showHeadGrid: false
     property real particlePhase: 0
+    readonly property bool compact: width < 850
 
     readonly property var flow: attentionData && attentionData.flujo
                                     ? attentionData.flujo : ({})
@@ -116,23 +118,29 @@ Item {
                 Layout.fillWidth: true
                 spacing: 1 * root.sy
                 Text {
+                    Layout.fillWidth: true
                     text: root.crossAttention ? "Flujo de atención cruzada" : "Self-attention como flujo de información"
                     color: Style.Theme.texto_primario
                     font.bold: true
+                    elide: Text.ElideRight
                     font.pixelSize: Math.max(18, 18 * Math.min(root.sx, root.sy))
                 }
                 Text {
+                    Layout.fillWidth: true
                     text: root.showHeadGrid
                           ? "Mismo layout en cada tarjeta · una paleta por cabeza"
                           : "Capa capturada · H" + String(root.headIndex + 1).padStart(2, "0")
                             + " · grosor y opacidad = peso real"
                     color: root.colorForHead(root.headIndex)
                     font.bold: true
+                    elide: Text.ElideRight
                     font.pixelSize: Math.max(11, 11 * root.sx)
                 }
             }
             FlowButton {
-                label: root.showHeadGrid ? "Vista linterna" : "Comparar heads"
+                label: root.compact
+                       ? (root.showHeadGrid ? "Linterna" : "Cabezas")
+                       : (root.showHeadGrid ? "Vista linterna" : "Comparar heads")
                 primary: root.showHeadGrid
                 sx: root.sx; sy: root.sy
                 onClicked: root.showHeadGrid = !root.showHeadGrid

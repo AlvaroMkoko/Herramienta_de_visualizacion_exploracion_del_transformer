@@ -16,6 +16,7 @@ Item {
     property real sx: 1
     property real sy: 1
     property real progress: 0
+    readonly property bool compact: width < 850
 
     readonly property var hiddenMatrix: hiddenData && hiddenData.matriz
                                                 ? hiddenData.matriz : ({})
@@ -165,9 +166,11 @@ Item {
                 Layout.fillWidth: true
                 spacing: 1 * root.sy
                 Text {
+                    Layout.fillWidth: true
                     text: "Del estado final a los logits del vocabulario"
                     color: Style.Theme.texto_primario
                     font.bold: true
+                    elide: Text.ElideRight
                     font.pixelSize: Math.max(18, 18 * Math.min(root.sx, root.sy))
                 }
                 Text {
@@ -180,7 +183,7 @@ Item {
             }
 
             SceneButton {
-                label: "↻ Reproducir"
+                label: root.compact ? "↻" : "↻ Reproducir"
                 sx: root.sx
                 sy: root.sy
                 onClicked: root.replay()
@@ -194,6 +197,8 @@ Item {
 
             PipelineCard {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
+                Layout.preferredWidth: 1
                 Layout.fillHeight: true
                 number: "1"
                 eyebrow: "ESTADO FINAL DEL DECODER"
@@ -210,7 +215,8 @@ Item {
             }
 
             FlowArrow {
-                Layout.preferredWidth: 44 * root.sx
+                visible: !root.compact
+                Layout.preferredWidth: visible ? 44 * root.sx : 0
                 progress: root.reveal(0.10, 0.20)
                 accent: Style.Theme.inferencia_contexto
                 sx: root.sx
@@ -219,6 +225,8 @@ Item {
 
             PipelineCard {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
+                Layout.preferredWidth: 1
                 Layout.fillHeight: true
                 number: "2"
                 eyebrow: "PROYECCIÓN LINEAL"
@@ -232,7 +240,8 @@ Item {
             }
 
             FlowArrow {
-                Layout.preferredWidth: 44 * root.sx
+                visible: !root.compact
+                Layout.preferredWidth: visible ? 44 * root.sx : 0
                 progress: root.reveal(0.38, 0.20)
                 accent: Style.Theme.inferencia_transformacion
                 sx: root.sx
@@ -241,6 +250,8 @@ Item {
 
             PipelineCard {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
+                Layout.preferredWidth: 1
                 Layout.fillHeight: true
                 number: "3"
                 eyebrow: "LOGITS"
@@ -764,6 +775,7 @@ Item {
         property bool emphasized: false
         property real sx: 1
         property real sy: 1
+        clip: true
         radius: 10 * sx
         color: emphasized ? Qt.alpha(accent, 0.11) : Style.Theme.superficie_alterna
         border.color: emphasized ? accent : Style.Theme.borde_suave

@@ -15,6 +15,11 @@ Item {
     property real sx: 1
     property real sy: 1
 
+    // El dibujo se dimensiona desde el espacio que realmente recibe. Esto
+    // evita que una escala externa pequeña comprima dos veces las torres.
+    readonly property real layoutSx: Math.max(0.78, Math.min(1.08, width / 340))
+    readonly property real layoutSy: Math.max(0.66, Math.min(1.12, height / 280))
+
     // Esta propiedad documenta la intención del componente y permite
     // comprobarla desde las pruebas. El minimapa no contiene MouseArea.
     readonly property bool interactive: false
@@ -32,6 +37,14 @@ Item {
                                                             || normalizedOperationId.indexOf("cruzada") !== -1)
                                                          : ((stageIndex === 1 || stageIndex === 2)
                                                             && branchIndex === 2)
+    readonly property bool contentFits: encoderColumn.y + 0.5
+                                                   >= Math.max(8, 10 * layoutSy)
+                                                && decoderColumn.y + 0.5
+                                                   >= Math.max(8, 10 * layoutSy)
+                                                && encoderColumn.y + encoderColumn.height
+                                                   <= towers.height + 0.5
+                                                && decoderColumn.y + decoderColumn.height
+                                                   <= towers.height + 0.5
 
     readonly property var encoderBlocks: [
         { ids: ["encoder_add_norm_ffn"], title: "Add & Norm · FFN", color: Style.Theme.acento },
@@ -52,7 +65,7 @@ Item {
         { ids: ["output_embedding", "decoder_positional_encoding"], title: "Embedding + posición", color: "#B64B59" }
     ]
 
-    implicitHeight: 272 * sy
+    implicitHeight: 272
 
     function normalizeOperationId(value) {
         return String(value || "").trim().toLowerCase()
@@ -323,30 +336,30 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        radius: 11 * Math.min(root.sx, root.sy)
+        radius: 11 * Math.min(root.layoutSx, root.layoutSy)
         color: Style.Theme.superficie_alterna
         border.color: Qt.alpha(root.accent, 0.48)
         border.width: 1
 
         Text {
             anchors.left: parent.left
-            anchors.leftMargin: 10 * root.sx
+            anchors.leftMargin: 10 * root.layoutSx
             anchors.top: parent.top
-            anchors.topMargin: 8 * root.sy
+            anchors.topMargin: 8 * root.layoutSy
             text: "MAPA DEL TRANSFORMER"
             color: Style.Theme.texto_secundario
             font.bold: true
             font.letterSpacing: 0.6
-            font.pixelSize: Math.max(10, 9.5 * Math.min(root.sx, root.sy))
+            font.pixelSize: Math.max(10, 9.5 * Math.min(root.layoutSx, root.layoutSy))
         }
 
         Rectangle {
             anchors.right: parent.right
-            anchors.rightMargin: 8 * root.sx
+            anchors.rightMargin: 8 * root.layoutSx
             anchors.top: parent.top
-            anchors.topMargin: 6 * root.sy
-            width: passiveLabel.implicitWidth + 12 * root.sx
-            height: 20 * root.sy
+            anchors.topMargin: 6 * root.layoutSy
+            width: passiveLabel.implicitWidth + 12 * root.layoutSx
+            height: 20 * root.layoutSy
             radius: height / 2
             color: Style.Theme.borde_medio
 
@@ -356,18 +369,19 @@ Item {
                 text: "SOLO REFERENCIA"
                 color: Style.Theme.texto_secundario
                 font.bold: true
-                font.pixelSize: Math.max(9, 8 * Math.min(root.sx, root.sy))
+                font.pixelSize: Math.max(9, 8 * Math.min(root.layoutSx, root.layoutSy))
             }
         }
 
         Item {
             id: towers
+            objectName: "transformerMiniMapTowers"
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.top: parent.top
-            anchors.topMargin: 31 * root.sy
+            anchors.topMargin: 31 * root.layoutSy
             anchors.bottom: locationBadge.top
-            anchors.bottomMargin: 7 * root.sy
+            anchors.bottomMargin: 7 * root.layoutSy
 
             Text {
                 anchors.left: encoderColumn.left
@@ -377,7 +391,7 @@ Item {
                 color: Style.Theme.texto_secundario_fuerte
                 font.bold: true
                 horizontalAlignment: Text.AlignHCenter
-                font.pixelSize: Math.max(9, 9 * Math.min(root.sx, root.sy))
+                font.pixelSize: Math.max(9, 9 * Math.min(root.layoutSx, root.layoutSy))
             }
             Text {
                 anchors.left: decoderColumn.left
@@ -387,89 +401,95 @@ Item {
                 color: Style.Theme.texto_secundario_fuerte
                 font.bold: true
                 horizontalAlignment: Text.AlignHCenter
-                font.pixelSize: Math.max(9, 9 * Math.min(root.sx, root.sy))
+                font.pixelSize: Math.max(9, 9 * Math.min(root.layoutSx, root.layoutSy))
             }
 
             Column {
                 id: encoderColumn
+                objectName: "transformerMiniMapEncoder"
                 anchors.left: parent.left
-                anchors.leftMargin: 9 * root.sx
+                anchors.leftMargin: 9 * root.layoutSx
                 anchors.bottom: parent.bottom
-                width: (parent.width - 30 * root.sx) / 2
-                spacing: 2 * root.sy
+                width: (parent.width - 30 * root.layoutSx) / 2
+                spacing: 2 * root.layoutSy
 
                 Repeater {
                     model: root.encoderBlocks
                     delegate: MiniBlock {
                         required property var modelData
                         width: encoderColumn.width
-                        height: 18 * root.sy
+                        height: 18 * root.layoutSy
                         title: modelData.title
                         baseColor: modelData.color
                         active: root.containsAny(modelData.ids)
                         accent: root.accent
                         reducedMotion: root.reducedMotion
-                        textScale: Math.min(root.sx, root.sy)
+                        textScale: Math.min(root.layoutSx, root.layoutSy)
                     }
                 }
             }
 
             Column {
                 id: decoderColumn
+                objectName: "transformerMiniMapDecoder"
                 anchors.right: parent.right
-                anchors.rightMargin: 9 * root.sx
+                anchors.rightMargin: 9 * root.layoutSx
                 anchors.bottom: parent.bottom
-                width: (parent.width - 30 * root.sx) / 2
-                spacing: 2 * root.sy
+                width: (parent.width - 30 * root.layoutSx) / 2
+                spacing: 2 * root.layoutSy
 
                 Repeater {
                     model: root.decoderBlocks
                     delegate: MiniBlock {
                         required property var modelData
                         width: decoderColumn.width
-                        height: 18 * root.sy
+                        height: 18 * root.layoutSy
                         title: modelData.title
                         baseColor: modelData.color
                         active: root.containsAny(modelData.ids)
                         accent: root.accent
                         reducedMotion: root.reducedMotion
-                        textScale: Math.min(root.sx, root.sy)
+                        textScale: Math.min(root.layoutSx, root.layoutSy)
                     }
                 }
             }
 
             Text {
+                visible: root.crossOperationActive
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.verticalCenter: parent.verticalCenter
-                anchors.verticalCenterOffset: 17 * root.sy
+                anchors.verticalCenterOffset: 17 * root.layoutSy
                 text: "K,V →"
                 color: root.crossOperationActive ? root.accent : Style.Theme.texto_terciario
                 font.bold: root.crossOperationActive
-                font.pixelSize: Math.max(9, 8.5 * Math.min(root.sx, root.sy))
+                font.pixelSize: Math.max(9, 8.5 * Math.min(root.layoutSx, root.layoutSy))
             }
         }
 
         Rectangle {
             id: locationBadge
+            objectName: "transformerMiniMapLocation"
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.bottom: parent.bottom
-            anchors.margins: 8 * root.sx
-            height: 30 * root.sy
-            radius: 7 * Math.min(root.sx, root.sy)
+            anchors.margins: 8 * root.layoutSx
+            height: 34 * root.layoutSy
+            radius: 7 * Math.min(root.layoutSx, root.layoutSy)
             color: Qt.alpha(root.accent, 0.12)
             border.color: Qt.alpha(root.accent, 0.50)
 
             Text {
                 anchors.fill: parent
-                anchors.leftMargin: 8 * root.sx
-                anchors.rightMargin: 8 * root.sx
+                anchors.leftMargin: 8 * root.layoutSx
+                anchors.rightMargin: 8 * root.layoutSx
                 verticalAlignment: Text.AlignVCenter
                 horizontalAlignment: Text.AlignHCenter
                 text: "●  Estás aquí · " + root.activeRegion
                 color: Qt.darker(root.accent, 1.35)
                 font.bold: true
-                font.pixelSize: Math.max(9, 9 * Math.min(root.sx, root.sy))
+                font.pixelSize: Math.max(10, 10 * Math.min(root.layoutSx, root.layoutSy))
+                minimumPixelSize: 9
+                fontSizeMode: Text.Fit
                 elide: Text.ElideRight
             }
         }

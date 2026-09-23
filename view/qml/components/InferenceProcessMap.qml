@@ -16,6 +16,8 @@ Rectangle {
     property color accentText: Style.Theme.texto_sobre_acento
     property real sx: 1
     property real sy: 1
+    property bool compact: false
+    readonly property bool narrow: width < 760
     readonly property bool keyboardNavigationEnabled: true
 
     signal chapterSelected(int index)
@@ -28,11 +30,13 @@ Rectangle {
         anchors.fill: parent
         anchors.leftMargin: 12 * root.sx
         anchors.rightMargin: 12 * root.sx
-        anchors.topMargin: 8 * root.sy
-        anchors.bottomMargin: 8 * root.sy
-        spacing: 5 * root.sy
+        anchors.topMargin: (root.compact ? 5 : 8) * root.sy
+        anchors.bottomMargin: (root.compact ? 5 : 8) * root.sy
+        spacing: root.compact ? 0 : 5 * root.sy
 
         RowLayout {
+            visible: !root.compact
+            Layout.preferredHeight: visible ? implicitHeight : 0
             Layout.fillWidth: true
             spacing: 8 * root.sx
 
@@ -77,7 +81,8 @@ Rectangle {
             spacing: 6 * root.sx
 
             EndpointChip {
-                Layout.preferredWidth: Math.max(62, 82 * root.sx)
+                visible: !root.narrow
+                Layout.preferredWidth: visible ? Math.max(62, 82 * root.sx) : 0
                 Layout.fillHeight: true
                 title: "Prompt"
                 caption: "entrada"
@@ -86,6 +91,7 @@ Rectangle {
             }
 
             Text {
+                visible: !root.narrow
                 text: "\u2192"
                 color: Style.Theme.texto_terciario
                 font.bold: true
@@ -186,6 +192,7 @@ Rectangle {
                                 }
 
                                 Text {
+                                    visible: !root.compact || chapterCard.height >= 46 * root.sy
                                     Layout.fillWidth: true
                                     text: chapterDelegate.modelData.caption || ""
                                     color: Style.Theme.texto_secundario
@@ -206,7 +213,8 @@ Rectangle {
                     }
 
                     Text {
-                        visible: chapterDelegate.index < root.chapters.length - 1
+                        visible: !root.narrow
+                                 && chapterDelegate.index < root.chapters.length - 1
                         Layout.preferredWidth: visible ? Math.max(12, 14 * root.sx) : 0
                         text: "\u2192"
                         color: chapterDelegate.completed
@@ -219,6 +227,7 @@ Rectangle {
             }
 
             Text {
+                visible: !root.narrow
                 text: "\u2192"
                 color: root.currentIndex === root.chapters.length - 1 ? root.accent : Style.Theme.texto_terciario
                 font.bold: true
@@ -226,7 +235,8 @@ Rectangle {
             }
 
             EndpointChip {
-                Layout.preferredWidth: Math.max(68, 92 * root.sx)
+                visible: !root.narrow
+                Layout.preferredWidth: visible ? Math.max(68, 92 * root.sx) : 0
                 Layout.fillHeight: true
                 title: "Token"
                 caption: "vuelve al decoder"

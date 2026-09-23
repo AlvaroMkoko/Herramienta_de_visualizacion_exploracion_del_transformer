@@ -125,7 +125,6 @@ def test_explorador_respeta_limites_del_modal_en_resolucion_base(qapp):
         "inferenceProcessMap",
         "inferenceNextTokenButton",
         "inferenceAnimationViewport",
-        "inferencePedagogicalGuide",
         "inferenceReducedMotionToggle",
         "inferenceGuideToggle",
         "inferenceCloseButton",
@@ -138,9 +137,227 @@ def test_explorador_respeta_limites_del_modal_en_resolucion_base(qapp):
         assert item is not None, object_name
         _assert_item_dentro_del_panel(panel, item)
 
-    animation_position = animation.mapToItem(panel, QPointF(0, 0))
-    guide_position = guide.mapToItem(panel, QPointF(0, 0))
-    assert animation_position.x() + animation.width() <= guide_position.x() + 0.5
+    assert guide is not None and guide.property("visible") is False
+    assert animation.width() >= panel.width() * 0.90
+
+    window.deleteLater()
+    engine.deleteLater()
+    qapp.processEvents()
+
+
+def test_explorador_reorganiza_apoyos_en_viewports_compactos(qapp):
+    engine = QQmlEngine()
+    _, window, panel = _crear_panel(engine, qapp)
+    window.setProperty("visible", True)
+
+    for width, height in ((1024, 640), (760, 520), (640, 480)):
+        window.setProperty("width", width)
+        window.setProperty("height", height)
+        QTest.qWait(30)
+        qapp.processEvents()
+
+        animation = window.findChild(QQuickItem, "inferenceAnimationViewport")
+        process_map = window.findChild(QQuickItem, "inferenceProcessMap")
+        token_ribbon = window.findChild(QQuickItem, "inferenceTokenRibbon")
+        close_button = window.findChild(QQuickItem, "inferenceCloseButton")
+        previous_button = window.findChild(
+            QQuickItem, "inferencePreviousOperationButton"
+        )
+        next_button = window.findChild(QQuickItem, "inferenceNextOperationButton")
+
+        assert animation.property("visible") is True
+        assert animation.width() >= 500
+        assert animation.height() >= 220
+        assert 0.68 <= float(panel.property("sceneSx")) <= 1.0
+        assert 0.60 <= float(panel.property("sceneSy")) <= 1.0
+        for item in (
+            animation,
+            process_map,
+            token_ribbon,
+            close_button,
+            previous_button,
+            next_button,
+        ):
+            assert item is not None and item.property("visible") is True
+            _assert_item_dentro_del_panel(panel, item)
+        assert panel.property("tokenRibbonFits") is True
+
+    # En ancho estrecho la ayuda no compite con la transformacion: se abre
+    # como vista alterna y permite volver a la animacion con el mismo control.
+    guide = window.findChild(QQuickItem, "inferencePedagogicalGuide")
+    toggle = window.findChild(QObject, "inferenceGuideToggle")
+    assert panel.property("compactWidth") is True
+    assert guide.property("visible") is False
+    toggle.clicked.emit()
+    QTest.qWait(30)
+    qapp.processEvents()
+    assert animation.property("visible") is False
+    assert guide.property("visible") is True
+    _assert_item_dentro_del_panel(panel, guide)
+
+    panel.setProperty("locationMapVisible", True)
+    QTest.qWait(30)
+    qapp.processEvents()
+    compact_minimap = window.findChild(QQuickItem, "inferenceTransformerMiniMap")
+    assert compact_minimap is not None and compact_minimap.property("visible") is True
+    assert compact_minimap.height() >= 175
+    assert compact_minimap.property("contentFits") is True
+    _assert_item_dentro_del_panel(guide, compact_minimap)
+
+    toggle.clicked.emit()
+    QTest.qWait(30)
+    qapp.processEvents()
+    assert animation.property("visible") is True
+    assert guide.property("visible") is False
+    assert panel.property("guideVisible") is False
+
+    window.deleteLater()
+    engine.deleteLater()
+    qapp.processEvents()
+
+
+def test_multihead_compacto_mantiene_la_transformacion_completa(qapp):
+    engine = QQmlEngine()
+    _, window, panel = _crear_panel(engine, qapp)
+    window.setProperty("width", 760)
+    window.setProperty("height", 520)
+    panel.setProperty("operationIndex", 6)
+    window.setProperty("visible", True)
+    QTest.qWait(50)
+    qapp.processEvents()
+
+    scene = window.findChild(QQuickItem, "multiHeadSplitScene")
+    projection = window.findChild(QQuickItem, "multiHeadProjection")
+    cards = window.findChild(QQuickItem, "multiHeadCards")
+    merge = window.findChild(QQuickItem, "multiHeadMerge")
+    assert scene is not None and scene.property("compact") is True
+    for item in (projection, cards, merge):
+        assert item is not None
+        assert item.width() > 0 and item.height() > 0
+        _assert_item_dentro_del_panel(scene, item)
+
+    window.deleteLater()
+    engine.deleteLater()
+    qapp.processEvents()
+
+
+def test_layernorm_no_saca_texto_de_las_tarjetas_de_fase(qapp):
+    engine = QQmlEngine()
+    _, window, panel = _crear_panel(engine, qapp)
+    window.setProperty("width", 760)
+    window.setProperty("height", 520)
+    panel.setProperty("operationIndex", 7)
+    window.setProperty("visible", True)
+    QTest.qWait(30)
+    qapp.processEvents()
+
+    scene = window.findChild(QQuickItem, "residualLayerNormScene")
+    phases = [
+        {
+            "nombre": name,
+            "valores": [-1.0, -0.4, 0.2, 0.8, 1.1],
+            "media": mean,
+            "desviacion": deviation,
+            "operacion": operation,
+        }
+        for name, mean, deviation, operation in (
+            ("x + Δx", 0.52, 0.79, "Distribución antes de LayerNorm"),
+            ("Restar μ", 0.0, 0.79, "x − media(x)"),
+            ("Dividir por σ", 0.0, 1.0, "(x − μ) / √(var + ε)"),
+            ("Aplicar γ y β", -0.01, 1.01, "γ · x̂ + β"),
+        )
+    ]
+    residual_data = {
+            "norma_entrada": 5.63,
+            "norma_actualizacion": 5.31,
+            "ratio_actualizacion": 0.94,
+            "epsilon": 0.00001,
+            "layernorm": {
+                "fases": phases,
+                "gamma_media": 1.0,
+                "beta_media": 0.0,
+            },
+        }
+    panel.setProperty("snapshots", [{"token_elegido": {"texto": "tok"}}])
+    panel.setProperty("selectedIndex", 0)
+    panel.setProperty(
+        "detailForward",
+        {
+            "metadata": {"num_layers": 1, "num_heads": 1},
+            "global": {},
+            "encoder": [{"residual_atencion": residual_data}],
+            "decoder": [],
+        },
+    )
+    QTest.qWait(30)
+    qapp.processEvents()
+
+    phase_row = window.findChild(QQuickItem, "layerNormPhaseCards")
+    explanation = window.findChild(
+        QQuickItem, "layerNormSelectedPhaseExplanation"
+    )
+    assert scene is not None and phase_row is not None and explanation is not None
+    _assert_item_dentro_del_panel(scene, phase_row)
+    _assert_item_dentro_del_panel(scene, explanation)
+    phase_position = phase_row.mapToItem(scene, QPointF(0, 0))
+    explanation_position = explanation.mapToItem(scene, QPointF(0, 0))
+    assert phase_position.y() + phase_row.height() <= explanation_position.y() + 0.5
+    assert scene.property("phaseCardCount") == 4
+    assert scene.property("phaseLayoutFits") is True
+
+    window.deleteLater()
+    engine.deleteLater()
+    qapp.processEvents()
+
+
+def test_ffn_compacta_conserva_entrada_activacion_y_salida(qapp):
+    engine = QQmlEngine()
+    _, window, panel = _crear_panel(engine, qapp)
+    window.setProperty("width", 640)
+    window.setProperty("height", 480)
+    panel.setProperty("operationIndex", 8)
+    window.setProperty("visible", True)
+    QTest.qWait(30)
+    qapp.processEvents()
+
+    scene = window.findChild(QQuickItem, "feedForwardExpansionScene")
+    token_rows = []
+    for position in range(3):
+        token_rows.append(
+            {
+                "posicion": position,
+                "dimension_entrada": 32,
+                "dimension_oculta": 64,
+                "dimension_salida": 32,
+                "entrada": [0.1, -0.2, 0.4, -0.1],
+                "preactivacion": [0.2, -0.4, 0.8, -0.2],
+                "salida": [0.3, -0.1, 0.6, 0.2],
+                "norma_entrada": 1.2,
+                "norma_preactivacion": 2.4,
+                "norma_salida": 1.7,
+                "fraccion_negativa": 0.5,
+                "fraccion_casi_cero": 0.1,
+            }
+        )
+    panel.setProperty("snapshots", [{"token_elegido": {"texto": "tok"}}])
+    panel.setProperty("selectedIndex", 0)
+    panel.setProperty(
+        "detailForward",
+        {
+            "metadata": {"num_layers": 1, "num_heads": 1},
+            "global": {},
+            "encoder": [
+                {"ffn": {"activacion": "GELU", "tokens": token_rows}}
+            ],
+            "decoder": [],
+        },
+    )
+    QTest.qWait(30)
+    qapp.processEvents()
+
+    assert scene is not None and scene.property("compact") is True
+    assert scene.property("renderedTokenCount") == 3
+    assert float(scene.property("compactContentWidth")) <= scene.width()
 
     window.deleteLater()
     engine.deleteLater()
@@ -307,6 +524,8 @@ def test_todas_las_tarjetas_abren_una_explicacion_completa_y_coherente(qapp):
     engine = QQmlEngine()
     component, window, panel = _crear_panel(engine, qapp)
     assert component is not None and panel is not None
+    panel.setProperty("guideVisible", True)
+    qapp.processEvents()
     button = window.findChild(QObject, "inferenceFullExplanationButton")
     assert button is not None
     assert button.property("visible") is True
@@ -387,8 +606,15 @@ def test_explorador_prioriza_mapa_y_resumen_con_detalle_bajo_demanda(qapp):
     # La lectura principal conserva el hilo local y la formula relevante.
     assert panel.property("detailsExpanded") is False
     assert advanced is not None and advanced.property("visible") is False
+    # Los apoyos redundantes empiezan plegados para priorizar la animacion.
+    assert panel.property("guideVisible") is False
+    assert panel.property("locationMapVisible") is False
+    assert technical_map is not None and technical_map.property("visible") is False
+    panel.setProperty("guideVisible", True)
+    panel.setProperty("locationMapVisible", True)
+    qapp.processEvents()
     assert panel.property("locationMapVisible") is True
-    assert technical_map is not None and technical_map.property("visible") is True
+    assert technical_map.property("visible") is True
     assert map_toggle is not None and map_toggle.property("visible") is True
     assert map_toggle.property("text") == "Ocultar mapa"
     assert pedagogical_scroll is not None
@@ -492,14 +718,14 @@ def test_la_guia_visual_precede_a_la_formula_y_aclara_la_muestra_qkv(qapp):
     qapp.processEvents()
 
 
-def test_codigo_de_color_pedagogico_es_visible_y_consistente(qapp):
+def test_codigo_de_color_pedagogico_no_ocupa_otra_franja_y_es_consistente(qapp):
     engine = QQmlEngine()
     _, window, panel = _crear_panel(engine, qapp)
 
     legend = window.findChild(QObject, "inferenceColorLegend")
     legend_items = window.findChild(QObject, "inferenceColorLegendRepeater")
     colors = _como_python(panel.property("pedagogicalColors"))
-    assert legend is not None and legend.property("visible") is True
+    assert legend is not None and legend.property("visible") is False
     assert legend_items is not None and legend_items.property("count") == 6
     assert [entry["label"] for entry in colors] == [
         "Estructura / flujo",
@@ -573,10 +799,19 @@ def test_panel_de_explicacion_se_puede_ocultar_para_ampliar_la_animacion(qapp):
     toggle = window.findChild(QObject, "inferenceGuideToggle")
 
     assert animation is not None
-    assert guide is not None and guide.property("visible") is True
+    assert guide is not None and guide.property("visible") is False
     assert toggle is not None and toggle.property("visible") is True
-    assert panel.property("guideVisible") is True
+    assert panel.property("guideVisible") is False
     original_width = float(animation.property("width"))
+
+    panel.setProperty("guideVisible", True)
+    QTest.qWait(50)
+    qapp.processEvents()
+
+    assert guide.property("visible") is True
+    assert toggle.property("label") == "Ocultar explicación"
+    assert float(animation.property("width")) < original_width
+    expanded_width = float(animation.property("width"))
 
     panel.setProperty("detailsExpanded", True)
     panel.setProperty("guideVisible", False)
@@ -586,15 +821,56 @@ def test_panel_de_explicacion_se_puede_ocultar_para_ampliar_la_animacion(qapp):
     assert guide.property("visible") is False
     assert panel.property("detailsExpanded") is False
     assert toggle.property("label") == "Mostrar explicación"
-    assert float(animation.property("width")) > original_width
+    assert float(animation.property("width")) > expanded_width
+    assert float(animation.property("width")) >= original_width - 1
 
+    window.deleteLater()
+    engine.deleteLater()
+    qapp.processEvents()
+
+
+def test_prompt_salida_y_mapa_reservan_espacio_legible(qapp):
+    engine = QQmlEngine()
+    _, window, panel = _crear_panel(engine, qapp)
+    panel.setProperty(
+        "snapshots",
+        [
+            {
+                "paso": 1,
+                "tokens_entrada": [{"texto": "Hola"}, {"texto": "mundo"}],
+                "token_elegido": {"texto": "mas"},
+            }
+        ],
+    )
+    panel.setProperty("selectedIndex", 0)
+    panel.setProperty("operationIndex", 11)
     panel.setProperty("guideVisible", True)
+    panel.setProperty("locationMapVisible", True)
+    window.setProperty("visible", True)
     QTest.qWait(50)
     qapp.processEvents()
 
-    assert guide.property("visible") is True
-    assert toggle.property("label") == "Ocultar explicación"
-    assert float(animation.property("width")) < original_width + 1
+    ribbon = window.findChild(QQuickItem, "inferenceTokenRibbon")
+    prompt_tokens = window.findChild(QQuickItem, "inferencePromptTokens")
+    output_tokens = window.findChild(QQuickItem, "inferenceOutputTokens")
+    guide = window.findChild(QQuickItem, "inferencePedagogicalGuide")
+    minimap = window.findChild(QQuickItem, "inferenceTransformerMiniMap")
+    location = window.findChild(QQuickItem, "transformerMiniMapLocation")
+
+    assert all(
+        item is not None
+        for item in (ribbon, prompt_tokens, output_tokens, guide, minimap, location)
+    )
+    assert panel.property("tokenRibbonFits") is True
+    chip_height = float(panel.property("tokenChipHeight"))
+    assert prompt_tokens.height() >= chip_height
+    assert output_tokens.height() >= chip_height
+    assert minimap.height() >= 220
+    assert minimap.height() >= guide.height() * 0.38
+    assert minimap.property("contentFits") is True
+    _assert_item_dentro_del_panel(panel, ribbon)
+    _assert_item_dentro_del_panel(guide, minimap)
+    _assert_item_dentro_del_panel(minimap, location)
 
     window.deleteLater()
     engine.deleteLater()

@@ -7,6 +7,7 @@ import "../styles" as Style
 
 Item {
     id: root
+    objectName: "feedForwardExpansionScene"
 
     property var sceneData: ({})
     property var tokens: []
@@ -15,6 +16,7 @@ Item {
     property real sx: 1
     property real sy: 1
     property real progress: 0
+    readonly property bool compact: width < 850
 
     readonly property var tokenRows: sceneData.tokens || []
     readonly property string activationName: String(sceneData.activacion || "GELU")
@@ -30,6 +32,10 @@ Item {
                                                    ? Math.max(1, Math.min(2,
                                                        hiddenDimension / inputDimension))
                                                    : 1
+    readonly property int renderedTokenCount: tokenRepeater.count
+    readonly property real compactContentWidth: (
+        70 + 112 + 112 * (1 + (hiddenVisualRatio - 1) * progress)
+        + 92 + 112 + 4 * 4 + 10) * sx
 
     function tokenColor(index) {
         var palette = Style.Theme.identidades_inferencia
@@ -82,25 +88,29 @@ Item {
                 Layout.fillWidth: true
                 spacing: 1 * root.sy
                 Text {
+                    Layout.fillWidth: true
                     text: "Expansión → " + root.activationName + " → compresión"
                     color: Style.Theme.texto_primario
                     font.bold: true
+                    elide: Text.ElideRight
                     font.pixelSize: Math.max(18, 18 * Math.min(root.sx, root.sy))
                 }
                 Text {
+                    Layout.fillWidth: true
                     text: root.inputDimension + " → " + root.hiddenDimension + " → "
                           + root.outputDimension + " · la misma FFN se aplica por separado a cada token"
                     color: Style.Theme.inferencia_transformacion
                     font.bold: true
+                    elide: Text.ElideRight
                     font.pixelSize: Math.max(11, 11 * root.sx)
                 }
             }
             Rectangle {
-                Layout.preferredWidth: 112 * root.sx
+                Layout.preferredWidth: (root.compact ? 38 : 112) * root.sx
                 Layout.preferredHeight: 32 * root.sy
                 radius: 8 * root.sx
                 color: Style.Theme.inferencia_transformacion
-                Text { anchors.centerIn: parent; text: "↺ Respirar"; color: Style.Theme.inferencia_sobre_transformacion; font.bold: true; font.pixelSize: 9 * root.sx }
+                Text { anchors.centerIn: parent; text: root.compact ? "↺" : "↺ Respirar"; color: Style.Theme.inferencia_sobre_transformacion; font.bold: true; font.pixelSize: 9 * root.sx }
                 MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.replay() }
             }
         }
@@ -115,12 +125,12 @@ Item {
                 anchors.fill: parent
                 anchors.margins: 8 * root.sx
                 spacing: 8 * root.sx
-                StageLabel { Layout.preferredWidth: 154 * root.sx; title: "ENTRADA"; subtitle: "d_model = " + root.inputDimension; accent: Style.Theme.inferencia_estructura; sx: root.sx }
-                Text { text: "→"; color: Style.Theme.texto_terciario; font.bold: true; font.pixelSize: 18 * root.sx }
-                StageLabel { Layout.fillWidth: true; title: "EXPANSIÓN W₁"; subtitle: "d_ff = " + root.hiddenDimension; accent: Style.Theme.inferencia_transformacion; sx: root.sx }
-                StageLabel { Layout.preferredWidth: 150 * root.sx; title: root.activationName.toUpperCase(); subtitle: root.activationName.toLowerCase().indexOf("relu") >= 0 ? "negativos → 0" : "atenuación suave"; accent: Style.Theme.inferencia_foco; sx: root.sx }
-                Text { text: "→"; color: Style.Theme.texto_terciario; font.bold: true; font.pixelSize: 18 * root.sx }
-                StageLabel { Layout.preferredWidth: 154 * root.sx; title: "PROYECCIÓN W₂"; subtitle: "d_model = " + root.outputDimension; accent: Style.Theme.inferencia_resultado; sx: root.sx }
+                StageLabel { Layout.fillWidth: true; Layout.minimumWidth: 0; title: "ENTRADA"; subtitle: "d_model = " + root.inputDimension; accent: Style.Theme.inferencia_estructura; sx: root.sx }
+                Text { visible: !root.compact; text: "→"; color: Style.Theme.texto_terciario; font.bold: true; font.pixelSize: 18 * root.sx }
+                StageLabel { Layout.fillWidth: true; Layout.minimumWidth: 0; title: "EXPANSIÓN W₁"; subtitle: "d_ff = " + root.hiddenDimension; accent: Style.Theme.inferencia_transformacion; sx: root.sx }
+                StageLabel { Layout.fillWidth: true; Layout.minimumWidth: 0; title: root.activationName.toUpperCase(); subtitle: root.activationName.toLowerCase().indexOf("relu") >= 0 ? "negativos → 0" : "atenuación suave"; accent: Style.Theme.inferencia_foco; sx: root.sx }
+                Text { visible: !root.compact; text: "→"; color: Style.Theme.texto_terciario; font.bold: true; font.pixelSize: 18 * root.sx }
+                StageLabel { Layout.fillWidth: true; Layout.minimumWidth: 0; title: "PROYECCIÓN W₂"; subtitle: "d_model = " + root.outputDimension; accent: Style.Theme.inferencia_resultado; sx: root.sx }
             }
         }
 
@@ -151,6 +161,7 @@ Item {
                 }
 
                 Repeater {
+                    id: tokenRepeater
                     model: root.tokenRows
                     delegate: Rectangle {
                         id: tokenRow
@@ -165,11 +176,11 @@ Item {
 
                         RowLayout {
                             anchors.fill: parent
-                            anchors.margins: 9 * root.sx
-                            spacing: 8 * root.sx
+                            anchors.margins: (root.compact ? 5 : 9) * root.sx
+                            spacing: (root.compact ? 4 : 8) * root.sx
 
                             Rectangle {
-                                Layout.preferredWidth: 92 * root.sx
+                                Layout.preferredWidth: (root.compact ? 70 : 92) * root.sx
                                 Layout.fillHeight: true
                                 radius: 8 * root.sx
                                 color: Qt.alpha(root.tokenColor(tokenRow.index), 0.10)
@@ -186,12 +197,12 @@ Item {
                                         elide: Text.ElideRight
                                         font.pixelSize: 11 * root.sx
                                     }
-                                    Text { width: parent.width; text: "posición " + tokenRow.modelData.posicion; color: Style.Theme.texto_secundario; horizontalAlignment: Text.AlignHCenter; font.pixelSize: Math.max(9, 9 * root.sx) }
+                                    Text { width: parent.width; text: "posición " + tokenRow.modelData.posicion; color: Style.Theme.texto_secundario; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; font.pixelSize: Math.max(9, 9 * root.sx) }
                                 }
                             }
 
                             VectorStrip {
-                                Layout.preferredWidth: 150 * root.sx
+                                Layout.preferredWidth: (root.compact ? 112 : 150) * root.sx
                                 Layout.fillHeight: true
                                 values: tokenRow.modelData.entrada || []
                                 dimension: tokenRow.modelData.dimension_entrada
@@ -201,10 +212,10 @@ Item {
                                 sx: root.sx; sy: root.sy
                             }
 
-                            Text { text: "→"; color: Style.Theme.texto_terciario; font.bold: true; font.pixelSize: 18 * root.sx }
+                            Text { visible: !root.compact; text: "→"; color: Style.Theme.texto_terciario; font.bold: true; font.pixelSize: 18 * root.sx }
 
                             VectorStrip {
-                                Layout.preferredWidth: 150 * (1 + (root.hiddenVisualRatio - 1)
+                                Layout.preferredWidth: (root.compact ? 112 : 150) * (1 + (root.hiddenVisualRatio - 1)
                                                                  * root.progress) * root.sx
                                 Layout.fillHeight: true
                                 values: tokenRow.modelData.preactivacion || []
@@ -217,7 +228,7 @@ Item {
                             }
 
                             ActivationGate {
-                                Layout.preferredWidth: 128 * root.sx
+                                Layout.preferredWidth: (root.compact ? 92 : 128) * root.sx
                                 Layout.fillHeight: true
                                 activation: root.activationName
                                 negativeFraction: Number(tokenRow.modelData.fraccion_negativa || 0)
@@ -226,10 +237,10 @@ Item {
                                 opacity: 0.25 + 0.75 * root.progress
                             }
 
-                            Text { text: "→"; color: Style.Theme.texto_terciario; font.bold: true; font.pixelSize: 18 * root.sx }
+                            Text { visible: !root.compact; text: "→"; color: Style.Theme.texto_terciario; font.bold: true; font.pixelSize: 18 * root.sx }
 
                             VectorStrip {
-                                Layout.preferredWidth: 150 * root.sx
+                                Layout.preferredWidth: (root.compact ? 112 : 150) * root.sx
                                 Layout.fillHeight: true
                                 values: tokenRow.modelData.salida || []
                                 dimension: tokenRow.modelData.dimension_salida
@@ -257,21 +268,6 @@ Item {
             }
         }
 
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 38 * root.sy
-            radius: 9 * root.sx
-            color: Style.Theme.aviso_fondo
-            border.color: Style.Theme.inferencia_foco
-            Text {
-                anchors.centerIn: parent
-                text: root.activationName.toLowerCase().indexOf("relu") >= 0
-                      ? "ReLU recorta exactamente a cero las preactivaciones negativas."
-                      : "GELU atenúa de forma suave: una entrada negativa pequeña puede conservar una salida negativa pequeña."
-                color: Style.Theme.aviso_texto
-                font.pixelSize: 9 * root.sx
-            }
-        }
     }
 
     component StageLabel: Column {
@@ -281,8 +277,8 @@ Item {
         property color accent: Style.Theme.inferencia_transformacion
         property real sx: 1
         spacing: 1 * sx
-        Text { width: parent.width; text: stageLabel.title; color: stageLabel.accent; font.bold: true; horizontalAlignment: Text.AlignHCenter; font.pixelSize: 9 * stageLabel.sx }
-        Text { width: parent.width; text: stageLabel.subtitle; color: Style.Theme.texto_secundario; horizontalAlignment: Text.AlignHCenter; font.pixelSize: Math.max(9, 9 * stageLabel.sx) }
+        Text { width: parent.width; text: stageLabel.title; color: stageLabel.accent; font.bold: true; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; font.pixelSize: 9 * stageLabel.sx }
+        Text { width: parent.width; text: stageLabel.subtitle; color: Style.Theme.texto_secundario; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; font.pixelSize: Math.max(9, 9 * stageLabel.sx) }
     }
 
     component VectorStrip: Rectangle {

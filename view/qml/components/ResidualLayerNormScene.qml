@@ -17,11 +17,16 @@ Item {
     property bool useShortcut: true
     property real particleProgress: 0
     property int selectedPhase: 0
+    readonly property bool compact: width < 760 || height < 500
+    readonly property bool shortViewport: height < 410
 
     readonly property var layerNorm: sceneData.layernorm || ({})
     readonly property var phases: layerNorm.fases || []
     readonly property var selectedPhaseGuide: phaseGuide(selectedPhase)
     readonly property string phasePedagogicalExplanation: selectedPhaseGuide.explanation
+    readonly property int phaseCardCount: phaseRepeater.count
+    readonly property bool phaseLayoutFits: phaseCardsRow.y + phaseCardsRow.height
+                                                    <= selectedPhaseExplanation.y + 0.5
 
     function phaseGuide(index) {
         if (index === 0) {
@@ -84,7 +89,7 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: 9 * root.sy
+        spacing: (root.compact ? 4 : 9) * root.sy
 
         RowLayout {
             Layout.fillWidth: true
@@ -93,14 +98,19 @@ Item {
                 Layout.fillWidth: true
                 spacing: 1 * root.sy
                 Text {
+                    Layout.fillWidth: true
                     text: "Carril residual + LayerNorm post-norm"
                     color: Style.Theme.texto_primario
                     font.bold: true
+                    elide: Text.ElideRight
                     font.pixelSize: Math.max(18, 18 * Math.min(root.sx, root.sy))
                 }
                 Text {
+                    visible: !root.shortViewport
+                    Layout.fillWidth: true
                     text: "La entrada x toma dos rutas y converge mediante una suma, no mediante concat."
                     color: Style.Theme.texto_secundario
+                    elide: Text.ElideRight
                     font.pixelSize: Math.max(11, 11 * root.sx)
                 }
             }
@@ -125,7 +135,11 @@ Item {
 
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 205 * root.sy
+            Layout.fillHeight: true
+            Layout.minimumHeight: Math.max(118, 138 * root.sy)
+            Layout.preferredHeight: Math.max(
+                                        Math.max(118, 138 * root.sy),
+                                        Math.min(225 * root.sy, root.height * 0.36))
             radius: 12 * root.sx
             color: Style.Theme.surface
             border.color: Style.Theme.inferencia_resultado
@@ -136,13 +150,18 @@ Item {
                 anchors.margins: 9 * root.sx
                 onPaint: {
                     var ctx = getContext("2d"); ctx.reset()
-                    var startX = 68 * root.sx
-                    var splitX = 190 * root.sx
-                    var mergeX = width - 250 * root.sx
-                    var normX = width - 112 * root.sx
-                    var upperY = 55 * root.sy
-                    var lowerY = 140 * root.sy
-                    var middleY = 98 * root.sy
+                    var startX = Math.max(28 * root.sx, width * 0.055)
+                    var splitX = Math.max(startX + 58 * root.sx, width * 0.17)
+                    var normX = width - 80 * root.sx
+                    var mergeX = Math.max(splitX + 125 * root.sx,
+                                          normX - 132 * root.sx)
+                    mergeX = Math.min(mergeX, normX - 86 * root.sx)
+                    var branchSpan = Math.max(1, mergeX - splitX)
+                    var branchStartX = splitX + branchSpan * 0.18
+                    var branchEndX = mergeX - branchSpan * 0.10
+                    var upperY = Math.max(30 * root.sy, height * 0.28)
+                    var lowerY = Math.min(height - 42 * root.sy, height * 0.68)
+                    var middleY = (upperY + lowerY) / 2
 
                     ctx.lineCap = "round"
                     ctx.lineWidth = 4 * root.sx
@@ -151,21 +170,25 @@ Item {
 
                     ctx.globalAlpha = root.useShortcut ? 1 : 0.12
                     ctx.beginPath(); ctx.moveTo(splitX, middleY)
-                    ctx.bezierCurveTo(splitX + 35 * root.sx, middleY,
-                                      splitX + 45 * root.sx, upperY, splitX + 82 * root.sx, upperY)
-                    ctx.lineTo(mergeX - 42 * root.sx, upperY)
-                    ctx.bezierCurveTo(mergeX - 14 * root.sx, upperY,
-                                      mergeX - 22 * root.sx, middleY, mergeX, middleY)
+                    ctx.bezierCurveTo(splitX + branchSpan * 0.08, middleY,
+                                      splitX + branchSpan * 0.11, upperY,
+                                      branchStartX, upperY)
+                    ctx.lineTo(branchEndX, upperY)
+                    ctx.bezierCurveTo(mergeX - branchSpan * 0.04, upperY,
+                                      mergeX - branchSpan * 0.06, middleY,
+                                      mergeX, middleY)
                     ctx.stroke()
                     ctx.globalAlpha = 1
 
                     ctx.strokeStyle = Style.Theme.inferencia_transformacion
                     ctx.beginPath(); ctx.moveTo(splitX, middleY)
-                    ctx.bezierCurveTo(splitX + 35 * root.sx, middleY,
-                                      splitX + 45 * root.sx, lowerY, splitX + 82 * root.sx, lowerY)
-                    ctx.lineTo(mergeX - 42 * root.sx, lowerY)
-                    ctx.bezierCurveTo(mergeX - 14 * root.sx, lowerY,
-                                      mergeX - 22 * root.sx, middleY, mergeX, middleY)
+                    ctx.bezierCurveTo(splitX + branchSpan * 0.08, middleY,
+                                      splitX + branchSpan * 0.11, lowerY,
+                                      branchStartX, lowerY)
+                    ctx.lineTo(branchEndX, lowerY)
+                    ctx.bezierCurveTo(mergeX - branchSpan * 0.04, lowerY,
+                                      mergeX - branchSpan * 0.06, middleY,
+                                      mergeX, middleY)
                     ctx.stroke()
 
                     ctx.strokeStyle = Style.Theme.inferencia_foco
@@ -185,10 +208,10 @@ Item {
                         ctx.globalAlpha = 1
                     }
                     if (!root.reducedMotion) {
-                        particle(splitX + 82 * root.sx, upperY, mergeX - 42 * root.sx, upperY,
+                        particle(branchStartX, upperY, branchEndX, upperY,
                                  root.particleProgress, Style.Theme.inferencia_estructura,
                                  root.useShortcut ? 1 : 0.12)
-                        particle(splitX + 82 * root.sx, lowerY, mergeX - 42 * root.sx, lowerY,
+                        particle(branchStartX, lowerY, branchEndX, lowerY,
                                  root.particleProgress, Style.Theme.inferencia_transformacion, 1)
                     }
 
@@ -247,7 +270,7 @@ Item {
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 34 * root.sy
+            Layout.preferredHeight: Math.max(24, 28 * root.sy)
             Text { text: "LAYER NORM · CUATRO FASES REALES"; color: Style.Theme.inferencia_transformacion; font.bold: true; font.pixelSize: 9 * root.sx }
             Item { Layout.fillWidth: true }
             Text {
@@ -260,11 +283,19 @@ Item {
         }
 
         RowLayout {
+            id: phaseCardsRow
+            objectName: "layerNormPhaseCards"
             Layout.fillWidth: true
-            Layout.fillHeight: true
+            Layout.minimumHeight: Math.max(root.compact ? 78 : 88,
+                                           (root.compact ? 96 : 104) * root.sy)
+            Layout.preferredHeight: Math.max(root.compact ? 84 : 96,
+                                             (root.compact ? 104 : 112) * root.sy)
+            Layout.maximumHeight: Math.max(root.compact ? 92 : 106,
+                                           (root.compact ? 114 : 126) * root.sy)
             spacing: 8 * root.sx
 
             Repeater {
+                id: phaseRepeater
                 model: root.phases
                 delegate: Rectangle {
                     id: phaseCard
@@ -272,6 +303,7 @@ Item {
                     required property int index
                     Layout.fillWidth: true
                     Layout.fillHeight: true
+                    clip: true
                     radius: 11 * root.sx
                     color: root.selectedPhase === index ? Style.Theme.aviso_fondo : Style.Theme.superficie_alterna
                     border.color: root.selectedPhase === index
@@ -335,6 +367,7 @@ Item {
                             font.pixelSize: Math.max(9, 9 * root.sx)
                         }
                         Text {
+                            visible: false
                             Layout.fillWidth: true
                             text: phaseCard.modelData.operacion
                             color: Style.Theme.texto_secundario
@@ -349,9 +382,11 @@ Item {
         }
 
         Rectangle {
+            id: selectedPhaseExplanation
             objectName: "layerNormSelectedPhaseExplanation"
             Layout.fillWidth: true
             implicitHeight: selectedPhaseGuideColumn.implicitHeight + 18 * root.sy
+            Layout.minimumHeight: implicitHeight
             radius: 9 * root.sx
             color: Style.Theme.aviso_fondo
             border.color: Style.Theme.inferencia_foco
@@ -367,9 +402,11 @@ Item {
                 RowLayout {
                     Layout.fillWidth: true
                     Text {
+                        Layout.fillWidth: true
                         text: root.selectedPhaseGuide.title
                         color: Style.Theme.inferencia_foco
                         font.bold: true
+                        elide: Text.ElideRight
                         font.pixelSize: Math.max(10, 10 * root.sx)
                     }
                     Item { Layout.fillWidth: true }
@@ -378,6 +415,7 @@ Item {
                         color: Style.Theme.inferencia_transformacion
                         font.family: "Cambria Math"
                         font.bold: true
+                        elide: Text.ElideRight
                         font.pixelSize: Math.max(11, 11 * root.sx)
                     }
                 }
@@ -393,23 +431,5 @@ Item {
             }
         }
 
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 38 * root.sy
-            radius: 9 * root.sx
-            color: root.useShortcut ? Style.Theme.superficie_alterna : Style.Theme.aviso_fondo
-            border.color: root.useShortcut
-                          ? Style.Theme.inferencia_resultado
-                          : Style.Theme.inferencia_foco
-            Text {
-                anchors.centerIn: parent
-                text: root.useShortcut
-                      ? "Con atajo, la información original x sigue disponible en x + Δx antes de normalizar."
-                      : "Sin atajo, solo quedaría Δx: la ruta identidad y su información original desaparecen."
-                color: root.useShortcut ? Style.Theme.exito_texto : Style.Theme.aviso_texto
-                font.bold: true
-                font.pixelSize: 9 * root.sx
-            }
-        }
     }
 }

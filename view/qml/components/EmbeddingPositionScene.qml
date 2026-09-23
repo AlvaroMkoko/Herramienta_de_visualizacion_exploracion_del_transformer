@@ -7,6 +7,7 @@ import "../styles" as Style
 
 Item {
     id: root
+    objectName: "embeddingPositionScene"
 
     property var projection: ({})
     property var tokens: []
@@ -17,6 +18,7 @@ Item {
     property real progress: 0
     property bool showBothClouds: true
     property int hoveredIndex: -1
+    readonly property bool compact: width < 850
 
     readonly property var embeddingPoints: projection && projection.embedding
                                                    ? projection.embedding : []
@@ -123,25 +125,31 @@ Item {
                 Layout.fillWidth: true
                 spacing: 1 * root.sy
                 Text {
+                    Layout.fillWidth: true
                     text: "Embedding puro  →  embedding + posición"
                     color: Style.Theme.texto_primario
                     font.bold: true
+                    elide: Text.ElideRight
                     font.pixelSize: Math.max(18, 18 * Math.min(root.sx, root.sy))
                 }
                 Text {
+                    Layout.fillWidth: true
                     text: "PCA calculado una sola vez sobre origen y destino · cada flecha es una suma vectorial real"
                     color: Style.Theme.texto_secundario
+                    elide: Text.ElideRight
                     font.pixelSize: Math.max(11, 11 * root.sx)
                 }
             }
             SceneButton {
-                label: "↺ Reproducir"
+                label: root.compact ? "↺" : "↺ Reproducir"
                 primary: true
                 sx: root.sx; sy: root.sy
                 onClicked: root.replay()
             }
             SceneButton {
-                label: root.showBothClouds ? "Nubes: ambas" : "Nube: actual"
+                label: root.compact
+                       ? (root.showBothClouds ? "Ambas" : "Actual")
+                       : (root.showBothClouds ? "Nubes: ambas" : "Nube: actual")
                 selected: root.showBothClouds
                 sx: root.sx; sy: root.sy
                 onClicked: root.showBothClouds = !root.showBothClouds

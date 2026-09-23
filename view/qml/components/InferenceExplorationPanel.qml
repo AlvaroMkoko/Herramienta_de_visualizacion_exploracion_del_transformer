@@ -26,8 +26,34 @@ Item {
     property bool reducedMotion: false
     property bool sequencePlaying: false
     property bool detailsExpanded: false
-    property bool guideVisible: true
-    property bool locationMapVisible: true
+    // La transformacion abre como protagonista. La explicacion y su minimapa
+    // siguen disponibles, pero ya no compiten por espacio hasta solicitarlos.
+    property bool guideVisible: false
+    property bool locationMapVisible: false
+    // La escala efectiva nace del espacio real del panel, no de una
+    // resolucion de escritorio asumida. Los limites conservan legibilidad.
+    readonly property bool condensedWidth: width < 1100
+    readonly property bool compactWidth: width < 840
+    readonly property bool veryCompactWidth: width < 680
+    readonly property bool denseHeight: height < 700
+    readonly property bool veryShortHeight: height < 560
+    property bool compactGuideOpen: false
+    readonly property bool effectiveGuideVisible: guideVisible
+                                                       && (!compactWidth || compactGuideOpen)
+    readonly property real uiSx: Math.max(0.72, Math.min(1, sx, width / 1230))
+    readonly property real uiSy: Math.max(0.68, Math.min(1, sy, height / 772))
+    readonly property real sceneSx: Math.max(
+        0.68, Math.min(1, uiSx,
+                       animationViewport.width > 0 ? animationViewport.width / 820 : 1))
+    readonly property real sceneSy: Math.max(
+        0.60, Math.min(1, uiSy,
+                       animationViewport.height > 0 ? animationViewport.height / 500 : 1))
+    readonly property real tokenChipHeight: Math.max(30, 34 * uiSy)
+    readonly property real tokenRibbonHeight: veryShortHeight
+                                                   ? Math.max(44, 46 * uiSy)
+                                                   : Math.max(52, 56 * uiSy)
+    readonly property bool tokenRibbonFits: promptTokenList.height + 0.5 >= tokenChipHeight
+                                                   && outputTokenList.height + 0.5 >= tokenChipHeight
     readonly property int guidedStepDuration: 9000
     readonly property var pedagogicalColors: [
         { label: "Estructura / flujo", mark: "→", accent: Style.Theme.inferencia_estructura, onAccent: Style.Theme.inferencia_sobre_estructura },
@@ -657,6 +683,7 @@ Item {
     onOperationIndexChanged: {
         synchronizeOperation()
         resetPedagogicalReading()
+        compactGuideOpen = false
     }
     onGuideVisibleChanged: {
         if (!guideVisible)
@@ -689,33 +716,34 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        radius: 18 * root.sx
+        radius: 18 * root.uiSx
         color: Style.Theme.superficie_alterna
         border.color: Style.Theme.borde_suave
         border.width: 1
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.margins: 16 * root.sx
-            spacing: 8 * root.sy
+            anchors.margins: (root.denseHeight ? 10 : 12) * root.uiSx
+            spacing: (root.denseHeight ? 4 : 6) * root.uiSy
 
             RowLayout {
                 Layout.fillWidth: true
                 Layout.minimumWidth: 0
-                Layout.preferredHeight: 50 * root.sy
-                spacing: 10 * root.sx
+                Layout.preferredHeight: (root.denseHeight ? 40 : 44) * root.uiSy
+                spacing: 8 * root.uiSx
 
                 Rectangle {
-                    Layout.preferredWidth: 42 * root.sx
-                    Layout.preferredHeight: 42 * root.sy
-                    radius: 12 * Math.min(root.sx, root.sy)
+                    visible: !root.veryCompactWidth
+                    Layout.preferredWidth: visible ? 38 * root.uiSx : 0
+                    Layout.preferredHeight: 38 * root.uiSy
+                    radius: 11 * Math.min(root.uiSx, root.uiSy)
                     color: root.stage.accent
                     Text {
                         anchors.centerIn: parent
                         text: "✦"
                         color: root.stage.onAccent || Style.Theme.texto_sobre_acento
                         font.family: Style.Theme.fuente_simbolos
-                        font.pixelSize: 20 * Math.min(root.sx, root.sy)
+                        font.pixelSize: Math.max(16, 19 * Math.min(root.uiSx, root.uiSy))
                     }
                 }
 
@@ -723,14 +751,14 @@ Item {
                     Layout.fillWidth: true
                     Layout.minimumWidth: 0
                     Layout.preferredWidth: 1
-                    spacing: 1 * root.sy
+                    spacing: 1 * root.uiSy
                     Text {
                         Layout.fillWidth: true
                         text: "Cómo se genera el siguiente token"
                         color: Style.Theme.texto_primario
                         font.bold: true
                         elide: Text.ElideRight
-                        font.pixelSize: 23 * Math.min(root.sx, root.sy)
+                        font.pixelSize: Math.max(18, 22 * Math.min(root.uiSx, root.uiSy))
                     }
                     Text {
                         Layout.fillWidth: true
@@ -740,15 +768,16 @@ Item {
                               : "Genera un token para capturar su recorrido"
                         color: Style.Theme.texto_secundario
                         elide: Text.ElideRight
-                        font.pixelSize: Math.max(12, 13 * Math.min(root.sx, root.sy))
+                        font.pixelSize: Math.max(11, 12 * Math.min(root.uiSx, root.uiSy))
                     }
                 }
 
                 Rectangle {
+                    visible: !root.condensedWidth
                     Layout.preferredWidth: Math.min(180, dataChipText.implicitWidth + 24 * root.sx)
-                    Layout.minimumWidth: 130
+                    Layout.minimumWidth: visible ? 130 : 0
                     Layout.maximumWidth: 180
-                    Layout.preferredHeight: 32 * root.sy
+                    Layout.preferredHeight: 30 * root.uiSy
                     radius: height / 2
                     color: root.operationDataAvailable ? Style.Theme.exito_fondo : Style.Theme.aviso_fondo
                     border.color: root.operationDataAvailable ? "#86EFAC" : "#FCD34D"
@@ -771,10 +800,10 @@ Item {
                 ActionPill {
                     objectName: "inferenceNextTokenButton"
                     visible: root.canGenerateNext || root.tokenProcessing
-                    Layout.preferredWidth: 150 * root.sx
-                    Layout.minimumWidth: 130 * root.sx
+                    Layout.preferredWidth: (root.condensedWidth ? 132 : 150) * root.uiSx
+                    Layout.minimumWidth: (root.condensedWidth ? 118 : 130) * root.uiSx
                     Layout.maximumWidth: 150 * root.sx
-                    Layout.preferredHeight: 36 * root.sy
+                    Layout.preferredHeight: 34 * root.uiSy
                     label: root.tokenProcessing ? "Calculando…" : "+ Siguiente token"
                     enabled: root.canGenerateNext && !root.tokenProcessing
                     accent: Style.Theme.acento
@@ -782,9 +811,12 @@ Item {
                 }
                 CasillaPrincipal {
                     objectName: "inferenceReducedMotionToggle"
-                    Layout.preferredWidth: Math.max(142, 166 * root.sx)
-                    Layout.minimumWidth: 142
-                    Layout.maximumWidth: 166
+                    visible: !root.veryCompactWidth
+                    Layout.preferredWidth: visible
+                                           ? Math.max(122, (root.condensedWidth ? 132 : 158) * root.uiSx)
+                                           : 0
+                    Layout.minimumWidth: visible ? 122 : 0
+                    Layout.maximumWidth: visible ? 158 : 0
                     text: "Reducir movimiento"
                     checked: root.reducedMotion
                     font.pixelSize: Math.max(11, 11 * root.sx)
@@ -793,22 +825,36 @@ Item {
                 }
                 ActionPill {
                     objectName: "inferenceGuideToggle"
-                    Layout.preferredWidth: Math.max(145, 190 * root.sx)
-                    Layout.minimumWidth: 145
-                    Layout.maximumWidth: 190
-                    Layout.preferredHeight: 36 * root.sy
-                    label: root.guideVisible
-                           ? "Ocultar explicación"
-                           : "Mostrar explicación"
+                    Layout.preferredWidth: root.condensedWidth ? 120 * root.uiSx
+                                                               : 176 * root.uiSx
+                    Layout.minimumWidth: root.condensedWidth ? 108 : 140
+                    Layout.maximumWidth: root.condensedWidth ? 130 : 176
+                    Layout.preferredHeight: 34 * root.uiSy
+                    label: root.compactWidth
+                           ? (root.compactGuideOpen ? "Ver animación" : "Explicación")
+                           : (root.guideVisible ? "Ocultar explicación"
+                                                : "Mostrar explicación")
                     accent: Style.Theme.texto_secundario
-                    onClicked: root.guideVisible = !root.guideVisible
+                    onClicked: {
+                        if (root.compactWidth) {
+                            if (root.compactGuideOpen) {
+                                root.compactGuideOpen = false
+                                root.guideVisible = false
+                            } else {
+                                root.guideVisible = true
+                                root.compactGuideOpen = true
+                            }
+                        } else {
+                            root.guideVisible = !root.guideVisible
+                        }
+                    }
                 }
                 ActionPill {
                     objectName: "inferenceCloseButton"
-                    Layout.preferredWidth: 42 * root.sx
-                    Layout.minimumWidth: 42 * root.sx
-                    Layout.maximumWidth: 42 * root.sx
-                    Layout.preferredHeight: 36 * root.sy
+                    Layout.preferredWidth: 38 * root.uiSx
+                    Layout.minimumWidth: 36 * root.uiSx
+                    Layout.maximumWidth: 38 * root.uiSx
+                    Layout.preferredHeight: 34 * root.uiSy
                     label: "✕"
                     accent: Style.Theme.error
                     onClicked: root.closeRequested()
@@ -817,41 +863,53 @@ Item {
 
             InferenceProcessMap {
                 Layout.fillWidth: true
-                Layout.preferredHeight: Math.max(64, 80 * root.sy)
+                Layout.preferredHeight: root.veryShortHeight ? 44 * root.uiSy
+                                                            : 54 * root.uiSy
+                compact: true
                 chapters: root.processChapters
                 currentIndex: root.processChapterIndex
                 currentStep: root.chapterStep
                 currentStepCount: root.chapterStepCount
                 accent: root.processAccent
                 accentText: root.currentProcessChapter.onAccent
-                sx: root.sx
-                sy: root.sy
+                sx: root.uiSx
+                sy: root.uiSy
                 onChapterSelected: function(index) { root.selectChapter(index) }
             }
 
             Rectangle {
+                id: tokenRibbon
+                objectName: "inferenceTokenRibbon"
+                visible: true
                 Layout.fillWidth: true
-                Layout.preferredHeight: 54 * root.sy
+                Layout.minimumHeight: visible ? root.tokenRibbonHeight : 0
+                Layout.preferredHeight: visible ? root.tokenRibbonHeight : 0
+                Layout.maximumHeight: visible ? root.tokenRibbonHeight : 0
                 radius: 11 * root.sx
                 color: Style.Theme.surface
                 border.color: Style.Theme.borde_medio
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.margins: 8 * root.sx
-                    spacing: 8 * root.sx
+                    anchors.margins: (root.veryShortHeight ? 4 : 6) * root.uiSx
+                    spacing: 7 * root.uiSx
 
                     Text {
+                        Layout.alignment: Qt.AlignVCenter
                         text: "PROMPT"
                         color: Style.Theme.texto_secundario
                         font.bold: true
-                        font.pixelSize: Math.max(11, 10 * root.sx)
+                        font.pixelSize: Math.max(11, 10 * root.uiSx)
                     }
                     ListView {
+                        id: promptTokenList
+                        objectName: "inferencePromptTokens"
                         Layout.fillWidth: true
                         Layout.fillHeight: true
+                        Layout.minimumWidth: 0
+                        Layout.preferredWidth: 1
                         orientation: ListView.Horizontal
-                        spacing: 5 * root.sx
+                        spacing: 5 * root.uiSx
                         clip: true
                         model: root.currentSnapshot ? root.currentSnapshot.tokens_entrada : []
                         delegate: TokenChip {
@@ -860,23 +918,29 @@ Item {
                             selected: false
                             accent: Style.Theme.inferencia_estructura
                             onAccent: Style.Theme.inferencia_sobre_estructura
-                            sx: root.sx
-                            sy: root.sy
+                            sx: root.uiSx
+                            sy: root.uiSy
                         }
                     }
                     Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: Style.Theme.borde_medio }
                     Text {
+                        Layout.alignment: Qt.AlignVCenter
                         text: "SALIDA"
                         color: Style.Theme.texto_secundario
                         font.bold: true
-                        font.pixelSize: Math.max(11, 10 * root.sx)
+                        font.pixelSize: Math.max(11, 10 * root.uiSx)
                     }
                     ListView {
-                        Layout.preferredWidth: 430 * root.sx
+                        id: outputTokenList
+                        objectName: "inferenceOutputTokens"
+                        Layout.minimumWidth: root.compactWidth ? 110 : 180
+                        Layout.preferredWidth: root.compactWidth
+                                               ? Math.max(120 * root.uiSx, parent.width * 0.38)
+                                               : Math.max(210 * root.uiSx, parent.width * 0.36)
                         Layout.fillHeight: true
                         orientation: ListView.Horizontal
                         layoutDirection: Qt.RightToLeft
-                        spacing: 5 * root.sx
+                        spacing: 5 * root.uiSx
                         clip: true
                         model: root.snapshots
                         delegate: TokenChip {
@@ -887,8 +951,8 @@ Item {
                             interactive: true
                             accent: Style.Theme.inferencia_resultado
                             onAccent: Style.Theme.inferencia_sobre_resultado
-                            sx: root.sx
-                            sy: root.sy
+                            sx: root.uiSx
+                            sy: root.uiSy
                             onClicked: root.selectSnapshot(index)
                         }
                     }
@@ -897,7 +961,7 @@ Item {
 
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: visible ? 44 * root.sy : 0
+                Layout.preferredHeight: visible ? 38 * root.uiSy : 0
                 visible: root.stageIndex >= 1 && root.stageIndex <= 4
                 radius: 11 * root.sx
                 color: Style.Theme.surface
@@ -986,8 +1050,12 @@ Item {
 
             Rectangle {
                 objectName: "inferenceColorLegend"
+                // La leyenda repetia significados ya rotulados dentro de cada
+                // escena. Se conserva el modelo semantico para accesibilidad y
+                // pruebas de contraste, sin sumar otra franja visual fija.
+                visible: false
                 Layout.fillWidth: true
-                Layout.preferredHeight: Math.max(30, 32 * root.sy)
+                Layout.preferredHeight: 0
                 radius: 9 * root.sx
                 color: Style.Theme.superficie_alterna
                 border.color: Style.Theme.borde_suave
@@ -998,7 +1066,7 @@ Item {
                     anchors.fill: parent
                     anchors.leftMargin: 10 * root.sx
                     anchors.rightMargin: 10 * root.sx
-                    spacing: 12 * root.sx
+                    spacing: 8 * root.uiSx
 
                     Text {
                         text: "COLOR = FUNCIÓN"
@@ -1023,8 +1091,8 @@ Item {
                             spacing: 4 * root.sx
 
                             Rectangle {
-                                Layout.preferredWidth: 17 * root.sx
-                                Layout.preferredHeight: 17 * root.sy
+                                Layout.preferredWidth: 15 * root.uiSx
+                                Layout.preferredHeight: 15 * root.uiSy
                                 radius: 5 * root.sx
                                 color: colorRole.modelData.accent
                                 Text {
@@ -1051,26 +1119,28 @@ Item {
             RowLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                // La altura restante pertenece a la escena. Un minimo de 560 px
-                // expulsaba la navegacion inferior del modal de 1280x820.
-                Layout.minimumHeight: 320 * root.sy
-                spacing: 10 * root.sx
+                // La altura restante pertenece a la escena. El minimo reducido
+                // permite que el contenido se reescale sin expulsar el pie.
+                Layout.minimumHeight: 220 * root.uiSy
+                spacing: 8 * root.uiSx
 
                 Rectangle {
+                    id: animationViewport
                     objectName: "inferenceAnimationViewport"
+                    visible: !root.compactWidth || !root.compactGuideOpen
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     // La guia comparte la fila con la escena. Este minimo permite
                     // que ambas se contraigan sin solaparse en la ventana base.
-                    Layout.minimumWidth: 640 * root.sx
-                    radius: 14 * root.sx
+                    Layout.minimumWidth: 0
+                    radius: 14 * root.uiSx
                     color: Style.Theme.surface
                     border.color: Style.Theme.borde_medio
                     clip: true
 
                     StackLayout {
                         anchors.fill: parent
-                        anchors.margins: 12 * root.sx
+                        anchors.margins: (root.denseHeight ? 8 : 10) * root.uiSx
                         currentIndex: Number(root.operation.visualIndex || 0)
 
                         TokenEmbeddingScene {
@@ -1078,8 +1148,8 @@ Item {
                             tokens: root.currentTokens
                             active: Number(root.operation.visualIndex) === 0 && root.detailAvailable
                             reducedMotion: root.reducedMotion
-                            sx: root.sx
-                            sy: root.sy
+                            sx: root.sceneSx
+                            sy: root.sceneSy
                         }
 
                         EmbeddingPositionScene {
@@ -1087,8 +1157,8 @@ Item {
                             tokens: root.currentTokens
                             active: Number(root.operation.visualIndex) === 1 && root.detailAvailable
                             reducedMotion: root.reducedMotion
-                            sx: root.sx
-                            sy: root.sy
+                            sx: root.sceneSx
+                            sy: root.sceneSy
                         }
                         AttentionComputationScene {
                             attentionData: root.currentAttention
@@ -1099,8 +1169,8 @@ Item {
                             layerIndex: root.layerIndex
                             active: Number(root.operation.visualIndex) === 2 && root.detailAvailable
                             reducedMotion: root.reducedMotion
-                            sx: root.sx
-                            sy: root.sy
+                            sx: root.sceneSx
+                            sy: root.sceneSy
                         }
                         AttentionFlowScene {
                             attentionData: root.currentAttention
@@ -1110,8 +1180,8 @@ Item {
                             headIndex: root.headIndex
                             active: Number(root.operation.visualIndex) === 3 && root.detailAvailable
                             reducedMotion: root.reducedMotion
-                            sx: root.sx
-                            sy: root.sy
+                            sx: root.sceneSx
+                            sy: root.sceneSy
                             onHeadSelected: function(index) { root.headIndex = index }
                         }
                         MultiHeadSplitScene {
@@ -1119,31 +1189,31 @@ Item {
                             attentionData: root.currentAttention
                             active: Number(root.operation.visualIndex) === 4 && root.detailAvailable
                             reducedMotion: root.reducedMotion
-                            sx: root.sx
-                            sy: root.sy
+                            sx: root.sceneSx
+                            sy: root.sceneSy
                         }
                         FeedForwardExpansionScene {
                             sceneData: root.currentFfn
                             tokens: root.currentTokens
                             active: Number(root.operation.visualIndex) === 5 && root.detailAvailable
                             reducedMotion: root.reducedMotion
-                            sx: root.sx
-                            sy: root.sy
+                            sx: root.sceneSx
+                            sy: root.sceneSy
                         }
                         ResidualLayerNormScene {
                             sceneData: root.currentResidual
                             active: Number(root.operation.visualIndex) === 6 && root.detailAvailable
                             reducedMotion: root.reducedMotion
                             sublayerLabel: root.residualUsesFfn ? "FFN" : "Atención"
-                            sx: root.sx
-                            sy: root.sy
+                            sx: root.sceneSx
+                            sy: root.sceneSy
                         }
                         LayerSkyscraperScene {
                             trajectory: root.currentTrajectory
                             tokens: root.currentTokens
                             active: Number(root.operation.visualIndex) === 7 && root.detailAvailable
-                            sx: root.sx
-                            sy: root.sy
+                            sx: root.sceneSx
+                            sy: root.sceneSy
                         }
                         OutputProjectionScene {
                             snapshot: root.currentSnapshot
@@ -1154,16 +1224,16 @@ Item {
                             hiddenData: root.currentHiddenTensor
                             active: Number(root.operation.visualIndex) === 8 && root.detailAvailable
                             reducedMotion: root.reducedMotion
-                            sx: root.sx
-                            sy: root.sy
+                            sx: root.sceneSx
+                            sy: root.sceneSy
                         }
                         SoftmaxRaceScene {
                             snapshots: root.snapshots
                             initialStep: root.selectedIndex
                             active: Number(root.operation.visualIndex) === 9
                             reducedMotion: root.reducedMotion
-                            sx: root.sx
-                            sy: root.sy
+                            sx: root.sceneSx
+                            sy: root.sceneSy
                             onStepSelected: function(index) { root.stepSelected(index) }
                         }
                     }
@@ -1209,12 +1279,22 @@ Item {
                 Rectangle {
                     id: guidePanel
                     objectName: "inferencePedagogicalGuide"
-                    visible: root.guideVisible
+                    readonly property real mapPreferredHeight: root.locationMapVisible
+                                                                ? Math.max(
+                                                                      root.compactWidth ? 190 : 220,
+                                                                      Math.min(
+                                                                          root.compactWidth ? 280 : 340,
+                                                                          height * 0.42))
+                                                                : 0
+                    visible: root.effectiveGuideVisible
+                    Layout.fillWidth: root.compactWidth && visible
                     Layout.preferredWidth: visible
-                                           ? Math.max(330, Math.min(400, root.width * 0.28))
+                                           ? (root.compactWidth
+                                              ? 1
+                                              : Math.max(310, Math.min(390, root.width * 0.27)))
                                            : 0
-                    Layout.minimumWidth: visible ? 310 : 0
-                    Layout.maximumWidth: visible ? 400 : 0
+                    Layout.minimumWidth: visible && !root.compactWidth ? 300 : 0
+                    Layout.maximumWidth: visible && !root.compactWidth ? 390 : 16777215
                     Layout.fillHeight: true
                     radius: 14 * root.sx
                     color: Style.Theme.surface
@@ -1223,8 +1303,8 @@ Item {
 
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: 14 * root.sx
-                        spacing: 8 * root.sy
+                        anchors.margins: 11 * root.uiSx
+                        spacing: 6 * root.uiSy
 
                         RowLayout {
                             Layout.fillWidth: true
@@ -1233,7 +1313,7 @@ Item {
 
                             Text {
                                 Layout.fillWidth: true
-                                text: "UBICACIÓN EN EL TRANSFORMER"
+                                text: "EXPLICACIÓN"
                                 color: root.stage.accent
                                 font.bold: true
                                 font.letterSpacing: 0.5
@@ -1260,18 +1340,22 @@ Item {
                             objectName: "inferenceTransformerMiniMap"
                             visible: root.locationMapVisible
                             Layout.fillWidth: true
-                            implicitHeight: root.locationMapVisible ? 272 * root.sy : 0
-                            Layout.preferredHeight: root.locationMapVisible ? 272 * root.sy : 0
-                            Layout.minimumHeight: root.locationMapVisible ? 220 * root.sy : 0
-                            Layout.maximumHeight: root.locationMapVisible ? 272 * root.sy : 0
+                            implicitHeight: guidePanel.mapPreferredHeight
+                            Layout.preferredHeight: guidePanel.mapPreferredHeight
+                            Layout.minimumHeight: root.locationMapVisible
+                                                  ? (root.compactWidth ? 175 : 210)
+                                                  : 0
+                            Layout.maximumHeight: root.locationMapVisible
+                                                  ? (root.compactWidth ? 280 : 340)
+                                                  : 0
                             stageIndex: root.stageIndex
                             branchIndex: root.branchIndex
                             residualUsesFfn: root.residualUsesFfn
                             operationId: String(root.operation.id || "")
                             accent: root.stage.accent
                             reducedMotion: root.reducedMotion
-                            sx: root.sx
-                            sy: root.sy
+                            sx: root.uiSx
+                            sy: root.uiSy
                         }
 
                         ScrollView {
@@ -1880,7 +1964,7 @@ Item {
 
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: Math.max(56, 64 * root.sy)
+                Layout.preferredHeight: Math.max(48, 52 * root.uiSy)
                 radius: 12 * root.sx
                 color: Style.Theme.surface
                 border.color: Style.Theme.borde_medio
@@ -1892,8 +1976,8 @@ Item {
 
                     ActionPill {
                         objectName: "inferencePreviousOperationButton"
-                        Layout.preferredWidth: 96 * root.sx
-                        Layout.preferredHeight: 38 * root.sy
+                        Layout.preferredWidth: (root.condensedWidth ? 84 : 96) * root.uiSx
+                        Layout.preferredHeight: 36 * root.uiSy
                         label: "\u2190 Anterior"
                         enabled: root.operationIndex > 0
                         accent: root.stage.accent
@@ -1935,6 +2019,7 @@ Item {
 
                     ActionPill {
                         objectName: "inferencePlaySequenceButton"
+                        visible: !root.condensedWidth
                         Layout.preferredWidth: 150 * root.sx
                         Layout.preferredHeight: 38 * root.sy
                         label: root.sequencePlaying ? "\u23f8 Pausar lectura" : "\u25b6 Recorrido guiado"
@@ -1955,7 +2040,10 @@ Item {
                     SelectorPrincipal {
                         id: operationSelector
                         objectName: "inferenceOperationSelector"
-                        Layout.preferredWidth: Math.max(180, 240 * root.sx)
+                        visible: !root.veryCompactWidth
+                        Layout.preferredWidth: visible
+                                               ? Math.max(160, (root.condensedWidth ? 180 : 220) * root.uiSx)
+                                               : 0
                         Layout.preferredHeight: Math.max(38, 40 * root.sy)
                         model: root.flowSteps
                         sx: root.sx
@@ -1970,8 +2058,8 @@ Item {
 
                     ActionPill {
                         objectName: "inferenceNextOperationButton"
-                        Layout.preferredWidth: 96 * root.sx
-                        Layout.preferredHeight: 38 * root.sy
+                        Layout.preferredWidth: (root.condensedWidth ? 84 : 96) * root.uiSx
+                        Layout.preferredHeight: 36 * root.uiSy
                         label: "Siguiente \u2192"
                         enabled: root.operationIndex < root.flowSteps.length - 1
                         accent: root.stage.accent
@@ -2046,7 +2134,7 @@ Item {
         signal clicked()
         activeFocusOnTab: interactive
         width: Math.max(42 * sx, tokenText.implicitWidth + 16 * sx)
-        height: 34 * sy
+        height: Math.max(30, 34 * sy)
         radius: 8 * sx
         color: selected ? accent : Style.Theme.superficie_alterna
         border.color: selected ? accent : Style.Theme.borde_suave
