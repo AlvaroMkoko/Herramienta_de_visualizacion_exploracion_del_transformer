@@ -111,7 +111,7 @@ Item {
             output: "Vectores que combinan información relevante de toda la entrada.",
             purpose: "Permite descubrir relaciones entre palabras aunque estén alejadas en la secuencia.",
             intuitive: "Una conexión más intensa significa que esa cabeza usa más información del token conectado.",
-            technical: "Q, K y V proceden de la misma secuencia. Puedes cambiar capa, cabeza y token consultante.",
+            technical: "Q, K y V proceden de la misma secuencia. La vista resumida conserva los pesos más altos de la query elegida para evitar cruces visuales; el tensor y el cálculo usan todos los pesos.",
             mathematical: "Attention(Q,K,V) = softmax(QKᵀ/√dₖ)V",
             formula: "Self-Attention del Encoder"
         },
@@ -123,9 +123,9 @@ Item {
             output: "Memoria contextual final del encoder (H_enc).",
             purpose: "Entrega al decoder una representación rica de toda la entrada.",
             intuitive: "Los tokens se desplazan en el espacio de representación porque ahora incorporan información de sus vecinos.",
-            technical: "La comparación usa los estados reales antes de la pila y después de la última capa del encoder.",
-            mathematical: "H_enc = Encoder(X₀)",
-            formula: "Representación inicial → contextual"
+            technical: "Cada bloque combina Multi-Head Attention y FFN con atajos residuales y LayerNorm. La comparación usa estados reales antes de la pila y después de la última capa.",
+            mathematical: "Z = LN(X + MHA(X)); H_enc = LN(Z + FFN(Z))",
+            formula: "residual + normalización + FFN"
         },
         {
             id: "shifted_target", short: "Shift", color: "#D97706",
@@ -159,8 +159,8 @@ Item {
             output: "Estados finales del decoder enriquecidos con información de la entrada.",
             purpose: "Relaciona cada predicción con las partes pertinentes de la secuencia de origen.",
             intuitive: "El token del decoder busca qué parte de la entrada resulta útil para su siguiente predicción.",
-            technical: "Q procede del decoder; K y V proceden de la salida del encoder.",
-            mathematical: "Q=H_decWQ · K=H_encWK · V=H_encWV",
+            technical: "Q procede del decoder; K y V proceden de la salida del encoder. La vista resumida enseña como máximo los pesos dominantes de la query seleccionada, pero el forward conserva la distribución completa.",
+            mathematical: "Q=H_decWQ; K=H_encWK; V=H_encWV; A=softmax(QKᵀ/√dₖ); salida=AV",
             formula: "Cross-Attention Encoder–Decoder"
         },
         {
@@ -184,8 +184,8 @@ Item {
             purpose: "Resume en un número cuánto debe corregirse el modelo.",
             intuitive: "Cuanta menos probabilidad recibe la respuesta correcta, mayor es la penalización.",
             technical: "La loss del token mostrado es exacta; la loss del batch promedia todas las posiciones válidas y omite PAD.",
-            mathematical: "Lₜ = −log p(yₜ) · L_batch = mean(Lₜ)",
-            formula: "Cross Entropy Loss"
+            mathematical: "Lₜ = −z[yₜ] + log Σⱼ exp(z[j]); L_batch = Σₜ mₜLₜ / Σₜ mₜ",
+            formula: "CrossEntropy(logits, objetivo; ignore_index=PAD)"
         },
         {
             id: "backprop", short: "Backward", color: "#9333EA",
@@ -196,8 +196,8 @@ Item {
             purpose: "Mide la sensibilidad del error a cada peso. No decide por sí solo el cambio ni modifica el modelo; esa tarea corresponde a optimizer.step().",
             intuitive: "La señal de error empieza en la loss y vuelve por cada operación. En cada peso pregunta: si este valor cambiara un poco, ¿cuánto cambiaría el error?",
             technical: "autograd conserva durante forward las operaciones necesarias. En backward combina sus derivadas locales desde logits y decoder hasta encoder, embeddings, atención, FFN y normalizaciones. Como PyTorch acumula .grad, zero_grad() se ejecutó al inicio del batch.",
-            mathematical: "∂L/∂W = ∂L/∂h · ∂h/∂W",
-            formula: "loss.backward()"
+            mathematical: "g_h = ∂L/∂h; ∂L/∂W = g_h·∂h/∂W; en una bifurcación, los gradientes se suman",
+            formula: "zero_grad() → forward → loss → loss.backward()"
         },
         {
             id: "gradients", short: "Gradientes", color: "#C026D3",
@@ -755,7 +755,7 @@ Item {
                                 Layout.fillWidth: true
                                 label: root.explanationDetailsExpanded
                                        ? "Ocultar detalle"
-                                       : "Ver por qué y profundizar"
+                                       : "Ver explicación técnica y matemática"
                                 onClicked: root.explanationDetailsExpanded
                                            = !root.explanationDetailsExpanded
                             }
@@ -790,6 +790,7 @@ Item {
                             }
 
                             Text {
+                                objectName: "trainingStageDetailLabel"
                                 visible: root.explanationDetailsExpanded
                                 Layout.fillWidth: true
                                 text: "DETALLE · " + (root.explanationLevel === 0 ? "INTUITIVO"
@@ -801,6 +802,7 @@ Item {
                             }
                             Text {
                                 visible: root.explanationDetailsExpanded
+                                objectName: "trainingStageDetail"
                                 Layout.fillWidth: true
                                 text: root.explanationLevel === 0 ? root.stage.intuitive
                                       : (root.explanationLevel === 1 ? root.stage.technical
@@ -810,6 +812,7 @@ Item {
                                 wrapMode: Text.WordWrap
                             }
                             Rectangle {
+                                objectName: "trainingStageFormula"
                                 visible: root.explanationDetailsExpanded
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: visible
@@ -820,6 +823,7 @@ Item {
                                 border.color: Style.Theme.borde_medio
                                 Text {
                                     id: formulaText
+                                    objectName: "trainingStageFormulaText"
                                     anchors.fill: parent
                                     anchors.margins: 9 * root.sx
                                     text: root.explanationLevel === 2
@@ -1300,11 +1304,14 @@ Item {
                 id: chart
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                onWidthChanged: requestPaint()
+                onHeightChanged: requestPaint()
                 onPaint: {
                     var ctx = getContext("2d"); ctx.reset(); ctx.clearRect(0, 0, width, height)
                     var b = pcaScene.bounds(); var pad = 32
                     function px(v) { return pad + (v - b.minX) / Math.max(1e-9, b.maxX - b.minX) * (width - 2 * pad) }
                     function py(v) { return height - pad - (v - b.minY) / Math.max(1e-9, b.maxY - b.minY) * (height - 2 * pad) }
+                    var points = []
                     for (var i = 0; i < pcaScene.count; ++i) {
                         var a = pcaScene.beforePoints[i], z = pcaScene.afterPoints[i]
                         var ax = px(pcaScene.xOf(a)), ay = py(pcaScene.yOf(a)), zx = px(pcaScene.xOf(z)), zy = py(pcaScene.yOf(z))
@@ -1312,16 +1319,58 @@ Item {
                         ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(zx, zy); ctx.stroke()
                         ctx.fillStyle = Style.Theme.texto_terciario; ctx.beginPath(); ctx.arc(ax, ay, 4, 0, Math.PI * 2); ctx.fill()
                         ctx.fillStyle = pcaScene.accent; ctx.beginPath(); ctx.arc(zx, zy, 6, 0, Math.PI * 2); ctx.fill()
-                        if (i < pcaScene.tokens.length) {
-                            ctx.fillStyle = Style.Theme.texto_primario; ctx.font = Math.max(8, 9 * pcaScene.sx) + "px sans-serif"
-                            ctx.fillText(String(pcaScene.tokens[i].texto), zx + 7, zy - 7)
+                        points.push({ x: zx, y: zy, index: i })
+                    }
+
+                    // Las etiquetas se colocan después de las trayectorias y
+                    // prueban cuatro posiciones. Si ninguna queda libre se
+                    // omite solo la etiqueta, nunca el punto ni el movimiento.
+                    var occupied = []
+                    var fontSize = Math.max(9, 9 * pcaScene.sx)
+                    ctx.font = fontSize + "px sans-serif"
+                    function intersects(box) {
+                        for (var j = 0; j < occupied.length; ++j) {
+                            var other = occupied[j]
+                            if (box.x < other.x + other.w && box.x + box.w > other.x
+                                    && box.y < other.y + other.h && box.y + box.h > other.y)
+                                return true
+                        }
+                        return false
+                    }
+                    for (var labelIndex = 0; labelIndex < points.length; ++labelIndex) {
+                        var point = points[labelIndex]
+                        if (point.index >= pcaScene.tokens.length)
+                            continue
+                        var label = String(pcaScene.tokens[point.index].texto)
+                        var labelWidth = ctx.measureText(label).width
+                        var candidates = [
+                            { x: point.x + 8, y: point.y - 8 },
+                            { x: point.x + 8, y: point.y + fontSize + 8 },
+                            { x: point.x - labelWidth - 8, y: point.y - 8 },
+                            { x: point.x - labelWidth - 8, y: point.y + fontSize + 8 }
+                        ]
+                        for (var candidateIndex = 0; candidateIndex < candidates.length; ++candidateIndex) {
+                            var candidate = candidates[candidateIndex]
+                            var box = { x: candidate.x - 3,
+                                        y: candidate.y - fontSize - 2,
+                                        w: labelWidth + 6,
+                                        h: fontSize + 5 }
+                            if (box.x < 2 || box.y < 2 || box.x + box.w > width - 2
+                                    || box.y + box.h > height - 2 || intersects(box))
+                                continue
+                            ctx.fillStyle = Qt.alpha(Style.Theme.surface, 0.88)
+                            ctx.fillRect(box.x, box.y, box.w, box.h)
+                            ctx.fillStyle = Style.Theme.texto_primario
+                            ctx.fillText(label, candidate.x, candidate.y)
+                            occupied.push(box)
+                            break
                         }
                     }
                 }
             }
             Text {
                 Layout.fillWidth: true
-                text: "PCA solo proyecta para dibujar. La operación real ocurrió en " + Number(pcaScene.projection.dimension_original || 0) + " dimensiones."
+                text: "PCA solo proyecta para dibujar; las etiquetas se reubican u ocultan antes de solaparse. La operación real ocurrió en " + Number(pcaScene.projection.dimension_original || 0) + " dimensiones."
                 color: Style.Theme.aviso_texto
                 horizontalAlignment: Text.AlignHCenter
                 font.pixelSize: root.fontSize(9, pcaScene.sx)
@@ -1485,26 +1534,50 @@ Item {
             Canvas {
                 id: maskCanvas
                 Layout.fillWidth: true; Layout.fillHeight: true
+                onWidthChanged: requestPaint()
+                onHeightChanged: requestPaint()
                 onPaint: {
                     var ctx = getContext("2d"); ctx.reset(); ctx.clearRect(0, 0, width, height)
                     var n = maskScene.values.length
                     if (!n) return
-                    var side = Math.min(width - 80, height - 55); var cell = side / n; var ox = (width - side) / 2; var oy = 30
-                    ctx.font = Math.max(8, 9 * maskScene.sx) + "px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"
+                    var labelMargin = Math.min(96 * maskScene.sx,
+                                               Math.max(48 * maskScene.sx, width * 0.16))
+                    var side = Math.max(28, Math.min(width - labelMargin - 12,
+                                                     height - 48 * maskScene.sy))
+                    var cell = side / n
+                    var ox = labelMargin + Math.max(0, (width - labelMargin - side) / 2)
+                    var oy = 30 * maskScene.sy
+                    var fontSize = Math.max(8, Math.min(10 * maskScene.sx, cell * 0.34))
+                    var labelStride = Math.max(1, Math.ceil(18 / Math.max(1, cell)))
+                    function tokenLabel(index) {
+                        var raw = index < maskScene.tokens.length
+                                  ? String(maskScene.tokens[index].texto) : String(index)
+                        if (cell < 24)
+                            return String(index + 1)
+                        var limit = Math.max(2, Math.floor(cell / Math.max(5, fontSize * 0.58)))
+                        return raw.length > limit ? raw.slice(0, Math.max(1, limit - 1)) + "…" : raw
+                    }
+                    ctx.font = fontSize + "px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"
                     for (var c = 0; c < n; ++c) {
+                        if (c % labelStride !== 0)
+                            continue
                         ctx.fillStyle = Style.Theme.texto_secundario
-                        ctx.fillText(c < maskScene.tokens.length ? String(maskScene.tokens[c].texto) : String(c), ox + (c + 0.5) * cell, oy - 14)
+                        ctx.fillText(tokenLabel(c), ox + (c + 0.5) * cell, oy - 14 * maskScene.sy)
                     }
                     for (var r = 0; r < n; ++r) {
-                        ctx.fillStyle = Style.Theme.texto_secundario; ctx.textAlign = "right"
-                        ctx.fillText(r < maskScene.tokens.length ? String(maskScene.tokens[r].texto) : String(r), ox - 8, oy + (r + 0.5) * cell)
+                        if (r % labelStride === 0) {
+                            ctx.fillStyle = Style.Theme.texto_secundario; ctx.textAlign = "right"
+                            ctx.fillText(tokenLabel(r), ox - 8 * maskScene.sx, oy + (r + 0.5) * cell)
+                        }
                         ctx.textAlign = "center"
                         for (c = 0; c < n; ++c) {
                             var allowed = Boolean(maskScene.values[r][c])
                             ctx.fillStyle = allowed ? Style.Theme.exito_fondo : Style.Theme.error_fondo
                             ctx.fillRect(ox + c * cell, oy + r * cell, cell - 1, cell - 1)
-                            ctx.fillStyle = allowed ? Style.Theme.exito_texto : Style.Theme.error_texto
-                            ctx.fillText(allowed ? "✓" : "×", ox + (c + 0.5) * cell, oy + (r + 0.5) * cell)
+                            if (cell >= 12) {
+                                ctx.fillStyle = allowed ? Style.Theme.exito_texto : Style.Theme.error_texto
+                                ctx.fillText(allowed ? "✓" : "×", ox + (c + 0.5) * cell, oy + (r + 0.5) * cell)
+                            }
                         }
                     }
                 }

@@ -492,10 +492,14 @@ def test_recorrido_guiado_recibe_un_batch_real_y_recorre_sus_escenas(
     input_card = training_qml.findChild(QObject, "trainingStageInput")
     output_card = training_qml.findChild(QObject, "trainingStageOutput")
     purpose_card = training_qml.findChild(QObject, "trainingStagePurpose")
+    detail_text = training_qml.findChild(QObject, "trainingStageDetail")
+    formula_text = training_qml.findChild(QObject, "trainingStageFormulaText")
     assert action_card is not None
     assert input_card is not None
     assert output_card is not None
     assert purpose_card is not None
+    assert detail_text is not None
+    assert formula_text is not None
 
     for stage in range(13):
         _invocar(journey, "setStage", stage)
@@ -508,7 +512,16 @@ def test_recorrido_guiado_recibe_un_batch_real_y_recorre_sus_escenas(
         assert journey.property("scopeLabel") == expected_scope[stage][1]
         assert all(
             str(stage_data[field]).strip()
-            for field in ("action", "input", "output", "purpose")
+            for field in (
+                "action",
+                "input",
+                "output",
+                "purpose",
+                "intuitive",
+                "technical",
+                "mathematical",
+                "formula",
+            )
         )
         assert action_card.property("value") == stage_data["action"]
         assert input_card.property("value") == stage_data["input"]
@@ -516,6 +529,69 @@ def test_recorrido_guiado_recibe_un_batch_real_y_recorre_sus_escenas(
         assert purpose_card.property("value") == stage_data["purpose"]
         assert 0 < scene.property("width") <= viewport.property("width")
         assert 0 < scene.property("height") <= viewport.property("height")
+
+        journey.setProperty("explanationDetailsExpanded", True)
+        for level, field in enumerate(("intuitive", "technical", "mathematical")):
+            journey.setProperty("explanationLevel", level)
+            qapp.processEvents()
+            assert detail_text.property("text") == stage_data[field]
+        assert str(formula_text.property("text")).strip()
+
+    _invocar(journey, "setStage", 6)
+    qapp.processEvents()
+    attention_scene = training_qml.findChild(QObject, "trainingScene6")
+    assert attention_scene is not None
+    assert attention_scene.property("summaryMode") is True
+    assert attention_scene.property("effectiveFocusedQuery") == 0
+    assert attention_scene.property("visibleConnectionCount") <= attention_scene.property(
+        "maximumVisibleConnections"
+    )
+    attention_scene.setProperty("hoveredQuery", 1)
+    qapp.processEvents()
+    assert attention_scene.property("effectiveFocusedQuery") == 1
+    attention_scene.setProperty("hoveredQuery", -1)
+    qapp.processEvents()
+    assert attention_scene.property("effectiveFocusedQuery") == 0
+
+    # Caso denso equivalente a una frase real: los chips deben repartirse en
+    # su carril y la vista inicial no debe volver a dibujar las 96 aristas.
+    dense_matrix = []
+    for query in range(12):
+        raw = [1 + ((query * 3 + key * 5) % 11) for key in range(8)]
+        total = sum(raw)
+        dense_matrix.append([value / total for value in raw])
+    attention_scene.setProperty(
+        "attentionData",
+        {
+            "flujo": {
+                "matrices": [dense_matrix],
+                "inicio_queries": 0,
+                "inicio_keys": 0,
+            }
+        },
+    )
+    attention_scene.setProperty(
+        "queryTokens",
+        [
+            {"texto": f"query_extensa_{index}", "posicion": index}
+            for index in range(12)
+        ],
+    )
+    attention_scene.setProperty(
+        "keyTokens",
+        [
+            {"texto": f"key_extensa_{index}", "posicion": index}
+            for index in range(8)
+        ],
+    )
+    qapp.processEvents()
+    assert attention_scene.property("queryCount") == 12
+    assert attention_scene.property("keyCount") == 8
+    assert attention_scene.property("visibleConnectionCount") <= 4
+    assert attention_scene.property("minimumQueryChipGap") >= 4
+    assert attention_scene.property("minimumKeyChipGap") >= 4
+
+    _invocar(journey, "setStage", 12)
     assert journey.property("stageIndex") == 12
     assert shift_alignment.property("height") > 0
     assert shift_rows.property("width") > 0

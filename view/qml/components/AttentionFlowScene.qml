@@ -20,9 +20,31 @@ Item {
     property real sy: 1
     property real threshold: 0.05
     property int focusedQuery: -1
+    // El selector superior conserva un foco estable. El hover es solamente
+    // temporal y no debe romper ese binding al abandonar un token.
+    property int hoveredQuery: -1
+    property bool summaryMode: true
+    property int focusedTopConnections: compact ? 3 : 4
+    property int overviewTopConnections: 1
     property bool showHeadGrid: false
     property real particlePhase: 0
     readonly property bool compact: width < 850
+    readonly property int effectiveFocusedQuery:
+        hoveredQuery >= 0 && hoveredQuery < queryCount
+        ? hoveredQuery
+        : (focusedQuery >= 0 && focusedQuery < queryCount ? focusedQuery : -1)
+    readonly property int visibleConnectionCount: countVisibleConnections()
+    readonly property int maximumVisibleConnections:
+        effectiveFocusedQuery >= 0
+        ? Math.min(keyCount, focusedTopConnections)
+        : queryCount * Math.min(keyCount, overviewTopConnections)
+    readonly property real estimatedLaneWidth: Math.max(1, width - 94 * sx)
+    readonly property real querySlotWidth: estimatedLaneWidth / Math.max(1, queryCount)
+    readonly property real keySlotWidth: estimatedLaneWidth / Math.max(1, keyCount)
+    readonly property real minimumQueryChipGap:
+        querySlotWidth - chipWidthFor(queryCount, estimatedLaneWidth)
+    readonly property real minimumKeyChipGap:
+        keySlotWidth - chipWidthFor(keyCount, estimatedLaneWidth)
 
     readonly property var flow: attentionData && attentionData.flujo
                                     ? attentionData.flujo : ({})
@@ -42,6 +64,11 @@ Item {
 
     function colorForHead(index) {
         return palettes[index % palettes.length]
+    }
+
+    function chipWidthFor(count, laneWidth) {
+        var slot = laneWidth / Math.max(1, count)
+        return Math.max(8 * sx, Math.min(104 * sx, slot - 5 * sx))
     }
 
     function tokenFor(tokens, absolutePosition, fallbackPrefix) {
@@ -90,10 +117,46 @@ Item {
         return best
     }
 
+    function connectionRank(q, k) {
+        var weight = weightAt(q, k)
+        var rank = 0
+        for (var candidate = 0; candidate < keyCount; ++candidate) {
+            var other = weightAt(q, candidate)
+            if (other > weight || (other === weight && candidate < k))
+                rank += 1
+        }
+        return rank
+    }
+
+    function connectionIsVisible(q, k) {
+        if (effectiveFocusedQuery >= 0 && q !== effectiveFocusedQuery)
+            return false
+        if (!summaryMode)
+            return weightAt(q, k) >= threshold
+        var limit = effectiveFocusedQuery >= 0
+                    ? focusedTopConnections : overviewTopConnections
+        var rank = connectionRank(q, k)
+        // La ruta principal nunca desaparece: incluso con un umbral alto la
+        // transformación central debe seguir siendo visible.
+        return rank === 0
+               || (weightAt(q, k) >= threshold && rank < Math.max(1, limit))
+    }
+
+    function countVisibleConnections() {
+        var count = 0
+        for (var q = 0; q < queryCount; ++q)
+            for (var k = 0; k < keyCount; ++k)
+                if (connectionIsVisible(q, k))
+                    count += 1
+        return count
+    }
+
     onParticlePhaseChanged: flowCanvas.requestPaint()
     onMatrixChanged: flowCanvas.requestPaint()
     onThresholdChanged: flowCanvas.requestPaint()
     onFocusedQueryChanged: flowCanvas.requestPaint()
+    onHoveredQueryChanged: flowCanvas.requestPaint()
+    onSummaryModeChanged: flowCanvas.requestPaint()
     onCrossAttentionChanged: flowCanvas.requestPaint()
 
     NumberAnimation {
@@ -138,6 +201,12 @@ Item {
                 }
             }
             FlowButton {
+                label: root.summaryMode ? (root.compact ? "Todas" : "Ver todas") : "Resumir"
+                primary: !root.summaryMode
+                sx: root.sx; sy: root.sy
+                onClicked: root.summaryMode = !root.summaryMode
+            }
+            FlowButton {
                 label: root.compact
                        ? (root.showHeadGrid ? "Linterna" : "Cabezas")
                        : (root.showHeadGrid ? "Vista linterna" : "Comparar heads")
@@ -162,7 +231,9 @@ Item {
 
                 SliderPrincipal {
                     id: thresholdSlider
-                    Layout.preferredWidth: 260 * root.sx
+                    Layout.preferredWidth: Math.max(120 * root.sx,
+                                                    Math.min(260 * root.sx,
+                                                             root.width * 0.25))
                     sx: root.sx
                     sy: root.sy
                     colorRelleno: Style.Theme.info_texto
@@ -175,12 +246,15 @@ Item {
                 Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: Style.Theme.info_fondo }
                 Text {
                     Layout.fillWidth: true
-                    text: root.focusedQuery >= 0
-                          ? "🔦 Linterna: “" + (root.queryToken(root.focusedQuery).texto || "token")
-                            + "” → destino principal “" + (root.keyToken(root.strongestTarget(root.focusedQuery)).texto || "token") + "”"
-                          : "Pasa el cursor sobre una query para apagar las demás conexiones."
-                    color: root.focusedQuery >= 0 ? Style.Theme.texto_secundario_fuerte : Style.Theme.texto_secundario
-                    font.bold: root.focusedQuery >= 0
+                    text: root.effectiveFocusedQuery >= 0
+                          ? "Foco: " + (root.queryToken(root.effectiveFocusedQuery).texto || "token")
+                            + " → principal " + (root.keyToken(root.strongestTarget(root.effectiveFocusedQuery)).texto || "token")
+                            + " · " + root.visibleConnectionCount + " conexiones visibles"
+                          : (root.summaryMode
+                             ? "Resumen: la conexión más fuerte de cada query."
+                             : "Vista completa filtrada por el umbral.")
+                    color: root.effectiveFocusedQuery >= 0 ? Style.Theme.texto_secundario_fuerte : Style.Theme.texto_secundario
+                    font.bold: root.effectiveFocusedQuery >= 0
                     elide: Text.ElideRight
                     font.pixelSize: 9 * root.sx
                 }
@@ -209,8 +283,8 @@ Item {
                         return left + (index + 0.5) / Math.max(1, count) * usable
                     }
 
-                    function queryY() { return height - 28 * root.sy }
-                    function keyY() { return root.crossAttention ? 28 * root.sy : queryY() }
+                    function queryY() { return height - 44 * root.sy }
+                    function keyY() { return root.crossAttention ? 58 * root.sy : queryY() }
 
                     function quadraticPoint(startX, startY, controlX, controlY, endX, endY, t) {
                         var one = 1 - t
@@ -237,17 +311,15 @@ Item {
                         if (root.crossAttention) {
                             ctx.fillStyle = Style.Theme.matriz_key_texto
                             ctx.font = "bold " + Math.max(8, 9 * root.sx) + "px sans-serif"
-                            ctx.fillText("K · KEYS DEL ENCODER (prompt)", 12 * root.sx, 14 * root.sy)
+                            ctx.fillText("K · KEYS DEL ENCODER (prompt)", 12 * root.sx, 15 * root.sy)
                             ctx.fillStyle = Style.Theme.matriz_query_texto
                             ctx.fillText("Q · QUERIES DEL DECODER", 12 * root.sx, height - 6 * root.sy)
                         }
 
                         for (var q = 0; q < root.queryCount; ++q) {
-                            if (root.focusedQuery >= 0 && q !== root.focusedQuery)
-                                continue
                             for (var k = 0; k < root.keyCount; ++k) {
                                 var weight = root.weightAt(q, k)
-                                if (weight < root.threshold)
+                                if (!root.connectionIsVisible(q, k))
                                     continue
                                 var startX = xFor(q, root.queryCount)
                                 var endX = xFor(k, root.keyCount)
@@ -344,37 +416,48 @@ Item {
                         delegate: Rectangle {
                             id: queryChip
                             required property int index
-                            width: Math.max(34 * root.sx, queryLabel.implicitWidth + 10 * root.sx)
+                            readonly property real slotWidth:
+                                (parent.width - 84 * root.sx)
+                                / Math.max(1, root.queryCount)
+                            width: root.chipWidthFor(root.queryCount,
+                                                    parent.width - 84 * root.sx)
                             height: 30 * root.sy
                             x: 42 * root.sx + (index + 0.5) / Math.max(1, root.queryCount)
                                * (parent.width - 84 * root.sx) - width / 2
                             y: parent.height - 43 * root.sy
                             radius: 7 * root.sx
-                            color: root.focusedQuery === index
+                            color: root.effectiveFocusedQuery === index
                                    ? Style.Theme.matriz_query
                                    : Style.Theme.matriz_query_fondo
                             border.color: root.crossAttention
                                           ? Style.Theme.matriz_query
                                           : Style.Theme.matriz_key
-                            border.width: root.focusedQuery === index ? 2 : 1
+                            border.width: root.effectiveFocusedQuery === index ? 2 : 1
+                            opacity: root.effectiveFocusedQuery < 0
+                                     || root.effectiveFocusedQuery === index ? 1 : 0.48
                             z: 2
                             Text {
                                 id: queryLabel
-                                anchors.centerIn: parent
-                                text: root.queryToken(queryChip.index).texto || "∅"
-                                color: root.focusedQuery === queryChip.index
+                                anchors.fill: parent
+                                anchors.margins: 4 * root.sx
+                                text: queryChip.width < 28 * root.sx
+                                      ? String(queryChip.index + 1)
+                                      : (root.queryToken(queryChip.index).texto || "∅")
+                                color: root.effectiveFocusedQuery === queryChip.index
                                        ? Style.Theme.matriz_query_sobre
                                        : Style.Theme.matriz_query_texto
                                 font.bold: true
                                 font.pixelSize: Math.max(9, 9 * root.sx)
                                 elide: Text.ElideRight
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
                             }
                             MouseArea {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
-                                onEntered: root.focusedQuery = queryChip.index
-                                onExited: root.focusedQuery = -1
+                                onEntered: root.hoveredQuery = queryChip.index
+                                onExited: root.hoveredQuery = -1
                             }
                         }
                     }
@@ -384,23 +467,32 @@ Item {
                         delegate: Rectangle {
                             id: keyChip
                             required property int index
-                            width: Math.max(34 * root.sx, keyLabel.implicitWidth + 10 * root.sx)
+                            readonly property real slotWidth:
+                                (parent.width - 84 * root.sx)
+                                / Math.max(1, root.keyCount)
+                            width: root.chipWidthFor(root.keyCount,
+                                                    parent.width - 84 * root.sx)
                             height: 30 * root.sy
                             x: 42 * root.sx + (index + 0.5) / Math.max(1, root.keyCount)
                                * (parent.width - 84 * root.sx) - width / 2
-                            y: 8 * root.sy
+                            y: 27 * root.sy
                             radius: 7 * root.sx
                             color: Style.Theme.matriz_key_fondo
                             border.color: Style.Theme.matriz_key
                             z: 2
                             Text {
                                 id: keyLabel
-                                anchors.centerIn: parent
-                                text: root.keyToken(keyChip.index).texto || "∅"
+                                anchors.fill: parent
+                                anchors.margins: 4 * root.sx
+                                text: keyChip.width < 28 * root.sx
+                                      ? String(keyChip.index + 1)
+                                      : (root.keyToken(keyChip.index).texto || "∅")
                                 color: Style.Theme.matriz_key_texto
                                 font.bold: true
                                 font.pixelSize: Math.max(9, 9 * root.sx)
                                 elide: Text.ElideRight
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
                             }
                         }
                     }
@@ -444,7 +536,9 @@ Item {
             border.color: Style.Theme.inferencia_foco
             Text {
                 anchors.centerIn: parent
-                text: "Las conexiones bajo el umbral se ocultan para evitar saturación · la dirección es query → key."
+                text: root.summaryMode
+                      ? "Vista resumida: conserva los pesos más fuertes y siempre la ruta principal · query → key."
+                      : "Vista completa: el umbral oculta pesos pequeños · query → key."
                 color: Style.Theme.aviso_texto
                 font.pixelSize: 9 * root.sx
             }
@@ -508,10 +602,23 @@ Item {
                         for (var k = 0; k < kCount; ++k)
                             maxValue = Math.max(maxValue, Number(matrixValues[q][k] || 0))
                     function xFor(i, count) { return (i + 0.5) / Math.max(1, count) * width }
+                    function rankFor(query, key) {
+                        var rank = 0
+                        var current = Number(matrixValues[query][key] || 0)
+                        for (var candidate = 0; candidate < kCount; ++candidate) {
+                            var other = Number(matrixValues[query][candidate] || 0)
+                            if (other > current || (other === current && candidate < key))
+                                rank += 1
+                        }
+                        return rank
+                    }
                     for (var qi = 0; qi < qCount; ++qi) {
                         for (var ki = 0; ki < kCount; ++ki) {
                             var weight = Number(matrixValues[qi][ki] || 0)
-                            if (weight < mini.threshold)
+                            // En las miniaturas basta comparar las dos rutas
+                            // dominantes por query; dibujar la matriz completa
+                            // volvería a formar una malla ilegible.
+                            if (weight < mini.threshold || rankFor(qi, ki) >= 2)
                                 continue
                             var x0 = xFor(qi, qCount), x1 = xFor(ki, kCount)
                             ctx.beginPath(); ctx.moveTo(x0, qY)
