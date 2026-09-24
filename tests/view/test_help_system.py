@@ -128,6 +128,28 @@ def test_todos_los_botones_de_ayuda_apuntan_a_conceptos_existentes():
     assert missing == {}
 
 
+def test_teoria_de_entrenamiento_separa_backward_de_la_actualizacion():
+    controller = TheoryController()
+    backward = controller.obtenerConcepto("backpropagation")
+    training_step = controller.obtenerConcepto("training_step")
+
+    assert backward["existe"] is True
+    assert "no actualiza los pesos" in backward["short_description"]
+    assert "optimizer.step()" in backward["explanation"]
+    assert "optimizer.zero_grad()" in backward["explanation"]
+    assert backward["steps"][-1].startswith("Los pesos permanecen iguales")
+
+    steps = training_step["steps"]
+    assert steps.index(
+        "Ejecutar optimizer.zero_grad() para limpiar gradientes anteriores."
+    ) < steps.index("Ejecutar el forward y obtener logits.")
+    assert steps.index(
+        "Ejecutar loss.backward() para calcular los gradientes."
+    ) < steps.index(
+        "Ejecutar optimizer.step() para actualizar los parámetros."
+    )
+
+
 def test_lector_destaca_formula_y_separa_su_explicacion(qapp):
     engine = QQmlEngine()
     source = b"""

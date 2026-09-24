@@ -708,6 +708,7 @@ PagePrincipal {
         onOpened: explorationPanel.resetPedagogicalReading()
         onClosed: {
             explorationPanel.sequencePlaying = false
+            explorationPanel.closeDetachedGuide()
             explorationPanel.resetPedagogicalReading()
         }
 

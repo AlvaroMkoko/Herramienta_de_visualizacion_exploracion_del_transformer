@@ -13,6 +13,7 @@ import pytest
 import torch
 from PySide6.QtCore import Q_ARG, QMetaObject, QObject, Qt, QUrl
 from PySide6.QtQml import QJSValue, QQmlComponent, QQmlEngine
+from PySide6.QtQuick import QQuickItem
 
 from model.motor_llm.config import ConfiguracionTransformer
 from model.motor_llm.transformer import Transformer
@@ -259,9 +260,11 @@ def test_error_de_cabezas_desaparece_al_corregir_configuracion(
     assert screen.property("mensajeErrorVisible") == ""
 
 
-def test_entrenamiento_espera_el_boton_y_consulta_la_teoria_del_json(
-    training_qml, qapp
+def test_entrenamiento_desacopla_la_explicacion_del_bloque_del_transformer(
+    training_qml, qapp, qtbot
 ):
+    training_qml.show()
+    qapp.processEvents()
     diagram = training_qml.findChild(QObject, "trainingTransformerDiagram")
     detail_panel = training_qml.findChild(QObject, "trainingComponentDetailPanel")
     detail_tab = training_qml.findChild(QObject, "trainingComponentDetailTab")
@@ -269,6 +272,15 @@ def test_entrenamiento_espera_el_boton_y_consulta_la_teoria_del_json(
     open_button = training_qml.findChild(QObject, "trainingOpenTheoryButton")
     modal = training_qml.findChild(QObject, "trainingTheoryModal")
     panel = training_qml.findChild(QObject, "trainingContextPanel")
+    detached_window = training_qml.findChild(
+        QObject, "trainingDetachedTransformerExplanationWindow"
+    )
+    detached_panel = training_qml.findChild(
+        QObject, "trainingDetachedTransformerExplanationPanel"
+    )
+    detached_button = training_qml.findChild(
+        QObject, "trainingOpenDetachedTransformerExplanationButton"
+    )
 
     assert diagram is not None
     assert detail_panel is not None
@@ -277,47 +289,144 @@ def test_entrenamiento_espera_el_boton_y_consulta_la_teoria_del_json(
     assert open_button is not None
     assert modal is not None
     assert panel is not None
+    assert detached_window is not None
+    assert detached_panel is not None
+    assert detached_button is not None
     assert panel.property("visible") is False
     assert detail_panel.property("visible") is False
     assert detail_tab.property("enabled") is False
+    assert detached_window.property("visible") is False
     diagram_height = diagram.property("height")
 
     _invocar(diagram, "selectComponent", "decoder_masked_attention")
+    qtbot.wait(80)
     qapp.processEvents()
 
     concepto = _como_python(summary.property("concepto"))
-    assert detail_panel.property("visible") is True
-    assert detail_tab.property("checked") is True
+    concepto_aparte = _como_python(detached_panel.property("concepto"))
+    assert detail_panel.property("visible") is False
+    assert detail_tab.property("enabled") is True
+    assert detail_tab.property("checked") is False
     assert diagram.property("height") == diagram_height
-    assert summary.property("visible") is True
+    assert detached_window.property("visible") is True
+    assert detached_panel.property("visible") is True
+    assert detached_button.property("visible") is True
     assert panel.property("visible") is False
     assert modal.property("visible") is False
     assert concepto["id"] == "por_que_mascara"
     assert concepto["componente_id"] == "decoder_masked_attention"
+    assert concepto_aparte["id"] == "por_que_mascara"
+
+    screen = training_qml.findChild(QObject, "trainingScreen")
+    _invocar(screen, "cerrarExplicacionTransformerAparte")
+    qtbot.wait(40)
+    qapp.processEvents()
+    assert detached_window.property("visible") is False
 
     _invocar(summary, "requestOpen")
+    qtbot.wait(60)
     qapp.processEvents()
-    concepto = _como_python(panel.property("concepto"))
-    assert panel.property("visible") is True
-    assert concepto["id"] == "por_que_mascara"
+    assert detached_window.property("visible") is True
+    assert panel.property("visible") is False
 
     _invocar(diagram, "clearSelection")
     qapp.processEvents()
     assert detail_panel.property("visible") is False
     assert detail_tab.property("checked") is False
+    assert detached_window.property("visible") is False
     assert panel.property("visible") is False
 
 
-def test_entrenamiento_muestra_el_segundo_paso_del_laboratorio(training_qml):
+def test_entrenamiento_muestra_el_segundo_paso_del_laboratorio(training_qml, qapp):
     progress = training_qml.findChild(QObject, "trainingLaboratoryProgress")
     journey = training_qml.findChild(QObject, "trainingJourney")
+    screen = training_qml.findChild(QObject, "trainingScreen")
+    summary_strip = training_qml.findChild(QObject, "trainingSummaryStrip")
 
     assert progress is not None
     assert journey is not None
+    assert screen is not None
+    assert summary_strip is not None
     assert progress.property("currentStep") == 1
     assert progress.property("totalSteps") == 3
     assert progress.property("currentStepTitle") == "Entrenamiento"
     assert journey.property("stageIndex") == 0
+
+    training_qml.resize(2560, 1640)
+    qapp.processEvents()
+    assert screen.property("leftSx") <= 1.10
+    assert screen.property("leftSy") <= 1.08
+    assert journey.property("sx") <= 1.10
+    assert journey.property("sy") <= 1.08
+    assert summary_strip.property("height") < 70
+
+
+def test_explicacion_del_entrenamiento_se_desacopla_y_distingue_backward_de_step(
+    training_qml, qapp, qtbot
+):
+    training_qml.show()
+    qapp.processEvents()
+
+    journey = training_qml.findChild(QObject, "trainingJourney")
+    viewport = training_qml.findChild(QQuickItem, "trainingJourneyViewport")
+    panel = training_qml.findChild(QQuickItem, "trainingExplanationPanel")
+    dock = training_qml.findChild(QQuickItem, "trainingExplanationDock")
+    detached_window = training_qml.findChild(
+        QObject, "trainingDetachedExplanationWindow"
+    )
+    detach_button = training_qml.findChild(
+        QObject, "trainingDetachExplanationButton"
+    )
+    no_update = training_qml.findChild(QObject, "trainingBackpropNoUpdate")
+    update_notice = training_qml.findChild(
+        QObject, "trainingOptimizerUpdateNotice"
+    )
+
+    assert all(
+        item is not None
+        for item in (
+            journey,
+            viewport,
+            panel,
+            dock,
+            detached_window,
+            detach_button,
+            no_update,
+            update_notice,
+        )
+    )
+    assert journey.property("explanationVisible") is False
+    assert dock.property("visible") is False
+    full_viewport_width = viewport.width()
+
+    _invocar(journey, "toggleExplanation")
+    qtbot.wait(80)
+    qapp.processEvents()
+
+    assert journey.property("explanationVisible") is True
+    assert journey.property("explanationDetached") is True
+    assert detached_window.property("visible") is True
+    assert panel.property("visible") is True
+    assert panel.window() == detached_window
+    assert viewport.width() >= full_viewport_width - 1
+
+    _invocar(journey, "setStage", 9)
+    qapp.processEvents()
+    stage = _como_python(journey.property("stage"))
+    assert "loss.backward()" in stage["action"]
+    assert "optimizer.step()" in stage["purpose"]
+    assert no_update.property("visible") is True
+
+    _invocar(journey, "setStage", 11)
+    qapp.processEvents()
+    assert update_notice.property("visible") is True
+
+    _invocar(journey, "closeExplanation")
+    qtbot.wait(50)
+    qapp.processEvents()
+    assert journey.property("explanationVisible") is False
+    assert journey.property("explanationDetached") is False
+    assert detached_window.property("visible") is False
 
 
 def test_recorrido_guiado_recibe_un_batch_real_y_recorre_sus_escenas(

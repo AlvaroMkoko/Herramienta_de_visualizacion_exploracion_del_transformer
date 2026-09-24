@@ -42,8 +42,8 @@ QtObject {
             "linear_logits", "output", "Linear \u2192 logits", 6, 1, 8, "", false,
             "capa_linear_salida", "El estado se proyecta al vocabulario",
             "logits = h_final W_vocab\u1d40 + b",
-            "Linear toma el último estado del decoder y calcula un score crudo para cada token del vocabulario.",
-            "Sigue h_final desde el decoder hacia W_vocab: cada barra nace en cero y su longitud representa un logit real, todavía no una probabilidad.",
+            "Linear toma h_final —un vector cuyas casillas dim 0, dim 1, … son coordenadas internas— y calcula un score crudo para cada token del vocabulario.",
+            "Las casillas dim n muestran coordenadas de h_final. El histograma agrupa tokens por intervalos de logit; las filas de candidatos muestran tokens concretos y su barra nace en cero. Nada de esto es todavía una probabilidad.",
             "Esta proyección convierte un único vector de ancho d_model en |V| alternativas que pueden compararse.",
             "Después se excluyen los IDs reservados y, si están activos, se aplican temperatura, top-k o top-p.",
             "Un logit solo indica preferencia relativa: todavía puede ser negativo y no tiene que sumar uno.",
@@ -209,10 +209,11 @@ QtObject {
         if (id === "linear_logits") {
             return [
                 guideItem("h_final", "Estado de la última posición del decoder; resume el contexto disponible para esta predicción."),
+                guideItem("dim 0, dim 1, …", "Son coordenadas internas de h_final. El nombre dim n indica la posición dentro del vector y el número inferior es su valor; no son tokens ni probabilidades."),
                 guideItem("W_vocab + b", "Capa aprendida que produce un score por cada ID del vocabulario."),
-                guideItem("Histograma", "Resume todos los logits por intervalos; no es una distribución de probabilidades."),
+                guideItem("Histograma", "El eje horizontal divide los valores de logit en intervalos. La altura de cada barra cuenta cuántos tokens del vocabulario caen en ese intervalo; una barra no representa un token concreto."),
                 guideItem("Mín., máx., media y desv.", "Describen rango, centro y dispersión de los scores para comprobar su escala."),
-                guideItem("Candidatos visibles", "Tokens capturados para inspección; en esta escena solo se representa su logit crudo."),
+                guideItem("Candidatos visibles", "Este panel sí muestra tokens concretos. Permite relacionar el token, su ID y su logit crudo sin confundirlos con las barras agrupadas del histograma."),
                 guideItem("Logit numérico", "Es la preferencia cruda de Linear: puede ser negativa y no tiene que sumar uno."),
                 guideItem("Barra de logit", "Nace en el cero central: va a la izquierda si el logit es negativo y a la derecha si es positivo.")
             ]
@@ -313,6 +314,7 @@ QtObject {
                     guideItem("PCA", "proyección visual a dos dimensiones")]
         if (id === "linear_logits")
             return [guideItem("h_final", "último estado del decoder"),
+                    guideItem("dim n", "coordenada n del vector h_final; su valor es una activación interna, no un token"),
                     guideItem("W_vocab", "matriz que puntúa cada token del vocabulario"),
                     guideItem("b", "sesgo aprendido de cada token"),
                     guideItem("|V|", "tamaño del vocabulario"),
@@ -344,7 +346,7 @@ QtObject {
         if (id.indexOf("layers") !== -1)
             return "Elige un token por su color y desplázate verticalmente para seguir su halo desde X₀ hasta la capa final."
         if (id === "linear_logits")
-            return "Pulsa Reproducir para seguir h_final → Linear → logits y compara el histograma con el top capturado."
+            return "Pulsa Reproducir y léelo de izquierda a derecha: coordenadas dim n de h_final → Linear → histograma agrupado. Pasa el cursor por una barra para ver su intervalo y cantidad; usa el panel derecho para identificar tokens concretos."
         return "Usa ◀, ▶ o Carrera para cambiar de contexto; observa cómo el nuevo token modifica las probabilidades de la siguiente vuelta."
     }
 

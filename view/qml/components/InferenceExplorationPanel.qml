@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Window
 import "../styles" as Style
 
 Item {
@@ -30,6 +31,7 @@ Item {
     // siguen disponibles, pero ya no compiten por espacio hasta solicitarlos.
     property bool guideVisible: false
     property bool locationMapVisible: false
+    property bool guideDetached: false
     // La escala efectiva nace del espacio real del panel, no de una
     // resolucion de escritorio asumida. Los limites conservan legibilidad.
     readonly property bool condensedWidth: width < 1100
@@ -39,7 +41,9 @@ Item {
     readonly property bool veryShortHeight: height < 560
     property bool compactGuideOpen: false
     readonly property bool effectiveGuideVisible: guideVisible
-                                                       && (!compactWidth || compactGuideOpen)
+                                                       && (guideDetached
+                                                           || !compactWidth
+                                                           || compactGuideOpen)
     readonly property real uiSx: Math.max(0.72, Math.min(1, sx, width / 1230))
     readonly property real uiSy: Math.max(0.68, Math.min(1, sy, height / 772))
     readonly property real sceneSx: Math.max(
@@ -679,6 +683,29 @@ Item {
         return "La expresión resume la transformación numérica que la escena está animando."
     }
 
+    function detachGuide() {
+        guideVisible = true
+        guideDetached = true
+        compactGuideOpen = false
+        sequencePlaying = false
+        Qt.callLater(function() {
+            detachedGuideWindow.raise()
+            detachedGuideWindow.requestActivate()
+        })
+    }
+
+    function dockGuide() {
+        guideDetached = false
+        guideVisible = true
+        compactGuideOpen = compactWidth
+    }
+
+    function closeDetachedGuide() {
+        guideDetached = false
+        guideVisible = false
+        compactGuideOpen = false
+    }
+
     onMetadataChanged: clampSelections()
     onOperationIndexChanged: {
         synchronizeOperation()
@@ -686,8 +713,11 @@ Item {
         compactGuideOpen = false
     }
     onGuideVisibleChanged: {
-        if (!guideVisible)
+        if (!guideVisible) {
+            guideDetached = false
+            compactGuideOpen = false
             resetPedagogicalReading()
+        }
     }
 
     InferenceFlowSteps {
@@ -713,6 +743,26 @@ Item {
     }
 
     Component.onCompleted: synchronizeOperation()
+
+    Window {
+        id: detachedGuideWindow
+        objectName: "inferenceDetachedGuideWindow"
+        visible: root.guideDetached
+        transientParent: root.Window.window
+        modality: Qt.NonModal
+        minimumWidth: 430
+        minimumHeight: 520
+        width: Math.max(minimumWidth, Math.min(700, root.width * 0.46))
+        height: Math.max(minimumHeight, Math.min(860, root.height * 0.90))
+        title: "Explicación · " + (root.operation.title || root.stage.title)
+        color: Style.Theme.superficie_alterna
+
+        onClosing: function(close) {
+            if (root.guideDetached)
+                root.closeDetachedGuide()
+            close.accepted = true
+        }
+    }
 
     Rectangle {
         anchors.fill: parent
@@ -830,12 +880,18 @@ Item {
                     Layout.minimumWidth: root.condensedWidth ? 108 : 140
                     Layout.maximumWidth: root.condensedWidth ? 130 : 176
                     Layout.preferredHeight: 34 * root.uiSy
-                    label: root.compactWidth
-                           ? (root.compactGuideOpen ? "Ver animación" : "Explicación")
-                           : (root.guideVisible ? "Ocultar explicación"
-                                                : "Mostrar explicación")
+                    label: root.guideDetached
+                           ? "Cerrar ventana"
+                           : (root.compactWidth
+                              ? (root.compactGuideOpen ? "Ver animación" : "Explicación")
+                              : (root.guideVisible ? "Ocultar explicación"
+                                                   : "Mostrar explicación"))
                     accent: Style.Theme.texto_secundario
                     onClicked: {
+                        if (root.guideDetached) {
+                            root.closeDetachedGuide()
+                            return
+                        }
                         if (root.compactWidth) {
                             if (root.compactGuideOpen) {
                                 root.compactGuideOpen = false
@@ -1276,17 +1332,10 @@ Item {
                     }
                 }
 
-                Rectangle {
-                    id: guidePanel
-                    objectName: "inferencePedagogicalGuide"
-                    readonly property real mapPreferredHeight: root.locationMapVisible
-                                                                ? Math.max(
-                                                                      root.compactWidth ? 190 : 220,
-                                                                      Math.min(
-                                                                          root.compactWidth ? 280 : 340,
-                                                                          height * 0.42))
-                                                                : 0
-                    visible: root.effectiveGuideVisible
+                Item {
+                    id: guideDock
+                    objectName: "inferencePedagogicalGuideDock"
+                    visible: root.effectiveGuideVisible && !root.guideDetached
                     Layout.fillWidth: root.compactWidth && visible
                     Layout.preferredWidth: visible
                                            ? (root.compactWidth
@@ -1296,6 +1345,22 @@ Item {
                     Layout.minimumWidth: visible && !root.compactWidth ? 300 : 0
                     Layout.maximumWidth: visible && !root.compactWidth ? 390 : 16777215
                     Layout.fillHeight: true
+
+                    Rectangle {
+                    id: guidePanel
+                    objectName: "inferencePedagogicalGuide"
+                    parent: root.guideDetached
+                            ? detachedGuideWindow.contentItem
+                            : guideDock
+                    anchors.fill: parent
+                    readonly property real mapPreferredHeight: root.locationMapVisible
+                                                                ? Math.max(
+                                                                      root.compactWidth ? 190 : 220,
+                                                                      Math.min(
+                                                                          root.compactWidth ? 280 : 340,
+                                                                          height * 0.42))
+                                                                : 0
+                    visible: root.effectiveGuideVisible
                     radius: 14 * root.sx
                     color: Style.Theme.surface
                     border.color: root.stage.accent
@@ -1312,12 +1377,33 @@ Item {
                             spacing: 6 * root.sx
 
                             Text {
+                                Layout.minimumWidth: 0
                                 Layout.fillWidth: true
                                 text: "EXPLICACIÓN"
                                 color: root.stage.accent
                                 font.bold: true
+                                elide: Text.ElideRight
                                 font.letterSpacing: 0.5
                                 font.pixelSize: Math.max(11, 10 * root.sx)
+                            }
+
+                            Button {
+                                objectName: "inferenceDetachGuideButton"
+                                Layout.preferredHeight: Math.max(28, 30 * root.sy)
+                                text: root.guideDetached ? "Acoplar" : "Abrir aparte"
+                                flat: true
+                                font.bold: true
+                                font.pixelSize: Math.max(10, 10 * root.sx)
+                                onClicked: root.guideDetached
+                                           ? root.dockGuide()
+                                           : root.detachGuide()
+                                Accessible.name: root.guideDetached
+                                                 ? "Volver a acoplar la explicación"
+                                                 : "Abrir la explicación en otra ventana"
+                                ToolTip.visible: hovered
+                                ToolTip.text: root.guideDetached
+                                              ? "Devuelve la explicación junto a la animación"
+                                              : "Libera espacio y mantiene la explicación en otra ventana"
                             }
 
                             Button {
@@ -1959,6 +2045,7 @@ Item {
                         }
                     }
                     }
+                }
                 }
             }
 

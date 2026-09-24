@@ -379,6 +379,10 @@ def test_logits_mantiene_histograma_y_candidatos_en_el_area_visible(qapp):
     distribution = window.findChild(QQuickItem, "outputDistributionColumn")
     candidates = window.findChild(QQuickItem, "outputCandidatePanel")
     histogram = window.findChild(QQuickItem, "outputLogitsHistogram")
+    dimensions_help = window.findChild(QObject, "outputHiddenDimensionsExplanation")
+    histogram_help = window.findChild(QObject, "outputHistogramExplanation")
+    candidates_help = window.findChild(QObject, "outputCandidateExplanation")
+    reading_guide = window.findChild(QObject, "outputLogitsReadingGuide")
     assert scene is not None
     for item in (distribution, candidates, histogram):
         assert item is not None
@@ -389,12 +393,25 @@ def test_logits_mantiene_histograma_y_candidatos_en_el_area_visible(qapp):
     distribution_position = distribution.mapToItem(scene, QPointF(0, 0))
     candidates_position = candidates.mapToItem(scene, QPointF(0, 0))
     assert distribution_position.x() + distribution.width() < candidates_position.x()
+    assert all(
+        item is not None
+        for item in (
+            dimensions_help,
+            histogram_help,
+            candidates_help,
+            reading_guide,
+        )
+    )
+    assert "no representan tokens" in dimensions_help.property("text")
+    assert "cuántos tokens" in histogram_help.property("text")
+    assert "token concreto" in candidates_help.property("text")
 
     scene.setProperty(
         "hiddenData",
         {"matriz": {"valores": [[-1.0, -0.2, 0.2, 1.0]]}},
     )
     qapp.processEvents()
+    assert "Softmax" in reading_guide.property("text")
     for value in (-1.0, -0.2, 0.2, 1.0):
         background = QColor(scene.hiddenColor(value))
         foreground = QColor(scene.hiddenTextColor(value))
@@ -485,8 +502,9 @@ def test_explorador_conserva_siete_animaciones_y_agrega_recorrido(qapp):
     logits_step = flow_steps[-2]
     logits_terms = {entry["term"] for entry in logits_step["visualElements"]}
     assert "Barra de logit" in logits_terms
+    assert "dim 0, dim 1, …" in logits_terms
     assert "Barra de probabilidad" not in logits_terms
-    assert "nace en cero" in logits_step["visualMeaning"]
+    assert "histograma agrupa tokens" in logits_step["visualMeaning"]
     softmax_step = flow_steps[-1]
     softmax_terms = {entry["term"] for entry in softmax_step["visualElements"]}
     assert "Barra relativa" in softmax_terms
@@ -871,6 +889,65 @@ def test_prompt_salida_y_mapa_reservan_espacio_legible(qapp):
     _assert_item_dentro_del_panel(panel, ribbon)
     _assert_item_dentro_del_panel(guide, minimap)
     _assert_item_dentro_del_panel(minimap, location)
+
+    window.deleteLater()
+    engine.deleteLater()
+    qapp.processEvents()
+
+
+def test_explicacion_se_desacopla_en_otra_ventana_y_libera_la_animacion(qapp):
+    engine = QQmlEngine()
+    _, window, panel = _crear_panel(engine, qapp)
+    window.setProperty("visible", True)
+    QTest.qWait(50)
+    qapp.processEvents()
+
+    animation = window.findChild(QQuickItem, "inferenceAnimationViewport")
+    guide = window.findChild(QQuickItem, "inferencePedagogicalGuide")
+    dock = window.findChild(QQuickItem, "inferencePedagogicalGuideDock")
+    detach_button = window.findChild(QObject, "inferenceDetachGuideButton")
+    detached_window = window.findChild(QObject, "inferenceDetachedGuideWindow")
+    assert all(
+        item is not None
+        for item in (animation, guide, dock, detach_button, detached_window)
+    )
+    full_animation_width = animation.width()
+
+    panel.setProperty("guideVisible", True)
+    QTest.qWait(50)
+    qapp.processEvents()
+    embedded_animation_width = animation.width()
+    assert dock.property("visible") is True
+    assert guide.property("visible") is True
+    assert embedded_animation_width < full_animation_width
+    assert detach_button.property("text") == "Abrir aparte"
+
+    detach_button.clicked.emit()
+    QTest.qWait(80)
+    qapp.processEvents()
+    assert panel.property("guideDetached") is True
+    assert detached_window.property("visible") is True
+    assert dock.property("visible") is False
+    assert guide.property("visible") is True
+    assert guide.window() == detached_window
+    assert detach_button.property("text") == "Acoplar"
+    assert animation.width() >= full_animation_width - 1
+
+    panel.setProperty("operationIndex", 12)
+    QTest.qWait(30)
+    qapp.processEvents()
+    assert panel.property("guideDetached") is True
+    assert detached_window.property("visible") is True
+    assert str(detached_window.property("title")).startswith("Explicación · ")
+
+    detach_button.clicked.emit()
+    QTest.qWait(50)
+    qapp.processEvents()
+    assert panel.property("guideDetached") is False
+    assert detached_window.property("visible") is False
+    assert dock.property("visible") is True
+    assert guide.window() == window
+    assert animation.width() < full_animation_width
 
     window.deleteLater()
     engine.deleteLater()

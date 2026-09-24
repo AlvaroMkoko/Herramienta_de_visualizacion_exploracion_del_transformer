@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Window
 import "../styles" as Style
 import "../components"
 
@@ -14,6 +15,11 @@ PagePrincipal {
 
     readonly property var viewModel: mainViewModel
     readonly property var trainingController: root.viewModel.trainingController
+    // La columna de trabajo no debe crecer indefinidamente en monitores grandes.
+    // El mapa conserva la escala general de la pantalla; la zona izquierda
+    // usa una escala acotada y dedica el espacio extra a la visualización.
+    readonly property real leftSx: Math.max(0.78, Math.min(1.10, root.sx))
+    readonly property real leftSy: Math.max(0.74, Math.min(1.08, root.sy))
 
     property int epocasIniciales: 10
     property real tasaAprendizajeInicial: 0.0003
@@ -43,6 +49,8 @@ PagePrincipal {
     property var prediccionesTop: []
     property var historialVisible: []
     property var teoriaActual: ({})
+    property var teoriaRelacionadaAparte: []
+    property bool transformerExplanationDetached: false
 
     property string mensajeError: ""
     property string mensajeCheckpoint: ""
@@ -74,6 +82,37 @@ PagePrincipal {
 
     function mostrarConceptoRelacionado(conceptId) {
         root.teoriaActual = root.openTheoryConcept(conceptId)
+    }
+
+    function abrirExplicacionTransformerAparte(componentId) {
+        if (!componentId)
+            return
+        root.closeTheory()
+        root.teoriaActual = root.previewTheoryComponent(componentId)
+        root.teoriaRelacionadaAparte = root.teoriaActual
+                                        && root.teoriaActual.relacionados
+                                        ? root.teoriaActual.relacionados : []
+        root.transformerExplanationDetached = true
+        Qt.callLater(function() {
+            detachedTransformerExplanationWindow.raise()
+            detachedTransformerExplanationWindow.requestActivate()
+            detachedTransformerExplanationPanel.prepareForOpen()
+        })
+    }
+
+    function mostrarConceptoAparte(conceptId) {
+        var controller = root.viewModel ? root.viewModel.theoryController : null
+        if (!controller || !conceptId)
+            return
+        root.teoriaActual = controller.obtenerConcepto(conceptId)
+        root.teoriaRelacionadaAparte = controller.obtenerRelacionados(conceptId)
+        Qt.callLater(function() {
+            detachedTransformerExplanationPanel.prepareForOpen()
+        })
+    }
+
+    function cerrarExplicacionTransformerAparte() {
+        root.transformerExplanationDetached = false
     }
 
     function conceptoParaMetrica(etiqueta) {
@@ -264,15 +303,17 @@ PagePrincipal {
                 selectedId = componentId
                 root.teoriaActual = root.previewTheoryComponent(componentId)
                 root.closeTheory()
-                // El detalle vive en el panel principal para no cubrir ni
-                // comprimir el mapa del Transformer.
-                barraPestanas.currentIndex = 2
+                // La explicación se abre aparte: así el mapa y la animación
+                // permanecen visibles mientras se consulta la teoría.
+                root.abrirExplicacionTransformerAparte(componentId)
             }
         }
 
         function clearSelection() {
             selectedId = ""
+            root.cerrarExplicacionTransformerAparte()
             root.teoriaActual = ({})
+            root.teoriaRelacionadaAparte = []
             root.closeTheory()
             if (barraPestanas.currentIndex === 2)
                 barraPestanas.currentIndex = 0
@@ -349,6 +390,55 @@ PagePrincipal {
         }
     }
 
+    Connections {
+        target: root
+        function onVisibleChanged() {
+            if (!root.visible)
+                root.cerrarExplicacionTransformerAparte()
+        }
+    }
+
+    Window {
+        id: detachedTransformerExplanationWindow
+        objectName: "trainingDetachedTransformerExplanationWindow"
+        visible: root.transformerExplanationDetached
+        transientParent: root.Window.window
+        modality: Qt.NonModal
+        minimumWidth: 460
+        minimumHeight: 560
+        width: Math.max(minimumWidth, Math.min(760, root.width * 0.40))
+        height: Math.max(minimumHeight, Math.min(900, root.height * 0.90))
+        title: "Explicación del Transformer · "
+               + String(root.teoriaActual.title || "Componente")
+        color: Style.Theme.superficie_alterna
+
+        ContextPanel {
+            id: detachedTransformerExplanationPanel
+            objectName: "trainingDetachedTransformerExplanationPanel"
+            anchors.fill: parent
+            anchors.margins: 10
+            visible: root.transformerExplanationDetached
+            concepto: root.teoriaActual
+            relatedConcepts: root.teoriaRelacionadaAparte
+            closable: true
+            expanded: true
+            sx: Math.max(0.88, Math.min(1.05,
+                                       detachedTransformerExplanationWindow.width / 700))
+            sy: Math.max(0.88, Math.min(1.05,
+                                       detachedTransformerExplanationWindow.height / 820))
+            onCloseRequested: root.cerrarExplicacionTransformerAparte()
+            onConceptRequested: function(conceptId) {
+                root.mostrarConceptoAparte(conceptId)
+            }
+        }
+
+        onClosing: function(close) {
+            if (root.transformerExplanationDetached)
+                root.cerrarExplicacionTransformerAparte()
+            close.accepted = true
+        }
+    }
+
     background: Rectangle {
         gradient: Gradient {
             GradientStop { position: 0; color: Style.Theme.fondo }
@@ -360,12 +450,12 @@ PagePrincipal {
         id: laboratoryProgress
         objectName: "trainingLaboratoryProgress"
         anchors.top: parent.top
-        anchors.topMargin: 10 * root.sy
+        anchors.topMargin: 8 * root.leftSy
         anchors.horizontalCenter: parent.horizontalCenter
-        width: Math.min(implicitWidth, parent.width - 600 * root.sx)
+        width: Math.min(implicitWidth, parent.width - 80 * root.leftSx)
         currentStep: 1
-        sx: root.sx
-        sy: root.sy
+        sx: root.leftSx
+        sy: root.leftSy
         compact: true
     }
 
@@ -374,44 +464,44 @@ PagePrincipal {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: laboratoryProgress.bottom
-        anchors.topMargin: 6 * root.sy
-        height: 60 * root.sy
+        anchors.topMargin: 4 * root.leftSy
+        height: 52 * root.leftSy
 
         BotonPrincipal {
             anchors.left: parent.left
-            anchors.leftMargin: 22 * root.sx
+            anchors.leftMargin: 22 * root.leftSx
             anchors.verticalCenter: parent.verticalCenter
-            width: 220 * root.sx
-            height: 42 * root.sy
+            width: 180 * root.leftSx
+            height: 36 * root.leftSy
             text: "← Volver"
             onClicked: root.stackView.pop()
         }
 
         Column {
             anchors.centerIn: parent
-            spacing: 2 * root.sy
+            spacing: 1 * root.leftSy
 
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: "Entrenamiento del Transformer"
                 color: Style.Theme.texto_primario
                 font.bold: true
-                font.pixelSize: 23 * Math.min(root.sx, root.sy)
+                font.pixelSize: 21 * Math.min(root.leftSx, root.leftSy)
             }
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: "Selecciona un bloque para seguir sus datos reales"
                 color: Style.Theme.texto_secundario
-                font.pixelSize: 13 * Math.min(root.sx, root.sy)
+                font.pixelSize: 11 * Math.min(root.leftSx, root.leftSy)
             }
         }
 
         Rectangle {
             anchors.right: parent.right
-            anchors.rightMargin: 26 * root.sx
+            anchors.rightMargin: 24 * root.leftSx
             anchors.verticalCenter: parent.verticalCenter
-            width: estadoTexto.implicitWidth + 28 * root.sx
-            height: 30 * root.sy
+            width: estadoTexto.implicitWidth + 24 * root.leftSx
+            height: 28 * root.leftSy
             radius: height / 2
             color: root.trainingController.estaEntrenando
                    ? (root.trainingController.estaPausado ? Style.Theme.aviso_fondo : Style.Theme.exito_fondo)
@@ -436,7 +526,7 @@ PagePrincipal {
                              ? Style.Theme.aviso_texto : Style.Theme.exito_texto)
                           : Style.Theme.texto_secundario)
                 font.bold: true
-                font.pixelSize: 12 * root.sx
+                font.pixelSize: 11 * root.leftSx
             }
         }
     }
@@ -446,30 +536,32 @@ PagePrincipal {
         anchors.right: parent.right
         anchors.top: header.bottom
         anchors.bottom: parent.bottom
-        anchors.leftMargin: 22 * root.sx
-        anchors.rightMargin: 22 * root.sx
-        anchors.bottomMargin: 14 * root.sy
-        spacing: 18 * root.sx
+        anchors.leftMargin: 22 * root.leftSx
+        anchors.rightMargin: 22 * root.leftSx
+        anchors.bottomMargin: 14 * root.leftSy
+        spacing: 18 * root.leftSx
 
         RectanglePrincipal {
             id: mapaCard
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.minimumWidth: 720 * root.sx
-            sx: root.sx
-            sy: root.sy
+            Layout.minimumWidth: 720 * root.leftSx
+            sx: root.leftSx
+            sy: root.leftSy
 
             ColumnLayout {
                 anchors.fill: parent
-                anchors.margins: 12 * root.sx
-                spacing: 7 * root.sy
+                anchors.margins: 10 * root.leftSx
+                spacing: 5 * root.leftSy
 
                 RowLayout {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 56 * root.sy
-                    Layout.minimumHeight: 56 * root.sy
-                    Layout.maximumHeight: 56 * root.sy
-                    spacing: 10 * root.sx
+                    id: trainingSummaryStrip
+                    objectName: "trainingSummaryStrip"
+                    Layout.preferredHeight: 48 * root.leftSy
+                    Layout.minimumHeight: 48 * root.leftSy
+                    Layout.maximumHeight: 48 * root.leftSy
+                    spacing: 7 * root.leftSx
 
                     Repeater {
                         model: [
@@ -504,22 +596,22 @@ PagePrincipal {
                             required property var modelData
                             Layout.fillWidth: true
                             Layout.fillHeight: true
-                            radius: 8 * root.sx
+                            radius: 8 * root.leftSx
                             color: Qt.alpha(summaryMetric.modelData.color, 0.08)
                             border.color: Qt.alpha(summaryMetric.modelData.color, 0.28)
 
                             Column {
                                 anchors.centerIn: parent
-                                spacing: 1 * root.sy
+                                spacing: 0
                                 Row {
                                     anchors.horizontalCenter: parent.horizontalCenter
-                                    spacing: 1 * root.sx
+                                    spacing: 1 * root.leftSx
                                     Text {
                                         anchors.verticalCenter: parent.verticalCenter
                                         text: summaryMetric.modelData.label
                                         color: Style.Theme.texto_secundario
                                         font.bold: true
-                                        font.pixelSize: 10 * root.sx
+                                        font.pixelSize: 10 * root.leftSx
                                     }
                                     ConceptHelpButton {
                                         anchors.verticalCenter: parent.verticalCenter
@@ -527,8 +619,8 @@ PagePrincipal {
                                                     + summaryMetric.modelData.help
                                         conceptId: summaryMetric.modelData.help
                                         conceptLabel: summaryMetric.modelData.label
-                                        controlSize: Math.max(18, 19 * Math.min(root.sx,
-                                                                               root.sy))
+                                        controlSize: Math.max(18, 19 * Math.min(root.leftSx,
+                                                                               root.leftSy))
                                         onHelpRequested: function(conceptId) {
                                             root.openTheoryConcept(conceptId)
                                         }
@@ -539,13 +631,13 @@ PagePrincipal {
                                     text: summaryMetric.modelData.value
                                     color: summaryMetric.modelData.color
                                     font.bold: true
-                                    font.pixelSize: 16 * root.sx
+                                    font.pixelSize: 15 * root.leftSx
                                 }
                                 Text {
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     text: summaryMetric.modelData.detail
                                     color: Style.Theme.texto_secundario
-                                    font.pixelSize: 10 * root.sx
+                                    font.pixelSize: 9 * root.leftSx
                                 }
                             }
 
@@ -555,23 +647,24 @@ PagePrincipal {
 
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 46 * root.sy
-                    Layout.minimumHeight: 46 * root.sy
-                    Layout.maximumHeight: 46 * root.sy
-                    radius: 9 * root.sx
+                    objectName: "trainingBatchReading"
+                    Layout.preferredHeight: 40 * root.leftSy
+                    Layout.minimumHeight: 40 * root.leftSy
+                    Layout.maximumHeight: 40 * root.leftSy
+                    radius: 9 * root.leftSx
                     color: Style.Theme.aviso_fondo
                     border.color: Style.Theme.warning
 
                     RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 14 * root.sx
-                        anchors.rightMargin: 14 * root.sx
-                        spacing: 12 * root.sx
+                        anchors.leftMargin: 11 * root.leftSx
+                        anchors.rightMargin: 11 * root.leftSx
+                        spacing: 8 * root.leftSx
 
                         Rectangle {
-                            Layout.preferredWidth: 34 * root.sx
-                            Layout.preferredHeight: 34 * root.sy
-                            radius: 17 * root.sx
+                            Layout.preferredWidth: 28 * root.leftSx
+                            Layout.preferredHeight: 28 * root.leftSy
+                            radius: 14 * root.leftSx
                             color: Style.Theme.aviso_fondo
                             border.color: Style.Theme.warning
                             Text { anchors.centerIn: parent; text: "↗"; font.bold: true; color: Style.Theme.aviso_texto }
@@ -583,20 +676,21 @@ PagePrincipal {
                                 text: "Lectura del batch · " + root.componenteRelevante
                                 color: Style.Theme.aviso_texto
                                 font.bold: true
-                                font.pixelSize: 12 * root.sx
+                                font.pixelSize: 11 * root.leftSx
                             }
                             Text {
                                 Layout.fillWidth: true
                                 text: root.lecturaPerdida + " Intensidad RMS: " + root.numero(root.intensidadRelevante, 5)
                                 color: Style.Theme.aviso_texto
                                 elide: Text.ElideRight
-                                font.pixelSize: 10 * root.sx
+                                font.pixelSize: 9 * root.leftSx
                             }
                         }
                         ConceptHelpButton {
                             objectName: "trainingLossHelpButton"
                             conceptId: "cross_entropy"
-                            controlSize: Math.max(24, 28 * Math.min(root.sx, root.sy))
+                            controlSize: Math.max(22, 25 * Math.min(root.leftSx,
+                                                                   root.leftSy))
                             onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
                         }
                     }
@@ -608,15 +702,15 @@ PagePrincipal {
 
                     ColumnLayout {
                         anchors.fill: parent
-                        spacing: 8 * root.sy
+                        spacing: 5 * root.leftSy
 
                         TabBar {
                             id: barraPestanas
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 34 * root.sy
-                            Layout.minimumHeight: 34 * root.sy
-                            Layout.maximumHeight: 34 * root.sy
-                            spacing: 6 * root.sx
+                            Layout.preferredHeight: 29 * root.leftSy
+                            Layout.minimumHeight: 29 * root.leftSy
+                            Layout.maximumHeight: 29 * root.leftSy
+                            spacing: 5 * root.leftSx
                             background: Rectangle { color: "transparent" }
 
                             onCurrentIndexChanged: {
@@ -628,7 +722,7 @@ PagePrincipal {
                                 id: guidedTab
                                 text: "Vista guiada"
                                 background: Rectangle {
-                                    radius: 7 * root.sx
+                                    radius: 7 * root.leftSx
                                     color: guidedTab.checked
                                            ? Style.Theme.acento_fondo
                                            : Style.Theme.superficie_alterna
@@ -642,7 +736,7 @@ PagePrincipal {
                                            ? Style.Theme.acento_fuerte
                                            : Style.Theme.texto_secundario
                                     font.bold: guidedTab.checked
-                                    font.pixelSize: 12 * root.sx
+                                    font.pixelSize: 11 * root.leftSx
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
                                 }
@@ -651,7 +745,7 @@ PagePrincipal {
                                 id: embeddingsTab
                                 text: "Espacio de embeddings"
                                 background: Rectangle {
-                                    radius: 7 * root.sx
+                                    radius: 7 * root.leftSx
                                     color: embeddingsTab.checked
                                            ? Style.Theme.acento_fondo
                                            : Style.Theme.superficie_alterna
@@ -665,7 +759,7 @@ PagePrincipal {
                                            ? Style.Theme.acento_fuerte
                                            : Style.Theme.texto_secundario
                                     font.bold: embeddingsTab.checked
-                                    font.pixelSize: 12 * root.sx
+                                    font.pixelSize: 11 * root.leftSx
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
                                 }
@@ -679,7 +773,7 @@ PagePrincipal {
                                 enabled: localBridge.selectedId !== ""
                                 opacity: enabled ? 1 : 0.5
                                 background: Rectangle {
-                                    radius: 7 * root.sx
+                                    radius: 7 * root.leftSx
                                     color: componentDetailTab.checked
                                            ? Style.Theme.acento_fondo
                                            : Style.Theme.superficie_alterna
@@ -693,7 +787,7 @@ PagePrincipal {
                                            ? Style.Theme.acento_fuerte
                                            : Style.Theme.texto_secundario
                                     font.bold: componentDetailTab.checked
-                                    font.pixelSize: 12 * root.sx
+                                    font.pixelSize: 11 * root.leftSx
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
                                 }
@@ -718,8 +812,8 @@ PagePrincipal {
                                 numLayers: localBridge.numCapas
                                 numHeads: Number((root.viewModel.modeloActualInfo || {}).num_cabezas || 1)
                                 gradientNorm: root.normaGradiente
-                                sx: root.sx
-                                sy: root.sy
+                                sx: root.leftSx
+                                sy: root.leftSy
                             }
 
                             NubeEmbeddings3D {
@@ -772,9 +866,35 @@ PagePrincipal {
                             font.bold: true
                             font.pixelSize: 10 * root.sx
                         }
+                        Button {
+                            id: detachedMapExplanationButton
+                            objectName: "trainingOpenDetachedTransformerExplanationButton"
+                            visible: localBridge.selectedId !== ""
+                            Layout.preferredHeight: Math.max(
+                                                        22,
+                                                        25 * Math.min(root.sx,
+                                                                      root.sy))
+                            text: root.transformerExplanationDetached
+                                  ? "Explicación abierta ↗"
+                                  : "Abrir explicación ↗"
+                            flat: true
+                            font.bold: true
+                            font.pixelSize: Math.max(10, Math.min(13, 10 * root.sx))
+                            onClicked: {
+                                if (root.transformerExplanationDetached) {
+                                    detachedTransformerExplanationWindow.raise()
+                                    detachedTransformerExplanationWindow.requestActivate()
+                                } else {
+                                    root.abrirExplicacionTransformerAparte(
+                                                localBridge.selectedId)
+                                }
+                            }
+                            ToolTip.visible: hovered
+                            ToolTip.text: "Mantiene visibles el mapa y la animación mientras lees"
+                        }
                         ConceptHelpButton {
                             objectName: "trainingMapHelpButton"
-                            conceptId: "arquitectura_transformer"
+                            conceptId: "que_es_transformer"
                             controlSize: Math.max(22, 25 * Math.min(root.sx, root.sy))
                             onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
                         }
@@ -782,7 +902,7 @@ PagePrincipal {
 
                     Text {
                         Layout.fillWidth: true
-                        text: "Selecciona un bloque; su detalle aparecerá en el panel grande."
+                        text: "Selecciona un bloque: su explicación se abrirá en una ventana aparte."
                         color: Style.Theme.texto_secundario
                         font.pixelSize: 10 * root.sx
                         wrapMode: Text.WordWrap
@@ -899,7 +1019,8 @@ PagePrincipal {
                             sx: root.sx
                             sy: root.sy
                             concepto: root.teoriaActual
-                            onOpenRequested: root.mostrarTeoriaComponente(localBridge.selectedId)
+                            onOpenRequested: root.abrirExplicacionTransformerAparte(
+                                                 localBridge.selectedId)
                             onCloseRequested: localBridge.clearSelection()
                         }
 

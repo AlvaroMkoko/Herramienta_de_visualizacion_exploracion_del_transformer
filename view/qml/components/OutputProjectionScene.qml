@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import "../styles" as Style
 
@@ -39,6 +40,12 @@ Item {
                                     || candidates.length > 0
     readonly property real histogramMaximum: maximum(histogramCounts, false)
     readonly property real candidateMaximumAbsoluteLogit: maximumCandidate("logit", true)
+    readonly property string dimensionExplanation:
+        "dim 0, dim 1… son coordenadas aprendidas de h_final. Cada cuadro muestra una dimensión y, debajo, su valor; no representan tokens."
+    readonly property string histogramExplanation:
+        "Cada barra agrupa un intervalo de logits: su altura indica cuántos tokens del vocabulario tienen un puntaje dentro de ese intervalo."
+    readonly property string candidateExplanation:
+        "Aquí cada fila sí es un token concreto. Un logit mayor indica mayor preferencia relativa antes de Softmax; todavía no es un porcentaje."
 
     function maximum(values, absolute) {
         var result = 0
@@ -283,7 +290,8 @@ Item {
 
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 58 * root.sy
+                    Layout.minimumHeight: Math.max(68, 76 * root.sy)
+                    Layout.preferredHeight: Math.max(72, 82 * root.sy)
                     radius: 12 * root.sx
                     color: Style.Theme.info_fondo
                     border.color: Style.Theme.inferencia_contexto
@@ -296,9 +304,10 @@ Item {
                             Layout.fillWidth: true
                             Text {
                                 Layout.fillWidth: true
-                                text: "h FINAL DEL DECODER · TRAS ATENCIÓN AL ENCODER"
+                                text: "VECTOR h_final · COORDENADAS INTERNAS"
                                 color: Style.Theme.inferencia_contexto
                                 font.bold: true
+                                elide: Text.ElideRight
                                 font.pixelSize: Math.max(9, 9 * root.sx)
                             }
                             Text {
@@ -307,6 +316,14 @@ Item {
                                 color: Style.Theme.inferencia_contexto
                                 font.pixelSize: Math.max(9, 9 * root.sx)
                             }
+                        }
+                        Text {
+                            objectName: "outputHiddenDimensionsExplanation"
+                            Layout.fillWidth: true
+                            text: root.dimensionExplanation
+                            color: Style.Theme.texto_secundario_fuerte
+                            elide: Text.ElideRight
+                            font.pixelSize: Math.max(9, 8.5 * root.sx)
                         }
                         ListView {
                             id: hiddenStrip
@@ -335,7 +352,7 @@ Item {
                                     spacing: 2 * root.sy
                                     Text {
                                         width: parent.width
-                                        text: "d" + hiddenCell.index
+                                        text: "dim " + hiddenCell.index
                                         color: root.hiddenTextColor(hiddenCell.modelData)
                                         font.bold: true
                                         horizontalAlignment: Text.AlignHCenter
@@ -350,6 +367,19 @@ Item {
                                         font.pixelSize: Math.max(9, 8.5 * root.sx)
                                     }
                                 }
+                                MouseArea {
+                                    id: hiddenCellHover
+                                    anchors.fill: parent
+                                    acceptedButtons: Qt.NoButton
+                                    hoverEnabled: true
+                                }
+                                ToolTip.visible: hiddenCellHover.containsMouse
+                                ToolTip.delay: 250
+                                ToolTip.text: "dim " + hiddenCell.index
+                                              + " = coordenada " + hiddenCell.index
+                                              + " de h_final\nvalor = "
+                                              + root.formatNumber(hiddenCell.modelData)
+                                              + "\nNo es un token ni una probabilidad."
                             }
                             Text {
                                 anchors.centerIn: parent
@@ -390,6 +420,17 @@ Item {
                                 color: Style.Theme.inferencia_foco
                                 font.pixelSize: Math.max(9, 9 * root.sx)
                             }
+                        }
+
+                        Text {
+                            objectName: "outputHistogramExplanation"
+                            Layout.fillWidth: true
+                            text: root.histogramExplanation
+                            color: Style.Theme.texto_secundario_fuerte
+                            wrapMode: Text.WordWrap
+                            maximumLineCount: 2
+                            elide: Text.ElideRight
+                            font.pixelSize: Math.max(9, 8.5 * root.sx)
                         }
 
                         Item {
@@ -437,6 +478,20 @@ Item {
                                            ? Style.Theme.escala_div_neg2
                                            : Style.Theme.escala_div_pos2
                                     opacity: 0.82
+                                    MouseArea {
+                                        id: histogramBarHover
+                                        anchors.fill: parent
+                                        acceptedButtons: Qt.NoButton
+                                        hoverEnabled: true
+                                    }
+                                    ToolTip.visible: histogramBarHover.containsMouse
+                                    ToolTip.delay: 250
+                                    ToolTip.text: root.histogramEdges.length > histogramBar.index + 1
+                                                  ? Number(histogramBar.modelData) + " tokens\nlogit entre "
+                                                    + root.formatNumber(root.histogramEdges[histogramBar.index])
+                                                    + " y "
+                                                    + root.formatNumber(root.histogramEdges[histogramBar.index + 1])
+                                                  : Number(histogramBar.modelData) + " tokens"
                                 }
                             }
 
@@ -575,6 +630,17 @@ Item {
                             color: Style.Theme.texto_secundario
                             font.pixelSize: Math.max(9, 9 * root.sx)
                         }
+                    }
+
+                    Text {
+                        objectName: "outputCandidateExplanation"
+                        Layout.fillWidth: true
+                        text: root.candidateExplanation
+                        color: Style.Theme.texto_secundario_fuerte
+                        wrapMode: Text.WordWrap
+                        maximumLineCount: 2
+                        elide: Text.ElideRight
+                        font.pixelSize: Math.max(9, 8.5 * root.sx)
                     }
 
                     ListView {
@@ -720,20 +786,26 @@ Item {
 
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 40 * root.sy
+            implicitHeight: logitsReadingText.implicitHeight + 16 * root.sy
+            Layout.minimumHeight: Math.max(48, implicitHeight)
             radius: 9 * root.sx
             color: root.hasData ? Style.Theme.info_fondo : Style.Theme.superficie_alterna
             border.color: root.hasData ? Style.Theme.inferencia_estructura : Style.Theme.borde_suave
             Text {
-                anchors.centerIn: parent
-                width: parent.width - 20 * root.sx
+                id: logitsReadingText
+                objectName: "outputLogitsReadingGuide"
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.margins: 8 * root.sx
                 text: root.hasData
-                      ? "Linear produce un logit por token: las barras muestran signo y magnitud desde 0. Todavía no hay probabilidades ni token elegido."
+                      ? "CÓMO LEERLO · dim n = una coordenada de h_final. Histograma = cantidad de tokens por intervalo de logit. Derecha = tokens concretos y su score crudo. Softmax convierte esos scores en probabilidades en el siguiente paso."
                       : "Aún no hay una captura de salida para este paso de inferencia."
                 color: root.hasData ? Style.Theme.info_texto : Style.Theme.texto_secundario
                 horizontalAlignment: Text.AlignHCenter
-                elide: Text.ElideRight
-                font.pixelSize: 9 * root.sx
+                wrapMode: Text.WordWrap
+                lineHeight: 1.12
+                font.pixelSize: Math.max(9, 9 * root.sx)
             }
         }
     }

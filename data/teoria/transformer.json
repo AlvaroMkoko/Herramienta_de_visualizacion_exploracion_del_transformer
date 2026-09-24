@@ -117,7 +117,7 @@
           "title": "Flujo general de la información",
           "order": 6,
           "short_description": "Dataset → tokens → encoder y decoder → predicción → pérdida y aprendizaje.",
-          "explanation": "Durante el entrenamiento, el recorrido empieza en un registro del dataset. instruction y el context opcional forman la entrada que debe comprender el modelo; response contiene la salida correcta que debe aprender. La aplicación convierte ambos textos en tokens e ids, añade las marcas especiales necesarias y construye embeddings con información de posición. La entrada atraviesa el encoder y queda contextualizada. El decoder consulta esa representación y recibe la response desplazada para predecir cada token siguiente. La proyección lineal y softmax producen probabilidades; después, la pérdida compara esas predicciones con los tokens reales de response. Backpropagation usa ese error para ajustar los parámetros. Durante la inferencia no existe response ni se calcula pérdida: el decoder genera un token, lo añade a su entrada y repite el proceso.",
+          "explanation": "Durante el entrenamiento, el recorrido empieza en un registro del dataset. instruction y el context opcional forman la entrada que debe comprender el modelo; response contiene la salida correcta que debe aprender. La aplicación convierte ambos textos en tokens e ids, añade las marcas especiales necesarias y construye embeddings con información de posición. La entrada atraviesa el encoder y queda contextualizada. El decoder consulta esa representación y recibe la response desplazada para predecir cada token siguiente. La proyección lineal y softmax producen probabilidades; después, la pérdida compara esas predicciones con los tokens reales de response. Backpropagation calcula los gradientes a partir de ese error y el optimizador los usa para actualizar los parámetros. Durante la inferencia no existe response ni se calcula pérdida: el decoder genera un token, lo añade a su entrada y repite el proceso.",
           "steps": [
             "Dataset: instruction + context opcional como entrada; response como salida esperada",
             "Tokenización de entrada y respuesta; incorporación automática de BOS, EOS y PAD",
@@ -127,7 +127,9 @@
             "Capa Linear final",
             "Softmax",
             "Predicción del siguiente token",
-            "Comparación con response, cálculo de pérdida y actualización de parámetros"
+            "Comparación con response y cálculo de la pérdida",
+            "Backpropagation: cálculo de gradientes sin cambiar los pesos",
+            "Optimizador: actualización de parámetros"
           ],
           "related_concepts": [
             "recorrido_completo",
@@ -1621,8 +1623,16 @@
           "id": "backpropagation",
           "title": "Backpropagation y gradientes",
           "order": 5,
-          "short_description": "Se calcula cuánto contribuyó cada parámetro al error y se ajusta en consecuencia.",
-          "explanation": "Una vez calculada la pérdida, backpropagation recorre el modelo hacia atrás aplicando la regla de la cadena para obtener, por cada parámetro, la derivada de la pérdida respecto de ese parámetro. Ese valor es el gradiente, e indica en qué dirección y con qué intensidad habría que modificar el parámetro para aumentar la pérdida; por eso se avanza en la dirección contraria. Las conexiones residuales cumplen un papel decisivo en este proceso: sin ellas, el gradiente se atenuaría al atravesar muchas capas y las iniciales apenas aprenderían.",
+          "short_description": "Calcula la sensibilidad del error respecto de cada parámetro; no actualiza los pesos.",
+          "explanation": "Una vez calculada la pérdida, loss.backward() recorre el grafo de cálculo hacia atrás. Autograd parte de la loss escalar, calcula la derivada local de cada operación y las combina con la regla de la cadena hasta obtener, para cada parámetro, la derivada de la pérdida respecto de ese parámetro. El resultado se acumula en parametro.grad. El signo indica hacia qué lado aumentaría la pérdida y la magnitud expresa sensibilidad. Backward todavía no modifica ningún peso: optimizer.step() usa esos gradientes después para aplicar la actualización. Como PyTorch acumula gradientes por defecto, esta aplicación llama optimizer.zero_grad() al inicio de cada batch para no mezclar la señal actual con la anterior. Las conexiones residuales ofrecen rutas directas que ayudan a que la señal llegue a las capas iniciales.",
+          "formula": "g_W = ∂L/∂W = (∂L/∂h) · (∂h/∂W)",
+          "steps": [
+            "La loss escalar inicia la retropropagación con derivada 1.",
+            "Cada operación aporta su derivada local.",
+            "La regla de la cadena combina las sensibilidades hacia capas anteriores.",
+            "Cada parámetro entrenable recibe el resultado en .grad.",
+            "Los pesos permanecen iguales hasta ejecutar optimizer.step()."
+          ],
           "related_concepts": [
             "cross_entropy",
             "actualizacion_parametros",
@@ -1717,13 +1727,15 @@
           "title": "Paso de entrenamiento",
           "order": 12,
           "short_description": "Es un ciclo completo de predicción, cálculo de pérdida, retropropagación y actualización sobre un batch.",
-          "explanation": "En un paso de entrenamiento se toma un batch, se ejecuta el modelo hacia adelante y se calcula la pérdida frente a los objetivos. Luego se limpian los gradientes anteriores, backpropagation calcula gradientes nuevos y el optimizador actualiza los parámetros. Un paso no equivale a una epoch: una epoch contiene tantos pasos como batches hagan falta para recorrer el dataset. Las métricas mostradas durante el proceso suelen corresponder al batch del paso actual y por eso pueden fluctuar.",
+          "explanation": "En esta aplicación cada paso sigue un orden concreto: se prepara un batch y se limpian los gradientes acumulados; después el forward obtiene logits y la cross entropy calcula la pérdida frente a los objetivos. loss.backward() produce gradientes sin cambiar los pesos. Por último, optimizer.step() aplica la actualización de Adam y se registra la pérdida. Un paso no equivale a una epoch: una epoch contiene tantos pasos como batches hagan falta para recorrer el dataset. Las métricas corresponden al batch actual y por eso pueden fluctuar.",
           "steps": [
             "Preparar y tokenizar un batch del dataset.",
+            "Ejecutar optimizer.zero_grad() para limpiar gradientes anteriores.",
             "Ejecutar el forward y obtener logits.",
             "Calcular la pérdida contra los tokens objetivo.",
-            "Limpiar gradientes y ejecutar backpropagation.",
-            "Aplicar la actualización del optimizador."
+            "Ejecutar loss.backward() para calcular los gradientes.",
+            "Medir la norma de los gradientes antes de modificar los pesos.",
+            "Ejecutar optimizer.step() para actualizar los parámetros."
           ],
           "related_concepts": [
             "cross_entropy",

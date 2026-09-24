@@ -26,3 +26,7 @@
 ## Debe contener una pequeña introduccion 
 ## En las explicaciones debe haber una sinematica para que no solo sea texto
 ## En el entrenamiento reducir la carga visual 
+## las preguntas deben verse menos monotonas y deben probar comprencion no memoria 
+
+# Nombre
+## TransformEducation

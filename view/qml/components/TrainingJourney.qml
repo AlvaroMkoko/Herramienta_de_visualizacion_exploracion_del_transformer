@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Window
 import "../styles" as Style
 
 Item {
@@ -27,6 +28,15 @@ Item {
     property int tokenIndex: 0
     property int parameterIndex: 0
     property bool playing: false
+    // La animación es la vista principal. La explicación se abre bajo
+    // demanda y puede vivir en una ventana separada para no quitarle espacio.
+    property bool explanationVisible: false
+    property bool explanationDetached: false
+    property bool explanationDetailsExpanded: false
+    readonly property bool compactJourney: width < 900
+    readonly property bool explanationDockVisible: explanationVisible
+                                                           && !explanationDetached
+                                                           && !compactJourney
 
     readonly property var example: snapshot && snapshot.ejemplo ? snapshot.ejemplo : ({})
     readonly property var sourceTokens: example.tokens_origen || []
@@ -179,13 +189,13 @@ Item {
         },
         {
             id: "backprop", short: "Backward", color: "#9333EA",
-            title: "El error vuelve por el grafo de cálculo",
-            action: "Autograd recorre el cálculo en sentido inverso y deriva la pérdida respecto de cada parámetro entrenable.",
+            title: "Backward calcula gradientes; todavía no actualiza pesos",
+            action: "loss.backward() hace que autograd recorra el grafo en sentido inverso, aplique la regla de la cadena y acumule en .grad la derivada de la pérdida respecto de cada parámetro.",
             input: "Pérdida del batch y grafo conservado durante forward.",
-            output: "Un gradiente almacenado en .grad para cada parámetro.",
-            purpose: "Indica en qué dirección y con qué sensibilidad debería cambiar cada peso; todavía no lo modifica.",
-            intuitive: "La señal de error viaja hacia atrás y mide cuánto contribuyó cada parámetro.",
-            technical: "autograd aplica la regla de la cadena desde la loss hasta embeddings, atención, FFN y normalizaciones.",
+            output: "Un tensor de gradiente en parámetro.grad para cada peso entrenable.",
+            purpose: "Mide la sensibilidad del error a cada peso. No decide por sí solo el cambio ni modifica el modelo; esa tarea corresponde a optimizer.step().",
+            intuitive: "La señal de error empieza en la loss y vuelve por cada operación. En cada peso pregunta: si este valor cambiara un poco, ¿cuánto cambiaría el error?",
+            technical: "autograd conserva durante forward las operaciones necesarias. En backward combina sus derivadas locales desde logits y decoder hasta encoder, embeddings, atención, FFN y normalizaciones. Como PyTorch acumula .grad, zero_grad() se ejecutó al inicio del batch.",
             mathematical: "∂L/∂W = ∂L/∂h · ∂h/∂W",
             formula: "loss.backward()"
         },
@@ -195,21 +205,21 @@ Item {
             action: "Agrupa los gradientes reales por función y calcula medidas comparables como norma L2 y RMS.",
             input: "Gradientes producidos por backward.",
             output: "Barras y estadísticas por familia de parámetros.",
-            purpose: "Ayuda a interpretar dónde llegó una señal fuerte o débil; esta medición no cambia el modelo.",
-            intuitive: "Las barras muestran qué familias recibieron una corrección más intensa en este batch.",
-            technical: "Se muestran norma L2, RMS, media, mínimo y máximo de gradientes reales agrupados por función.",
+            purpose: "Ayuda a detectar dónde llegó una señal fuerte, débil o inestable. Medirla no cambia el modelo.",
+            intuitive: "La barra compara la magnitud de cada familia con la mayor de este batch; no es una probabilidad ni una puntuación de calidad.",
+            technical: "La longitud visual usa la norma L2 relativa al máximo del batch. RMS divide el efecto del número de elementos y permite una comparación complementaria entre tensores de distinto tamaño.",
             mathematical: "‖g‖₂ = √Σgᵢ² · RMS(g)=√(Σgᵢ²/n)",
             formula: "∇θL"
         },
         {
             id: "optimizer", short: "Adam", color: "#047857",
             title: "El optimizador aplica una actualización real",
-            action: "Adam combina cada gradiente con su historial interno y la tasa de aprendizaje para modificar el parámetro.",
+            action: "optimizer.step() hace que Adam combine cada gradiente con sus promedios móviles y la tasa de aprendizaje para modificar el parámetro.",
             input: "Pesos actuales, gradientes, estado de Adam y learning rate.",
             output: "Nuevos valores de los parámetros del modelo.",
             purpose: "Este es el momento en que el modelo realmente aprende del batch.",
             intuitive: "Una modificación pequeña de muchos valores, repetida batch tras batch, constituye el aprendizaje.",
-            technical: "Antes, gradiente, delta y después pertenecen al mismo elemento real; el delta incluye la regla interna de Adam.",
+            technical: "Antes, gradiente, delta y después pertenecen al mismo elemento real. delta = después − antes e incluye el estado interno de Adam; por eso no suele ser exactamente −learning_rate · gradiente.",
             mathematical: "θₜ = θₜ₋₁ − η·m̂ₜ/(√v̂ₜ+ε)",
             formula: "optimizer.step()"
         },
@@ -218,10 +228,10 @@ Item {
             title: "La mejora se evalúa a lo largo de muchos batches",
             action: "Guarda la pérdida del paso, actualiza los contadores y continúa con el siguiente batch o la siguiente época.",
             input: "Pérdida recién observada e historial anterior.",
-            output: "Curva de pérdida actualizada y avance del entrenamiento.",
-            purpose: "Permite evaluar la tendencia; un solo batch no basta para decidir si el modelo mejora.",
-            intuitive: "La pérdida puede subir en un batch difícil; importa la tendencia, no exigir que cada punto baje.",
-            technical: "La curva conserva los últimos pasos observados. Cada punto puede corresponder a ejemplos distintos por el shuffle.",
+            output: "Curva de pérdida de entrenamiento y avance del proceso.",
+            purpose: "Permite vigilar la tendencia de optimización. No sustituye una pérdida de validación sobre datos reservados.",
+            intuitive: "La pérdida puede subir en un batch difícil; importa la tendencia. Una curva de entrenamiento baja tampoco demuestra por sí sola que el modelo generalice.",
+            technical: "La curva conserva los últimos batches usados para actualizar el modelo. Cada punto puede contener ejemplos distintos por el shuffle; aquí no se está graficando un conjunto de validación.",
             mathematical: "L̄ = (1/N)Σ L_batch",
             formula: "siguiente batch → siguiente época"
         }
@@ -298,15 +308,56 @@ Item {
         setStage(0)
     }
 
+    function detachExplanation() {
+        explanationVisible = true
+        explanationDetached = true
+        playing = false
+        Qt.callLater(function() {
+            detachedExplanationWindow.raise()
+            detachedExplanationWindow.requestActivate()
+        })
+    }
+
+    function dockExplanation() {
+        explanationDetached = false
+        explanationVisible = true
+    }
+
+    function closeExplanation() {
+        explanationDetached = false
+        explanationVisible = false
+        explanationDetailsExpanded = false
+    }
+
+    function toggleExplanation() {
+        if (explanationDetached) {
+            detachedExplanationWindow.raise()
+            detachedExplanationWindow.requestActivate()
+        } else if (explanationDockVisible) {
+            closeExplanation()
+        } else if (compactJourney) {
+            detachExplanation()
+        } else {
+            explanationVisible = true
+        }
+    }
+
     onSnapshotChanged: {
         tokenIndex = Math.max(0, Math.min(predictions.length - 1, tokenIndex))
         layerIndex = Math.max(0, Math.min(Math.max(1, numLayers) - 1, layerIndex))
         headIndex = Math.max(0, Math.min(Math.max(1, numHeads) - 1, headIndex))
         parameterIndex = Math.max(0, Math.min(updates.length - 1, parameterIndex))
     }
+    onStageIndexChanged: explanationDetailsExpanded = false
+    onVisibleChanged: {
+        if (!visible && explanationDetached)
+            closeExplanation()
+    }
 
     Timer {
-        interval: 3300
+        // El recorrido automático deja tiempo para identificar la transformación
+        // antes de cambiar de escena. La navegación manual sigue disponible.
+        interval: 6000
         repeat: true
         running: root.playing
         onTriggered: {
@@ -314,6 +365,26 @@ Item {
                 root.playing = false
             else
                 root.setStage(root.stageIndex + 1)
+        }
+    }
+
+    Window {
+        id: detachedExplanationWindow
+        objectName: "trainingDetachedExplanationWindow"
+        visible: root.explanationDetached
+        transientParent: root.Window.window
+        modality: Qt.NonModal
+        minimumWidth: 440
+        minimumHeight: 540
+        width: Math.max(minimumWidth, Math.min(650, root.width * 0.46))
+        height: Math.max(minimumHeight, Math.min(850, root.height * 0.92))
+        title: "Explicación del entrenamiento · " + root.stage.short
+        color: Style.Theme.superficie_alterna
+
+        onClosing: function(close) {
+            if (root.explanationDetached)
+                root.closeExplanation()
+            close.accepted = true
         }
     }
 
@@ -476,18 +547,16 @@ Item {
                 }
             }
             Item { Layout.fillWidth: true }
-            Text {
-                text: "Nivel"
-                color: Style.Theme.texto_secundario
-                font.pixelSize: root.fontSize(9, root.sx)
-            }
-            SelectorPrincipal {
-                Layout.preferredWidth: 125 * root.sx
-                sx: root.sx
-                sy: root.sy
-                model: ["Intuitiva", "Técnica", "Matemática"]
-                currentIndex: root.explanationLevel
-                onActivated: function(index) { root.explanationLevel = index }
+            SmallButton {
+                objectName: "trainingExplanationToggleButton"
+                Layout.preferredWidth: 132 * root.sx
+                label: root.explanationDetached
+                       ? "Explicación abierta ↗"
+                       : (root.explanationDockVisible
+                          ? "Ocultar explicación"
+                          : "Ver explicación")
+                primary: root.explanationDetached || root.explanationDockVisible
+                onClicked: root.toggleExplanation()
             }
         }
 
@@ -543,168 +612,236 @@ Item {
             Layout.fillHeight: true
             spacing: 10 * root.sx
 
-            Rectangle {
-                Layout.preferredWidth: 310 * root.sx
+            Item {
+                id: explanationDock
+                objectName: "trainingExplanationDock"
+                visible: root.explanationDockVisible
+                Layout.preferredWidth: visible
+                                       ? Math.max(300, Math.min(360, root.width * 0.28))
+                                       : 0
+                Layout.minimumWidth: visible ? 300 : 0
+                Layout.maximumWidth: visible ? 360 : 0
                 Layout.fillHeight: true
-                radius: 11 * root.sx
-                color: Qt.alpha(root.stage.color, 0.07)
-                border.color: Qt.alpha(root.stage.color, 0.35)
-
-                ScrollView {
-                    id: explanationScroll
-                    anchors.fill: parent
-                    anchors.margins: 13 * root.sx
-                    clip: true
-                    contentWidth: availableWidth
-                    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-                    ScrollBar.vertical.policy: ScrollBar.AlwaysOff
-
-                    ColumnLayout {
-                    id: explanationPanel
-                    width: explanationScroll.availableWidth
-                    spacing: 8 * root.sy
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 25 * root.sy
-                        radius: height / 2
-                        color: Qt.alpha(root.scopeColor, 0.14)
-                        border.color: root.scopeColor
-                        Text {
-                            id: scopePanelText
-                            anchors.fill: parent
-                            anchors.leftMargin: 9 * root.sx
-                            anchors.rightMargin: 9 * root.sx
-                            text: "BLOQUE " + (root.chapterIndex + 1) + " · " + root.scopeLabel
-                            color: root.scopeColor
-                            font.bold: true
-                            font.pixelSize: root.fontSize(9, root.sx)
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                            elide: Text.ElideRight
-                        }
-                    }
-                    Text {
-                        Layout.fillWidth: true
-                        text: root.stage.title
-                        color: Style.Theme.texto_primario
-                        font.bold: true
-                        font.pixelSize: 15 * root.sx
-                        wrapMode: Text.WordWrap
-                    }
-
-                    StageFact {
-                        objectName: "trainingStageAction"
-                        Layout.fillWidth: true
-                        label: "QUÉ HACE"
-                        value: root.stage.action
-                        accent: root.stage.color
-                        sx: root.sx
-                        sy: root.sy
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 6 * root.sx
-
-                        StageFact {
-                            objectName: "trainingStageInput"
-                            Layout.fillWidth: true
-                            label: "RECIBE"
-                            value: root.stage.input
-                            accent: root.stage.color
-                            sx: root.sx
-                            sy: root.sy
-                        }
-
-                        StageFact {
-                            objectName: "trainingStageOutput"
-                            Layout.fillWidth: true
-                            label: "PRODUCE"
-                            value: root.stage.output
-                            accent: root.stage.color
-                            sx: root.sx
-                            sy: root.sy
-                        }
-                    }
-
-                    StageFact {
-                        objectName: "trainingStagePurpose"
-                        Layout.fillWidth: true
-                        label: "POR QUÉ IMPORTA"
-                        value: root.stage.purpose
-                        accent: root.stage.color
-                        sx: root.sx
-                        sy: root.sy
-                    }
-
-                    Text {
-                        Layout.fillWidth: true
-                        text: "DETALLE · " + (root.explanationLevel === 0 ? "INTUITIVO"
-                                               : (root.explanationLevel === 1 ? "TÉCNICO"
-                                                                              : "MATEMÁTICO"))
-                        color: root.stage.color
-                        font.bold: true
-                        font.pixelSize: root.fontSize(8, root.sx)
-                    }
-                    Text {
-                        Layout.fillWidth: true
-                        text: root.explanationLevel === 0 ? root.stage.intuitive
-                              : (root.explanationLevel === 1 ? root.stage.technical
-                                                             : root.stage.mathematical)
-                        color: Style.Theme.texto_secundario_fuerte
-                        font.pixelSize: root.fontSize(11, root.sx)
-                        wrapMode: Text.WordWrap
-                    }
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: formulaText.implicitHeight + 18 * root.sy
-                        radius: 8 * root.sx
-                        color: Style.Theme.surface
-                        border.color: Style.Theme.borde_medio
-                        Text {
-                            id: formulaText
-                            anchors.fill: parent
-                            anchors.margins: 9 * root.sx
-                            text: root.explanationLevel === 2
-                                  ? root.stage.mathematical : root.stage.formula
-                            color: root.stage.color
-                            font.family: Style.Theme.fuente_mono
-                            font.pixelSize: root.fontSize(10, root.sx)
-                            wrapMode: Text.WordWrap
-                        }
-                    }
-                    Item { Layout.fillHeight: true }
-                    Text {
-                        Layout.fillWidth: true
-                        text: "Datos del paso global " + root.globalStep
-                              + " · no son valores simulados"
-                        color: Style.Theme.texto_terciario
-                        font.pixelSize: root.fontSize(9, root.sx)
-                        wrapMode: Text.WordWrap
-                    }
-                    }
-                }
 
                 Rectangle {
-                    id: explanationScrollIndicator
-                    readonly property real trackHeight: parent.height - 20 * root.sy
-                    readonly property real scrollRange: Math.max(
-                        1, explanationScroll.contentHeight - explanationScroll.availableHeight)
-                    width: Math.max(4, 5 * root.sx)
-                    height: Math.max(30 * root.sy,
-                                     trackHeight * Math.min(
-                                         1, explanationScroll.availableHeight
-                                            / Math.max(1, explanationScroll.contentHeight)))
-                    x: parent.width - width - 5 * root.sx
-                    y: 10 * root.sy
-                       + (trackHeight - height)
-                         * Math.max(0, Math.min(scrollRange,
-                             explanationScroll.contentItem.contentY)) / scrollRange
-                    radius: width / 2
-                    color: Qt.alpha(root.scopeColor, 0.62)
-                    visible: explanationScroll.contentHeight
-                             > explanationScroll.availableHeight + 1
-                    z: 2
+                    id: explanationCard
+                    objectName: "trainingExplanationPanel"
+                    parent: root.explanationDetached
+                            ? detachedExplanationWindow.contentItem
+                            : explanationDock
+                    anchors.fill: parent
+                    visible: root.explanationVisible
+                    radius: 11 * root.sx
+                    color: Qt.alpha(root.stage.color, 0.07)
+                    border.color: Qt.alpha(root.stage.color, 0.42)
+
+                    ScrollView {
+                        id: explanationScroll
+                        anchors.fill: parent
+                        anchors.margins: 13 * root.sx
+                        clip: true
+                        contentWidth: availableWidth
+                        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                        ScrollBar.vertical.policy: ScrollBar.AsNeeded
+
+                        ColumnLayout {
+                            id: explanationPanel
+                            width: explanationScroll.availableWidth
+                            spacing: 8 * root.sy
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 5 * root.sx
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: "EXPLICACIÓN DEL PASO"
+                                    color: root.stage.color
+                                    font.bold: true
+                                    elide: Text.ElideRight
+                                    font.pixelSize: root.fontSize(9, root.sx)
+                                }
+                                Button {
+                                    objectName: "trainingDetachExplanationButton"
+                                    flat: true
+                                    text: root.explanationDetached
+                                          ? (root.compactJourney ? "Cerrar ventana" : "Acoplar")
+                                          : "Abrir aparte"
+                                    font.bold: true
+                                    font.pixelSize: root.fontSize(9, root.sx)
+                                    onClicked: root.explanationDetached
+                                               ? (root.compactJourney
+                                                  ? root.closeExplanation()
+                                                  : root.dockExplanation())
+                                               : root.detachExplanation()
+                                    ToolTip.visible: hovered
+                                    ToolTip.text: root.explanationDetached
+                                                  ? (root.compactJourney
+                                                     ? "Cierra la explicación separada"
+                                                     : "Devuelve la explicación junto a la animación")
+                                                  : "Mueve la explicación a una segunda ventana"
+                                }
+                                Button {
+                                    flat: true
+                                    text: "×"
+                                    font.bold: true
+                                    font.pixelSize: root.fontSize(13, root.sx)
+                                    onClicked: root.closeExplanation()
+                                    Accessible.name: "Cerrar explicación"
+                                }
+                            }
+
+                            Rectangle {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 25 * root.sy
+                                radius: height / 2
+                                color: Qt.alpha(root.scopeColor, 0.14)
+                                border.color: root.scopeColor
+                                Text {
+                                    id: scopePanelText
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 9 * root.sx
+                                    anchors.rightMargin: 9 * root.sx
+                                    text: "BLOQUE " + (root.chapterIndex + 1) + " · " + root.scopeLabel
+                                    color: root.scopeColor
+                                    font.bold: true
+                                    font.pixelSize: root.fontSize(9, root.sx)
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                    elide: Text.ElideRight
+                                }
+                            }
+
+                            Text {
+                                Layout.fillWidth: true
+                                text: root.stage.title
+                                color: Style.Theme.texto_primario
+                                font.bold: true
+                                font.pixelSize: root.fontSize(15, root.sx)
+                                wrapMode: Text.WordWrap
+                            }
+
+                            StageFact {
+                                objectName: "trainingStageInput"
+                                Layout.fillWidth: true
+                                label: "1 · RECIBE"
+                                value: root.stage.input
+                                accent: root.stage.color
+                                sx: root.sx
+                                sy: root.sy
+                            }
+
+                            StageFact {
+                                objectName: "trainingStageAction"
+                                Layout.fillWidth: true
+                                label: "2 · QUÉ OCURRE"
+                                value: root.stage.action
+                                accent: root.stage.color
+                                sx: root.sx
+                                sy: root.sy
+                            }
+
+                            StageFact {
+                                objectName: "trainingStageOutput"
+                                Layout.fillWidth: true
+                                label: "3 · PRODUCE"
+                                value: root.stage.output
+                                accent: root.stage.color
+                                sx: root.sx
+                                sy: root.sy
+                            }
+
+                            SmallButton {
+                                objectName: "trainingExplanationDetailsButton"
+                                Layout.fillWidth: true
+                                label: root.explanationDetailsExpanded
+                                       ? "Ocultar detalle"
+                                       : "Ver por qué y profundizar"
+                                onClicked: root.explanationDetailsExpanded
+                                           = !root.explanationDetailsExpanded
+                            }
+
+                            StageFact {
+                                objectName: "trainingStagePurpose"
+                                visible: root.explanationDetailsExpanded
+                                Layout.fillWidth: true
+                                label: "POR QUÉ IMPORTA"
+                                value: root.stage.purpose
+                                accent: root.stage.color
+                                sx: root.sx
+                                sy: root.sy
+                            }
+
+                            RowLayout {
+                                visible: root.explanationDetailsExpanded
+                                Layout.fillWidth: true
+                                Text {
+                                    text: "Nivel del detalle"
+                                    color: Style.Theme.texto_secundario
+                                    font.pixelSize: root.fontSize(9, root.sx)
+                                }
+                                SelectorPrincipal {
+                                    Layout.fillWidth: true
+                                    sx: root.sx
+                                    sy: root.sy
+                                    model: ["Intuitiva", "Técnica", "Matemática"]
+                                    currentIndex: root.explanationLevel
+                                    onActivated: function(index) { root.explanationLevel = index }
+                                }
+                            }
+
+                            Text {
+                                visible: root.explanationDetailsExpanded
+                                Layout.fillWidth: true
+                                text: "DETALLE · " + (root.explanationLevel === 0 ? "INTUITIVO"
+                                                       : (root.explanationLevel === 1 ? "TÉCNICO"
+                                                                                      : "MATEMÁTICO"))
+                                color: root.stage.color
+                                font.bold: true
+                                font.pixelSize: root.fontSize(8, root.sx)
+                            }
+                            Text {
+                                visible: root.explanationDetailsExpanded
+                                Layout.fillWidth: true
+                                text: root.explanationLevel === 0 ? root.stage.intuitive
+                                      : (root.explanationLevel === 1 ? root.stage.technical
+                                                                     : root.stage.mathematical)
+                                color: Style.Theme.texto_secundario_fuerte
+                                font.pixelSize: root.fontSize(11, root.sx)
+                                wrapMode: Text.WordWrap
+                            }
+                            Rectangle {
+                                visible: root.explanationDetailsExpanded
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: visible
+                                                        ? formulaText.implicitHeight + 18 * root.sy
+                                                        : 0
+                                radius: 8 * root.sx
+                                color: Style.Theme.surface
+                                border.color: Style.Theme.borde_medio
+                                Text {
+                                    id: formulaText
+                                    anchors.fill: parent
+                                    anchors.margins: 9 * root.sx
+                                    text: root.explanationLevel === 2
+                                          ? root.stage.mathematical : root.stage.formula
+                                    color: root.stage.color
+                                    font.family: Style.Theme.fuente_mono
+                                    font.pixelSize: root.fontSize(10, root.sx)
+                                    wrapMode: Text.WordWrap
+                                }
+                            }
+                            Item { Layout.fillHeight: true }
+                            Text {
+                                visible: root.explanationDetailsExpanded
+                                Layout.fillWidth: true
+                                text: "Datos del paso global " + root.globalStep
+                                      + " · no son valores simulados"
+                                color: Style.Theme.texto_terciario
+                                font.pixelSize: root.fontSize(9, root.sx)
+                                wrapMode: Text.WordWrap
+                            }
+                        }
+                    }
                 }
             }
 
@@ -1460,15 +1597,27 @@ Item {
         property real batchLoss: 0
         property real sx: 1
         property real sy: 1
-        RowLayout {
-            anchors.fill: parent; spacing: 12 * lossScene.sx
-            MetricCard { title: "TOKEN CORRECTO"; value: lossScene.prediction ? lossScene.prediction.objetivo.texto : "—"; detail: lossScene.prediction ? "rango " + lossScene.prediction.objetivo.rango : ""; accent: "#059669"; sx: lossScene.sx; sy: lossScene.sy }
-            Text { text: "→"; color: Style.Theme.texto_terciario; font.pixelSize: 22 * lossScene.sx }
-            MetricCard { title: "PROBABILIDAD"; value: lossScene.prediction ? (Number(lossScene.prediction.objetivo.probabilidad) * 100).toFixed(3) + "%" : "—"; detail: "asignada al objetivo"; accent: "#2563EB"; sx: lossScene.sx; sy: lossScene.sy }
-            Text { text: "→"; color: Style.Theme.texto_terciario; font.pixelSize: 22 * lossScene.sx }
-            MetricCard { title: "LOSS DEL TOKEN"; value: lossScene.prediction ? Number(lossScene.prediction.perdida_token).toFixed(4) : "—"; detail: "−log p(objetivo)"; accent: "#B45309"; sx: lossScene.sx; sy: lossScene.sy }
-            Text { text: "≠"; color: Style.Theme.texto_terciario; font.pixelSize: 22 * lossScene.sx }
-            MetricCard { title: "LOSS DEL BATCH"; value: Number(lossScene.batchLoss).toFixed(4); detail: "media sin PAD"; accent: "#9333EA"; sx: lossScene.sx; sy: lossScene.sy }
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: 10 * lossScene.sy
+            Text {
+                Layout.fillWidth: true
+                text: "La cross entropy usa la probabilidad del objetivo. Después promedia todas las posiciones válidas; PAD no participa."
+                color: Style.Theme.texto_secundario
+                wrapMode: Text.WordWrap
+                font.pixelSize: root.fontSize(10, lossScene.sx)
+            }
+            GridLayout {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                columns: lossScene.width < 720 ? 2 : 4
+                columnSpacing: 8 * lossScene.sx
+                rowSpacing: 8 * lossScene.sy
+                MetricCard { title: "1 · OBJETIVO"; value: lossScene.prediction ? lossScene.prediction.objetivo.texto : "—"; detail: lossScene.prediction ? "token correcto · rango " + lossScene.prediction.objetivo.rango : ""; accent: "#059669"; sx: lossScene.sx; sy: lossScene.sy }
+                MetricCard { title: "2 · PROBABILIDAD"; value: lossScene.prediction ? (Number(lossScene.prediction.objetivo.probabilidad) * 100).toFixed(3) + "%" : "—"; detail: "p(objetivo) entre todo el vocabulario"; accent: "#2563EB"; sx: lossScene.sx; sy: lossScene.sy }
+                MetricCard { title: "3 · LOSS DEL TOKEN"; value: lossScene.prediction ? Number(lossScene.prediction.perdida_token).toFixed(4) : "—"; detail: "−log p(objetivo)"; accent: "#B45309"; sx: lossScene.sx; sy: lossScene.sy }
+                MetricCard { title: "4 · LOSS DEL BATCH"; value: Number(lossScene.batchLoss).toFixed(4); detail: "media de tokens válidos, sin PAD"; accent: "#9333EA"; sx: lossScene.sx; sy: lossScene.sy }
+            }
         }
     }
 
@@ -1496,31 +1645,223 @@ Item {
         property real sx: 1
         property real sy: 1
         property real pulse: 0
+        readonly property bool compact: width < 720
+        readonly property var reverseBlocks: compact
+            ? [
+                  { label: "LOSS", derivative: "punto de partida", color: "#DC2626" },
+                  { label: "Salida + decoder", derivative: "∂L/∂h_dec", color: "#9333EA" },
+                  { label: "Encoder", derivative: "∂L/∂h_enc", color: "#7C3AED" },
+                  { label: "Embeddings", derivative: "∂L/∂W_emb", color: "#2563EB" }
+              ]
+            : [
+                  { label: "LOSS", derivative: "∂L/∂L = 1", color: "#DC2626" },
+                  { label: "Linear", derivative: "∂L/∂logits", color: "#B45309" },
+                  { label: "Decoder", derivative: "∂L/∂h_dec", color: "#9333EA" },
+                  { label: "Cross-Attn", derivative: "dos rutas", color: "#059669" },
+                  { label: "Encoder", derivative: "∂L/∂h_enc", color: "#7C3AED" },
+                  { label: "Embeddings", derivative: "∂L/∂W_emb", color: "#2563EB" }
+              ]
         NumberAnimation on pulse { from: 0; to: 1; duration: 1800; loops: Animation.Infinite; running: backpropScene.active }
         ColumnLayout {
-            anchors.fill: parent; spacing: 14 * backpropScene.sy
-            Item { Layout.fillHeight: true }
+            anchors.fill: parent
+            spacing: 10 * backpropScene.sy
+
             RowLayout {
-                Layout.fillWidth: true; spacing: 4 * backpropScene.sx
-                Repeater {
-                    model: ["Embeddings", "Encoder", "Cross-Attn", "Decoder", "Linear", "LOSS"]
-                    delegate: RowLayout {
-                        id: backpropBlock
-                        required property int index
-                        required property string modelData
-                        Layout.fillWidth: true; spacing: 3 * backpropScene.sx
-                        Rectangle {
-                            Layout.fillWidth: true; Layout.preferredHeight: 67 * backpropScene.sy; radius: 9 * backpropScene.sx
-                            color: Qt.alpha(backpropBlock.index === 5 ? "#DC2626" : "#9333EA", 0.08 + 0.10 * Math.abs(Math.sin((backpropScene.pulse + backpropBlock.index / 6) * Math.PI)))
-                            border.color: backpropBlock.index === 5 ? "#DC2626" : "#9333EA"
-                            Text { anchors.centerIn: parent; width: parent.width - 8; text: backpropBlock.modelData; color: backpropBlock.index === 5 ? "#DC2626" : "#9333EA"; font.bold: true; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap; font.pixelSize: root.fontSize(9, root.sx) }
-                        }
-                        Text { visible: backpropBlock.index < 5; text: "←"; color: "#9333EA"; font.bold: true; font.pixelSize: 17 * root.sx }
+                Layout.fillWidth: true
+                Text {
+                    Layout.fillWidth: true
+                    text: "BACKWARD · EL ERROR RECORRE EL GRAFO AL REVÉS"
+                    color: "#9333EA"
+                    font.bold: true
+                    font.pixelSize: root.fontSize(10, backpropScene.sx)
+                    elide: Text.ElideRight
+                }
+                Rectangle {
+                    Layout.preferredWidth: backwardBadge.implicitWidth + 20 * backpropScene.sx
+                    Layout.preferredHeight: 27 * backpropScene.sy
+                    radius: height / 2
+                    color: Qt.alpha("#9333EA", 0.11)
+                    border.color: Qt.alpha("#9333EA", 0.55)
+                    Text {
+                        id: backwardBadge
+                        anchors.centerIn: parent
+                        text: "loss.backward()"
+                        color: "#9333EA"
+                        font.bold: true
+                        font.family: Style.Theme.fuente_mono
+                        font.pixelSize: root.fontSize(9, backpropScene.sx)
                     }
                 }
             }
-            Text { Layout.fillWidth: true; text: "Norma global medida después de backward: " + root.number(backpropScene.gradientNorm, 3); color: Style.Theme.texto_primario; font.bold: true; horizontalAlignment: Text.AlignHCenter; font.pixelSize: 12 * backpropScene.sx }
-            Item { Layout.fillHeight: true }
+
+            Text {
+                Layout.fillWidth: true
+                text: "La loss es un escalar. Autograd aplica derivadas locales y la regla de la cadena hasta obtener la sensibilidad de cada parámetro."
+                color: Style.Theme.texto_secundario
+                wrapMode: Text.WordWrap
+                font.pixelSize: root.fontSize(10, backpropScene.sx)
+            }
+
+            Rectangle {
+                objectName: "trainingBackpropChain"
+                Layout.fillWidth: true
+                Layout.preferredHeight: backpropScene.compact
+                                        ? 145 * backpropScene.sy
+                                        : 175 * backpropScene.sy
+                Layout.minimumHeight: 125 * backpropScene.sy
+                Layout.maximumHeight: 210 * backpropScene.sy
+                radius: 11 * backpropScene.sx
+                color: Style.Theme.superficie_alterna
+                border.color: Qt.alpha("#9333EA", 0.34)
+
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: 10 * backpropScene.sx
+                    spacing: 6 * backpropScene.sy
+                    Text {
+                        Layout.fillWidth: true
+                        text: "LOSS  →  capas finales  →  capas iniciales"
+                        color: Style.Theme.texto_secundario
+                        horizontalAlignment: Text.AlignHCenter
+                        font.bold: true
+                        font.pixelSize: root.fontSize(9, backpropScene.sx)
+                    }
+                    Item {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        Row {
+                            id: reverseRoute
+                            anchors.fill: parent
+                            spacing: 0
+                            Repeater {
+                                model: backpropScene.reverseBlocks
+                                delegate: Item {
+                                    id: backpropBlock
+                                    required property int index
+                                    required property var modelData
+                                    width: reverseRoute.width
+                                           / backpropScene.reverseBlocks.length
+                                    height: reverseRoute.height
+                                    Rectangle {
+                                        anchors.left: parent.left
+                                        anchors.top: parent.top
+                                        anchors.bottom: parent.bottom
+                                        anchors.right: parent.right
+                                        anchors.rightMargin: backpropBlock.index
+                                                             < backpropScene.reverseBlocks.length - 1
+                                                             ? 22 * backpropScene.sx : 0
+                                        radius: 8 * backpropScene.sx
+                                        color: Qt.alpha(backpropBlock.modelData.color,
+                                                        0.07 + 0.10 * Math.abs(Math.sin(
+                                                            (backpropScene.pulse
+                                                             + backpropBlock.index
+                                                               / backpropScene.reverseBlocks.length)
+                                                            * Math.PI)))
+                                        border.width: backpropBlock.index === 0 ? 2 : 1
+                                        border.color: backpropBlock.modelData.color
+                                        Column {
+                                            anchors.centerIn: parent
+                                            width: parent.width - 8 * backpropScene.sx
+                                            spacing: 2 * backpropScene.sy
+                                            Text {
+                                                width: parent.width
+                                                text: backpropBlock.modelData.label
+                                                color: backpropBlock.modelData.color
+                                                font.bold: true
+                                                horizontalAlignment: Text.AlignHCenter
+                                                wrapMode: Text.WordWrap
+                                                font.pixelSize: root.fontSize(9, backpropScene.sx)
+                                            }
+                                            Text {
+                                                width: parent.width
+                                                text: backpropBlock.modelData.derivative
+                                                color: Style.Theme.texto_secundario
+                                                horizontalAlignment: Text.AlignHCenter
+                                                elide: Text.ElideRight
+                                                font.pixelSize: root.fontSize(8, backpropScene.sx)
+                                            }
+                                        }
+                                    }
+                                    Text {
+                                        visible: backpropBlock.index
+                                                 < backpropScene.reverseBlocks.length - 1
+                                        anchors.right: parent.right
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: 22 * backpropScene.sx
+                                        text: "→"
+                                        color: "#9333EA"
+                                        font.bold: true
+                                        horizontalAlignment: Text.AlignHCenter
+                                        font.pixelSize: 16 * backpropScene.sx
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 6 * backpropScene.sx
+                Repeater {
+                    model: [
+                        { number: "1", title: "Derivadas locales", detail: "Cada operación aporta cómo cambia su salida." },
+                        { number: "2", title: "Regla de la cadena", detail: "Las sensibilidades se combinan hacia atrás." },
+                        { number: "3", title: "Gradientes en .grad", detail: "Se guarda un tensor por parámetro entrenable." }
+                    ]
+                    delegate: Rectangle {
+                        id: chainFact
+                        required property int index
+                        required property var modelData
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 56 * backpropScene.sy
+                        radius: 8 * backpropScene.sx
+                        color: Qt.alpha("#9333EA", 0.055)
+                        border.color: Qt.alpha("#9333EA", 0.24)
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: 7 * backpropScene.sx
+                            spacing: 7 * backpropScene.sx
+                            Rectangle {
+                                Layout.preferredWidth: 24 * backpropScene.sx
+                                Layout.preferredHeight: 24 * backpropScene.sy
+                                radius: width / 2
+                                color: "#9333EA"
+                                Text { anchors.centerIn: parent; text: chainFact.modelData.number; color: "white"; font.bold: true }
+                            }
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 1
+                                Text { Layout.fillWidth: true; text: chainFact.modelData.title; color: Style.Theme.texto_primario; font.bold: true; elide: Text.ElideRight; font.pixelSize: root.fontSize(8, backpropScene.sx) }
+                                Text { Layout.fillWidth: true; text: chainFact.modelData.detail; color: Style.Theme.texto_secundario; wrapMode: Text.WordWrap; maximumLineCount: 2; elide: Text.ElideRight; font.pixelSize: root.fontSize(8, backpropScene.sx) }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Rectangle {
+                objectName: "trainingBackpropNoUpdate"
+                Layout.fillWidth: true
+                Layout.preferredHeight: noUpdateText.implicitHeight + 14 * backpropScene.sy
+                radius: 8 * backpropScene.sx
+                color: Style.Theme.aviso_fondo
+                border.color: Style.Theme.warning
+                Text {
+                    id: noUpdateText
+                    anchors.fill: parent
+                    anchors.margins: 7 * backpropScene.sx
+                    text: "Aún no cambian los pesos. backward() solo calcula y acumula gradientes. optimizer.step() los usará en el paso siguiente.  Norma L2 global: "
+                          + root.number(backpropScene.gradientNorm, 3)
+                    color: Style.Theme.aviso_texto
+                    font.bold: true
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                    wrapMode: Text.WordWrap
+                    font.pixelSize: root.fontSize(9, backpropScene.sx)
+                }
+            }
         }
     }
 
@@ -1532,6 +1873,14 @@ Item {
         property real sy: 1
         ColumnLayout {
             anchors.fill: parent; spacing: 7 * gradientScene.sy
+            Text {
+                Layout.fillWidth: true
+                text: "LECTURA: barra = norma L2 relativa a la familia más alta de este batch · RMS = magnitud típica por elemento"
+                color: "#C026D3"
+                font.bold: true
+                wrapMode: Text.WordWrap
+                font.pixelSize: root.fontSize(9, gradientScene.sx)
+            }
             RowLayout { Layout.fillWidth: true
                 Text { text: "FAMILIA DE PARÁMETROS"; Layout.preferredWidth: 190 * gradientScene.sx; color: Style.Theme.texto_secundario; font.bold: true; font.pixelSize: root.fontSize(8, gradientScene.sx) }
                 Text { text: "NORMA L2 DEL GRADIENTE"; Layout.fillWidth: true; color: Style.Theme.texto_secundario; font.bold: true; font.pixelSize: root.fontSize(8, gradientScene.sx) }
@@ -1550,6 +1899,14 @@ Item {
                     Text { Layout.preferredWidth: 74 * gradientScene.sx; text: root.number(gradientRow.modelData.gradiente_rms, 2); color: Style.Theme.texto_secundario; horizontalAlignment: Text.AlignRight; font.pixelSize: root.fontSize(8, gradientScene.sx) }
                 }
             }
+            Text {
+                Layout.fillWidth: true
+                text: "Estas barras describen la señal calculada; no son probabilidades, calidad ni cambios de peso."
+                color: Style.Theme.texto_secundario
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.WordWrap
+                font.pixelSize: root.fontSize(9, gradientScene.sx)
+            }
         }
     }
 
@@ -1564,6 +1921,26 @@ Item {
         signal selected(int index)
         ColumnLayout {
             anchors.fill: parent; spacing: 12 * optimizerScene.sy
+            Rectangle {
+                objectName: "trainingOptimizerUpdateNotice"
+                Layout.fillWidth: true
+                Layout.preferredHeight: optimizerNotice.implicitHeight + 14 * optimizerScene.sy
+                radius: 8 * optimizerScene.sx
+                color: Style.Theme.exito_fondo
+                border.color: Style.Theme.success
+                Text {
+                    id: optimizerNotice
+                    anchors.fill: parent
+                    anchors.margins: 7 * optimizerScene.sx
+                    text: "AQUÍ SÍ CAMBIAN LOS PESOS · optimizer.step() transforma los gradientes en actualizaciones de Adam."
+                    color: Style.Theme.exito_texto
+                    font.bold: true
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                    wrapMode: Text.WordWrap
+                    font.pixelSize: root.fontSize(9, optimizerScene.sx)
+                }
+            }
             RowLayout { Layout.fillWidth: true
                 Text { text: "Parámetro inspeccionado"; color: Style.Theme.texto_secundario; font.pixelSize: root.fontSize(10, optimizerScene.sx) }
                 SelectorPrincipal { Layout.fillWidth: true; sx: root.sx; sy: root.sy; model: optimizerScene.updates.map(function(item) { return item.etiqueta }); currentIndex: optimizerScene.selectedIndex; onActivated: function(index) { optimizerScene.selected(index) } }
@@ -1629,7 +2006,7 @@ Item {
                     ctx.fillText(max.toFixed(3), 2, 18); ctx.fillText(min.toFixed(3), 2, height - pad)
                 }
             }
-            Text { Layout.fillWidth: true; text: "Una subida local no implica que Adam haya aprendido al revés: el siguiente batch puede contener tokens más difíciles."; color: Style.Theme.texto_secundario; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap; font.pixelSize: root.fontSize(9, evolution.sx) }
+            Text { Layout.fillWidth: true; text: "Cada punto es loss de entrenamiento de un batch usado para actualizar pesos. No es validación ni demuestra generalización; una subida local puede deberse a un batch más difícil."; color: Style.Theme.texto_secundario; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap; font.pixelSize: root.fontSize(9, evolution.sx) }
         }
     }
 }
