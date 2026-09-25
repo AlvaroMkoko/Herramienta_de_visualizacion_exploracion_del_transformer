@@ -17,6 +17,7 @@ data/checkpoints/modelo.pt
 
 !data/teoria/transformer.json
 !data/evaluacion/question_bank.json
+!data/resultados/resultados_evaluacion.json
 cambiar_constantes.py
 
 reporte_especificaciones_desarrollo.md

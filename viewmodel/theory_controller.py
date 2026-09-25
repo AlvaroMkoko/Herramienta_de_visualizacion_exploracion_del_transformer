@@ -20,13 +20,16 @@ import json
 from pathlib import Path
 from typing import Any
 
+from core.rutas import recurso
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
 
 # La ruta no depende del directorio desde el que se inicie Python/QML. El
 # archivo de este módulo vive en ``<proyecto>/viewmodel``.
 RUTA_TEORIA_POR_DEFECTO = (
-    Path(__file__).resolve().parents[1] / "data" / "teoria" / "transformer.json"
+    # recurso(): el archivo de teoría es de solo lectura y viaja dentro del
+    # paquete, donde __file__ ya no sirve para ubicarlo.
+    recurso("data", "teoria", "transformer.json")
 )
 
 

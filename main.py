@@ -27,8 +27,9 @@ from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterType
 from PySide6.QtQuickControls2 import QQuickStyle
 from PySide6.QtGui import QFont, QIcon
 from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import QCoreApplication
+from PySide6.QtCore import QCoreApplication, QUrl
 
+from core.rutas import recurso
 from view.canvas.animation_engine import VispyItem
 from viewmodel.main_viewmodel import MainViewModel
 
@@ -59,7 +60,10 @@ def main() -> None:
         )
         app.setFont(fuente_interfaz)
 
-    app.setWindowIcon(QIcon("view/assets/icono.ico"))
+    # Ruta absoluta: una relativa se resuelve contra el directorio de
+    # trabajo, que al hacer doble clic en el ejecutable no es el del
+    # proyecto.
+    app.setWindowIcon(QIcon(str(recurso("view", "assets", "icono.ico"))))
 
     # `main_view_model` se queda vivo mientras dure `app.exec()` porque
     # el contexto de QML mantiene una referencia a él (setContextProperty).
@@ -71,7 +75,9 @@ def main() -> None:
     engine = QQmlApplicationEngine()
     engine.rootContext().setContextProperty("mainViewModel", main_view_model)
 
-    engine.load("view/qml/main.qml")
+    # QUrl.fromLocalFile y no la ruta en crudo: en Windows, engine.load()
+    # interpretaría la letra de unidad de "C:/..." como un esquema de URL.
+    engine.load(QUrl.fromLocalFile(str(recurso("view", "qml", "main.qml"))))
 
     if not engine.rootObjects():
         sys.exit(-1)
