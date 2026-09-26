@@ -113,3 +113,133 @@ def test_borrar_todo_el_progreso(tmp_path):
     assert progress.pasosCompletados == 0
     assert progress.laboratoriosAbiertos == []
     assert evaluation.history == []
+
+
+def test_ruta_no_estricta_abre_todas_las_etapas(tmp_path):
+    """El interruptor global existe para desarrollo y demostraciones: sin él,
+    enseñar el post-test obligaría a recorrer los cinco pasos en vivo."""
+    _, _, progress = crear_controladores(tmp_path)
+    progress.establecerRequiereRecorridoParaLabs(False)
+
+    progress.establecerRutaEstricta(False)
+
+    assert all(progress.etapaDisponible(orden) is True for orden in (1, 2, 3, 4, 5))
+    assert progress.rutaEstricta is False
+
+
+def test_el_candado_de_laboratorios_es_independiente_del_interruptor(tmp_path):
+    """Son dos banderas distintas: apagar la ruta estricta no debe desbloquear
+    los laboratorios si el proyecto todavía exige el recorrido guiado."""
+    _, _, progress = crear_controladores(tmp_path)
+    progress.establecerRutaEstricta(False)
+    progress.establecerRequiereRecorridoParaLabs(True)
+
+    assert progress.etapaDisponible(3) is False
+    assert progress.etapaDisponible(4) is True
+
+
+def test_los_interruptores_persisten_entre_ejecuciones(tmp_path):
+    """Sin type=bool, QSettings devuelve la cadena "false", que es verdadera en
+    Python: el interruptor parecería apagarse y volvería encendido al reiniciar.
+    """
+    ruta = tmp_path / "banderas.ini"
+    settings = QSettings(str(ruta), QSettings.IniFormat)
+    learning = LearningController(settings=settings)
+    evaluation = EvaluationController(repository=ResultsRepository())
+    progress = ProgressController(learning, evaluation, settings=settings)
+
+    progress.establecerRutaEstricta(False)
+    progress.establecerRequiereRecorridoParaLabs(False)
+    settings.sync()
+
+    recargados = QSettings(str(ruta), QSettings.IniFormat)
+    nuevo = ProgressController(
+        LearningController(settings=recargados),
+        EvaluationController(repository=ResultsRepository()),
+        settings=recargados,
+    )
+
+    assert nuevo.rutaEstricta is False
+    assert nuevo.requiereRecorridoParaLabs is False
+
+
+def test_terminar_una_evaluacion_propaga_el_cambio(tmp_path, qtbot):
+    """ProgressController deriva su estado de otros dos controladores. Sin
+    reemitir sus señales, completar el pre-test no habilitaría el recorrido
+    guiado hasta reiniciar la aplicación."""
+    _, evaluation, progress = crear_controladores(tmp_path)
+
+    with qtbot.waitSignal(progress.progresoCambio, timeout=1000):
+        guardar_resultado(evaluation, "pre")
+        evaluation.stateChanged.emit()
+
+    assert progress.preTestCompletado is True
+    assert progress.etapaDisponible(2) is True
+
+
+def test_completar_el_recorrido_propaga_el_cambio(tmp_path, qtbot):
+    learning, _, progress = crear_controladores(tmp_path)
+
+    with qtbot.waitSignal(progress.progresoCambio, timeout=1000):
+        learning.markUnitCompleted("unit_1")
+
+    assert progress.recorridoCompletado is False
+
+
+def test_motivo_de_bloqueo_vacio_cuando_la_etapa_esta_disponible(tmp_path):
+    _, evaluation, progress = crear_controladores(tmp_path)
+
+    assert progress.motivoBloqueo(1) == ""
+    assert progress.motivoBloqueo(2) != ""
+
+    guardar_resultado(evaluation, "pre")
+
+    assert progress.motivoBloqueo(2) == ""
+
+
+def test_cada_etapa_bloqueada_explica_que_falta(tmp_path):
+    """El texto va al ToolTip: un candado sin explicación deja al estudiante
+    sin saber qué hacer."""
+    _, _, progress = crear_controladores(tmp_path)
+
+    for orden in (2, 3, 4, 5):
+        motivo = progress.motivoBloqueo(orden)
+        assert motivo, f"la etapa {orden} no explica por qué está bloqueada"
+        assert motivo != progress.motivoBloqueo(orden - 1) or orden == 2
+
+
+def test_una_etapa_fuera_de_rango_no_esta_disponible(tmp_path):
+    _, _, progress = crear_controladores(tmp_path)
+
+    assert progress.etapaDisponible(0) is False
+    assert progress.etapaDisponible(6) is False
+
+
+def test_borrar_el_progreso_persiste_el_borrado(tmp_path):
+    """El test existente comprueba el estado en memoria; esto comprueba que al
+    reabrir la aplicación el progreso sigue vacío."""
+    ruta = tmp_path / "borrado.ini"
+    settings = QSettings(str(ruta), QSettings.IniFormat)
+    learning = LearningController(settings=settings)
+    evaluation = EvaluationController(
+        repository=ResultsRepository(tmp_path / "resultados.json")
+    )
+    progress = ProgressController(learning, evaluation, settings=settings)
+    progress.registrarLaboratorioAbierto("entrenamiento")
+    progress.registrarSeguimientoVisitado()
+
+    progress.borrarTodoElProgreso()
+    settings.sync()
+
+    recargados = QSettings(str(ruta), QSettings.IniFormat)
+    nuevo = ProgressController(
+        LearningController(settings=recargados),
+        EvaluationController(
+            repository=ResultsRepository(tmp_path / "resultados.json")
+        ),
+        settings=recargados,
+    )
+
+    assert nuevo.pasosCompletados == 0
+    assert nuevo.laboratoriosAbiertos == []
+    assert nuevo.seguimientoVisitado is False

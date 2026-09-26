@@ -468,7 +468,16 @@ class TestIndicadorGuardado:
             assert controlador.guardando is True
             assert fases[0] == "Preparando modelo portable..."
             qtbot.waitUntil(inicio_escritura.is_set, timeout=1000)
-            assert controlador.faseGuardado == "Escribiendo el modelo en disco..."
+            # La fase viaja en una señal en cola desde el hilo de guardado, así
+            # que el evento puede estar puesto antes de que el hilo principal la
+            # haya procesado. Esperar el valor observable en vez del evento
+            # elimina una carrera que hacía fallar esta prueba ~1 de cada 3
+            # ejecuciones.
+            qtbot.waitUntil(
+                lambda: controlador.faseGuardado
+                == "Escribiendo el modelo en disco...",
+                timeout=1000,
+            )
 
             with qtbot.waitSignal(controlador.checkpoint_guardado, timeout=2000):
                 permitir_fin.set()

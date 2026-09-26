@@ -19,9 +19,12 @@ import pytest
 from PySide6.QtCore import Q_ARG, QMetaObject, QObject, QSettings, Qt, QUrl
 from PySide6.QtQml import QJSValue, QQmlComponent, QQmlEngine
 
+from model.evaluacion.results_repository import ResultsRepository
 from viewmodel import main_viewmodel as modulo_main_viewmodel
+from viewmodel.evaluation_controller import EvaluationController
 from viewmodel.learning_controller import LearningController
 from viewmodel.main_viewmodel import MainViewModel
+from viewmodel.progress_controller import ProgressController
 
 
 RAIZ_PROYECTO = Path(__file__).resolve().parents[2]
@@ -115,19 +118,36 @@ def _buscar(raiz: QObject, object_name: str) -> QObject:
 
 
 def _crear_view_model_aislado(monkeypatch, tmp_path: Path) -> MainViewModel:
-    """Evita leer o escribir el progreso real del usuario durante la prueba."""
+    """Evita leer o escribir el progreso real del usuario durante la prueba.
+
+    Se aíslan los tres controladores que persisten estado, no solo el del
+    recorrido: desde que el avance gobierna la navegación, una prueba que leyera
+    los resultados reales pasaría o fallaría según si quien la ejecuta ya hizo
+    el pre-test en su máquina.
+    """
     settings = QSettings(
         str(tmp_path / "guided-learning-test.ini"), QSettings.Format.IniFormat
     )
     settings.clear()
     settings.sync()
+    ruta_resultados = tmp_path / "resultados-test.json"
 
-    def crear_controlador(parent=None):
+    def crear_learning(parent=None):
         return LearningController(parent=parent, settings=settings)
 
+    def crear_evaluation(parent=None):
+        return EvaluationController(
+            parent=parent, repository=ResultsRepository(ruta_resultados)
+        )
+
+    def crear_progress(learning, evaluation, parent=None):
+        return ProgressController(learning, evaluation, parent, settings=settings)
+
+    monkeypatch.setattr(modulo_main_viewmodel, "LearningController", crear_learning)
     monkeypatch.setattr(
-        modulo_main_viewmodel, "LearningController", crear_controlador
+        modulo_main_viewmodel, "EvaluationController", crear_evaluation
     )
+    monkeypatch.setattr(modulo_main_viewmodel, "ProgressController", crear_progress)
     return MainViewModel()
 
 
@@ -333,20 +353,25 @@ def test_home_expone_secuencia_y_abre_el_recorrido_guiado(home_qml, qapp, qtbot)
     home = _buscar(window, "homeScreen")
     navigation = _buscar(window, "learningNavigation")
 
+    # La disponibilidad ya no es una lista fija en QML: la decide
+    # ProgressController.etapaDisponible(). Esta prueba comprueba la estructura
+    # del flujo y la navegación; las guardias tienen su propio archivo
+    # (test_home_navigation_guards.py), así que aquí se abre el paso.
+    progreso = view_model.progressController
+    progreso.establecerRutaEstricta(False)
+    progreso.establecerRequiereRecorridoParaLabs(False)
+    qapp.processEvents()
+
     assert _propiedad(home, "totalPlatformStages") == 5
     assert _propiedad(home, "platformStageOrder") == [1, 2, 3, 4, 5]
-    assert _propiedad(home, "platformStageAvailability") == [
-        True,
-        True,
-        False,
-        True,
-        True,
-    ]
+    assert [progreso.etapaDisponible(orden) for orden in (1, 2, 3, 4, 5)] == [
+        True
+    ] * 5
 
     etapas = [
         ("pretestStageCard", 1, True, False, "EvaluationIntroScreen.qml"),
         ("guidedStageCard", 2, True, False, "GuidedLearningScreen.qml"),
-        ("labsStageCard", 3, False, False, ""),
+        ("labsStageCard", 3, True, False, ""),
         ("posttestStageCard", 4, True, False, "EvaluationIntroScreen.qml"),
         ("resultsStageCard", 5, True, True, "ModulePlaceholderScreen.qml"),
     ]
@@ -444,9 +469,43 @@ def test_home_expone_secuencia_y_abre_el_recorrido_guiado(home_qml, qapp, qtbot)
     assert _propiedad(guided, "currentConceptIndex") == 1
 
 
-def test_pretest_responde_ocho_preguntas_y_muestra_resultado(
+def _respuesta_perfecta(pregunta_privada: dict) -> dict:
+    """Respuesta con puntaje máximo, cualquiera que sea el tipo de reactivo."""
+    tipo = pregunta_privada["tipo"]
+    if tipo == "opcion_unica":
+        return {"opcion_id": pregunta_privada["correct_option_id"]}
+    if tipo == "seleccion_multiple":
+        return {"opciones_ids": list(pregunta_privada["correct_option_ids"])}
+    if tipo == "texto":
+        return {"texto": pregunta_privada["respuestas_aceptadas"][0]}
+    if tipo == "asignacion":
+        return {
+            "asignaciones": {
+                elemento["id"]: elemento["correcto"]
+                for elemento in pregunta_privada["elementos"]
+            }
+        }
+    return {
+        "etapas": {
+            etapa["id"]: (
+                {"texto": "justificación del estudiante"}
+                if etapa["tipo"] == "texto_libre"
+                else {"opcion_id": etapa["correct_option_id"]}
+            )
+            for etapa in pregunta_privada["etapas"]
+        }
+    }
+
+
+def test_pretest_recorre_los_veinte_reactivos_y_muestra_el_resultado(
     home_qml, qapp, qtbot
 ):
+    """Recorrido completo del pre-test con el instrumento v2.
+
+    El valor de esta prueba está en que los 20 reactivos son de cinco tipos
+    distintos: verifica que el Loader polimórfico monta el delegate correcto en
+    cada uno y que el avance no se atora en ninguno.
+    """
     window, view_model = home_qml
     home = _buscar(window, "homeScreen")
     navigation = _buscar(window, "learningNavigation")
@@ -466,26 +525,50 @@ def test_pretest_responde_ocho_preguntas_y_muestra_resultado(
     evaluation = _buscar(window, "evaluationScreen")
     controller = view_model.evaluationController
 
-    first_question = _propiedad(controller, "currentQuestion")
-    assert first_question["id"] == "pre_t1"
-    assert "correct_option_id" not in first_question
+    primera = _propiedad(controller, "currentQuestion")
+    assert primera["id"] == "pre_t1"
+    assert primera["tipo"] == "texto"
+    assert "correct_option_id" not in primera
+    assert "respuestas_aceptadas" not in primera
     assert _propiedad(_buscar(evaluation, "evaluationNextButton"), "enabled") is False
-    assert _propiedad(_buscar(evaluation, "evaluationOptionsRepeater"), "count") == 4
 
-    for expected_number in range(1, 9):
-        assert _propiedad(controller, "currentQuestionNumber") == expected_number
-        controller.selectAnswer("a")
+    privadas = {
+        pregunta["id"]: pregunta
+        for pregunta in controller._bank.get_questions("pre")
+    }
+    tipos_vistos = set()
+
+    for numero in range(1, 21):
+        assert _propiedad(controller, "currentQuestionNumber") == numero
+        publica = _propiedad(controller, "currentQuestion")
+        tipos_vistos.add(publica["tipo"])
+
+        # El Loader debe haber montado un delegate para este tipo.
+        cargador = _buscar(evaluation, "evaluationQuestionLoader")
+        assert _propiedad(cargador, "item") is not None, publica["tipo"]
+
+        controller.registrarRespuesta(_respuesta_perfecta(privadas[publica["id"]]))
         qapp.processEvents()
-        assert _propiedad(controller, "selectedOptionId") == "a"
-        next_button = _buscar(evaluation, "evaluationNextButton")
-        assert _propiedad(next_button, "enabled") is True
-        _invocar(next_button, "clicked")
+
+        boton = _buscar(evaluation, "evaluationNextButton")
+        assert _propiedad(boton, "enabled") is True, publica["code"]
+        _invocar(boton, "clicked")
         qapp.processEvents()
+
+    assert tipos_vistos == {
+        "opcion_unica",
+        "seleccion_multiple",
+        "texto",
+        "asignacion",
+        "etapas",
+    }
 
     assert _propiedad(controller, "finished") is True
-    result = _propiedad(controller, "result")
-    assert result["correct"] == 2
-    assert result["total"] == 8
-    assert len(result["dimensions"]) == 2
+    resultado = _propiedad(controller, "result")
+    assert resultado["puntaje"] == 20.0
+    assert resultado["maximo"] == 20.0
+    assert resultado["percentage"] == 100.0
+    assert len(resultado["dimensions"]) == 5
+    assert len(resultado["bloom"]) == 3
     assert _propiedad(_buscar(evaluation, "evaluationResultCard"), "visible") is True
-    assert _propiedad(_buscar(evaluation, "evaluationScoreText"), "text") == "2 / 8"
+    assert _propiedad(_buscar(evaluation, "evaluationScoreText"), "text") == "20 / 20"
