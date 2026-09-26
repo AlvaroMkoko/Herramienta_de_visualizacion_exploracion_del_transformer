@@ -6,11 +6,23 @@ import QtQuick.Layouts
 import "../styles" as Style
 import "../components"
 
-// Pantalla de pre-test y post-test (instrumento v2).
+// Pantalla de pre-test y post-test (instrumento v3).
 //
-// El reactivo no se dibuja aquí: un Loader elige el componente Reactivo* según
-// `currentQuestionType` y le entrega la pregunta pública. Agregar un formato es
-// registrar su componente en `componentePara`, sin tocar el resto de la pantalla.
+// El reactivo no se dibuja aquí: un Loader elige el componente Reactivo* y le
+// entrega la pregunta pública.
+//
+// El componente se elige por `presentacion`, no por `tipo`. Son dos ejes
+// distintos y hacen falta los dos:
+//
+//   tipo          qué FORMA tiene la respuesta que espera el modelo
+//   presentacion  cómo se DIBUJA y se toca el reactivo
+//
+// Dos reactivos del mismo tipo pueden verse completamente distintos (A3 y F2
+// son ambos «etapas»; uno se contesta tocando dentro de una frase y el otro con
+// V/F más un acordeón), y dos presentaciones distintas pueden producir la misma
+// forma de respuesta. Si el banco no declara `presentacion`, o declara una que
+// esta versión no conoce, se cae al despacho por tipo: un banco viejo sigue
+// abriendo.
 //
 // La retroalimentación es al final: mientras dura el examen ninguna propiedad
 // expuesta revela si la respuesta en curso es correcta.
@@ -26,6 +38,47 @@ PagePrincipal {
     property int questionAtTop: 0
 
     readonly property var resultado: evaluationController.result
+
+    readonly property string presentacion: String(
+        root.currentQuestion.presentacion || "")
+
+    // Presentaciones cuyo componente dibuja el enunciado por su cuenta (porque
+    // la respuesta vive DENTRO del texto). La pantalla no lo repite arriba.
+    readonly property bool reactivoDibujaEnunciado:
+        root.presentacion === "caja_en_linea"
+        || root.presentacion === "fragmentos_clicables"
+
+    readonly property string enunciadoCompleto: String(root.currentQuestion.prompt || "")
+    readonly property int corteEscenario: root.enunciadoCompleto.indexOf("\n\n")
+
+    // Los reactivos de predicción traen el escenario y la pregunta en el mismo
+    // enunciado, separados por un renglón en blanco. Mostrarlos como un solo
+    // bloque obliga a releer el caso entero para recordar qué se pregunta; el
+    // escenario va en un panel fijo y la pregunta queda sola y en grande.
+    readonly property bool tieneEscenario:
+        root.presentacion === "tarjetas_con_escenario" && root.corteEscenario !== -1
+
+    readonly property string textoEscenario: root.tieneEscenario
+        ? root.enunciadoCompleto.substring(0, root.corteEscenario).trim() : ""
+
+    readonly property string textoEnunciado: root.tieneEscenario
+        ? root.enunciadoCompleto.substring(root.corteEscenario + 2).trim()
+        : root.enunciadoCompleto
+
+    // Contador de selecciones. Solo aparece en los reactivos de selección
+    // múltiple, donde el instrumento no dice cuántas opciones son correctas:
+    // el contador informa sin delatar (nunca compara contra el total real).
+    readonly property string textoContador: {
+        if (String(root.evaluationController.currentQuestionType) !== "seleccion_multiple")
+            return ""
+        var respuesta = root.evaluationController.currentAnswer
+        var elegidas = (respuesta && respuesta.opciones_ids)
+                       ? respuesta.opciones_ids.length : 0
+        if (elegidas === 0)
+            return ""
+        return elegidas === 1 ? "1 opción seleccionada"
+                              : elegidas + " opciones seleccionadas"
+    }
 
     function returnToLearningPath() {
         if (root.stackView.depth >= 3)
@@ -50,7 +103,11 @@ PagePrincipal {
     Component { id: compSeleccionMultiple; ReactivoSeleccionMultiple {} }
     Component { id: compTexto; ReactivoTexto {} }
     Component { id: compAsignacion; ReactivoAsignacion {} }
+    Component { id: compOrdenar; ReactivoOrdenar {} }
+    Component { id: compCestas; ReactivoCestas {} }
+    Component { id: compRelacionar; ReactivoRelacionar {} }
     Component { id: compEtapas; ReactivoEtapas {} }
+    Component { id: compFragmentos; ReactivoFragmentos {} }
     Component { id: compNoSoportado; Text {
             text: "Este formato de reactivo todavía no tiene vista."
             color: Style.Theme.error_texto
@@ -58,7 +115,30 @@ PagePrincipal {
             wrapMode: Text.WordWrap
         } }
 
-    function componentePara(tipo) {
+    // Eje de dibujo. Solo se listan las presentaciones que tienen una vista
+    // propia o que conviene dejar escritas para que se vea de un vistazo qué
+    // formato usa qué componente.
+    function componentePara(presentacion, tipo) {
+        switch (presentacion) {
+        case "tarjetas":
+        case "tarjetas_con_escenario":
+        case "heatmap_clic":                  return compOpcionUnica
+        case "chips_toggle":                  return compSeleccionMultiple
+        case "caja_en_linea":                 return compTexto
+        case "lista_arrastrable":             return compOrdenar
+        case "cestas":                        return compCestas
+        case "lineas_o_tocar_para_emparejar": return compRelacionar
+        case "pasos":
+        case "botones_vf_acordeon":           return compEtapas
+        case "fragmentos_clicables":          return compFragmentos
+        }
+        return root.componentePorTipo(tipo)
+    }
+
+    // Eje de respuesta. Es el respaldo: un banco sin `presentacion`, o con una
+    // presentación que esta versión todavía no dibuja, se sigue pudiendo
+    // contestar con la vista genérica del tipo.
+    function componentePorTipo(tipo) {
         switch (tipo) {
         case "opcion_unica":       return compOpcionUnica
         case "seleccion_multiple": return compSeleccionMultiple
@@ -266,10 +346,59 @@ PagePrincipal {
                         width: questionScroll.availableWidth
                         spacing: 14 * root.sy
 
+                        // Escenario del caso, cuando el reactivo lo trae.
+                        Rectangle {
+                            objectName: "evaluationScenarioPanel"
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: visible
+                                ? textoEscenario.implicitHeight + 32 * root.sy : 0
+                            visible: root.tieneEscenario
+                            radius: 12 * root.sx
+                            color: Style.Theme.info_fondo
+
+                            Rectangle {
+                                anchors.left: parent.left
+                                anchors.top: parent.top
+                                anchors.bottom: parent.bottom
+                                width: 4 * root.sx
+                                radius: width / 2
+                                color: Style.Theme.info_texto
+                            }
+
+                            ColumnLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: 20 * root.sx
+                                anchors.rightMargin: 16 * root.sx
+                                anchors.topMargin: 14 * root.sy
+                                anchors.bottomMargin: 14 * root.sy
+                                spacing: 5 * root.sy
+
+                                Text {
+                                    text: "ESCENARIO"
+                                    color: Style.Theme.info_texto
+                                    font.family: Style.Theme.fuente_interfaz
+                                    font.pixelSize: 10 * root.sx
+                                    font.bold: true
+                                    font.letterSpacing: 0.9
+                                }
+                                Text {
+                                    id: textoEscenario
+                                    Layout.fillWidth: true
+                                    text: root.textoEscenario
+                                    color: Style.Theme.texto_primario
+                                    font.family: Style.Theme.fuente_interfaz
+                                    font.pixelSize: 16 * root.sx
+                                    lineHeight: 1.25
+                                    wrapMode: Text.WordWrap
+                                }
+                            }
+                        }
+
                         Text {
                             objectName: "evaluationQuestionPrompt"
                             Layout.fillWidth: true
-                            text: root.currentQuestion.prompt || ""
+                            visible: !root.reactivoDibujaEnunciado
+                            text: root.textoEnunciado
                             color: Style.Theme.texto_primario
                             font.family: Style.Theme.fuente_interfaz
                             font.pixelSize: 22 * root.sx
@@ -314,6 +443,7 @@ PagePrincipal {
                             readonly property string preguntaId: root.currentQuestion.id || ""
 
                             sourceComponent: root.componentePara(
+                                                 root.presentacion,
                                                  root.evaluationController.currentQuestionType)
 
                             function montar() {
@@ -372,21 +502,83 @@ PagePrincipal {
                     Layout.preferredHeight: 54 * root.sy
                     spacing: 12 * root.sx
 
+                    // Regreso al reactivo anterior. La respuesta ya registrada
+                    // se restaura sola: el controlador la vuelve a poner en
+                    // curso al cambiar de reactivo, así que volver atrás no
+                    // obliga a contestar de nuevo.
+                    BotonSecundario {
+                        objectName: "evaluationPreviousButton"
+                        Layout.preferredWidth: 150 * root.sx
+                        Layout.preferredHeight: 44 * root.sy
+                        Layout.alignment: Qt.AlignVCenter
+                        sx: root.sx
+                        sy: root.sy
+                        text: "← Anterior"
+                        enabled: root.evaluationController.canGoBack
+                        opacity: enabled ? 1 : 0.4
+                        Accessible.name: "Volver al reactivo anterior"
+                        onClicked: root.evaluationController.goToPreviousQuestion()
+                    }
+
+                    Rectangle {
+                        objectName: "evaluationSelectionCounter"
+                        visible: root.textoContador !== ""
+                        Layout.preferredWidth: visible
+                            ? etiquetaContador.implicitWidth + 22 * root.sx : 0
+                        Layout.preferredHeight: 30 * root.sy
+                        Layout.alignment: Qt.AlignVCenter
+                        radius: height / 2
+                        color: Style.Theme.acento_fondo
+
+                        Text {
+                            id: etiquetaContador
+                            anchors.centerIn: parent
+                            text: root.textoContador
+                            color: Style.Theme.acento_fuerte
+                            font.family: Style.Theme.fuente_interfaz
+                            font.pixelSize: 11 * root.sx
+                            font.bold: true
+                        }
+                    }
+
                     Text {
+                        objectName: "evaluationStatusText"
                         Layout.fillWidth: true
                         text: root.errorMessage !== ""
                               ? root.errorMessage
-                              : (root.evaluationController.canContinue
-                                 ? "Respuesta registrada"
-                                 : "Completa tu respuesta para continuar")
+                              : (root.evaluationController.isRevisiting
+                                 ? "Estás revisando una respuesta anterior. "
+                                   + "Se actualiza al continuar."
+                                 : (root.evaluationController.canContinue
+                                    ? "Respuesta registrada"
+                                    : "Completa tu respuesta para continuar"))
                         color: root.errorMessage !== ""
                                ? Style.Theme.error_texto
-                               : (root.evaluationController.canContinue
-                                  ? Style.Theme.exito_texto
-                                  : Style.Theme.texto_secundario)
+                               : (root.evaluationController.isRevisiting
+                                  ? Style.Theme.aviso_texto
+                                  : (root.evaluationController.canContinue
+                                     ? Style.Theme.exito_texto
+                                     : Style.Theme.texto_secundario))
                         font.family: Style.Theme.fuente_interfaz
                         font.pixelSize: 13 * root.sx
                         wrapMode: Text.WordWrap
+                    }
+
+                    // Regreso directo al punto donde se dejó la evaluación.
+                    // Sin esto, retroceder cinco reactivos para corregir uno
+                    // obligaría a volver a pasar por los cinco.
+                    BotonSecundario {
+                        objectName: "evaluationResumeButton"
+                        visible: root.evaluationController.isRevisiting
+                        Layout.preferredWidth: visible ? 210 * root.sx : 0
+                        Layout.preferredHeight: 44 * root.sy
+                        Layout.alignment: Qt.AlignVCenter
+                        sx: root.sx
+                        sy: root.sy
+                        text: "Ir al reactivo "
+                              + root.evaluationController.frontierQuestionNumber + " →"
+                        Accessible.name: "Volver al reactivo donde te quedaste"
+                        onClicked: root.evaluationController.goToFrontierQuestion()
                     }
 
                     BotonPrincipal {
@@ -396,6 +588,9 @@ PagePrincipal {
                         minimum_text_size: 13
                         enabled: root.evaluationController.canContinue
                         opacity: enabled ? 1 : 0.45
+                        // Al revisar, el botón avanza uno; «Finalizar» solo
+                        // aparece de verdad en el último reactivo, que es
+                        // cuando el modelo califica.
                         text: root.evaluationController.isLastQuestion
                               ? "Finalizar evaluación"
                               : "Guardar y continuar →"

@@ -15,6 +15,9 @@ from .scorers import calificar
 
 RESULT_SCHEMA_VERSION = 2
 
+#: Version de instrumento que se asume en resultados que no la declaran.
+INSTRUMENT_VERSION_POR_DEFECTO = 2
+
 
 def _porcentaje(puntaje: float, maximo: float) -> float:
     return round((puntaje * 100 / maximo) if maximo else 0.0, 1)
@@ -35,6 +38,7 @@ def compute_metrics(
     questions: list[dict[str, Any]],
     answers: Mapping[str, Any],
     dimensions: list[dict[str, str]],
+    instrument_version: int = INSTRUMENT_VERSION_POR_DEFECTO,
 ) -> dict[str, Any]:
     """Calcula el puntaje total, el desglose por dimensión y por nivel de Bloom.
 
@@ -123,6 +127,10 @@ def compute_metrics(
 
     return {
         "schema_version": RESULT_SCHEMA_VERSION,
+        # Qué reactivos se contestaron, no qué forma tiene este diccionario.
+        # Sin este sello no hay manera de saber si un pre y un post son
+        # comparables.
+        "instrument_version": int(instrument_version),
         "assessment_type": assessment_type,
         "puntaje": puntaje_total,
         "maximo": maximo_total,

@@ -71,6 +71,62 @@ class EvaluationManager:
         return bool(question) and es_respuesta_completa(question, respuesta)
 
     # ------------------------------------------------------------------
+    # Navegación hacia atrás
+    # ------------------------------------------------------------------
+
+    @property
+    def frontier_index(self) -> int:
+        """Índice del primer reactivo todavía sin contestar.
+
+        Es el límite de hasta dónde se puede navegar: hacia atrás, cualquier
+        reactivo ya contestado; hacia adelante, como mucho el primero que falta.
+        Nunca se puede saltar por encima de un reactivo en blanco, porque
+        ``score_evaluation`` exige que estén todos y porque dejar huecos
+        convertiría el instrumento en otro: quien contesta salteado elige qué
+        reactivos responder, y eso cambia lo que mide la puntuación total.
+        """
+        for indice, question in enumerate(self.questions):
+            if str(question["id"]) not in self.answers:
+                return indice
+        return max(len(self.questions) - 1, 0)
+
+    @property
+    def is_revisiting(self) -> bool:
+        """¿El reactivo en pantalla es uno al que se volvió?"""
+        return self.active and self.current_index < self.frontier_index
+
+    def can_go_to(self, indice: int) -> bool:
+        if not self.active:
+            return False
+        return 0 <= int(indice) <= self.frontier_index
+
+    def go_to(self, indice: int) -> None:
+        destino = int(indice)
+        if not self.can_go_to(destino):
+            raise EvaluationStateError(
+                "No se puede ir a ese reactivo desde el estado actual."
+            )
+        self.current_index = destino
+
+    def can_go_back(self) -> bool:
+        return self.active and self.current_index > 0
+
+    def go_back(self) -> None:
+        if not self.can_go_back():
+            raise EvaluationStateError("No hay un reactivo anterior.")
+        self.current_index -= 1
+
+    def answer_for(self, question_id: str) -> Any:
+        """Respuesta guardada de un reactivo, o ``None``.
+
+        Se devuelve una copia: quien la reciba va a editarla mientras el
+        estudiante cambia de opinión, y esos cambios no deben tocar lo ya
+        registrado hasta que se vuelva a enviar.
+        """
+        guardada = self.answers.get(str(question_id))
+        return deepcopy(guardada) if guardada is not None else None
+
+    # ------------------------------------------------------------------
     # Avance
     # ------------------------------------------------------------------
 
@@ -107,4 +163,5 @@ class EvaluationManager:
             self.questions,
             self.answers,
             self.question_bank.dimensions,
+            self.question_bank.instrument_version,
         )

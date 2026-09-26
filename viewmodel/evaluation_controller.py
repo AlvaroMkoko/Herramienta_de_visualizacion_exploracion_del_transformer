@@ -1,4 +1,4 @@
-"""ViewModel del pre-test y post-test (instrumento v2).
+"""ViewModel del pre-test y post-test.
 
 Cambio principal respecto a v1: la respuesta dejó de ser el id de una opción y
 pasó a ser un objeto cuya forma depende del tipo de reactivo. QML construye ese
@@ -24,6 +24,7 @@ from PySide6.QtCore import (
 
 from core.rutas import DIR_RESULTADOS, recurso
 from model.evaluacion import (
+    INSTRUMENT_VERSION_POR_DEFECTO,
     EvaluationManager,
     EvaluationStateError,
     QuestionBank,
@@ -46,6 +47,20 @@ RUTA_RESULTADOS_POR_DEFECTO = DIR_RESULTADOS / "resultados_evaluacion.json"
 
 def _ruta_resultados() -> Path:
     return RUTA_RESULTADOS_POR_DEFECTO
+
+
+def _version_instrumento(resultado: dict[str, Any]) -> int:
+    """Versión del instrumento con que se respondió un resultado guardado.
+
+    Los resultados anteriores a que existiera el campo se tratan como v2, que
+    es el instrumento con el que se produjeron.
+    """
+    try:
+        return int(
+            resultado.get("instrument_version", INSTRUMENT_VERSION_POR_DEFECTO)
+        )
+    except (TypeError, ValueError):
+        return INSTRUMENT_VERSION_POR_DEFECTO
 
 
 def _a_python(valor: Any) -> Any:
@@ -157,6 +172,11 @@ class EvaluationController(QObject):
                 result.append({**dimension, "question_count": len(propias)})
         return result
 
+    @Property(int, notify=questionChanged)
+    def instrumentVersion(self) -> int:
+        """Versión del instrumento vigente, no la del esquema del resultado."""
+        return self._bank.instrument_version
+
     @Property("QVariantMap", constant=True)
     def criterios(self) -> dict[str, str]:
         """Texto del criterio de puntuación por ``criterio_id``.
@@ -207,6 +227,27 @@ class EvaluationController(QObject):
     @Property(bool, notify=questionChanged)
     def isLastQuestion(self) -> bool:
         return self._manager.is_last_question
+
+    @Property(bool, notify=questionChanged)
+    def canGoBack(self) -> bool:
+        return self._manager.can_go_back()
+
+    @Property(bool, notify=questionChanged)
+    def isRevisiting(self) -> bool:
+        """¿Se está revisando un reactivo ya contestado?
+
+        La vista lo usa para avisar que se está atrás y ofrecer el regreso al
+        punto donde se quedó. No revela nada sobre la respuesta: solo dice
+        dónde está el estudiante dentro del cuestionario.
+        """
+        return self._manager.is_revisiting
+
+    @Property(int, notify=questionChanged)
+    def frontierQuestionNumber(self) -> int:
+        """Número (1..N) del primer reactivo sin contestar."""
+        if not self._manager.questions:
+            return 0
+        return self._manager.frontier_index + 1
 
     @Property(int, notify=questionChanged)
     def answeredQuestions(self) -> int:
@@ -290,7 +331,29 @@ class EvaluationController(QObject):
         pre = self._repository.latest("pre")
         post = self._repository.latest("post")
         if not pre or not post:
-            return {"disponible": False}
+            return {"disponible": False, "motivo": "faltan_resultados"}
+
+        # Dos resultados de instrumentos distintos no se restan. El v3 conserva
+        # el esquema del v2 pero cambia enunciados, claves y criterios: el
+        # "avance" entre ambos sería un número con apariencia de dato y sin
+        # significado. Se prefiere declarar la comparación no disponible antes
+        # que publicarlo; el resultado viejo sigue siendo válido por separado.
+        version_pre = _version_instrumento(pre)
+        version_post = _version_instrumento(post)
+        if version_pre != version_post:
+            return {
+                "disponible": False,
+                "motivo": "instrumentos_distintos",
+                "instrument_version_pre": version_pre,
+                "instrument_version_post": version_post,
+                "mensaje": (
+                    "Tu pre-test se respondió con la versión "
+                    f"{version_pre} del instrumento y tu post-test con la "
+                    f"{version_post}. Son reactivos distintos, así que la "
+                    "comparación no sería válida. Cada resultado sigue "
+                    "disponible por separado."
+                ),
+            }
 
         def indexar(resultado: dict[str, Any], clave: str) -> dict[str, dict[str, Any]]:
             return {
@@ -328,6 +391,8 @@ class EvaluationController(QObject):
         post_pct = float(post.get("percentage", 0))
         return {
             "disponible": True,
+            "motivo": "",
+            "instrument_version": version_post,
             "pre_puntaje": pre_puntaje,
             "post_puntaje": post_puntaje,
             "maximo": float(post.get("maximo", 0)),
@@ -393,6 +458,50 @@ class EvaluationController(QObject):
         self.stateChanged.emit()
 
     @Slot()
+    def goToPreviousQuestion(self) -> None:
+        """Vuelve al reactivo anterior conservando lo que ya se contestó.
+
+        La respuesta en curso NO se guarda al retroceder: solo se registra al
+        pulsar continuar. Retroceder desde un reactivo a medio contestar
+        descarta ese borrador, igual que en el instrumento en papel una
+        marca a lápiz sin terminar no cuenta como respuesta.
+        """
+        if not self._manager.can_go_back():
+            return
+        try:
+            self._manager.go_back()
+        except EvaluationStateError as exc:
+            self.error.emit(str(exc))
+            return
+        self._restaurar_respuesta_del_reactivo()
+        self._emitir_pregunta()
+
+    @Slot()
+    def goToFrontierQuestion(self) -> None:
+        """Salta al primer reactivo sin contestar, que es donde se dejó.
+
+        Sin esto, volver cinco reactivos atrás para corregir uno obligaría a
+        pasar de nuevo por los cinco, uno por uno.
+        """
+        destino = self._manager.frontier_index
+        if not self._manager.can_go_to(destino):
+            return
+        self._manager.go_to(destino)
+        self._restaurar_respuesta_del_reactivo()
+        self._emitir_pregunta()
+
+    def _restaurar_respuesta_del_reactivo(self) -> None:
+        """Deja en curso la respuesta ya registrada del reactivo en pantalla.
+
+        Devuelve ``None`` si el reactivo todavía no se ha contestado, que es lo
+        mismo que hacía el flujo de solo avanzar.
+        """
+        question = self._manager.current_question
+        self._respuesta_actual = (
+            self._manager.answer_for(question["id"]) if question else None
+        )
+
+    @Slot()
     def submitCurrentAnswer(self) -> None:
         if not self.canContinue:
             return
@@ -403,7 +512,10 @@ class EvaluationController(QObject):
             self.error.emit(str(exc))
             return
 
-        self._respuesta_actual = None
+        # Al avanzar desde un reactivo revisitado, el siguiente también está
+        # contestado: si se dejara en blanco, corregir el reactivo 5 obligaría
+        # a rehacer del 6 en adelante.
+        self._restaurar_respuesta_del_reactivo()
         if result:
             self._result = result
             self._repository.save_result(result)

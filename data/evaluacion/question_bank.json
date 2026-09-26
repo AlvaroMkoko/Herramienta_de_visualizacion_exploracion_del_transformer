@@ -1,5 +1,6 @@
 {
   "schema_version": 2,
+  "instrument_version": 3,
   "puntaje_total": 20.0,
   "dimensions": [
     { "id": "tokenizacion", "name": "Tokenización" },
@@ -10,15 +11,17 @@
   ],
   "criterios": {
     "opcion_unica": "1 punto por la opción correcta; 0 en caso contrario.",
-    "ordenar": "0.25 puntos por cada posición correcta en la secuencia (máximo 1 punto).",
-    "clasificar": "0.25 puntos por cada elemento correctamente clasificado (máximo 1 punto).",
-    "relacionar": "1/3 de punto por cada relación correcta (máximo 1 punto).",
-    "seleccion_multiple": "Puntaje = (aciertos − errores) / total de correctas, con piso en 0, escalado a un máximo de 1 punto.",
-    "completar": "1 punto si la respuesta coincide con «Byte-Pair Encoding», «BPE» o un sinónimo aceptado; 0 en caso contrario.",
-    "dos_etapas": "0.5 puntos por cada etapa correcta; se exigen ambas etapas correctas para otorgar el punto completo.",
-    "detectar_error": "0.5 puntos por detectar correctamente que la afirmación es errónea + 0.5 puntos por elegir la corrección adecuada (máximo 1 punto).",
+    "prediccion": "1 punto por la opción correcta; 0 en caso contrario.",
+    "ordenar_4": "0.25 por cada elemento en su posición correcta (máximo 1 punto).",
+    "ordenar_5": "0.20 por cada elemento en su posición correcta (máximo 1 punto).",
+    "clasificar": "1/6 por cada enunciado bien clasificado (máximo 1 punto).",
+    "relacionar": "0.25 por cada par correcto (4 pares, máximo 1 punto).",
+    "seleccion_multiple": "Puntaje = (aciertos − errores) / total de correctas, con piso en 0.",
+    "completar": "1 punto si coincide con «Byte-Pair Encoding», «BPE» o una variante aceptada; no distingue mayúsculas, acentos ni guiones.",
+    "dos_etapas": "Solo vale el punto con ambas etapas correctas; acertar una sola vale 0.",
+    "detectar_error": "0.5 por identificar el fragmento + 0.5 por elegir la corrección; son independientes.",
     "matriz": "1 punto, sin crédito parcial.",
-    "verdadero_falso": "1 punto por marcar correctamente Verdadero/Falso. La justificación escrita se registra como dato cualitativo y NO se suma al puntaje de 20 puntos."
+    "verdadero_falso": "1 punto por el veredicto; la justificación es opcional, se guarda como dato cualitativo y no suma."
   },
   "assessments": {
     "pre": {
@@ -31,181 +34,216 @@
         {
           "id": "pre_t1", "code": "T1", "dimension_id": "tokenizacion",
           "bloom_level": "Recordar", "formato": "Completar",
-          "tipo": "texto", "puntaje_maximo": 1.0, "criterio_id": "completar",
-          "prompt": "El algoritmo ________ resuelve el problema de palabras fuera de vocabulario fusionando los pares de caracteres más frecuentes en sub-palabras.",
+          "presentacion": "caja_en_linea", "tipo": "texto",
+          "puntaje_maximo": 1.0, "criterio_id": "completar",
+          "conceptos_teoria": ["tokenizacion"],
+          "prompt": "Los tokenizadores modernos construyen su vocabulario con el algoritmo ________, que une repetidamente el par de símbolos contiguos más frecuente del corpus hasta formar sub-palabras.",
           "placeholder": "Escribe el nombre del algoritmo",
-          "respuestas_aceptadas": ["byte-pair encoding", "byte pair encoding", "bpe", "codificación por pares de bytes"]
+          "respuestas_aceptadas": ["byte-pair encoding", "byte pair encoding", "bpe", "codificación por pares de bytes", "codificación de pares de bytes"]
         },
         {
           "id": "pre_t2", "code": "T2", "dimension_id": "tokenizacion",
           "bloom_level": "Comprender", "formato": "Opción múltiple",
-          "tipo": "opcion_unica", "puntaje_maximo": 1.0, "criterio_id": "opcion_unica",
-          "prompt": "Un modelo que tokeniza palabra por palabra (sin sub-palabras) recibe una palabra que nunca vio en su vocabulario de entrenamiento. ¿Qué problema enfrenta?",
+          "presentacion": "tarjetas", "tipo": "opcion_unica",
+          "puntaje_maximo": 1.0, "criterio_id": "opcion_unica",
+          "conceptos_teoria": ["tokenizacion"],
+          "prompt": "Un tokenizador por sub-palabras procesa la frase «el desparasitante». ¿Cuál es el resultado más coherente con su funcionamiento?",
           "options": [
-            { "id": "a", "text": "El modelo se detiene y genera un error de ejecución" },
-            { "id": "b", "text": "La palabra se ignora y el resto de la oración se procesa normalmente" },
-            { "id": "c", "text": "No puede representar esa palabra y debe tratarla como un token desconocido (<UNK>)" },
-            { "id": "d", "text": "La palabra se traduce automáticamente a un sinónimo conocido" }
+            { "id": "a", "text": "[\"el\", \"desparasitante\"]: cada palabra se convierte siempre en exactamente un token" },
+            { "id": "b", "text": "[\"el\", \"<UNK>\"]: la palabra poco común se reemplaza por un token desconocido" },
+            { "id": "c", "text": "[\"el\", \" des\", \"paras\", \"itante\"]: la palabra común queda entera y la rara se arma con fragmentos" },
+            { "id": "d", "text": "[\"e\", \"l\", \" \", \"d\", \"e\", …]: todo el texto se divide siempre en caracteres sueltos" }
           ],
           "correct_option_id": "c"
         },
         {
           "id": "pre_t3", "code": "T3", "dimension_id": "tokenizacion",
           "bloom_level": "Comprender", "formato": "Opción múltiple",
-          "tipo": "opcion_unica", "puntaje_maximo": 1.0, "criterio_id": "opcion_unica",
-          "prompt": "¿Por qué el algoritmo Byte-Pair Encoding (BPE) resuelve el problema anterior mejor que la tokenización por palabra completa?",
+          "presentacion": "tarjetas", "tipo": "opcion_unica",
+          "puntaje_maximo": 1.0, "criterio_id": "opcion_unica",
+          "conceptos_teoria": ["token_ids", "embeddings"],
+          "prompt": "Tras tokenizar, «gato» recibe el ID 9040 y «perro» el ID 9041. ¿Qué se puede concluir de que sus IDs sean consecutivos?",
           "options": [
-            { "id": "a", "text": "Porque memoriza todas las palabras posibles de un idioma por adelantado" },
-            { "id": "b", "text": "Porque fusiona los pares de caracteres más frecuentes, permitiendo representar cualquier palabra nueva como combinación de sub-palabras ya conocidas" },
-            { "id": "c", "text": "Porque traduce las palabras desconocidas a su raíz gramatical" },
-            { "id": "d", "text": "Porque elimina del vocabulario las palabras que aparecen una sola vez" }
+            { "id": "a", "text": "Nada sobre su significado: el ID solo indica qué fila ocupa el token en el vocabulario" },
+            { "id": "b", "text": "Que el modelo ya considera a «gato» y «perro» como palabras casi sinónimas" },
+            { "id": "c", "text": "Que «perro» se procesa inmediatamente después de «gato» dentro de la frase" },
+            { "id": "d", "text": "Que sus embeddings serán casi idénticos, porque se calculan a partir del valor del ID" }
           ],
-          "correct_option_id": "b"
+          "correct_option_id": "a"
         },
         {
           "id": "pre_t4", "code": "T4", "dimension_id": "tokenizacion",
-          "bloom_level": "Aplicar", "formato": "Ordenar pasos",
-          "tipo": "asignacion", "subtipo": "ordenar", "puntaje_maximo": 1.0, "criterio_id": "ordenar",
-          "prompt": "Ordena los siguientes pasos numerándolos del 1 al 4 según la secuencia correcta:",
+          "bloom_level": "Aplicar", "formato": "Ordenar elementos",
+          "presentacion": "lista_arrastrable", "tipo": "asignacion", "subtipo": "ordenar",
+          "puntaje_maximo": 1.0, "criterio_id": "ordenar_4",
+          "conceptos_teoria": ["texto_entrada", "tokenizacion", "token_ids", "embeddings"],
+          "prompt": "Ordena las representaciones por las que pasa la frase «el gato duerme» desde que se escribe hasta que está lista para combinarse con la codificación posicional.",
           "etiqueta_destino": "Orden", "destinos_unicos": true,
           "destinos": [
             { "id": "1", "texto": "1" }, { "id": "2", "texto": "2" },
             { "id": "3", "texto": "3" }, { "id": "4", "texto": "4" }
           ],
           "elementos": [
-            { "id": "p1", "texto": "Se identifican las sub-palabras conocidas que componen el texto", "correcto": "3" },
-            { "id": "p2", "texto": "Se combinan los identificadores de esas sub-palabras en la secuencia final", "correcto": "4" },
-            { "id": "p3", "texto": "Se compara la palabra contra el vocabulario de fusiones aprendidas", "correcto": "2" },
-            { "id": "p4", "texto": "El texto de entrada se recibe como una cadena de caracteres", "correcto": "1" }
+            { "id": "p1", "texto": "[318, 9040, 15234]", "correcto": "3" },
+            { "id": "p2", "texto": "«el gato duerme» (texto plano)", "correcto": "1" },
+            { "id": "p3", "texto": "Tres vectores de d_model números, uno por token", "correcto": "4" },
+            { "id": "p4", "texto": "[\"el\", \" gato\", \" duerme\"]", "correcto": "2" }
           ]
         },
         {
           "id": "pre_e1", "code": "E1", "dimension_id": "embeddings_posicion",
           "bloom_level": "Recordar", "formato": "Opción múltiple",
-          "tipo": "opcion_unica", "puntaje_maximo": 1.0, "criterio_id": "opcion_unica",
-          "prompt": "¿Qué es un embedding en el contexto de un modelo de lenguaje?",
+          "presentacion": "tarjetas", "tipo": "opcion_unica",
+          "puntaje_maximo": 1.0, "criterio_id": "opcion_unica",
+          "conceptos_teoria": ["embeddings"],
+          "prompt": "¿Qué es el embedding de un token?",
           "options": [
-            { "id": "a", "text": "Un vector de números reales que representa una palabra o token capturando relaciones semánticas y sintácticas" },
-            { "id": "b", "text": "Una lista ordenada de las reglas gramaticales del texto" },
-            { "id": "c", "text": "Una tabla que traduce palabras a otro idioma" },
-            { "id": "d", "text": "Un identificador numérico único sin relación con el significado" }
+            { "id": "a", "text": "El número entero que indica la posición del token dentro del vocabulario" },
+            { "id": "b", "text": "Un vector de números, aprendido durante el entrenamiento, que representa al token" },
+            { "id": "c", "text": "Un vector fijo, calculado con senos y cosenos, que depende de la posición del token" },
+            { "id": "d", "text": "La probabilidad de que ese token aparezca como la siguiente palabra" }
           ],
-          "correct_option_id": "a"
+          "correct_option_id": "b"
         },
         {
           "id": "pre_e2", "code": "E2", "dimension_id": "embeddings_posicion",
           "bloom_level": "Comprender", "formato": "Selección múltiple",
-          "tipo": "seleccion_multiple", "puntaje_maximo": 1.0, "criterio_id": "seleccion_multiple",
-          "prompt": "¿Cuáles de las siguientes afirmaciones son correctas? (selecciona todas las que apliquen)",
+          "presentacion": "chips_toggle", "tipo": "seleccion_multiple",
+          "puntaje_maximo": 1.0, "criterio_id": "seleccion_multiple",
+          "conceptos_teoria": ["embeddings", "combinacion_embedding_pe", "positional_encoding", "por_que_posicion"],
+          "prompt": "Selecciona todas las afirmaciones correctas sobre la entrada al modelo (embedding + codificación posicional).",
           "options": [
-            { "id": "a", "text": "Los embeddings capturan relaciones semánticas entre palabras" },
-            { "id": "b", "text": "Sin codificación posicional, el modelo no distingue el orden de los tokens" },
-            { "id": "c", "text": "La codificación posicional se suma al embedding antes de entrar a las capas de atención" },
-            { "id": "d", "text": "La codificación posicional por sí sola puede representar el significado de una palabra" }
+            { "id": "a", "text": "El embedding de «banco» es el mismo en «me senté en el banco» y en «fui al banco a pagar»" },
+            { "id": "b", "text": "El embedding y la codificación posicional se suman elemento a elemento" },
+            { "id": "c", "text": "Al combinar embedding y codificación posicional, el vector pasa a tener 2 × d_model números" },
+            { "id": "d", "text": "En el Transformer original, la codificación posicional se calcula con una fórmula fija; no se aprende" },
+            { "id": "e", "text": "Sin codificación posicional el modelo conoce igualmente el orden, porque los IDs llegan en secuencia" }
           ],
-          "correct_option_ids": ["a", "b", "c"]
+          "correct_option_ids": ["a", "b", "d"]
         },
         {
           "id": "pre_e3", "code": "E3", "dimension_id": "embeddings_posicion",
-          "bloom_level": "Comprender", "formato": "Opción múltiple",
-          "tipo": "opcion_unica", "puntaje_maximo": 1.0, "criterio_id": "opcion_unica",
-          "prompt": "¿Por qué es necesario agregar codificación posicional si el modelo ya procesa toda la secuencia en paralelo mediante autoatención?",
+          "bloom_level": "Comprender", "formato": "Opción múltiple — predicción",
+          "presentacion": "tarjetas_con_escenario", "tipo": "opcion_unica",
+          "puntaje_maximo": 1.0, "criterio_id": "prediccion",
+          "conceptos_teoria": ["por_que_posicion"],
+          "prompt": "Se elimina la codificación posicional y se pasan por la self-attention del encoder dos frases que producen exactamente los mismos tokens: «el perro mordió al hombre» y «el hombre mordió al perro».\n\nPredice qué ocurre con el vector de salida de «perro».",
           "options": [
-            { "id": "a", "text": "Porque la codificación posicional reduce el tamaño del vocabulario necesario" },
-            { "id": "b", "text": "Porque sin ella el modelo no podría calcular los embeddings" },
-            { "id": "c", "text": "Porque acelera el entrenamiento al reducir el número de parámetros" },
-            { "id": "d", "text": "Porque el procesamiento en paralelo no distingue por sí mismo el orden de los tokens; sin esa información, «el gato come pescado» y «pescado come el gato» serían indistinguibles para el modelo" }
+            { "id": "a", "text": "Será distinto, porque la atención detecta que «perro» cambió de lugar en la frase" },
+            { "id": "b", "text": "Será distinto, porque el ID de «perro» cambia según la posición que ocupa" },
+            { "id": "c", "text": "Será el vector nulo, porque sin posición la atención no se puede calcular" },
+            { "id": "d", "text": "Será idéntico en ambas frases, porque la atención por sí sola no distingue el orden" }
           ],
           "correct_option_id": "d"
         },
         {
           "id": "pre_e4", "code": "E4", "dimension_id": "embeddings_posicion",
-          "bloom_level": "Aplicar", "formato": "Clasificar",
-          "tipo": "asignacion", "subtipo": "clasificar", "puntaje_maximo": 1.0, "criterio_id": "clasificar",
-          "prompt": "Clasifica cada enunciado según corresponda a Embedding o a Codificación Posicional.",
+          "bloom_level": "Aplicar", "formato": "Clasificación / arrastrar y soltar",
+          "presentacion": "cestas", "tipo": "asignacion", "subtipo": "clasificar",
+          "puntaje_maximo": 1.0, "criterio_id": "clasificar",
+          "conceptos_teoria": ["embeddings", "positional_encoding", "combinacion_embedding_pe"],
+          "prompt": "Clasifica cada enunciado en la categoría que le corresponde: solo al Embedding, solo a la Codificación posicional, o a Ambos.",
           "etiqueta_destino": "Categoría", "destinos_unicos": false,
           "destinos": [
             { "id": "emb", "texto": "Embedding" },
-            { "id": "pos", "texto": "Codificación Posicional" }
+            { "id": "pos", "texto": "Codificación posicional" },
+            { "id": "ambos", "texto": "Ambos" }
           ],
           "elementos": [
-            { "id": "c1", "texto": "Usa funciones seno/coseno de distintas frecuencias", "correcto": "pos" },
-            { "id": "c2", "texto": "Captura relaciones de significado", "correcto": "emb" },
-            { "id": "c3", "texto": "Es aprendido durante el entrenamiento", "correcto": "emb" },
-            { "id": "c4", "texto": "Depende de la posición del token en la secuencia, no de su identidad", "correcto": "pos" }
+            { "id": "c1", "texto": "Es idéntico para «gato» y para «perro» si ambos ocupan la posición 3", "correcto": "pos" },
+            { "id": "c2", "texto": "Sus valores cambian cuando el modelo se entrena", "correcto": "emb" },
+            { "id": "c3", "texto": "Para una frase, forma una matriz [seq_len, d_model]", "correcto": "ambos" },
+            { "id": "c4", "texto": "Se obtiene con senos y cosenos de distintas frecuencias", "correcto": "pos" },
+            { "id": "c5", "texto": "Da el mismo vector a «banco» sin importar dónde aparezca", "correcto": "emb" },
+            { "id": "c6", "texto": "Es uno de los dos sumandos que forman la entrada X de la primera capa", "correcto": "ambos" }
           ]
         },
         {
           "id": "pre_a1", "code": "A1", "dimension_id": "atencion_qkv",
           "bloom_level": "Recordar", "formato": "Relacionar columnas",
-          "tipo": "asignacion", "subtipo": "relacionar", "puntaje_maximo": 1.0, "criterio_id": "relacionar",
-          "prompt": "Relaciona cada elemento de la columna A con su definición en la columna B:",
-          "etiqueta_destino": "Definición", "destinos_unicos": true,
+          "presentacion": "lineas_o_tocar_para_emparejar", "tipo": "asignacion", "subtipo": "relacionar",
+          "puntaje_maximo": 1.0, "criterio_id": "relacionar",
+          "conceptos_teoria": ["query_key_value", "softmax_attention", "producto_por_v"],
+          "prompt": "Relaciona cada elemento del mecanismo de atención con su función.",
+          "etiqueta_destino": "Función", "destinos_unicos": true,
           "destinos": [
-            { "id": "a", "texto": "Representa lo que un token «busca» en los demás" },
-            { "id": "b", "texto": "Permite determinar qué tan relevante es un token para otro" },
-            { "id": "c", "texto": "Contiene la información que será ponderada y combinada" }
+            { "id": "a", "texto": "Proporción en que un token toma información de cada uno de los demás; cada fila suma 1" },
+            { "id": "b", "texto": "El contenido que un token entrega si otros lo atienden" },
+            { "id": "c", "texto": "Lo que un token está buscando en los demás" },
+            { "id": "d", "texto": "Lo que un token ofrece para que los demás lo encuentren" }
           ],
           "elementos": [
-            { "id": "q", "texto": "Query", "correcto": "a" },
-            { "id": "k", "texto": "Key", "correcto": "b" },
-            { "id": "v", "texto": "Value", "correcto": "c" }
+            { "id": "q", "texto": "Query", "correcto": "c" },
+            { "id": "k", "texto": "Key", "correcto": "d" },
+            { "id": "v", "texto": "Value", "correcto": "b" },
+            { "id": "w", "texto": "Pesos de atención", "correcto": "a" }
           ]
         },
         {
           "id": "pre_a2", "code": "A2", "dimension_id": "atencion_qkv",
-          "bloom_level": "Comprender", "formato": "Pregunta en dos etapas",
-          "tipo": "etapas", "puntaje_maximo": 1.0, "criterio_id": "dos_etapas", "exigir_todas": true,
-          "prompt": "Analiza el efecto de omitir el escalamiento en la Atención del Producto Escalado.",
+          "bloom_level": "Comprender", "formato": "Dos etapas (resultado + razón)",
+          "presentacion": "pasos", "tipo": "etapas",
+          "puntaje_maximo": 1.0, "criterio_id": "dos_etapas", "exigir_todas": true,
+          "conceptos_teoria": ["escalamiento_sqrt_dk"],
+          "prompt": "Un modelo calcula los scores de atención como Q·Kᵀ, pero NO los divide entre √d_k. Se aumenta d_k de 16 a 1024.",
           "etapas": [
             {
-              "id": "e1", "titulo": "Etapa 1", "tipo": "opcion_unica", "peso": 0.5, "puntua": true,
-              "prompt": "En la Atención del Producto Escalado, si se omite el escalamiento por √d_k, ¿qué le ocurre al producto Q·K a medida que d_k crece?",
+              "id": "e1", "titulo": "Resultado", "tipo": "opcion_unica", "peso": 0.5, "puntua": true,
+              "prompt": "¿Qué le ocurre a la distribución que produce softmax en cada fila?",
               "options": [
-                { "id": "a", "text": "No cambia" },
-                { "id": "b", "text": "Siempre se acerca a cero" },
-                { "id": "c", "text": "Se mantiene estable" },
-                { "id": "d", "text": "Puede volverse muy grande" }
-              ],
-              "correct_option_id": "d"
-            },
-            {
-              "id": "e2", "titulo": "Etapa 2", "tipo": "opcion_unica", "peso": 0.5, "puntua": true,
-              "prompt": "¿Por qué ese crecimiento es un problema para el entrenamiento?",
-              "options": [
-                { "id": "a", "text": "Porque invalida la matriz Value" },
-                { "id": "b", "text": "Porque reduce el número de cabezas de atención" },
-                { "id": "c", "text": "Porque softmax se satura y produce gradientes casi nulos" },
-                { "id": "d", "text": "Porque aumenta el tamaño del vocabulario" }
+                { "id": "a", "text": "Se vuelve casi uniforme: todos los tokens reciben un peso parecido" },
+                { "id": "b", "text": "No cambia, porque softmax siempre produce valores que suman 1" },
+                { "id": "c", "text": "Se vuelve casi one-hot: un token se queda con casi todo el peso" },
+                { "id": "d", "text": "Aparecen pesos negativos en algunas posiciones" }
               ],
               "correct_option_id": "c"
+            },
+            {
+              "id": "e2", "titulo": "Razón", "tipo": "opcion_unica", "peso": 0.5, "puntua": true,
+              "prompt": "¿Cuál es la razón de ese resultado?",
+              "options": [
+                { "id": "a", "text": "La varianza de cada producto punto crece con d_k, así que los scores quedan muy separados" },
+                { "id": "b", "text": "Softmax divide internamente cada score entre d_k" },
+                { "id": "c", "text": "Al aumentar d_k también aumenta el número de tokens de la secuencia" },
+                { "id": "d", "text": "Los vectores Value crecen más rápido que los Query y los Key" }
+              ],
+              "correct_option_id": "a"
             }
           ]
         },
         {
           "id": "pre_a3", "code": "A3", "dimension_id": "atencion_qkv",
           "bloom_level": "Comprender", "formato": "Detectar y corregir error",
-          "tipo": "etapas", "puntaje_maximo": 1.0, "criterio_id": "detectar_error", "exigir_todas": false,
-          "prompt": "Analiza la siguiente afirmación:\n\n«El Self-Attention del encoder y el Masked Self-Attention del decoder funcionan exactamente igual, ambos permiten que cada token vea toda la secuencia.»",
+          "presentacion": "fragmentos_clicables", "tipo": "etapas",
+          "puntaje_maximo": 1.0, "criterio_id": "detectar_error", "exigir_todas": false,
+          "conceptos_teoria": ["mascara_triangular", "menos_infinito_softmax", "no_ver_futuro"],
+          "prompt": "Lee la afirmación. Contiene exactamente un error.\n\n«En la self-attention enmascarada del decoder, [1] cada token puede atenderse a sí mismo, [2] la máscara bloquea el triángulo inferior de la matriz de scores, [3] colocando −∞ antes de softmax, [4] para que ningún token vea posiciones futuras.»",
+          "fragmentos": [
+            { "id": "1", "texto": "cada token puede atenderse a sí mismo" },
+            { "id": "2", "texto": "la máscara bloquea el triángulo inferior de la matriz de scores" },
+            { "id": "3", "texto": "colocando −∞ antes de softmax" },
+            { "id": "4", "texto": "para que ningún token vea posiciones futuras" }
+          ],
           "etapas": [
             {
-              "id": "e1", "titulo": "Veredicto", "tipo": "opcion_unica", "peso": 0.5, "puntua": true,
-              "prompt": "¿La afirmación es correcta?",
+              "id": "e1", "titulo": "Detectar", "tipo": "opcion_unica", "peso": 0.5, "puntua": true,
+              "prompt": "¿Cuál fragmento contiene el error?",
               "options": [
-                { "id": "si", "text": "Sí" },
-                { "id": "no", "text": "No" }
+                { "id": "1", "text": "[1] cada token puede atenderse a sí mismo" },
+                { "id": "2", "text": "[2] la máscara bloquea el triángulo inferior de la matriz de scores" },
+                { "id": "3", "text": "[3] colocando −∞ antes de softmax" },
+                { "id": "4", "text": "[4] para que ningún token vea posiciones futuras" }
               ],
-              "correct_option_id": "no"
+              "correct_option_id": "2"
             },
             {
-              "id": "e2", "titulo": "Corrección", "tipo": "opcion_unica", "peso": 0.5, "puntua": true,
-              "prompt": "Si marcaste «No», selecciona la corrección adecuada:",
-              "depende_de": { "etapa_id": "e1", "opcion_id": "no" },
+              "id": "e2", "titulo": "Corregir", "tipo": "opcion_unica", "peso": 0.5, "puntua": true,
+              "prompt": "Elige la corrección adecuada.",
               "options": [
-                { "id": "a", "text": "El Masked Self-Attention impide ver posiciones futuras, preservando el proceso autorregresivo" },
-                { "id": "b", "text": "El encoder no usa atención" },
-                { "id": "c", "text": "No hay ninguna diferencia real" },
-                { "id": "d", "text": "El decoder no tiene parámetros entrenables" }
+                { "id": "a", "text": "…la máscara bloquea el triángulo superior de la matriz de scores…" },
+                { "id": "b", "text": "…ningún token puede atenderse a sí mismo…" },
+                { "id": "c", "text": "…colocando 0 después de softmax…" },
+                { "id": "d", "text": "…para que ningún token vea posiciones anteriores…" }
               ],
               "correct_option_id": "a"
             }
@@ -213,42 +251,54 @@
         },
         {
           "id": "pre_a4", "code": "A4", "dimension_id": "atencion_qkv",
-          "bloom_level": "Aplicar", "formato": "Interpretación de matriz",
-          "tipo": "opcion_unica", "puntaje_maximo": 1.0, "criterio_id": "matriz",
-          "prompt": "¿Qué token recibe mayor peso de atención desde la fila «El»?",
+          "bloom_level": "Aplicar", "formato": "Interpretación de matriz de atención",
+          "presentacion": "heatmap_clic", "tipo": "opcion_unica",
+          "puntaje_maximo": 1.0, "criterio_id": "matriz",
+          "conceptos_teoria": ["interpretacion_pesos", "softmax_attention"],
+          "prompt": "La matriz muestra los pesos de atención de una cabeza del encoder (fila = token que atiende, columna = token atendido). ¿De qué token toma más información «ladró» para construir su nueva representación?",
           "recurso": {
             "tipo": "matriz_atencion",
             "titulo": "Pesos de atención (fila = token que atiende, columna = token atendido)",
-            "filas": ["El", "gato", "durmió"],
-            "columnas": ["El", "gato", "durmió"],
-            "valores": [[0.10, 0.20, 0.70], [0.60, 0.30, 0.10], [0.20, 0.50, 0.30]]
+            "filas": ["El", "perro", "ladró", "fuerte"],
+            "columnas": ["El", "perro", "ladró", "fuerte"],
+            "fila_objetivo": "ladró",
+            "valores": [
+              [0.40, 0.35, 0.15, 0.10],
+              [0.10, 0.30, 0.45, 0.15],
+              [0.05, 0.62, 0.18, 0.15],
+              [0.05, 0.15, 0.70, 0.10]
+            ]
           },
           "options": [
-            { "id": "a", "text": "gato" },
-            { "id": "b", "text": "El" },
-            { "id": "c", "text": "Los tres reciben el mismo peso" },
-            { "id": "d", "text": "durmió" }
+            { "id": "a", "text": "El" },
+            { "id": "b", "text": "perro" },
+            { "id": "c", "text": "ladró" },
+            { "id": "d", "text": "fuerte" }
           ],
-          "correct_option_id": "d"
+          "correct_option_id": "b"
         },
         {
           "id": "pre_f1", "code": "F1", "dimension_id": "feedforward_normalizacion",
           "bloom_level": "Recordar", "formato": "Opción múltiple",
-          "tipo": "opcion_unica", "puntaje_maximo": 1.0, "criterio_id": "opcion_unica",
-          "prompt": "¿Qué hace la red feed-forward dentro de cada capa del Transformer?",
+          "presentacion": "tarjetas", "tipo": "opcion_unica",
+          "puntaje_maximo": 1.0, "criterio_id": "opcion_unica",
+          "conceptos_teoria": ["que_es_ffn", "ffn_por_posicion"],
+          "prompt": "¿Qué hace la red feed-forward (FFN) dentro de cada capa del Transformer?",
           "options": [
-            { "id": "a", "text": "Aplica una transformación no lineal de forma independiente a cada posición de la secuencia, añadiendo capacidad expresiva" },
-            { "id": "b", "text": "Genera la distribución de probabilidad final sobre el vocabulario" },
-            { "id": "c", "text": "Convierte el texto de entrada en tokens" },
-            { "id": "d", "text": "Calcula los pesos de atención entre todos los pares de tokens" }
+            { "id": "a", "text": "Transforma cada token por separado, usando los mismos pesos para todas las posiciones" },
+            { "id": "b", "text": "Compara cada token con todos los demás para decidir cuánto atender a cada uno" },
+            { "id": "c", "text": "Convierte los logits en una distribución de probabilidad sobre el vocabulario" },
+            { "id": "d", "text": "Suma a cada token un patrón de senos y cosenos según su posición" }
           ],
           "correct_option_id": "a"
         },
         {
           "id": "pre_f2", "code": "F2", "dimension_id": "feedforward_normalizacion",
           "bloom_level": "Comprender", "formato": "Verdadero/Falso + justificación",
-          "tipo": "etapas", "puntaje_maximo": 1.0, "criterio_id": "verdadero_falso", "exigir_todas": false,
-          "prompt": "«La Layer Normalization elimina por completo la necesidad de usar conexiones residuales en el Transformer.»",
+          "presentacion": "botones_vf_acordeon", "tipo": "etapas",
+          "puntaje_maximo": 1.0, "criterio_id": "verdadero_falso", "exigir_todas": false,
+          "conceptos_teoria": ["layer_normalization"],
+          "prompt": "«Layer Normalization calcula la media y la varianza sobre las d_model componentes de cada token, sin usar los demás tokens ni los demás ejemplos del batch.»",
           "etapas": [
             {
               "id": "e1", "titulo": "Verdadero o Falso", "tipo": "opcion_unica", "peso": 1.0, "puntua": true,
@@ -257,7 +307,7 @@
                 { "id": "verdadero", "text": "Verdadero" },
                 { "id": "falso", "text": "Falso" }
               ],
-              "correct_option_id": "falso"
+              "correct_option_id": "verdadero"
             },
             {
               "id": "e2", "titulo": "Justificación", "tipo": "texto_libre", "peso": 0.0, "puntua": false,
@@ -269,87 +319,103 @@
         {
           "id": "pre_f3", "code": "F3", "dimension_id": "feedforward_normalizacion",
           "bloom_level": "Comprender", "formato": "Opción múltiple",
-          "tipo": "opcion_unica", "puntaje_maximo": 1.0, "criterio_id": "opcion_unica",
-          "prompt": "¿Para qué se utilizan las conexiones residuales alrededor de los bloques de atención y feed-forward?",
+          "presentacion": "tarjetas", "tipo": "opcion_unica",
+          "puntaje_maximo": 1.0, "criterio_id": "opcion_unica",
+          "conceptos_teoria": ["por_que_ffn_despues", "activacion_relu"],
+          "prompt": "La atención ya reúne información de todos los tokens. ¿Por qué se necesita la FFN después de ella?",
           "options": [
-            { "id": "a", "text": "Para aumentar artificialmente la longitud de la secuencia procesada" },
-            { "id": "b", "text": "Para mantener estable el flujo de gradientes en redes profundas y evitar que se desvanezcan durante el entrenamiento" },
-            { "id": "c", "text": "Para reducir el tamaño de los embeddings de entrada" },
-            { "id": "d", "text": "Para eliminar la necesidad de usar softmax al final del modelo" }
+            { "id": "a", "text": "Porque la atención solo puede procesar un token a la vez y la FFN procesa el resto" },
+            { "id": "b", "text": "Porque la FFN vuelve a calcular los pesos de atención con mayor precisión" },
+            { "id": "c", "text": "Porque la atención solo promedia Values (algo lineal) y la FFN añade no linealidad" },
+            { "id": "d", "text": "Porque la FFN es la parte que mezcla información entre posiciones distintas" }
           ],
-          "correct_option_id": "b"
+          "correct_option_id": "c"
         },
         {
           "id": "pre_f4", "code": "F4", "dimension_id": "feedforward_normalizacion",
-          "bloom_level": "Aplicar", "formato": "Opción múltiple",
-          "tipo": "opcion_unica", "puntaje_maximo": 1.0, "criterio_id": "opcion_unica",
-          "prompt": "Si se eliminaran las conexiones residuales de un Transformer con muchas capas, manteniendo todo lo demás igual, ¿qué efecto es más probable observar durante el entrenamiento?",
+          "bloom_level": "Aplicar", "formato": "Opción múltiple — predicción",
+          "presentacion": "tarjetas_con_escenario", "tipo": "opcion_unica",
+          "puntaje_maximo": 1.0, "criterio_id": "prediccion",
+          "conceptos_teoria": ["conexion_residual", "flujo_add_norm"],
+          "prompt": "En un bloque Add & Norm, un token llega con x = [1.0, −2.0, 0.5] y la subcapa produce Sublayer(x) = [0.2, 0.1, −0.5].\n\nPredice qué vector entra a LayerNorm.",
           "options": [
-            { "id": "a", "text": "Mayor dificultad para entrenar el modelo, debido al desvanecimiento del flujo de gradientes a través de las capas profundas" },
-            { "id": "b", "text": "La codificación posicional dejaría de ser necesaria" },
-            { "id": "c", "text": "El modelo entrenaría más rápido sin ningún efecto negativo" },
-            { "id": "d", "text": "El vocabulario del modelo se reduciría automáticamente" }
+            { "id": "a", "text": "[0.2, 0.1, −0.5]" },
+            { "id": "b", "text": "[0.2, −0.2, −0.25]" },
+            { "id": "c", "text": "[1.0, −2.0, 0.5]" },
+            { "id": "d", "text": "[1.2, −1.9, 0.0]" }
           ],
-          "correct_option_id": "a"
+          "correct_option_id": "d"
         },
         {
           "id": "pre_s1", "code": "S1", "dimension_id": "estrategias_muestreo",
           "bloom_level": "Recordar", "formato": "Opción múltiple",
-          "tipo": "opcion_unica", "puntaje_maximo": 1.0, "criterio_id": "opcion_unica",
-          "prompt": "En la etapa de generación de texto, ¿qué controla el parámetro de temperatura (temperature)?",
+          "presentacion": "tarjetas", "tipo": "opcion_unica",
+          "puntaje_maximo": 1.0, "criterio_id": "opcion_unica",
+          "conceptos_teoria": ["temperature"],
+          "prompt": "¿Qué hace la temperatura T durante la generación de texto?",
           "options": [
-            { "id": "a", "text": "La velocidad de procesamiento del modelo durante la inferencia" },
-            { "id": "b", "text": "La aleatoriedad o diversidad de la distribución de probabilidad sobre los tokens candidatos antes de seleccionar el siguiente token" },
-            { "id": "c", "text": "El tamaño del vocabulario disponible para la generación" },
-            { "id": "d", "text": "El número máximo de tokens que puede generar el modelo" }
+            { "id": "a", "text": "Aumenta o reduce el número de tokens que hay en el vocabulario" },
+            { "id": "b", "text": "Divide los logits antes de softmax: concentra la distribución (T < 1) o la reparte (T > 1)" },
+            { "id": "c", "text": "Fija la cantidad máxima de tokens que el modelo generará" },
+            { "id": "d", "text": "Elimina todos los tokens cuya probabilidad sea menor que T" }
           ],
           "correct_option_id": "b"
         },
         {
           "id": "pre_s2", "code": "S2", "dimension_id": "estrategias_muestreo",
           "bloom_level": "Comprender", "formato": "Relacionar columnas",
-          "tipo": "asignacion", "subtipo": "relacionar", "puntaje_maximo": 1.0, "criterio_id": "relacionar",
-          "prompt": "Relaciona cada elemento de la columna A con su definición en la columna B:",
-          "etiqueta_destino": "Efecto", "destinos_unicos": true,
+          "presentacion": "lineas_o_tocar_para_emparejar", "tipo": "asignacion", "subtipo": "relacionar",
+          "puntaje_maximo": 1.0, "criterio_id": "relacionar",
+          "conceptos_teoria": ["greedy_sampling", "top_k", "top_p", "temperature"],
+          "prompt": "Relaciona cada estrategia de generación con el comportamiento que produce.",
+          "etiqueta_destino": "Comportamiento", "destinos_unicos": true,
           "destinos": [
-            { "id": "a", "texto": "Genera salidas más deterministas" },
-            { "id": "b", "texto": "Genera salidas más diversas e impredecibles" },
-            { "id": "c", "texto": "Restringe fuertemente el número de candidatos considerados" }
+            { "id": "a", "texto": "Sortea entre los tokens que acumulan cierta probabilidad; cuántos son cambia según la confianza del modelo" },
+            { "id": "b", "texto": "Da más oportunidad a alternativas que antes eran poco probables" },
+            { "id": "c", "texto": "Elige siempre el token más probable; con el mismo contexto repite la misma elección" },
+            { "id": "d", "texto": "Sortea siempre entre la misma cantidad de candidatos, sin importar qué tan segura sea la distribución" }
           ],
           "elementos": [
-            { "id": "t1", "texto": "Temperatura baja", "correcto": "a" },
-            { "id": "t2", "texto": "Temperatura alta", "correcto": "b" },
-            { "id": "t3", "texto": "Top-k pequeño", "correcto": "c" }
+            { "id": "t1", "texto": "Greedy", "correcto": "c" },
+            { "id": "t2", "texto": "Top-k", "correcto": "d" },
+            { "id": "t3", "texto": "Top-p", "correcto": "a" },
+            { "id": "t4", "texto": "Temperatura alta (T > 1)", "correcto": "b" }
           ]
         },
         {
           "id": "pre_s3", "code": "S3", "dimension_id": "estrategias_muestreo",
-          "bloom_level": "Comprender", "formato": "Opción múltiple",
-          "tipo": "opcion_unica", "puntaje_maximo": 1.0, "criterio_id": "opcion_unica",
-          "prompt": "Si se reduce considerablemente el valor de la temperatura en la generación de texto (acercándolo a 0), ¿qué efecto se espera sobre las salidas del modelo?",
+          "bloom_level": "Comprender", "formato": "Opción múltiple — predicción",
+          "presentacion": "tarjetas_con_escenario", "tipo": "opcion_unica",
+          "puntaje_maximo": 1.0, "criterio_id": "prediccion",
+          "conceptos_teoria": ["temperature", "softmax_final"],
+          "prompt": "Los logits de tres candidatos son [2, 1, 0]. Con T = 1, el primero tiene probabilidad ≈ 0.67.\n\nSi se baja la temperatura a T = 0.5, predice qué ocurre con la probabilidad del primer candidato.",
           "options": [
-            { "id": "a", "text": "El tamaño del vocabulario disponible se reduce" },
-            { "id": "b", "text": "Las salidas se vuelven completamente aleatorias" },
-            { "id": "c", "text": "Las salidas se vuelven más deterministas y predecibles, favoreciendo siempre los tokens de mayor probabilidad" },
-            { "id": "d", "text": "El modelo deja de generar texto coherente" }
+            { "id": "a", "text": "Sube (≈ 0.87), porque las diferencias entre logits se amplifican" },
+            { "id": "b", "text": "Baja (≈ 0.51), porque la distribución se vuelve más pareja" },
+            { "id": "c", "text": "Se queda en ≈ 0.67, porque T solo afecta a los candidatos menos probables" },
+            { "id": "d", "text": "Pasa a ser exactamente 1, porque con T < 1 siempre se elige el máximo" }
           ],
-          "correct_option_id": "c"
+          "correct_option_id": "a"
         },
         {
           "id": "pre_s4", "code": "S4", "dimension_id": "estrategias_muestreo",
-          "bloom_level": "Aplicar", "formato": "Ordenar pasos",
-          "tipo": "asignacion", "subtipo": "ordenar", "puntaje_maximo": 1.0, "criterio_id": "ordenar",
-          "prompt": "Ordena los siguientes pasos numerándolos del 1 al 4 según la secuencia correcta:",
+          "bloom_level": "Aplicar", "formato": "Ordenar elementos",
+          "presentacion": "lista_arrastrable", "tipo": "asignacion", "subtipo": "ordenar",
+          "puntaje_maximo": 1.0, "criterio_id": "ordenar_5",
+          "conceptos_teoria": ["seleccion_token", "temperature", "top_k", "top_p"],
+          "prompt": "Ordena los pasos que sigue el modelo para elegir el siguiente token con temperatura y top-k.",
           "etiqueta_destino": "Orden", "destinos_unicos": true,
           "destinos": [
             { "id": "1", "texto": "1" }, { "id": "2", "texto": "2" },
-            { "id": "3", "texto": "3" }, { "id": "4", "texto": "4" }
+            { "id": "3", "texto": "3" }, { "id": "4", "texto": "4" },
+            { "id": "5", "texto": "5" }
           ],
           "elementos": [
-            { "id": "p1", "texto": "Se aplica softmax para obtener probabilidades", "correcto": "2" },
-            { "id": "p2", "texto": "El modelo produce un vector de logits (puntuaciones sin normalizar)", "correcto": "1" },
-            { "id": "p3", "texto": "Se filtran los candidatos según Top-k o Top-p", "correcto": "3" },
-            { "id": "p4", "texto": "Se selecciona un token de entre los candidatos filtrados", "correcto": "4" }
+            { "id": "p1", "texto": "Softmax convierte los logits ajustados en probabilidades", "correcto": "3" },
+            { "id": "p2", "texto": "Se sortea un token entre los candidatos que quedaron", "correcto": "5" },
+            { "id": "p3", "texto": "La capa Linear produce un logit por cada token del vocabulario", "correcto": "1" },
+            { "id": "p4", "texto": "Top-k conserva los k tokens más probables y renormaliza sus probabilidades", "correcto": "4" },
+            { "id": "p5", "texto": "Se dividen los logits entre la temperatura T", "correcto": "2" }
           ]
         }
       ]
@@ -364,224 +430,271 @@
         {
           "id": "post_t1", "code": "T1", "dimension_id": "tokenizacion",
           "bloom_level": "Recordar", "formato": "Completar",
-          "tipo": "texto", "puntaje_maximo": 1.0, "criterio_id": "completar",
-          "prompt": "La técnica ________ permite representar palabras nunca vistas como combinación de sub-palabras ya conocidas por el modelo.",
-          "placeholder": "Escribe el nombre de la técnica",
-          "respuestas_aceptadas": ["byte-pair encoding", "byte pair encoding", "bpe", "codificación por pares de bytes"]
+          "presentacion": "caja_en_linea", "tipo": "texto",
+          "puntaje_maximo": 1.0, "criterio_id": "completar",
+          "conceptos_teoria": ["tokenizacion"],
+          "prompt": "El algoritmo de tokenización por sub-palabras que aprende qué fragmentos son frecuentes fusionando, paso a paso, pares de símbolos adyacentes se llama ________.",
+          "placeholder": "Escribe el nombre del algoritmo",
+          "respuestas_aceptadas": ["byte-pair encoding", "byte pair encoding", "bpe", "codificación por pares de bytes", "codificación de pares de bytes"]
         },
         {
           "id": "post_t2", "code": "T2", "dimension_id": "tokenizacion",
           "bloom_level": "Comprender", "formato": "Opción múltiple",
-          "tipo": "opcion_unica", "puntaje_maximo": 1.0, "criterio_id": "opcion_unica",
-          "prompt": "Un sistema que solo reconoce palabras completas de un vocabulario fijo recibe el término «hiperparametrización», ausente de ese vocabulario. ¿Qué ocurre?",
+          "presentacion": "tarjetas", "tipo": "opcion_unica",
+          "puntaje_maximo": 1.0, "criterio_id": "opcion_unica",
+          "conceptos_teoria": ["tokenizacion"],
+          "prompt": "Un tokenizador por sub-palabras recibe la frase «la hiperparametrización». ¿Cuál es el resultado más coherente con su funcionamiento?",
           "options": [
-            { "id": "a", "text": "El procesamiento se detiene con un error irrecuperable" },
-            { "id": "b", "text": "El término se omite y el resto del texto se procesa sin problema" },
-            { "id": "c", "text": "El sistema lo traduce automáticamente a una palabra similar" },
-            { "id": "d", "text": "El término no puede representarse y se sustituye por un token desconocido (<UNK>)" }
+            { "id": "a", "text": "[\"la\", \"<UNK>\"]: la palabra que no está en el vocabulario se reemplaza por un token desconocido" },
+            { "id": "b", "text": "[\"la\", \" hiper\", \"param\", \"etr\", \"ización\"]: la palabra común queda entera y la rara se arma con fragmentos" },
+            { "id": "c", "text": "[\"la hiperparametrización\"]: la frase completa se agrega al vocabulario como un token nuevo" },
+            { "id": "d", "text": "[\"l\", \"a\", \" \", \"h\", \"i\", …]: todo el texto se divide siempre en caracteres sueltos" }
           ],
-          "correct_option_id": "d"
+          "correct_option_id": "b"
         },
         {
           "id": "post_t3", "code": "T3", "dimension_id": "tokenizacion",
           "bloom_level": "Comprender", "formato": "Opción múltiple",
-          "tipo": "opcion_unica", "puntaje_maximo": 1.0, "criterio_id": "opcion_unica",
-          "prompt": "¿Cuál es la ventaja principal de usar Byte-Pair Encoding (BPE) frente a un vocabulario cerrado de palabras completas?",
+          "presentacion": "tarjetas", "tipo": "opcion_unica",
+          "puntaje_maximo": 1.0, "criterio_id": "opcion_unica",
+          "conceptos_teoria": ["token_ids", "embeddings"],
+          "prompt": "En un vocabulario, «banco» tiene el ID 500 y «silla» el ID 501. Un compañero afirma que, por eso, el modelo «sabe» que ambas palabras se relacionan con sentarse. ¿Qué es lo correcto?",
           "options": [
-            { "id": "a", "text": "Reduce el tiempo de entrenamiento eliminando palabras poco usadas" },
-            { "id": "b", "text": "Corrige errores de escritura antes de tokenizar" },
-            { "id": "c", "text": "Permite construir palabras no vistas a partir de sub-palabras frecuentes ya aprendidas" },
-            { "id": "d", "text": "Traduce automáticamente el texto a un idioma estándar" }
+            { "id": "a", "text": "Tiene razón: los IDs consecutivos se asignan a palabras de significado parecido" },
+            { "id": "b", "text": "Tiene razón, pero solo cuando ambas palabras aparecen en la misma frase" },
+            { "id": "c", "text": "El modelo usa la diferencia entre IDs (501 − 500) para medir qué tan parecidas son" },
+            { "id": "d", "text": "No: el ID solo es un índice; cualquier relación de significado se aprende en los embeddings" }
           ],
-          "correct_option_id": "c"
+          "correct_option_id": "d"
         },
         {
           "id": "post_t4", "code": "T4", "dimension_id": "tokenizacion",
-          "bloom_level": "Aplicar", "formato": "Ordenar pasos",
-          "tipo": "asignacion", "subtipo": "ordenar", "puntaje_maximo": 1.0, "criterio_id": "ordenar",
-          "prompt": "Ordena los siguientes pasos numerándolos del 1 al 4 según la secuencia correcta:",
+          "bloom_level": "Aplicar", "formato": "Ordenar elementos",
+          "presentacion": "lista_arrastrable", "tipo": "asignacion", "subtipo": "ordenar",
+          "puntaje_maximo": 1.0, "criterio_id": "ordenar_4",
+          "conceptos_teoria": ["texto_entrada", "tokenizacion", "token_ids", "embeddings"],
+          "prompt": "Ordena las representaciones por las que pasa la frase «tokenización rápida» desde que se escribe hasta que está lista para combinarse con la codificación posicional.",
           "etiqueta_destino": "Orden", "destinos_unicos": true,
           "destinos": [
             { "id": "1", "texto": "1" }, { "id": "2", "texto": "2" },
             { "id": "3", "texto": "3" }, { "id": "4", "texto": "4" }
           ],
           "elementos": [
-            { "id": "p1", "texto": "Se identifican en el vocabulario las sub-palabras que componen el término", "correcto": "3" },
-            { "id": "p2", "texto": "El texto de entrada llega como cadena de caracteres sin segmentar", "correcto": "1" },
-            { "id": "p3", "texto": "Se combinan los identificadores numéricos de esas sub-palabras en la secuencia final", "correcto": "4" },
-            { "id": "p4", "texto": "Se compara el término contra las fusiones de sub-palabras aprendidas en el entrenamiento", "correcto": "2" }
+            { "id": "p1", "texto": "[\"token\", \"iz\", \"ación\", \" rápida\"]", "correcto": "2" },
+            { "id": "p2", "texto": "Una matriz de 4 filas × d_model columnas", "correcto": "4" },
+            { "id": "p3", "texto": "«tokenización rápida» (texto plano)", "correcto": "1" },
+            { "id": "p4", "texto": "[5021, 318, 7788, 12040]", "correcto": "3" }
           ]
         },
         {
           "id": "post_e1", "code": "E1", "dimension_id": "embeddings_posicion",
           "bloom_level": "Recordar", "formato": "Opción múltiple",
-          "tipo": "opcion_unica", "puntaje_maximo": 1.0, "criterio_id": "opcion_unica",
-          "prompt": "¿Qué representa, en esencia, el vector de embedding asociado a un token?",
+          "presentacion": "tarjetas", "tipo": "opcion_unica",
+          "puntaje_maximo": 1.0, "criterio_id": "opcion_unica",
+          "conceptos_teoria": ["embeddings"],
+          "prompt": "¿Cómo se obtiene el embedding de un token a partir de su ID?",
           "options": [
-            { "id": "a", "text": "Una representación numérica que codifica relaciones de significado y uso entre palabras" },
-            { "id": "b", "text": "Un contador de cuántas veces aparece la palabra en el texto" },
-            { "id": "c", "text": "Una traducción literal del token a un identificador binario" },
-            { "id": "d", "text": "Una etiqueta gramatical (sustantivo, verbo, etc.) asignada manualmente" }
+            { "id": "a", "text": "Se toma la fila de la tabla de embeddings (aprendida) que indica el ID" },
+            { "id": "b", "text": "Se multiplica el valor del ID por un número distinto en cada dimensión" },
+            { "id": "c", "text": "Se aplica la fórmula de senos y cosenos directamente sobre el valor del ID" },
+            { "id": "d", "text": "Se calcula la probabilidad del ID con softmax sobre todo el vocabulario" }
           ],
           "correct_option_id": "a"
         },
         {
           "id": "post_e2", "code": "E2", "dimension_id": "embeddings_posicion",
           "bloom_level": "Comprender", "formato": "Selección múltiple",
-          "tipo": "seleccion_multiple", "puntaje_maximo": 1.0, "criterio_id": "seleccion_multiple",
-          "prompt": "¿Cuáles de las siguientes afirmaciones son correctas? (selecciona todas las que apliquen)",
+          "presentacion": "chips_toggle", "tipo": "seleccion_multiple",
+          "puntaje_maximo": 1.0, "criterio_id": "seleccion_multiple",
+          "conceptos_teoria": ["embeddings", "combinacion_embedding_pe", "positional_encoding", "por_que_posicion"],
+          "prompt": "Selecciona todas las afirmaciones correctas sobre la entrada al modelo (embedding + codificación posicional).",
           "options": [
-            { "id": "a", "text": "La codificación posicional usa funciones seno/coseno de distinta frecuencia" },
-            { "id": "b", "text": "El embedding por sí solo ya resuelve el problema del orden de las palabras" },
-            { "id": "c", "text": "La codificación posicional depende de la posición del token, no de su identidad" },
-            { "id": "d", "text": "Dos oraciones con las mismas palabras en distinto orden producirían embeddings puros idénticos" }
+            { "id": "a", "text": "La codificación posicional tiene la misma forma que la matriz de embeddings: [seq_len, d_model]" },
+            { "id": "b", "text": "En esta etapa, el embedding de un token ya cambia según las palabras que lo rodean" },
+            { "id": "c", "text": "Dos tokens distintos que ocupan la misma posición (en frases distintas) reciben la misma codificación posicional" },
+            { "id": "d", "text": "La codificación posicional se concatena al final del embedding como coordenadas extra" },
+            { "id": "e", "text": "Tras el entrenamiento, tokens con usos parecidos tienden a tener embeddings parecidos" }
           ],
-          "correct_option_ids": ["a", "c", "d"]
+          "correct_option_ids": ["a", "c", "e"]
         },
         {
           "id": "post_e3", "code": "E3", "dimension_id": "embeddings_posicion",
-          "bloom_level": "Comprender", "formato": "Opción múltiple",
-          "tipo": "opcion_unica", "puntaje_maximo": 1.0, "criterio_id": "opcion_unica",
-          "prompt": "El Transformer procesa todos los tokens de una secuencia en paralelo mediante autoatención. ¿Por qué esto hace indispensable la codificación posicional?",
+          "bloom_level": "Comprender", "formato": "Opción múltiple — predicción",
+          "presentacion": "tarjetas_con_escenario", "tipo": "opcion_unica",
+          "puntaje_maximo": 1.0, "criterio_id": "prediccion",
+          "conceptos_teoria": ["por_que_posicion"],
+          "prompt": "Sin codificación posicional, se desordenan (permutan) las filas de la matriz de entrada X de la self-attention del encoder.\n\nPredice qué ocurre con la matriz de salida.",
           "options": [
-            { "id": "a", "text": "Porque acelera el cálculo de la función softmax final" },
-            { "id": "b", "text": "Porque sin codificación posicional el vocabulario del modelo se duplicaría" },
-            { "id": "c", "text": "Porque el procesamiento paralelo requiere reducir la dimensión de los embeddings" },
-            { "id": "d", "text": "Porque, sin ella, el modelo no tendría forma de diferenciar «el perro persigue al gato» de «el gato persigue al perro»" }
+            { "id": "a", "text": "Cambia por completo, porque la atención descubre relaciones nuevas entre los tokens" },
+            { "id": "b", "text": "No puede calcularse hasta que los tokens se devuelvan a su orden original" },
+            { "id": "c", "text": "Contiene los mismos vectores de antes, solo reordenados igual que la entrada" },
+            { "id": "d", "text": "Todos sus vectores se vuelven iguales entre sí, porque se pierde la posición" }
           ],
-          "correct_option_id": "d"
+          "correct_option_id": "c"
         },
         {
           "id": "post_e4", "code": "E4", "dimension_id": "embeddings_posicion",
-          "bloom_level": "Aplicar", "formato": "Clasificar",
-          "tipo": "asignacion", "subtipo": "clasificar", "puntaje_maximo": 1.0, "criterio_id": "clasificar",
-          "prompt": "Clasifica cada enunciado según corresponda a Embedding o a Codificación Posicional.",
+          "bloom_level": "Aplicar", "formato": "Clasificación / arrastrar y soltar",
+          "presentacion": "cestas", "tipo": "asignacion", "subtipo": "clasificar",
+          "puntaje_maximo": 1.0, "criterio_id": "clasificar",
+          "conceptos_teoria": ["embeddings", "positional_encoding", "combinacion_embedding_pe"],
+          "prompt": "Clasifica cada enunciado en la categoría que le corresponde: solo al Embedding, solo a la Codificación posicional, o a Ambos.",
           "etiqueta_destino": "Categoría", "destinos_unicos": false,
           "destinos": [
             { "id": "emb", "texto": "Embedding" },
-            { "id": "pos", "texto": "Codificación Posicional" }
+            { "id": "pos", "texto": "Codificación posicional" },
+            { "id": "ambos", "texto": "Ambos" }
           ],
           "elementos": [
-            { "id": "c1", "texto": "Usa una fórmula fija basada en seno/coseno, sin depender del entrenamiento", "correcto": "pos" },
-            { "id": "c2", "texto": "Depende únicamente de la posición del token en la secuencia, no de su identidad", "correcto": "pos" },
-            { "id": "c3", "texto": "Captura relaciones semánticas entre palabras, como similitud de significado", "correcto": "emb" },
-            { "id": "c4", "texto": "Es aprendido a partir de los datos de entrenamiento", "correcto": "emb" }
+            { "id": "c1", "texto": "Se obtiene usando el ID del token como índice de fila", "correcto": "emb" },
+            { "id": "c2", "texto": "Puede calcularse para posiciones más largas que las vistas en entrenamiento", "correcto": "pos" },
+            { "id": "c3", "texto": "Tiene d_model componentes por cada token", "correcto": "ambos" },
+            { "id": "c4", "texto": "Depende de dónde está el token, no de cuál es", "correcto": "pos" },
+            { "id": "c5", "texto": "Tokens de uso parecido terminan con vectores parecidos", "correcto": "emb" },
+            { "id": "c6", "texto": "Tiene una fila por cada token de la secuencia de entrada", "correcto": "ambos" }
           ]
         },
         {
           "id": "post_a1", "code": "A1", "dimension_id": "atencion_qkv",
           "bloom_level": "Recordar", "formato": "Relacionar columnas",
-          "tipo": "asignacion", "subtipo": "relacionar", "puntaje_maximo": 1.0, "criterio_id": "relacionar",
-          "prompt": "Relaciona cada elemento de la columna A con su definición en la columna B:",
-          "etiqueta_destino": "Definición", "destinos_unicos": true,
+          "presentacion": "lineas_o_tocar_para_emparejar", "tipo": "asignacion", "subtipo": "relacionar",
+          "puntaje_maximo": 1.0, "criterio_id": "relacionar",
+          "conceptos_teoria": ["query_key_value", "softmax_attention", "producto_por_v"],
+          "prompt": "La atención se parece a un buscador. Relaciona cada elemento de la atención con su equivalente en la búsqueda.",
+          "etiqueta_destino": "Equivalente", "destinos_unicos": true,
           "destinos": [
-            { "id": "a", "texto": "Es la información que se combina para formar la salida ponderada" },
-            { "id": "b", "texto": "Representa aquello que un token «pregunta» o busca en los demás" },
-            { "id": "c", "texto": "Determina cuánto se relaciona un token con otro" }
+            { "id": "a", "texto": "Los títulos indexados con los que se compara lo que escribiste" },
+            { "id": "b", "texto": "La mezcla final de contenidos, ponderada por qué tanto coincidió cada uno" },
+            { "id": "c", "texto": "El contenido de cada resultado, que es lo que realmente se recibe" },
+            { "id": "d", "texto": "El término que escribes en la barra de búsqueda" }
           ],
           "elementos": [
-            { "id": "q", "texto": "Query", "correcto": "b" },
-            { "id": "k", "texto": "Key", "correcto": "c" },
-            { "id": "v", "texto": "Value", "correcto": "a" }
+            { "id": "q", "texto": "Query", "correcto": "d" },
+            { "id": "k", "texto": "Key", "correcto": "a" },
+            { "id": "v", "texto": "Value", "correcto": "c" },
+            { "id": "z", "texto": "Salida de la atención (Z)", "correcto": "b" }
           ]
         },
         {
           "id": "post_a2", "code": "A2", "dimension_id": "atencion_qkv",
-          "bloom_level": "Comprender", "formato": "Pregunta en dos etapas",
-          "tipo": "etapas", "puntaje_maximo": 1.0, "criterio_id": "dos_etapas", "exigir_todas": true,
-          "prompt": "Analiza el efecto de omitir el escalamiento por √d_k sobre la función softmax.",
+          "bloom_level": "Comprender", "formato": "Dos etapas (resultado + razón)",
+          "presentacion": "pasos", "tipo": "etapas",
+          "puntaje_maximo": 1.0, "criterio_id": "dos_etapas", "exigir_todas": true,
+          "conceptos_teoria": ["escalamiento_sqrt_dk"],
+          "prompt": "Dos modelos son idénticos salvo por d_k: el Modelo 1 usa d_k = 8 y el Modelo 2 usa d_k = 512. Ninguno divide los scores entre √d_k.",
           "etapas": [
             {
-              "id": "e1", "titulo": "Etapa 1", "tipo": "opcion_unica", "peso": 0.5, "puntua": true,
-              "prompt": "Sin el escalamiento por √d_k, ¿qué le pasa a softmax cuando el producto Q·K es muy grande?",
+              "id": "e1", "titulo": "Resultado", "tipo": "opcion_unica", "peso": 0.5, "puntua": true,
+              "prompt": "¿En cuál es más probable que softmax se sature (un peso casi en 1 y el resto casi en 0)?",
               "options": [
-                { "id": "a", "text": "Deja de poder calcularse" },
-                { "id": "b", "text": "Se comporta igual que siempre" },
-                { "id": "c", "text": "Produce una distribución casi binaria, con gradientes cercanos a cero" },
-                { "id": "d", "text": "Aumenta el vocabulario" }
+                { "id": "a", "text": "En el Modelo 1" },
+                { "id": "b", "text": "En el Modelo 2" },
+                { "id": "c", "text": "En ambos por igual, porque d_k no influye en softmax" },
+                { "id": "d", "text": "En ninguno, porque softmax no puede saturarse" }
               ],
-              "correct_option_id": "c"
+              "correct_option_id": "b"
             },
             {
-              "id": "e2", "titulo": "Etapa 2", "tipo": "opcion_unica", "peso": 0.5, "puntua": true,
-              "prompt": "¿Por qué esto perjudica el entrenamiento?",
+              "id": "e2", "titulo": "Razón", "tipo": "opcion_unica", "peso": 0.5, "puntua": true,
+              "prompt": "¿Cuál es la razón?",
               "options": [
-                { "id": "a", "text": "Porque cambia el número de cabezas de atención" },
-                { "id": "b", "text": "Porque invalida la matriz Value" },
-                { "id": "c", "text": "Los gradientes casi nulos dificultan que el modelo siga aprendiendo" },
-                { "id": "d", "text": "Porque reduce la longitud de la secuencia" }
+                { "id": "a", "text": "Softmax divide internamente cada score entre d_k" },
+                { "id": "b", "text": "Con más dimensiones hay más tokens en la secuencia" },
+                { "id": "c", "text": "Los vectores Value del Modelo 2 son más grandes" },
+                { "id": "d", "text": "El producto punto suma más términos y su varianza crece con d_k, separando los scores" }
               ],
-              "correct_option_id": "c"
+              "correct_option_id": "d"
             }
           ]
         },
         {
           "id": "post_a3", "code": "A3", "dimension_id": "atencion_qkv",
           "bloom_level": "Comprender", "formato": "Detectar y corregir error",
-          "tipo": "etapas", "puntaje_maximo": 1.0, "criterio_id": "detectar_error", "exigir_todas": false,
-          "prompt": "Analiza la siguiente afirmación:\n\n«Puedo eliminar el escalamiento por √d_k sin ningún efecto negativo, solo cambia un poco la escala de los números.»",
+          "presentacion": "fragmentos_clicables", "tipo": "etapas",
+          "puntaje_maximo": 1.0, "criterio_id": "detectar_error", "exigir_todas": false,
+          "conceptos_teoria": ["mascara_triangular", "menos_infinito_softmax", "no_ver_futuro"],
+          "prompt": "Lee la afirmación. Contiene exactamente un error.\n\n«En la self-attention enmascarada del decoder, [1] la máscara tiene la misma forma que la matriz de scores, [2] las posiciones bloqueadas reciben −∞ antes de softmax, [3] por lo que su peso queda en 0.5 después de softmax, [4] y así el token i solo atiende a las posiciones 1 a i.»",
+          "fragmentos": [
+            { "id": "1", "texto": "la máscara tiene la misma forma que la matriz de scores" },
+            { "id": "2", "texto": "las posiciones bloqueadas reciben −∞ antes de softmax" },
+            { "id": "3", "texto": "por lo que su peso queda en 0.5 después de softmax" },
+            { "id": "4", "texto": "y así el token i solo atiende a las posiciones 1 a i" }
+          ],
           "etapas": [
             {
-              "id": "e1", "titulo": "Veredicto", "tipo": "opcion_unica", "peso": 0.5, "puntua": true,
-              "prompt": "¿La afirmación es correcta?",
+              "id": "e1", "titulo": "Detectar", "tipo": "opcion_unica", "peso": 0.5, "puntua": true,
+              "prompt": "¿Cuál fragmento contiene el error?",
               "options": [
-                { "id": "si", "text": "Sí" },
-                { "id": "no", "text": "No" }
+                { "id": "1", "text": "[1] la máscara tiene la misma forma que la matriz de scores" },
+                { "id": "2", "text": "[2] las posiciones bloqueadas reciben −∞ antes de softmax" },
+                { "id": "3", "text": "[3] por lo que su peso queda en 0.5 después de softmax" },
+                { "id": "4", "text": "[4] y así el token i solo atiende a las posiciones 1 a i" }
               ],
-              "correct_option_id": "no"
+              "correct_option_id": "3"
             },
             {
-              "id": "e2", "titulo": "Corrección", "tipo": "opcion_unica", "peso": 0.5, "puntua": true,
-              "prompt": "Si marcaste «No», selecciona la corrección adecuada:",
-              "depende_de": { "etapa_id": "e1", "opcion_id": "no" },
+              "id": "e2", "titulo": "Corregir", "tipo": "opcion_unica", "peso": 0.5, "puntua": true,
+              "prompt": "Elige la corrección adecuada.",
               "options": [
-                { "id": "a", "text": "Solo importa si d_k es menor a 10" },
-                { "id": "b", "text": "Sin ese escalamiento, softmax se satura y el entrenamiento se vuelve inestable" },
-                { "id": "c", "text": "El escalamiento solo afecta la velocidad de cómputo" },
-                { "id": "d", "text": "El escalamiento es opcional y decorativo" }
+                { "id": "a", "text": "…la máscara tiene la misma forma que la matriz de Values…" },
+                { "id": "b", "text": "…las posiciones bloqueadas reciben 0 antes de softmax…" },
+                { "id": "c", "text": "…por lo que su peso queda exactamente en 0 después de softmax…" },
+                { "id": "d", "text": "…el token i solo atiende a las posiciones i a n…" }
               ],
-              "correct_option_id": "b"
+              "correct_option_id": "c"
             }
           ]
         },
         {
           "id": "post_a4", "code": "A4", "dimension_id": "atencion_qkv",
-          "bloom_level": "Aplicar", "formato": "Interpretación de matriz",
-          "tipo": "opcion_unica", "puntaje_maximo": 1.0, "criterio_id": "matriz",
-          "prompt": "¿Qué token recibe mayor atención desde la fila «María»?",
+          "bloom_level": "Aplicar", "formato": "Interpretación de matriz de atención",
+          "presentacion": "heatmap_clic", "tipo": "opcion_unica",
+          "puntaje_maximo": 1.0, "criterio_id": "matriz",
+          "conceptos_teoria": ["interpretacion_pesos", "softmax_attention"],
+          "prompt": "La matriz muestra los pesos de atención de una cabeza del encoder (fila = token que atiende, columna = token atendido). ¿De qué token toma más información «comió» para construir su nueva representación?",
           "recurso": {
             "tipo": "matriz_atencion",
             "titulo": "Pesos de atención (fila = token que atiende, columna = token atendido)",
-            "filas": ["María", "compró", "pan"],
-            "columnas": ["María", "compró", "pan"],
-            "valores": [[0.15, 0.65, 0.20], [0.55, 0.25, 0.20], [0.25, 0.20, 0.55]]
+            "filas": ["La", "niña", "comió", "pan"],
+            "columnas": ["La", "niña", "comió", "pan"],
+            "fila_objetivo": "comió",
+            "valores": [
+              [0.30, 0.50, 0.10, 0.10],
+              [0.15, 0.25, 0.50, 0.10],
+              [0.05, 0.30, 0.15, 0.50],
+              [0.05, 0.20, 0.60, 0.15]
+            ]
           },
           "options": [
-            { "id": "a", "text": "compró" },
-            { "id": "b", "text": "María" },
-            { "id": "c", "text": "pan" },
-            { "id": "d", "text": "Los tres reciben el mismo peso" }
+            { "id": "a", "text": "La" },
+            { "id": "b", "text": "niña" },
+            { "id": "c", "text": "comió" },
+            { "id": "d", "text": "pan" }
           ],
-          "correct_option_id": "a"
+          "correct_option_id": "d"
         },
         {
           "id": "post_f1", "code": "F1", "dimension_id": "feedforward_normalizacion",
           "bloom_level": "Recordar", "formato": "Opción múltiple",
-          "tipo": "opcion_unica", "puntaje_maximo": 1.0, "criterio_id": "opcion_unica",
-          "prompt": "Dentro de cada capa del Transformer, ¿qué función cumple la red feed-forward?",
+          "presentacion": "tarjetas", "tipo": "opcion_unica",
+          "puntaje_maximo": 1.0, "criterio_id": "opcion_unica",
+          "conceptos_teoria": ["que_es_ffn", "ffn_por_posicion"],
+          "prompt": "¿Cuál es la estructura de la FFN en el Transformer original?",
           "options": [
-            { "id": "a", "text": "Transforma de manera no lineal la representación de cada posición de forma independiente, aportando capacidad expresiva adicional" },
-            { "id": "b", "text": "Segmenta el texto en unidades tokenizables" },
-            { "id": "c", "text": "Produce la distribución final de probabilidades sobre el vocabulario" },
-            { "id": "d", "text": "Calcula la relevancia entre pares de tokens de la secuencia" }
+            { "id": "a", "text": "Una sola capa lineal, sin función de activación" },
+            { "id": "b", "text": "Una matriz de atención seguida de un softmax por filas" },
+            { "id": "c", "text": "Dos capas lineales con una activación en medio: expande de d_model a d_ff y regresa a d_model" },
+            { "id": "d", "text": "Una normalización que deja cada vector con media 0 y varianza 1" }
           ],
-          "correct_option_id": "a"
+          "correct_option_id": "c"
         },
         {
           "id": "post_f2", "code": "F2", "dimension_id": "feedforward_normalizacion",
           "bloom_level": "Comprender", "formato": "Verdadero/Falso + justificación",
-          "tipo": "etapas", "puntaje_maximo": 1.0, "criterio_id": "verdadero_falso", "exigir_todas": false,
-          "prompt": "«Sin Layer Normalization, el entrenamiento de un Transformer profundo sería igual de estable que con ella.»",
+          "presentacion": "botones_vf_acordeon", "tipo": "etapas",
+          "puntaje_maximo": 1.0, "criterio_id": "verdadero_falso", "exigir_todas": false,
+          "conceptos_teoria": ["layer_normalization"],
+          "prompt": "«Layer Normalization calcula la media y la varianza de cada característica usando los valores de todos los ejemplos del batch.»",
           "etapas": [
             {
               "id": "e1", "titulo": "Verdadero o Falso", "tipo": "opcion_unica", "peso": 1.0, "puntua": true,
@@ -602,87 +715,103 @@
         {
           "id": "post_f3", "code": "F3", "dimension_id": "feedforward_normalizacion",
           "bloom_level": "Comprender", "formato": "Opción múltiple",
-          "tipo": "opcion_unica", "puntaje_maximo": 1.0, "criterio_id": "opcion_unica",
-          "prompt": "¿Cuál es la función de las conexiones residuales presentes alrededor de los bloques de atención y feed-forward?",
+          "presentacion": "tarjetas", "tipo": "opcion_unica",
+          "puntaje_maximo": 1.0, "criterio_id": "opcion_unica",
+          "conceptos_teoria": ["por_que_ffn_despues", "activacion_relu"],
+          "prompt": "Si se quitara la ReLU de la FFN, dejando dos capas lineales seguidas, ¿qué se perdería?",
           "options": [
-            { "id": "a", "text": "Reducir la dimensión de los vectores de embedding" },
-            { "id": "b", "text": "Preservar un flujo estable de gradientes en arquitecturas profundas, evitando que se desvanezcan durante el entrenamiento" },
-            { "id": "c", "text": "Incrementar artificialmente el número de tokens procesados" },
-            { "id": "d", "text": "Sustituir la necesidad de aplicar la función softmax" }
+            { "id": "a", "text": "La capacidad de cada token de ver a los otros tokens de la secuencia" },
+            { "id": "b", "text": "La no linealidad: dos capas lineales seguidas equivalen a una sola capa lineal" },
+            { "id": "c", "text": "La conexión residual, porque la salida cambiaría de tamaño" },
+            { "id": "d", "text": "Nada importante: la ReLU solo sirve para acelerar el cálculo" }
           ],
           "correct_option_id": "b"
         },
         {
           "id": "post_f4", "code": "F4", "dimension_id": "feedforward_normalizacion",
-          "bloom_level": "Aplicar", "formato": "Opción múltiple",
-          "tipo": "opcion_unica", "puntaje_maximo": 1.0, "criterio_id": "opcion_unica",
-          "prompt": "Se entrena un Transformer profundo sin conexiones residuales, dejando el resto de la arquitectura sin cambios. ¿Qué consecuencia es más probable durante el entrenamiento?",
+          "bloom_level": "Aplicar", "formato": "Opción múltiple — predicción",
+          "presentacion": "tarjetas_con_escenario", "tipo": "opcion_unica",
+          "puntaje_maximo": 1.0, "criterio_id": "prediccion",
+          "conceptos_teoria": ["conexion_residual", "flujo_add_norm"],
+          "prompt": "En un bloque Add & Norm, un token llega con x = [0.4, 1.5, −1.0] y la subcapa produce Sublayer(x) = [−0.4, 0.5, 0.2].\n\nPredice qué vector entra a LayerNorm.",
           "options": [
-            { "id": "a", "text": "La codificación posicional se vuelve innecesaria" },
-            { "id": "b", "text": "El tamaño del vocabulario se reduce automáticamente" },
-            { "id": "c", "text": "El entrenamiento se acelera sin ningún inconveniente" },
-            { "id": "d", "text": "El entrenamiento se dificulta debido al desvanecimiento del gradiente conforme atraviesa las capas profundas" }
+            { "id": "a", "text": "[0.0, 2.0, −0.8]" },
+            { "id": "b", "text": "[−0.4, 0.5, 0.2]" },
+            { "id": "c", "text": "[−0.16, 0.75, −0.2]" },
+            { "id": "d", "text": "[0.4, 1.5, −1.0]" }
           ],
-          "correct_option_id": "d"
+          "correct_option_id": "a"
         },
         {
           "id": "post_s1", "code": "S1", "dimension_id": "estrategias_muestreo",
           "bloom_level": "Recordar", "formato": "Opción múltiple",
-          "tipo": "opcion_unica", "puntaje_maximo": 1.0, "criterio_id": "opcion_unica",
-          "prompt": "Durante la generación de texto, ¿qué aspecto de la distribución de probabilidad sobre los tokens regula el parámetro de temperatura?",
+          "presentacion": "tarjetas", "tipo": "opcion_unica",
+          "puntaje_maximo": 1.0, "criterio_id": "opcion_unica",
+          "conceptos_teoria": ["temperature"],
+          "prompt": "¿Sobre qué actúa la temperatura T durante la generación de texto?",
           "options": [
-            { "id": "a", "text": "El tiempo de cómputo requerido por cada token generado" },
-            { "id": "b", "text": "Su grado de aleatoriedad, haciendo la distribución más uniforme (mayor temperatura) o más concentrada en los tokens más probables (menor temperatura)" },
-            { "id": "c", "text": "El número total de tokens en el vocabulario" },
-            { "id": "d", "text": "La longitud máxima de la secuencia generada" }
-          ],
-          "correct_option_id": "b"
-        },
-        {
-          "id": "post_s2", "code": "S2", "dimension_id": "estrategias_muestreo",
-          "bloom_level": "Comprender", "formato": "Relacionar columnas",
-          "tipo": "asignacion", "subtipo": "relacionar", "puntaje_maximo": 1.0, "criterio_id": "relacionar",
-          "prompt": "Relaciona cada elemento de la columna A con su definición en la columna B:",
-          "etiqueta_destino": "Efecto", "destinos_unicos": true,
-          "destinos": [
-            { "id": "a", "texto": "Restringe el conjunto de candidatos a muy pocos tokens" },
-            { "id": "b", "texto": "Considera un conjunto amplio de tokens candidatos" },
-            { "id": "c", "texto": "Elimina casi toda la aleatoriedad de la generación" }
-          ],
-          "elementos": [
-            { "id": "t1", "texto": "Top-p alto (cercano a 1)", "correcto": "b" },
-            { "id": "t2", "texto": "Top-p bajo", "correcto": "a" },
-            { "id": "t3", "texto": "Temperatura = 0", "correcto": "c" }
-          ]
-        },
-        {
-          "id": "post_s3", "code": "S3", "dimension_id": "estrategias_muestreo",
-          "bloom_level": "Comprender", "formato": "Opción múltiple",
-          "tipo": "opcion_unica", "puntaje_maximo": 1.0, "criterio_id": "opcion_unica",
-          "prompt": "Si se incrementa considerablemente el valor de la temperatura en la generación de texto, ¿qué efecto es más probable observar?",
-          "options": [
-            { "id": "a", "text": "El vocabulario del modelo se amplía automáticamente" },
-            { "id": "b", "text": "Las salidas se vuelven completamente deterministas" },
-            { "id": "c", "text": "El modelo deja de poder generar tokens" },
-            { "id": "d", "text": "Las salidas se vuelven más diversas y menos predecibles, dando más probabilidad relativa a tokens que antes tenían baja probabilidad" }
+            { "id": "a", "text": "Sobre el texto de entrada, antes de tokenizarlo" },
+            { "id": "b", "text": "Sobre los pesos de atención de cada capa del modelo" },
+            { "id": "c", "text": "Sobre el token ya elegido, antes de añadirlo al contexto" },
+            { "id": "d", "text": "Sobre los logits, que se dividen entre T antes de aplicar softmax" }
           ],
           "correct_option_id": "d"
         },
         {
+          "id": "post_s2", "code": "S2", "dimension_id": "estrategias_muestreo",
+          "bloom_level": "Comprender", "formato": "Relacionar columnas",
+          "presentacion": "lineas_o_tocar_para_emparejar", "tipo": "asignacion", "subtipo": "relacionar",
+          "puntaje_maximo": 1.0, "criterio_id": "relacionar",
+          "conceptos_teoria": ["greedy_sampling", "top_k", "top_p", "temperature"],
+          "prompt": "Relaciona cada configuración de generación con el efecto que produce.",
+          "etiqueta_destino": "Efecto", "destinos_unicos": true,
+          "destinos": [
+            { "id": "a", "texto": "Equivale a greedy: solo queda el token más probable" },
+            { "id": "b", "texto": "Conserva el grupo mínimo de tokens que acumula el 95 % de la probabilidad" },
+            { "id": "c", "texto": "Aplana la distribución; las salidas se vuelven más variadas" },
+            { "id": "d", "texto": "Refuerza al candidato principal; las salidas se vuelven más predecibles, aunque aún se sortea" }
+          ],
+          "elementos": [
+            { "id": "t1", "texto": "T = 0.3", "correcto": "d" },
+            { "id": "t2", "texto": "T = 1.5", "correcto": "c" },
+            { "id": "t3", "texto": "Top-k = 1", "correcto": "a" },
+            { "id": "t4", "texto": "Top-p = 0.95", "correcto": "b" }
+          ]
+        },
+        {
+          "id": "post_s3", "code": "S3", "dimension_id": "estrategias_muestreo",
+          "bloom_level": "Comprender", "formato": "Opción múltiple — predicción",
+          "presentacion": "tarjetas_con_escenario", "tipo": "opcion_unica",
+          "puntaje_maximo": 1.0, "criterio_id": "prediccion",
+          "conceptos_teoria": ["temperature", "softmax_final"],
+          "prompt": "Los logits de tres candidatos son [2, 1, 0]. Con T = 1, el primero tiene probabilidad ≈ 0.67.\n\nSi se sube la temperatura a T = 2, predice qué ocurre con la probabilidad del primer candidato.",
+          "options": [
+            { "id": "a", "text": "Sube (≈ 0.87), porque las diferencias entre logits se amplifican" },
+            { "id": "b", "text": "Pasa a ser exactamente 1/3, porque con T > 1 todos los candidatos quedan iguales" },
+            { "id": "c", "text": "Baja (≈ 0.51), porque las diferencias entre logits se reducen" },
+            { "id": "d", "text": "Se queda en ≈ 0.67, porque T solo afecta a los candidatos menos probables" }
+          ],
+          "correct_option_id": "c"
+        },
+        {
           "id": "post_s4", "code": "S4", "dimension_id": "estrategias_muestreo",
-          "bloom_level": "Aplicar", "formato": "Ordenar pasos",
-          "tipo": "asignacion", "subtipo": "ordenar", "puntaje_maximo": 1.0, "criterio_id": "ordenar",
-          "prompt": "Ordena los siguientes pasos numerándolos del 1 al 4 según la secuencia correcta:",
+          "bloom_level": "Aplicar", "formato": "Ordenar elementos",
+          "presentacion": "lista_arrastrable", "tipo": "asignacion", "subtipo": "ordenar",
+          "puntaje_maximo": 1.0, "criterio_id": "ordenar_5",
+          "conceptos_teoria": ["seleccion_token", "temperature", "top_k", "top_p"],
+          "prompt": "Ordena los pasos que sigue el modelo para elegir el siguiente token con T = 0.8 y top-p = 0.9.",
           "etiqueta_destino": "Orden", "destinos_unicos": true,
           "destinos": [
             { "id": "1", "texto": "1" }, { "id": "2", "texto": "2" },
-            { "id": "3", "texto": "3" }, { "id": "4", "texto": "4" }
+            { "id": "3", "texto": "3" }, { "id": "4", "texto": "4" },
+            { "id": "5", "texto": "5" }
           ],
           "elementos": [
-            { "id": "p1", "texto": "Se descartan los candidatos fuera del conjunto permitido por Top-k/Top-p", "correcto": "3" },
-            { "id": "p2", "texto": "Se ajustan las puntuaciones según el valor de temperatura", "correcto": "2" },
-            { "id": "p3", "texto": "El modelo produce un vector de logits para cada token del vocabulario", "correcto": "1" },
-            { "id": "p4", "texto": "Se elige un token del conjunto de candidatos restante", "correcto": "4" }
+            { "id": "p1", "texto": "Se sortea un token y se añade al contexto para el siguiente paso", "correcto": "5" },
+            { "id": "p2", "texto": "Los logits se dividen entre 0.8", "correcto": "2" },
+            { "id": "p3", "texto": "Top-p conserva el grupo mínimo de tokens que acumula 0.9 y renormaliza", "correcto": "4" },
+            { "id": "p4", "texto": "La capa Linear convierte el vector de la última posición en logits", "correcto": "1" },
+            { "id": "p5", "texto": "Softmax convierte los logits ajustados en probabilidades", "correcto": "3" }
           ]
         }
       ]

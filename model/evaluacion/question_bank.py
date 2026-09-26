@@ -35,6 +35,10 @@ class QuestionBank:
     VALID_ASSESSMENTS = ("pre", "post")
     SCHEMA_VERSION = 2
 
+    #: Version del instrumento que se asume cuando el banco no la declara.
+    #: El v2 nacio antes de que existiera el campo.
+    INSTRUMENT_VERSION_POR_DEFECTO = 2
+
     def __init__(self, path: str | Path | None = None) -> None:
         self.path = Path(path) if path is not None else DEFAULT_QUESTION_BANK_PATH
         self._data = self._load()
@@ -362,3 +366,23 @@ class QuestionBank:
     @property
     def criterios(self) -> dict[str, str]:
         return deepcopy(self._data.get("criterios", {}))
+
+    @property
+    def instrument_version(self) -> int:
+        """Version del INSTRUMENTO, distinta de la del esquema.
+
+        El esquema describe la forma del JSON; el instrumento, qué reactivos
+        contiene. Dos bancos pueden compartir esquema y medir cosas distintas:
+        el v3 conserva ``schema_version: 2`` pero cambia enunciados, claves y
+        criterios. Restar un pre-test de un instrumento contra un post-test de
+        otro produce un numero sin significado, y esta es la unica marca que
+        permite detectarlo.
+        """
+        try:
+            return int(
+                self._data.get(
+                    "instrument_version", self.INSTRUMENT_VERSION_POR_DEFECTO
+                )
+            )
+        except (TypeError, ValueError):
+            return self.INSTRUMENT_VERSION_POR_DEFECTO
