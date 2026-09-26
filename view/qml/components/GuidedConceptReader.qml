@@ -122,6 +122,13 @@ Rectangle {
                     }
                 }
 
+                GuidedDemoVisualization {
+                    width: parent.width
+                    height: implicitHeight
+                    conceptId: root.textFor("id")
+                    scaleFactor: root.scaleFactor
+                }
+
                 Text {
                     width: parent.width
                     text: root.textFor("explanation")

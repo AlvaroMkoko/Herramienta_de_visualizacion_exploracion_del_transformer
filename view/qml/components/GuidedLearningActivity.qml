@@ -15,11 +15,10 @@ Rectangle {
     property var optionOrder: []
     property bool unitCompleted: false
     property real scaleFactor: 1.0
+    readonly property var stageLabels: ["1 · Pregunta", "2 · Observa"]
 
     signal predictionSelected(int optionIndex)
     signal observationRequested()
-    signal explanationRequested()
-    signal completionRequested(string explanation)
 
     function value(fieldName, fallbackValue) {
         if (!root.activity || root.activity[fieldName] === undefined
@@ -96,12 +95,9 @@ Rectangle {
     radius: 14 * scaleFactor
     color: Style.Theme.surface
     border.width: 1
-    border.color: stage === 3 ? Style.Theme.proceso_texto : Style.Theme.borde_medio
+    border.color: stage === 1 && unitCompleted
+                  ? Style.Theme.proceso_texto : Style.Theme.borde_medio
     clip: true
-
-    onActivityChanged: {
-        explanationInput.text = ""
-    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -118,7 +114,7 @@ Rectangle {
 
                 Text {
                     Layout.fillWidth: true
-                    text: "Actividad de la unidad"
+                    text: "Comprueba lo aprendido"
                     color: Style.Theme.texto_primario
                     font.bold: true
                     font.pixelSize: 17 * root.scaleFactor
@@ -128,7 +124,7 @@ Rectangle {
 
                 Text {
                     Layout.fillWidth: true
-                    text: "Predice, observa y explica"
+                    text: "Pregunta y observa"
                     color: Style.Theme.texto_secundario
                     font.pixelSize: 11 * root.scaleFactor
                 }
@@ -155,7 +151,7 @@ Rectangle {
             spacing: 5 * root.scaleFactor
 
             Repeater {
-                model: ["Predecir", "Observar", "Explicar"]
+                model: root.stageLabels
 
                 delegate: Rectangle {
                     id: stageDelegate
@@ -164,7 +160,7 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 25 * root.scaleFactor
                     radius: height / 2
-                    color: root.stage > stageDelegate.index || root.stage === 3
+                    color: root.stage > stageDelegate.index
                            ? Style.Theme.proceso_fondo
                            : root.stage === stageDelegate.index
                              ? root.stageBackground(stageDelegate.index) : Style.Theme.chip_fondo
@@ -174,7 +170,7 @@ Rectangle {
                     Text {
                         anchors.centerIn: parent
                         text: stageDelegate.modelData
-                        color: root.stage > stageDelegate.index || root.stage === 3
+                        color: root.stage > stageDelegate.index
                                ? Style.Theme.proceso_texto
                                : root.stage === stageDelegate.index
                                  ? root.stageAccent(stageDelegate.index) : Style.Theme.texto_secundario
@@ -204,6 +200,7 @@ Rectangle {
                 spacing: 10 * root.scaleFactor
 
                 Column {
+                    objectName: "guidedQuestionPanel"
                     visible: root.stage === 0
                     width: parent.width
                     spacing: 9 * root.scaleFactor
@@ -217,6 +214,7 @@ Rectangle {
                     }
 
                     Text {
+                        objectName: "guidedQuestionText"
                         width: parent.width
                         text: String(root.value("question", ""))
                         color: Style.Theme.texto_primario
@@ -317,6 +315,7 @@ Rectangle {
                 }
 
                 Column {
+                    objectName: "guidedObservePanel"
                     visible: root.stage === 1
                     width: parent.width
                     spacing: 10 * root.scaleFactor
@@ -400,7 +399,9 @@ Rectangle {
 
                     Text {
                         width: parent.width
-                        text: root.predictionFeedback()
+                        text: root.selectedPrediction < 0
+                              ? "Esta unidad ya está completada; vuelve a observar el mecanismo cuando quieras."
+                              : root.predictionFeedback()
                         color: root.selectedPrediction === Number(root.value("correctIndex", -1))
                                ? Style.Theme.proceso_texto : Style.Theme.formula_texto
                         font.pixelSize: 11 * root.scaleFactor
@@ -408,131 +409,59 @@ Rectangle {
                         wrapMode: Text.WordWrap
                     }
 
-                    Button {
-                        id: explainButton
-                        objectName: "guidedExplainButton"
+                    Rectangle {
+                        id: pedagogicalExplanation
+                        objectName: "guidedPedagogicalExplanation"
                         width: parent.width
-                        height: 40 * root.scaleFactor
-                        text: "Explicar con mis palabras"
-                        activeFocusOnTab: true
-                        Accessible.name: text
-                        onClicked: root.explanationRequested()
-                    }
-                }
+                        height: explanationColumn.implicitHeight + 24 * root.scaleFactor
+                        radius: 10 * root.scaleFactor
+                        color: Style.Theme.proceso_fondo
+                        border.color: Qt.alpha(Style.Theme.proceso_texto, 0.48)
 
-                Column {
-                    visible: root.stage === 2
-                    width: parent.width
-                    spacing: 9 * root.scaleFactor
+                        Column {
+                            id: explanationColumn
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.margins: 12 * root.scaleFactor
+                            spacing: 7 * root.scaleFactor
 
-                    Text {
-                        width: parent.width
-                        text: "EXPLICA LO OBSERVADO"
-                        color: Style.Theme.concepto_texto
-                        font.bold: true
-                        font.pixelSize: 10 * root.scaleFactor
-                    }
+                            Text {
+                                width: parent.width
+                                text: "POR QUÉ FUNCIONA"
+                                color: Style.Theme.proceso_texto
+                                font.bold: true
+                                font.pixelSize: 10 * root.scaleFactor
+                            }
 
-                    Text {
-                        width: parent.width
-                        text: String(root.value("explanationPrompt", ""))
-                        color: Style.Theme.texto_primario
-                        font.pixelSize: 12 * root.scaleFactor
-                        wrapMode: Text.WordWrap
-                    }
-
-                    AreaTextoPrincipal {
-                        id: explanationInput
-                        objectName: "guidedExplanationInput"
-                        width: parent.width
-                        height: 118 * root.scaleFactor
-                        sx: root.scaleFactor
-                        sy: root.scaleFactor
-                        placeholderText: "Escribe al menos una idea completa…"
-                        wrapMode: TextEdit.Wrap
-                        selectByMouse: true
-                        activeFocusOnTab: true
-                        Accessible.name: "Explicación de la actividad"
-                        Accessible.description: String(root.value("explanationPrompt", ""))
+                            Text {
+                                width: parent.width
+                                text: String(root.value("modelExplanation", ""))
+                                color: Style.Theme.texto_primario
+                                font.pixelSize: 11 * root.scaleFactor
+                                lineHeight: 1.18
+                                wrapMode: Text.WordWrap
+                            }
+                        }
                     }
 
-                    Text {
+                    Rectangle {
                         width: parent.width
-                        text: explanationInput.text.trim().length < 12
-                              ? "Escribe al menos 12 caracteres para continuar."
-                              : "Tu explicación está lista para revisar."
-                        color: explanationInput.text.trim().length < 12
-                               ? Style.Theme.texto_secundario : Style.Theme.exito_texto
-                        font.pixelSize: 9 * root.scaleFactor
-                        wrapMode: Text.WordWrap
-                    }
-
-                    Button {
-                        id: completeButton
-                        objectName: "guidedCompleteActivityButton"
-                        width: parent.width
-                        height: 40 * root.scaleFactor
-                        enabled: explanationInput.text.trim().length >= 12
-                        text: "Recibir retroalimentación"
-                        activeFocusOnTab: true
-                        Accessible.name: text
-                        onClicked: root.completionRequested(explanationInput.text)
-                    }
-                }
-
-                Rectangle {
-                    id: feedbackPanel
-                    objectName: "guidedFeedbackPanel"
-                    visible: root.stage === 3
-                    width: parent.width
-                    height: visible ? feedbackColumn.implicitHeight + 24 * root.scaleFactor : 0
-                    radius: 10 * root.scaleFactor
-                    color: Style.Theme.proceso_fondo
-                    border.color: Qt.alpha(Style.Theme.proceso_texto, 0.48)
-
-                    Column {
-                        id: feedbackColumn
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        anchors.margins: 12 * root.scaleFactor
-                        spacing: 7 * root.scaleFactor
-
+                        height: completionText.implicitHeight + 18 * root.scaleFactor
+                        radius: 8 * root.scaleFactor
+                        color: Style.Theme.exito_fondo
+                        border.color: Style.Theme.success
                         Text {
-                            width: parent.width
-                            text: "UNIDAD COMPLETADA"
+                            id: completionText
+                            anchors.fill: parent
+                            anchors.margins: 9 * root.scaleFactor
+                            text: "✓ Observación completada · ya puedes continuar con la siguiente unidad."
                             color: Style.Theme.exito_texto
                             font.bold: true
                             font.pixelSize: 10 * root.scaleFactor
-                        }
-
-                        Text {
-                            width: parent.width
-                            text: root.selectedPrediction < 0
-                                  ? "Ya completaste esta actividad. Puedes repasar sus conceptos cuando quieras."
-                                  : root.predictionFeedback()
-                            color: Style.Theme.proceso_texto
-                            font.pixelSize: 11 * root.scaleFactor
-                            font.bold: true
                             wrapMode: Text.WordWrap
-                        }
-
-                        Text {
-                            width: parent.width
-                            text: String(root.value("modelExplanation", ""))
-                            color: Style.Theme.texto_primario
-                            font.pixelSize: 11 * root.scaleFactor
-                            lineHeight: 1.15
-                            wrapMode: Text.WordWrap
-                        }
-
-                        Text {
-                            width: parent.width
-                            text: "Puedes comparar esta explicación con la tuya; no se califica la redacción."
-                            color: Style.Theme.texto_secundario
-                            font.italic: true
-                            font.pixelSize: 9 * root.scaleFactor
-                            wrapMode: Text.WordWrap
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
                         }
                     }
                 }
