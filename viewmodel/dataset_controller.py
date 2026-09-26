@@ -18,6 +18,7 @@ import time
 from typing import Any
 import unicodedata
 
+from core.rutas import DIR_DATASETS
 from PySide6.QtCore import Property, QObject, QThread, QUrl, Signal, Slot
 
 
@@ -462,7 +463,11 @@ class _DatasetWorker(QObject):
 class DatasetController(QObject):
     """Administra el catálogo persistente y expone operaciones para QML."""
 
-    DATASET_FILE = Path("data/datasets/dataSets.json")
+    # Antes era Path("data/datasets/..."), relativa al directorio de trabajo:
+    # la aplicación solo encontraba su catálogo si se lanzaba desde la raíz
+    # del proyecto. DIR_DATASETS es absoluta y, al empaquetar, apunta fuera
+    # del paquete, donde sí hay permiso de escritura.
+    DATASET_FILE = DIR_DATASETS / "dataSets.json"
 
     ocupadoCambio = Signal()
     progresoCambio = Signal()

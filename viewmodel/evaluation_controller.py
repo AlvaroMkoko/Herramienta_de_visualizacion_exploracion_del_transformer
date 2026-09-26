@@ -18,11 +18,11 @@ from typing import Any
 from PySide6.QtCore import (
     Property,
     QObject,
-    QStandardPaths,
     Signal,
     Slot,
 )
 
+from core.rutas import DIR_RESULTADOS, recurso
 from model.evaluacion import (
     EvaluationManager,
     EvaluationStateError,
@@ -33,9 +33,19 @@ from model.evaluacion import (
 )
 
 
+#: El banco de preguntas es un recurso de SOLO LECTURA: viaja dentro del
+#: paquete. La ruta se pasa explícitamente al modelo en vez de que él la calcule
+#: con __file__, que dentro de un ejecutable ya no ubica el archivo.
+RUTA_BANCO = recurso("data", "evaluacion", "question_bank.json")
+
+#: Los resultados son datos de ESCRITURA: viven en data/resultados/ desde el
+#: código fuente y, al empaquetar, junto al ejecutable (ver core/rutas.py).
+#: Guardarlos dentro del paquete los perdería al cerrar la aplicación.
+RUTA_RESULTADOS_POR_DEFECTO = DIR_RESULTADOS / "resultados_evaluacion.json"
+
+
 def _ruta_resultados() -> Path:
-    base = QStandardPaths.writableLocation(QStandardPaths.AppDataLocation)
-    return Path(base) / "resultados_evaluacion.json"
+    return RUTA_RESULTADOS_POR_DEFECTO
 
 
 def _a_python(valor: Any) -> Any:
@@ -78,7 +88,7 @@ class EvaluationController(QObject):
         repository: ResultsRepository | None = None,
     ) -> None:
         super().__init__(parent)
-        self._bank = question_bank or QuestionBank()
+        self._bank = question_bank or QuestionBank(RUTA_BANCO)
         self._manager = EvaluationManager(self._bank)
         self._repository = repository or ResultsRepository(_ruta_resultados())
         self._assessment_type = "pre"

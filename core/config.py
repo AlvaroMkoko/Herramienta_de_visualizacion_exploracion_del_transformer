@@ -5,7 +5,7 @@ Centraliza:
 - Detección dinámica del dispositivo de cómputo (CPU/CUDA), para que el
   mismo código corra sin cambios en distintas GPUs de desarrollo
   (ej. RTX 5070 Ti de escritorio, RTX 3050 de laptop) o incluso sin GPU.
-- Rutas base del proyecto (datasets, checkpoints, logs).
+- Reexporta las rutas base del proyecto, que calcula core/rutas.py.
 - Semilla global para reproducibilidad de experimentos.
 """
 
@@ -15,21 +15,35 @@ from pathlib import Path
 import numpy as np
 import torch
 
+from core.rutas import (
+    DIR_CHECKPOINTS as _DIR_CHECKPOINTS,
+    DIR_DATASETS as _DIR_DATASETS,
+    DIR_DATOS as _DIR_DATOS,
+    DIR_LOGS as _DIR_LOGS,
+    DIR_RECURSOS,
+    asegurar,
+)
+
 # ---------------------------------------------------------------------------
 # Rutas base del proyecto
 # ---------------------------------------------------------------------------
 
-# Raíz del proyecto (dos niveles arriba de este archivo: core/config.py -> raíz)
-DIR_BASE = Path(__file__).resolve().parent.parent
-
-DIR_DATOS = DIR_BASE / "data"
-DIR_DATASETS = DIR_DATOS / "datasets"
-DIR_CHECKPOINTS = DIR_DATOS / "checkpoints"
-DIR_LOGS = DIR_DATOS / "logs"
+# Las rutas ya no se calculan aquí: viven en core/rutas.py, que distingue los
+# recursos de solo lectura (dentro del paquete, al empaquetar) de los datos de
+# escritura (fuera de él). Antes, DIR_BASE se derivaba de __file__, lo que en un
+# ejecutable apunta dentro del paquete: en modo onefile eso es una carpeta
+# temporal que el sistema borra al cerrar, y los checkpoints se perderían.
+#
+# Los nombres se reexportan para no tocar los módulos que ya los importan.
+DIR_BASE = DIR_RECURSOS
+DIR_DATOS = _DIR_DATOS
+DIR_DATASETS = _DIR_DATASETS
+DIR_CHECKPOINTS = _DIR_CHECKPOINTS
+DIR_LOGS = _DIR_LOGS
 
 # Crea las carpetas si no existen (evita errores al primer guardado)
 for _directorio in (DIR_DATASETS, DIR_CHECKPOINTS, DIR_LOGS):
-    _directorio.mkdir(parents=True, exist_ok=True)
+    asegurar(_directorio)
 
 
 # ---------------------------------------------------------------------------
