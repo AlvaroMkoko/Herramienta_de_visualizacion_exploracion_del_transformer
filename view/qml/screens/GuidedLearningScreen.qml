@@ -273,7 +273,7 @@ PagePrincipal {
     function restoreActivityState() {
         root.selectedPrediction = -1
         root.shuffleOptionOrder()
-        root.activityStage = root.currentUnitCompleted ? 3 : 0
+        root.activityStage = root.currentUnitCompleted ? 1 : 0
     }
 
         function selectUnit(index) {
@@ -330,16 +330,6 @@ PagePrincipal {
         if (root.selectedPrediction < 0 || root.activityStage !== 0)
             return
         root.activityStage = 1
-    }
-
-    function startExplanation() {
-        if (root.activityStage === 1)
-            root.activityStage = 2
-    }
-
-    function completeActivity(explanationText) {
-        if (root.activityStage !== 2 || String(explanationText).trim().length < 12)
-            return
         var unitId = String(root.currentUnit.id || "")
         if (root.hasLearningController) {
             mainViewModel.learningController.markUnitCompleted(unitId)
@@ -349,7 +339,6 @@ PagePrincipal {
             root.fallbackCompletedUnitIds = updated
         }
         root.progressRevision += 1
-        root.activityStage = 3
     }
 
     function resetProgress() {
@@ -904,10 +893,6 @@ PagePrincipal {
                     root.selectPrediction(optionIndex)
                 }
                 onObservationRequested: root.showObservation()
-                onExplanationRequested: root.startExplanation()
-                onCompletionRequested: function(explanation) {
-                    root.completeActivity(explanation)
-                }
                 optionOrder: root.optionOrder
             }
         }

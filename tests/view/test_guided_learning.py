@@ -227,13 +227,24 @@ def test_recorrido_expone_seis_unidades_y_dieciocho_conceptos(guided_qml, qtbot)
         "guidedPreviousConceptButton",
         "guidedNextConceptButton",
         "guidedConceptReader",
+        "guidedConceptVisualization",
+        "guidedConceptDiagram",
         "guidedActivityCard",
+        "guidedQuestionPanel",
+        "guidedObservePanel",
         "guidedDemoVisualization",
         "guidedObservationPanel",
-        "guidedExplanationInput",
-        "guidedFeedbackPanel",
+        "guidedPedagogicalExplanation",
     ):
         _buscar(window, object_name)
+
+    activity = _buscar(window, "guidedActivityCard")
+    concept_visual = _buscar(window, "guidedConceptVisualization")
+    assert _propiedad(activity, "stageLabels") == ["1 · Pregunta", "2 · Observa"]
+    assert _propiedad(concept_visual, "conceptId") == "que_es_transformer"
+    assert _propiedad(concept_visual, "accessibleSummary")
+    assert window.findChild(QObject, "guidedExplanationInput") is None
+    assert window.findChild(QObject, "guidedFeedbackPanel") is None
 
 
 def test_navegacion_cambia_concepto_y_respeta_unidades(guided_qml, qapp):
@@ -273,14 +284,54 @@ def test_navegacion_cambia_concepto_y_respeta_unidades(guided_qml, qapp):
     assert _propiedad(screen, "currentConceptIndex") == 2
 
 
-def test_actividad_avanza_predecir_observar_explicar_y_actualiza_progreso(
+def test_cada_concepto_tiene_una_visualizacion_pedagogica_propia(
+    guided_qml, qapp
+):
+    window, view_model = guided_qml
+    screen = _buscar(window, "guidedLearningScreen")
+    visual = _buscar(window, "guidedConceptVisualization")
+    diagram = _buscar(window, "guidedConceptDiagram")
+    expected_groups = [
+        ["que_es_transformer", "encoder_decoder_general", "flujo_general"],
+        ["tokenizacion", "embeddings", "positional_encoding"],
+        ["query_key_value", "formula_attention_completa", "problema_multi_head"],
+        ["por_que_mascara", "generacion_token_por_token", "seleccion_token"],
+        ["entrenamiento_vs_inferencia", "cross_entropy", "actualizacion_parametros"],
+        ["dataset", "teacher_forcing", "epoch_batch"],
+    ]
+
+    _invocar(screen, "resetProgress")
+    summaries = set()
+    for unit_index, concept_ids in enumerate(expected_groups):
+        if unit_index > 0:
+            view_model.learningController.markUnitCompleted(f"unit_{unit_index}")
+            qapp.processEvents()
+        _invocar(screen, "selectUnit", unit_index)
+        for concept_index, concept_id in enumerate(concept_ids):
+            _invocar(screen, "selectConcept", concept_index)
+            qapp.processEvents()
+            assert _propiedad(screen, "currentConceptId") == concept_id
+            concept = _propiedad(screen, "currentConcept")
+            assert concept["id"] == concept_id
+            assert len(str(concept.get("explanation", "")).strip()) >= 80
+            assert _propiedad(visual, "conceptId") == concept_id
+            assert _propiedad(diagram, "sceneKind") == concept_id
+            summary = str(_propiedad(visual, "accessibleSummary")).strip()
+            assert len(summary) >= 40
+            summaries.add(summary)
+            assert _propiedad(visual, "implicitHeight") >= 180
+
+    assert len(summaries) == 18
+
+
+def test_actividad_se_limita_a_pregunta_y_observacion_y_actualiza_progreso(
     guided_qml, qapp
 ):
     window, _ = guided_qml
     screen = _buscar(window, "guidedLearningScreen")
     observation_panel = _buscar(window, "guidedObservationPanel")
     demo = _buscar(window, "guidedDemoVisualization")
-    feedback_panel = _buscar(window, "guidedFeedbackPanel")
+    pedagogical_explanation = _buscar(window, "guidedPedagogicalExplanation")
 
     _invocar(screen, "resetProgress")
     _invocar(screen, "selectUnit", 0)
@@ -289,6 +340,8 @@ def test_actividad_avanza_predecir_observar_explicar_y_actualiza_progreso(
     assert _propiedad(screen, "selectedPrediction") == -1
     assert _propiedad(screen, "completedUnitsCount") == 0
     assert _propiedad(demo, "visualType") == "pipeline"
+    assert _propiedad(demo, "compactLayout") is True
+    assert _propiedad(demo, "implicitHeight") >= 250
     assert "dataset aporta instruction" in _propiedad(demo, "accessibleSummary")
     _buscar(window, "guidedPipelineDatasetBlock")
     _buscar(window, "guidedPipelineTokenizationBlock")
@@ -303,27 +356,13 @@ def test_actividad_avanza_predecir_observar_explicar_y_actualiza_progreso(
     qapp.processEvents()
     assert _propiedad(screen, "activityStage") == 1
     assert _propiedad(observation_panel, "visible") is True
-
-    _invocar(screen, "startExplanation")
-    qapp.processEvents()
-    assert _propiedad(screen, "activityStage") == 2
-
-    _invocar(
-        screen,
-        "completeActivity",
-        "La atencion pondera relaciones entre tokens segun el contexto.",
-    )
-    qapp.processEvents()
-    assert _propiedad(screen, "activityStage") == 3
     assert _propiedad(screen, "completedUnitsCount") == 1
-    assert _propiedad(feedback_panel, "visible") is True
+    assert _propiedad(pedagogical_explanation, "visible") is True
+    assert window.findChild(QObject, "guidedExplanationInput") is None
+    assert window.findChild(QObject, "guidedFeedbackPanel") is None
 
-    # Volver a completar la misma unidad no debe inflar el progreso.
-    _invocar(
-        screen,
-        "completeActivity",
-        "La misma explicacion no debe contar dos veces la unidad.",
-    )
+    # Volver a pedir la observación no debe inflar el progreso.
+    _invocar(screen, "showObservation")
     qapp.processEvents()
     assert _propiedad(screen, "completedUnitsCount") == 1
 
