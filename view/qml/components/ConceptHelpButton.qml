@@ -36,7 +36,7 @@ ToolButton {
 
     Accessible.role: Accessible.Button
     Accessible.name: "Abrir explicación: " + root.readableLabel
-    Accessible.description: "Muestra informacion educativa sobre este concepto tecnico."
+    Accessible.description: "Muestra información educativa sobre este concepto técnico."
 
     ToolTip.delay: 350
     ToolTip.timeout: 5000

@@ -128,6 +128,98 @@ def test_todos_los_botones_de_ayuda_apuntan_a_conceptos_existentes():
     assert missing == {}
 
 
+def test_todos_los_botones_de_ayuda_tienen_informacion_completa():
+    pattern = re.compile(
+        r"(?:conceptId|helpConceptId|help)\s*:\s*\"([a-z0-9_]+)\""
+    )
+    referenced_ids = {
+        match
+        for qml_path in QML_ROOT.rglob("*.qml")
+        for match in pattern.findall(qml_path.read_text(encoding="utf8"))
+    }
+    referenced_ids.update(_CONCEPTO_POR_METRICA.values())
+
+    controller = TheoryController()
+    incomplete = {}
+    for concept_id in sorted(referenced_ids):
+        concept = controller.obtenerConcepto(concept_id)
+        missing_fields = [
+            field
+            for field in ("title", "short_description", "explanation")
+            if not str(concept.get(field, "")).strip()
+        ]
+        if missing_fields:
+            incomplete[concept_id] = missing_fields
+
+    assert incomplete == {}
+
+
+def test_botones_del_detalle_solicitan_su_propio_concepto(qapp):
+    engine = QQmlEngine()
+    source = """
+import QtQuick
+import QtQuick.Controls
+import "components" as Components
+
+ApplicationWindow {
+    width: 700
+    height: 600
+    visible: false
+    Components.DetalleComponentePopover {
+        objectName: "detailPopover"
+        width: 520
+        height: 500
+        componenteId: "encoder_self_attention"
+        concepto: ({
+            "title": "Self-Attention",
+            "short_description": "Resumen",
+            "explanation": "Explicación"
+        })
+        datosComponente: ({
+            "titulo": "Atención",
+            "metricas": [{
+                "etiqueta": "Norma L2",
+                "valor": "1.2",
+                "concepto_id": "gradient_norm_l2"
+            }],
+            "capas": [{ "capa": 1, "pico": 0.5 }]
+        })
+    }
+}
+""".encode()
+    component = QQmlComponent(engine)
+    component.setData(
+        source,
+        QUrl.fromLocalFile(str(QML_ROOT / "DetailHelpHost.qml")),
+    )
+    assert component.status() != QQmlComponent.Status.Error, _errors(component)
+    window = component.create()
+    assert window is not None, _errors(component)
+    qapp.processEvents()
+
+    popover = window.findChild(QObject, "detailPopover")
+    _invoke_qml(popover, "open")
+    qapp.processEvents()
+    requested = []
+    popover.abrirTeoriaSolicitada.connect(requested.append)
+
+    for concept_id in ("epoch_batch", "interpretacion_pesos"):
+        button = window.findChild(QObject, f"conceptHelp_{concept_id}")
+        assert button is not None, concept_id
+        _invoke_qml(button, "requestHelp")
+        assert requested[-1] == concept_id
+
+    # Los botones de métricas son delegates dinámicos; todos pasan por esta
+    # misma función antes de emitir el id que traen en sus datos.
+    _invoke_qml(popover, "solicitarConcepto", "gradient_norm_l2")
+    assert requested[-1] == "gradient_norm_l2"
+
+    window.deleteLater()
+    component.deleteLater()
+    engine.deleteLater()
+    qapp.processEvents()
+
+
 def test_teoria_de_entrenamiento_separa_backward_de_la_actualizacion():
     controller = TheoryController()
     backward = controller.obtenerConcepto("backpropagation")

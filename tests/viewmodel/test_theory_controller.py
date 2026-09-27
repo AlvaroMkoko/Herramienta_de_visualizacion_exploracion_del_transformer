@@ -284,6 +284,29 @@ def test_rechaza_mapeo_hacia_concepto_inexistente(tmp_path):
     assert controlador.obtenerTeoriaDeComponente("bloque")["existe"] is False
 
 
+@pytest.mark.parametrize("campo", ["title", "short_description", "explanation"])
+def test_rechaza_conceptos_con_informacion_obligatoria_vacia(tmp_path, campo):
+    ruta = tmp_path / "teoria.json"
+    datos = _documento_minimo()
+    datos["secciones"][0]["conceptos"][0][campo] = "  "
+    _escribir_json(ruta, datos)
+    controlador = TheoryController(ruta)
+
+    assert controlador.obtenerConcepto("concepto_principal")["existe"] is False
+    assert "no tiene" in controlador.errorCarga
+
+
+def test_rechaza_relacion_hacia_concepto_inexistente(tmp_path):
+    ruta = tmp_path / "teoria.json"
+    datos = _documento_minimo()
+    datos["secciones"][0]["conceptos"][0]["related_concepts"] = ["no_existe"]
+    _escribir_json(ruta, datos)
+    controlador = TheoryController(ruta)
+
+    assert controlador.obtenerConcepto("concepto_principal")["existe"] is False
+    assert "relacionado inexistente 'no_existe'" in controlador.errorCarga
+
+
 def test_recargar_reconstruye_indices_y_actualiza_contenido(tmp_path):
     ruta = tmp_path / "teoria.json"
     _escribir_json(ruta, _documento_minimo(titulo="Antes"))

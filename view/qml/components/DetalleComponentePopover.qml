@@ -16,8 +16,16 @@ Popup {
     property var prediccionesTop: []
     property string openButtonObjectName: "trainingOpenTheoryButton"
 
-    signal abrirTeoriaSolicitada()
+    // Cadena vacía: abrir la teoría del componente seleccionado.
+    // Id no vacío: abrir exactamente el concepto solicitado por un botón "?".
+    signal abrirTeoriaSolicitada(string conceptId)
     signal cerrarSolicitado()
+
+    function solicitarConcepto(conceptId) {
+        var normalizedId = String(conceptId || "").trim()
+        if (normalizedId !== "")
+            root.abrirTeoriaSolicitada(normalizedId)
+    }
 
     visible: root.componenteId !== ""
     modal: false
@@ -85,7 +93,7 @@ Popup {
                 sy: root.sy
                 concepto: root.concepto
                 openButtonObjectName: root.openButtonObjectName
-                onOpenRequested: root.abrirTeoriaSolicitada()
+                onOpenRequested: root.abrirTeoriaSolicitada("")
                 onCloseRequested: root.cerrarSolicitado()
             }
 
@@ -100,8 +108,11 @@ Popup {
                 }
                 ConceptHelpButton {
                     conceptId: "epoch_batch"
+                    conceptLabel: "Epoch y batch"
                     controlSize: Math.max(22, 25 * Math.min(root.sx, root.sy))
-                    onHelpRequested: function(conceptId) { root.abrirTeoriaSolicitada() }
+                    onHelpRequested: function(conceptId) {
+                        root.solicitarConcepto(conceptId)
+                    }
                 }
             }
 
@@ -146,8 +157,11 @@ Popup {
                         ConceptHelpButton {
                             visible: String(metricaDelegate.modelData.concepto_id || "") !== ""
                             conceptId: String(metricaDelegate.modelData.concepto_id || "")
+                            conceptLabel: String(metricaDelegate.modelData.etiqueta || "")
                             controlSize: Math.max(22, 25 * Math.min(root.sx, root.sy))
-                            onHelpRequested: function(conceptId) { root.abrirTeoriaSolicitada() }
+                            onHelpRequested: function(conceptId) {
+                                root.solicitarConcepto(conceptId)
+                            }
                         }
                         Text {
                             text: metricaDelegate.modelData.valor || ""
@@ -177,8 +191,11 @@ Popup {
                     }
                     ConceptHelpButton {
                         conceptId: "interpretacion_pesos"
+                        conceptLabel: "Interpretación de los pesos de atención"
                         controlSize: Math.max(22, 25 * Math.min(root.sx, root.sy))
-                        onHelpRequested: function(conceptId) { root.abrirTeoriaSolicitada() }
+                        onHelpRequested: function(conceptId) {
+                            root.solicitarConcepto(conceptId)
+                        }
                     }
                 }
 

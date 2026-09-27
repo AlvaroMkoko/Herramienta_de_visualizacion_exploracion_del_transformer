@@ -179,6 +179,24 @@ class TheoryController(QObject):
                     errores.append(f"el id de concepto '{id_concepto}' está duplicado")
                     continue
 
+                campos_obligatorios = (
+                    ("title", "título"),
+                    ("short_description", "descripción breve"),
+                    ("explanation", "explicación"),
+                )
+                faltantes = [
+                    etiqueta
+                    for campo, etiqueta in campos_obligatorios
+                    if not isinstance(concepto.get(campo), str)
+                    or not concepto.get(campo, "").strip()
+                ]
+                if faltantes:
+                    errores.append(
+                        f"el concepto '{id_concepto}' no tiene "
+                        + ", ".join(faltantes)
+                    )
+                    continue
+
                 relacionados = concepto.get("related_concepts", [])
                 if relacionados is not None and not isinstance(relacionados, list):
                     errores.append(
@@ -198,6 +216,16 @@ class TheoryController(QObject):
 
                 self._indice[id_concepto] = concepto
                 self._seccion_de_concepto[id_concepto] = id_seccion
+
+        # Se valida después de indexar todo: una relación puede apuntar a un
+        # concepto declarado más adelante en el archivo.
+        for id_concepto, concepto in self._indice.items():
+            for id_relacionado in concepto.get("related_concepts", []) or []:
+                if id_relacionado not in self._indice:
+                    errores.append(
+                        f"el concepto '{id_concepto}' referencia el concepto "
+                        f"relacionado inexistente '{id_relacionado}'"
+                    )
 
         mapa_componentes = self._datos.get("componentes_diagrama")
         if not isinstance(mapa_componentes, dict):
