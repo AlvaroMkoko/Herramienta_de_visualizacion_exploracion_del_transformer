@@ -27,9 +27,18 @@ python main.py
 
 ## Flujo de trabajo
 
-La pantalla de inicio presenta la evolución prevista de la plataforma educativa:
+La pantalla inicial permite elegir un perfil:
 
-1. **Pre-test** — diagnóstico inicial de 8 preguntas en dos dimensiones.
+- **Estudiante** puede abrir la ruta formativa o entrar directamente al centro
+  de laboratorios para entrenar, abrir o comparar modelos.
+- **Profesor** abre un panel con todos los alumnos evaluados, sus resultados de
+  pre-test y post-test, el cambio total y el desglose por dimensión. Antes de
+  aplicar una evaluación se registran nombre, matrícula o identificador, grupo
+  y, opcionalmente, edad y correo. La matrícula vincula ambos test.
+
+La ruta formativa presenta la evolución prevista de la plataforma educativa:
+
+1. **Pre-test** — diagnóstico inicial de 20 preguntas en cinco dimensiones.
 2. **Recorrido guiado** — disponible. Organiza 18 conceptos esenciales en seis
    unidades, incluida una guía del contrato de datasets, y combina lectura con
    el ciclo *predecir → observar → explicar*.

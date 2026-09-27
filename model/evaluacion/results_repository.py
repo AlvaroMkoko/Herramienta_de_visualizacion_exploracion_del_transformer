@@ -116,7 +116,33 @@ class ResultsRepository:
         self._results.append(resultado)
         self._persistir()
 
-    def get_history(self, assessment_type: str | None = None) -> list[dict[str, Any]]:
+    @staticmethod
+    def _student_id_de(resultado: dict[str, Any]) -> str:
+        student_id = str(resultado.get("student_id", "")).strip()
+        if student_id:
+            return student_id
+        student = resultado.get("student")
+        if isinstance(student, dict):
+            return str(student.get("id", "")).strip()
+        return ""
+
+    @classmethod
+    def _pertenece_al_estudiante(
+        cls, resultado: dict[str, Any], student_id: str
+    ) -> bool:
+        actual = cls._student_id_de(resultado)
+        # Los resultados creados antes de que existieran perfiles pertenecen
+        # al modo individual. Así se conservan al actualizar la aplicación,
+        # pero nunca se mezclan con un alumno identificado por el docente.
+        if student_id == "__self__":
+            return actual in ("", "__self__")
+        return actual == student_id
+
+    def get_history(
+        self,
+        assessment_type: str | None = None,
+        student_id: str | None = None,
+    ) -> list[dict[str, Any]]:
         results = self._results
         if assessment_type:
             results = [
@@ -124,11 +150,25 @@ class ResultsRepository:
                 for result in results
                 if result.get("assessment_type") == assessment_type
             ]
+        if student_id is not None:
+            results = [
+                result
+                for result in results
+                if self._pertenece_al_estudiante(result, student_id)
+            ]
         return deepcopy(results)
 
-    def latest(self, assessment_type: str) -> dict[str, Any]:
+    def latest(
+        self, assessment_type: str, student_id: str | None = None
+    ) -> dict[str, Any]:
         for result in reversed(self._results):
-            if result.get("assessment_type") == assessment_type:
+            if (
+                result.get("assessment_type") == assessment_type
+                and (
+                    student_id is None
+                    or self._pertenece_al_estudiante(result, student_id)
+                )
+            ):
                 return deepcopy(result)
         return {}
 
@@ -138,9 +178,21 @@ class ResultsRepository:
         historial activo."""
         return len(self._archivados)
 
-    def clear(self) -> None:
-        """Borra el historial activo **y** el archivo histórico: es la acción de
-        «Borrar progreso», que el usuario espera que no deje rastro."""
+    def clear(self, student_id: str | None = None) -> None:
+        """Borra un historial individual o, sin filtro, todo el repositorio.
+
+        El borrado sin filtro conserva el contrato histórico de «Borrar todo
+        el progreso». Con perfiles activos, el estudiante no puede eliminar
+        los resultados identificados que recopiló el docente.
+        """
+        if student_id is not None:
+            self._results = [
+                result
+                for result in self._results
+                if not self._pertenece_al_estudiante(result, student_id)
+            ]
+            self._persistir()
+            return
         self._results = []
         self._archivados = []
         if self._ruta is not None:

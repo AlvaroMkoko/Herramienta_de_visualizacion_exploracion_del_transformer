@@ -70,7 +70,25 @@ PagePrincipal {
             width: pageScroll.availableWidth
             spacing: 16
 
-            Item { Layout.fillWidth: true; Layout.preferredHeight: 40 }
+            Item { Layout.fillWidth: true; Layout.preferredHeight: 18 }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.leftMargin: root.pageMargin
+                Layout.rightMargin: root.pageMargin
+
+                BotonSecundario {
+                    objectName: "welcomeBackToProfilesButton"
+                    Layout.preferredWidth: 150
+                    Layout.preferredHeight: 36
+                    text: "← Cambiar perfil"
+                    onClicked: root.stackView.pop()
+                }
+
+                Item { Layout.fillWidth: true }
+            }
+
+            Item { Layout.fillWidth: true; Layout.preferredHeight: 4 }
 
             // ── Encabezado ──────────────────────────────────────────
             ColumnLayout {

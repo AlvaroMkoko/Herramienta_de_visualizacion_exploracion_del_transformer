@@ -29,6 +29,7 @@ from .inference_controller import InferenceController
 from .learning_controller import LearningController
 from .model_library_controller import ModelLibraryController
 from .progress_controller import ProgressController
+from .profile_controller import ProfileController
 from .setup_controller import SetupController
 from .theory_controller import TheoryController
 from .training_controller import TrainingController
@@ -98,6 +99,8 @@ class MainViewModel(QObject):
             self._model_library_controller, self
         )
         self._evaluation_controller = EvaluationController(self)
+        self._profile_controller = ProfileController(self._evaluation_controller, self)
+        self._evaluation_controller.set_profile_controller(self._profile_controller)
         self._progress_controller = ProgressController(
             self._learning_controller, self._evaluation_controller, self
         )
@@ -170,6 +173,10 @@ class MainViewModel(QObject):
     @Property(QObject, constant=True)
     def evaluationController(self) -> EvaluationController:
         return self._evaluation_controller
+
+    @Property(QObject, constant=True)
+    def profileController(self) -> ProfileController:
+        return self._profile_controller
 
     @Property(QObject, constant=True)
     def progressController(self) -> ProgressController:

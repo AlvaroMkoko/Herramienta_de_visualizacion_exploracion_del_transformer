@@ -16,6 +16,7 @@ ApplicationWindow {
 
     StackView {
         id: stack
+        objectName: "mainNavigation"
         anchors.fill: parent
     }
 
@@ -27,7 +28,7 @@ ApplicationWindow {
     }
 
     Component.onCompleted: {
-        stack.push("screens/WelcomeScreen.qml", {
+        stack.push("screens/ProfileSelectionScreen.qml", {
             "stackView": stack
         })
     }

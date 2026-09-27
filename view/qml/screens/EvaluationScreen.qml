@@ -81,6 +81,11 @@ PagePrincipal {
     }
 
     function returnToLearningPath() {
+        if (mainViewModel.profileController.isTeacher) {
+            if (root.stackView.depth >= 2)
+                root.stackView.pop(root.stackView.get(1))
+            return
+        }
         if (root.stackView.depth >= 3)
             root.stackView.pop(root.stackView.get(root.stackView.depth - 3))
         else
@@ -796,7 +801,9 @@ PagePrincipal {
                         objectName: "evaluationReturnHomeButton"
                         Layout.preferredWidth: 250 * root.sx
                         Layout.preferredHeight: 54 * root.sy
-                        text: "Volver al flujo formativo"
+                        text: mainViewModel.profileController.isTeacher
+                              ? "Volver al panel docente"
+                              : "Volver al flujo formativo"
                         onClicked: root.returnToLearningPath()
                     }
                 }

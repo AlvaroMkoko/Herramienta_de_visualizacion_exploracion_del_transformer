@@ -106,11 +106,29 @@ class EvaluationController(QObject):
         self._bank = question_bank or QuestionBank(RUTA_BANCO)
         self._manager = EvaluationManager(self._bank)
         self._repository = repository or ResultsRepository(_ruta_resultados())
+        self._profile_controller = None
         self._assessment_type = "pre"
         self._assessment_info: dict[str, Any] = {}
         self._respuesta_actual: Any = None
         self._result: dict[str, Any] = {}
         self._prepare("pre")
+
+    @property
+    def repository(self) -> ResultsRepository:
+        """Repositorio compartido con la vista docente (API interna)."""
+        return self._repository
+
+    def set_profile_controller(self, profile_controller) -> None:
+        self._profile_controller = profile_controller
+        self.refreshResultScope()
+
+    def _student_filter(self) -> str | None:
+        if self._profile_controller is None:
+            return None
+        return self._profile_controller.result_student_filter()
+
+    def _latest(self, assessment_type: str) -> dict[str, Any]:
+        return self._repository.latest(assessment_type, self._student_filter())
 
     def _prepare(self, assessment_type: str) -> None:
         normalized = str(assessment_type).lower().strip()
@@ -296,40 +314,40 @@ class EvaluationController(QObject):
 
     @Property(bool, notify=questionChanged)
     def hasPreviousResult(self) -> bool:
-        return bool(self._repository.latest(self._assessment_type))
+        return bool(self._latest(self._assessment_type))
 
     @Property("QVariantMap", notify=questionChanged)
     def previousResult(self) -> dict[str, Any]:
-        return self._repository.latest(self._assessment_type)
+        return self._latest(self._assessment_type)
 
     # Estas cuatro NO dependen de ``_assessment_type``: la pantalla de progreso
     # necesita leer el pre y el post al mismo tiempo.
 
     @Property("QVariantMap", notify=questionChanged)
     def preResult(self) -> dict[str, Any]:
-        return self._repository.latest("pre")
+        return self._latest("pre")
 
     @Property("QVariantMap", notify=questionChanged)
     def postResult(self) -> dict[str, Any]:
-        return self._repository.latest("post")
+        return self._latest("post")
 
     @Property(bool, notify=questionChanged)
     def hasPre(self) -> bool:
-        return bool(self._repository.latest("pre"))
+        return bool(self._latest("pre"))
 
     @Property(bool, notify=questionChanged)
     def hasPost(self) -> bool:
-        return bool(self._repository.latest("post"))
+        return bool(self._latest("post"))
 
     @Property("QVariantList", notify=questionChanged)
     def history(self) -> list[dict[str, Any]]:
-        return self._repository.get_history()
+        return self._repository.get_history(student_id=self._student_filter())
 
     @Property("QVariantMap", notify=questionChanged)
     def improvement(self) -> dict[str, Any]:
         """Avance pre→post, total y por dimensión. Vacío si falta alguno."""
-        pre = self._repository.latest("pre")
-        post = self._repository.latest("post")
+        pre = self._latest("pre")
+        post = self._latest("post")
         if not pre or not post:
             return {"disponible": False, "motivo": "faltan_resultados"}
 
@@ -517,6 +535,11 @@ class EvaluationController(QObject):
         # a rehacer del 6 en adelante.
         self._restaurar_respuesta_del_reactivo()
         if result:
+            if self._profile_controller is not None:
+                student = self._profile_controller.result_student_snapshot()
+                if student:
+                    result["student"] = student
+                    result["student_id"] = student.get("id", "")
             self._result = result
             self._repository.save_result(result)
         self._emitir_pregunta()
@@ -525,6 +548,12 @@ class EvaluationController(QObject):
 
     @Slot()
     def borrarHistorial(self) -> None:
-        self._repository.clear()
+        self._repository.clear(self._student_filter())
+        self._result = {}
+        self._emitir_pregunta()
+
+    @Slot()
+    def refreshResultScope(self) -> None:
+        """Notifica que las propiedades de resultados cambiaron de alumno."""
         self._result = {}
         self._emitir_pregunta()

@@ -136,10 +136,10 @@ PagePrincipal {
                     Layout.preferredWidth: 150
                     Layout.preferredHeight: 34
                     focusPolicy: Qt.StrongFocus
-                    text: "↶  Volver al inicio"
+                    text: "←  Volver"
 
                     visible: root.stackView && root.stackView.depth > 1
-                    Accessible.description: "Regresa a la pantalla de inicio"
+                    Accessible.description: "Regresa a la pantalla anterior"
                     onClicked: root.stackView.pop()
 
                     background: Rectangle {
