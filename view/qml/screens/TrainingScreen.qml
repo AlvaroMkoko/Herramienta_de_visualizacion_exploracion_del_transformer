@@ -71,6 +71,40 @@ PagePrincipal {
         return datosReales || root.componenteBase(localBridge.selectedId)
     }
 
+    readonly property var metricasActuales: root.componenteActual && root.componenteActual.metricas
+                                            ? root.componenteActual.metricas : []
+    readonly property var capasActuales: root.componenteActual && root.componenteActual.capas
+                                         ? root.componenteActual.capas : []
+
+    // Tarjetas del resumen superior. Ver `metricasActuales`: el Repeater usa
+    // la cantidad como modelo para que los "?" no se recreen en cada paso.
+    readonly property var metricasResumen: [
+        {
+            label: "PROGRESO",
+            value: "Época " + (root.epocaSesionActual || 0) + " / "
+                   + (root.epocasSesionActual || root.epocasIniciales),
+            detail: "Paso global " + root.pasoGlobalActual,
+            color: Style.Theme.acento,
+            help: "epoch_batch"
+        },
+        {
+            label: "PÉRDIDA",
+            value: root.numero(root.perdidaActual, 4),
+            detail: "Cambio " + (root.deltaPerdida > 0 ? "+" : "")
+                    + root.numero(root.deltaPerdida, 4),
+            color: root.deltaPerdida <= 0
+                   ? Style.Theme.exito_texto : Style.Theme.aviso_texto,
+            help: "cross_entropy"
+        },
+        {
+            label: "GRADIENTE L2",
+            value: root.numero(root.normaGradiente, 3),
+            detail: "Intensidad de actualización",
+            color: Style.Theme.aviso_texto,
+            help: "gradient_norm_l2"
+        }
+    ]
+
     function mostrarTeoriaComponente(componentId) {
         if (!componentId) {
             root.teoriaActual = ({})
@@ -564,36 +598,12 @@ PagePrincipal {
                     spacing: 7 * root.leftSx
 
                     Repeater {
-                        model: [
-                            {
-                                label: "PROGRESO",
-                                value: "Época " + (root.epocaSesionActual || 0) + " / "
-                                       + (root.epocasSesionActual || root.epocasIniciales),
-                                detail: "Paso global " + root.pasoGlobalActual,
-                                color: Style.Theme.acento,
-                                help: "epoch_batch"
-                            },
-                            {
-                                label: "PÉRDIDA",
-                                value: root.numero(root.perdidaActual, 4),
-                                detail: "Cambio " + (root.deltaPerdida > 0 ? "+" : "")
-                                        + root.numero(root.deltaPerdida, 4),
-                                color: root.deltaPerdida <= 0
-                                       ? Style.Theme.exito_texto : Style.Theme.aviso_texto,
-                                help: "cross_entropy"
-                            },
-                            {
-                                label: "GRADIENTE L2",
-                                value: root.numero(root.normaGradiente, 3),
-                                detail: "Intensidad de actualización",
-                                color: Style.Theme.aviso_texto,
-                                help: "gradient_norm_l2"
-                            }
-                        ]
+                        model: root.metricasResumen.length
 
                         delegate: Rectangle {
                             id: summaryMetric
-                            required property var modelData
+                            required property int index
+                            readonly property var modelData: root.metricasResumen[index]
                             Layout.fillWidth: true
                             Layout.fillHeight: true
                             radius: 8 * root.leftSx
@@ -1041,11 +1051,19 @@ PagePrincipal {
                             }
                         }
 
+                        // El modelo es el NÚMERO de métricas, no el arreglo: cada
+                        // paso de entrenamiento trae un snapshot nuevo, y con el
+                        // arreglo como modelo el Repeater destruía y recreaba las
+                        // filas (y sus botones "?") en cada batch; un clic cuyo
+                        // press y release caían en pasos distintos se perdía.
+                        // Con un entero, las filas solo se recrean si cambia la
+                        // cantidad; los valores se actualizan por binding.
                         Repeater {
-                            model: root.componenteActual ? root.componenteActual.metricas : []
+                            model: root.metricasActuales.length
                             delegate: Rectangle {
                                 id: metricDelegate
-                                required property var modelData
+                                required property int index
+                                readonly property var modelData: root.metricasActuales[index] || ({})
                                 width: parent.width
                                 height: metricaLayout.implicitHeight + 16 * root.sy
                                 radius: 7 * root.sx
@@ -1070,9 +1088,9 @@ PagePrincipal {
                                             wrapMode: Text.WordWrap
                                         }
                                         Text {
-                                            visible: metricDelegate.modelData.detalle !== ""
+                                            visible: String(metricDelegate.modelData.detalle || "") !== ""
                                             Layout.fillWidth: true
-                                            text: metricDelegate.modelData.detalle
+                                            text: metricDelegate.modelData.detalle || ""
                                             color: Style.Theme.texto_terciario
                                             font.pixelSize: 9 * root.sx
                                             wrapMode: Text.WordWrap
@@ -1099,7 +1117,7 @@ PagePrincipal {
                         }
 
                         Column {
-                            visible: root.componenteActual && root.componenteActual.capas.length > 0
+                            visible: root.capasActuales.length > 0
                             width: parent.width
                             spacing: 6 * root.sy
 
@@ -1118,11 +1136,13 @@ PagePrincipal {
                                     onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
                                 }
                             }
+                            // Mismo criterio que las métricas: filas estables.
                             Repeater {
-                                model: root.componenteActual ? root.componenteActual.capas : []
+                                model: root.capasActuales.length
                                 delegate: RowLayout {
                                     id: layerDelegate
-                                    required property var modelData
+                                    required property int index
+                                    readonly property var modelData: root.capasActuales[index] || ({})
                                     width: parent.width
                                     height: 24 * root.sy
                                     Text {

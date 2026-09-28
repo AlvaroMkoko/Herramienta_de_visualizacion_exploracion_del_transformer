@@ -640,3 +640,123 @@ def test_selector_de_activacion_abre_la_explicacion_de_todas_las_opciones(
     concepto = _como_python(panel.property("concepto"))
     assert concepto["id"] == "activation_functions"
     assert "ReLU, GELU y Swish" in concepto["title"]
+
+
+def _item_visual(window, nombre: str):
+    """Busca en el árbol visual: los delegados de Repeater no tienen padre QObject."""
+    pendientes = [window.contentItem()]
+    while pendientes:
+        item = pendientes.pop()
+        if item.objectName() == nombre and item.isVisible():
+            return item
+        pendientes.extend(item.childItems())
+    return None
+
+
+def _paso_con_metricas(numero: int) -> dict:
+    """Paso de entrenamiento mínimo cuyo snapshot trae métricas con ayuda."""
+    return {
+        "epoca": 1,
+        "paso_global": numero,
+        "perdida": 4.0 - numero * 0.01,
+        "visualizacion": {
+            "resumen": {},
+            "componentes": {
+                "decoder_masked_attention": {
+                    "titulo": "Atención enmascarada",
+                    "metricas": [
+                        {
+                            "etiqueta": "Norma del gradiente (L2)",
+                            "valor": f"{0.5 + numero * 0.001:.3f}",
+                            "detalle": "",
+                            "concepto_id": "gradient_norm_l2",
+                        },
+                        {
+                            "etiqueta": "Entropía de atención",
+                            "valor": f"{1.2 + numero * 0.001:.3f}",
+                            "detalle": "",
+                            "concepto_id": "interpretacion_pesos",
+                        },
+                    ],
+                    "capas": [{"capa": 1, "pico": 0.4 + numero * 0.001}],
+                }
+            },
+        },
+    }
+
+
+def test_ayuda_de_metricas_sobrevive_a_cada_paso_de_entrenamiento(
+    training_qml, qapp, qtbot
+):
+    """Los "?" del detalle seleccionado deben poder usarse durante el entrenamiento.
+
+    Antes, cada paso reemplazaba el snapshot y el Repeater destruía y
+    recreaba las filas: un clic cuyo press y release caían en pasos
+    distintos se perdía.
+    """
+    from PySide6.QtCore import QPointF
+    from PySide6.QtTest import QTest
+
+    training_qml.show()
+    qapp.processEvents()
+    screen = training_qml.findChild(QObject, "trainingScreen")
+    diagram = training_qml.findChild(QObject, "trainingTransformerDiagram")
+    _invocar(diagram, "selectComponent", "decoder_masked_attention")
+    _invocar(screen, "cerrarExplicacionTransformerAparte")
+    _invocar(training_qml.findChild(QObject, "trainingComponentDetailTab"), "click")
+    _invocar(screen, "registrarPaso", _paso_con_metricas(1))
+    qtbot.wait(30)
+
+    boton = _item_visual(training_qml, "conceptHelp_gradient_norm_l2")
+    assert boton is not None and boton.property("visible")
+    boton.setProperty("marcaDePrueba", "misma-instancia")
+
+    # Varios pasos seguidos: la fila (y su botón) debe ser la misma instancia.
+    for numero in range(2, 6):
+        _invocar(screen, "registrarPaso", _paso_con_metricas(numero))
+        qapp.processEvents()
+    boton = _item_visual(training_qml, "conceptHelp_gradient_norm_l2")
+    assert boton.property("marcaDePrueba") == "misma-instancia"
+    assert boton.property("enabled") is True
+
+    # Clic real con un paso de entrenamiento entre press y release.
+    centro = boton.mapToScene(
+        QPointF(boton.property("width") / 2, boton.property("height") / 2)
+    ).toPoint()
+    QTest.mousePress(training_qml, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, centro)
+    _invocar(screen, "registrarPaso", _paso_con_metricas(6))
+    qapp.processEvents()
+    QTest.mouseRelease(training_qml, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, centro)
+    qtbot.wait(60)
+
+    modal = training_qml.findChild(QObject, "trainingTheoryModal")
+    assert modal.property("visible") is True
+
+
+def test_ayuda_del_resumen_superior_sobrevive_a_cada_paso(training_qml, qapp, qtbot):
+    """Los "?" de PROGRESO / PÉRDIDA / GRADIENTE no se recrean en cada batch."""
+    from PySide6.QtCore import QPointF
+    from PySide6.QtTest import QTest
+
+    training_qml.show()
+    qapp.processEvents()
+    screen = training_qml.findChild(QObject, "trainingScreen")
+
+    boton = _item_visual(training_qml, "trainingMetricHelp_cross_entropy")
+    assert boton is not None
+    boton.setProperty("marcaDePrueba", "misma-instancia")
+    for numero in range(1, 5):
+        _invocar(screen, "registrarPaso", _paso_con_metricas(numero))
+        qapp.processEvents()
+    boton = _item_visual(training_qml, "trainingMetricHelp_cross_entropy")
+    assert boton.property("marcaDePrueba") == "misma-instancia"
+
+    centro = boton.mapToScene(
+        QPointF(boton.property("width") / 2, boton.property("height") / 2)
+    ).toPoint()
+    QTest.mousePress(training_qml, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, centro)
+    _invocar(screen, "registrarPaso", _paso_con_metricas(5))
+    qapp.processEvents()
+    QTest.mouseRelease(training_qml, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, centro)
+    qtbot.wait(60)
+    assert training_qml.findChild(QObject, "trainingTheoryModal").property("visible") is True
