@@ -18,6 +18,7 @@ QtObject {
     property Settings preferencias: Settings {
         category: "apariencia"
         property alias modoOscuro: theme.modoOscuro
+        property alias movimientoReducido: theme.movimientoReducido
     }
 
     function alternarModo() { modoOscuro = !modoOscuro }
@@ -361,4 +362,16 @@ QtObject {
 
     // ========= Bordes =========
     readonly property int radius: 12
+
+    // ========= Movimiento =========
+    // Duraciones compartidas para que todas las transiciones de la
+    // aplicación "respiren" al mismo ritmo. `movimientoReducido` apaga las
+    // animaciones decorativas (entradas, desplazamientos) para personas
+    // sensibles al movimiento; las de estado (hover, foco) se conservan
+    // porque comunican interacción.
+    property bool movimientoReducido: false
+    readonly property int duracionCorta: 120     // hover, presionado, foco
+    readonly property int duracionMedia: 240     // cambios de estado
+    readonly property int duracionEntrada: 320   // aparición de bloques
+    readonly property int escalonEntrada: 70     // retraso entre bloques
 }
