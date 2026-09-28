@@ -23,8 +23,9 @@ PagePrincipal {
     // ─────────────────────────────────────────────────────────────
     // CONFIGURACIÓN: si es true, el laboratorio queda bloqueado según la
     // misma regla que la ruta (progressController.etapaDisponible(3)).
-    // En false, esta pantalla es un acceso directo al laboratorio, que es
-    // el comportamiento actual desde "Entrar al laboratorio".
+    // En false, el laboratorio está siempre disponible desde aquí. Como
+    // esta pantalla es la única entrada del perfil de estudiante, este
+    // valor decide si el estudiante puede experimentar antes de la ruta.
     readonly property bool requireGuidedBeforeLabs: false
     // ─────────────────────────────────────────────────────────────
 

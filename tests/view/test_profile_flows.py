@@ -75,7 +75,7 @@ def test_flujo_perfil_docente_y_registro_de_alumno(qapp, monkeypatch, tmp_path):
     qapp.processEvents()
 
 
-def test_perfil_estudiante_conserva_acceso_directo_a_laboratorios(qapp):
+def test_perfil_estudiante_entra_a_la_bienvenida_con_todas_sus_opciones(qapp):
     engine = QQmlEngine()
     view_model = MainViewModel()
     engine.rootContext().setContextProperty("mainViewModel", view_model)
@@ -88,12 +88,16 @@ def test_perfil_estudiante_conserva_acceso_directo_a_laboratorios(qapp):
 
     selection = window.findChild(QObject, "profileSelectionScreen")
     assert selection is not None
-    assert window.findChild(QObject, "studentLaboratoryButton") is not None
-    _invoke(selection, "openLaboratories")
+    # Un solo acceso por perfil: el botón de laboratorio ya no existe aquí.
+    assert window.findChild(QObject, "studentProfileButton") is not None
+    assert window.findChild(QObject, "studentLaboratoryButton") is None
+    _invoke(selection, "openStudent")
     qapp.processEvents()
 
     assert view_model.profileController.isStudent is True
     assert window.findChild(QObject, "welcomeScreen") is not None
+    # La bienvenida reúne ruta y laboratorio.
+    assert window.findChild(QObject, "welcomeLearningButton") is not None
     assert window.findChild(QObject, "welcomeTrainingButton") is not None
     assert window.findChild(QObject, "welcomeLibraryButton") is not None
     assert window.findChild(QObject, "welcomeComparisonButton") is not None

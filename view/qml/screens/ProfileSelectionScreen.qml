@@ -12,12 +12,11 @@ PagePrincipal {
 
     readonly property var profileController: mainViewModel.profileController
 
+    // El perfil de estudiante tiene UNA sola puerta: la pantalla de
+    // bienvenida, que ya reúne la ruta de aprendizaje y el laboratorio y
+    // muestra el progreso. Así cada perfil lleva a su propio "hogar":
+    // estudiante → WelcomeScreen, profesor → TeacherDashboardScreen.
     function openStudent() {
-        root.profileController.seleccionarRol("student")
-        root.stackView.push("HomeScreen.qml", { "stackView": root.stackView })
-    }
-
-    function openLaboratories() {
         root.profileController.seleccionarRol("student")
         root.stackView.push("WelcomeScreen.qml", { "stackView": root.stackView })
     }
@@ -71,8 +70,8 @@ PagePrincipal {
                 Layout.preferredHeight: 340
                 radius: 16
                 color: Style.Theme.surface
-                border.width: studentHover.hovered ? 2 : 1
-                border.color: studentHover.hovered ? Style.Theme.acento : Style.Theme.borde_cuadro
+                border.width: studentArea.containsMouse ? 2 : 1
+                border.color: studentArea.containsMouse ? Style.Theme.acento : Style.Theme.borde_cuadro
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -100,30 +99,30 @@ PagePrincipal {
                     }
                     Text {
                         Layout.fillWidth: true
-                        text: "Entra a la ruta de aprendizaje, realiza el pre-test, explora el recorrido y completa el post-test."
+                        text: "Tu ruta de aprendizaje y el laboratorio en un solo lugar: diagnóstico, recorrido guiado, práctica con modelos y evaluación."
                         color: Style.Theme.texto_secundario
                         font.pixelSize: 14
                         wrapMode: Text.WordWrap
                     }
                     Item { Layout.fillHeight: true }
+                    // Misma altura y patrón que la tarjeta de profesor: un
+                    // perfil, una acción.
                     BotonPrincipal {
                         objectName: "studentProfileButton"
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 42
-                        text: "Entrar al recorrido"
+                        Layout.preferredHeight: 46
+                        text: "Entrar como estudiante"
                         onClicked: root.openStudent()
-                    }
-
-                    BotonSecundario {
-                        objectName: "studentLaboratoryButton"
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 40
-                        text: "Entrar al laboratorio"
-                        onClicked: root.openLaboratories()
                     }
                 }
 
-                HoverHandler { id: studentHover }
+                MouseArea {
+                    id: studentArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.openStudent()
+                }
             }
 
             Rectangle {
