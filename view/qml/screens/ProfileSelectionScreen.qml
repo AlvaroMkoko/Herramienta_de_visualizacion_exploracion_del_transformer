@@ -65,6 +65,7 @@ PagePrincipal {
 
             Rectangle {
                 id: studentCard
+                AparicionSuave { objetivo: studentCard; orden: 0 }
                 objectName: "studentProfileCard"
                 Layout.fillWidth: true
                 Layout.preferredHeight: 340
@@ -127,6 +128,7 @@ PagePrincipal {
 
             Rectangle {
                 id: teacherCard
+                AparicionSuave { objetivo: teacherCard; orden: 1 }
                 objectName: "teacherProfileCard"
                 Layout.fillWidth: true
                 Layout.preferredHeight: 340

@@ -52,27 +52,8 @@ Rectangle {
 
     HoverHandler { id: hover }
 
-    // ── Animación de entrada: aparece y sube 16 px ─────────────────────
-    opacity: 0
-    transform: Translate { id: desplazamiento; y: Style.Theme.movimientoReducido ? 0 : 16 }
-
-    SequentialAnimation {
-        id: entrada
-        PauseAnimation { duration: Style.Theme.movimientoReducido ? 0 : root.retrasoEntrada }
-        ParallelAnimation {
-            NumberAnimation {
-                target: root; property: "opacity"; to: 1
-                duration: Style.Theme.movimientoReducido ? 0 : Style.Theme.duracionEntrada
-                easing.type: Easing.OutCubic
-            }
-            NumberAnimation {
-                target: desplazamiento; property: "y"; to: 0
-                duration: Style.Theme.movimientoReducido ? 0 : Style.Theme.duracionEntrada
-                easing.type: Easing.OutCubic
-            }
-        }
-    }
-    Component.onCompleted: entrada.start()
+    // Entrada compartida con el resto de la app (ver AparicionSuave.qml).
+    AparicionSuave { objetivo: root; retraso: root.retrasoEntrada }
 
     ColumnLayout {
         id: columna
