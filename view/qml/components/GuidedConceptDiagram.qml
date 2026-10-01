@@ -589,18 +589,24 @@ Item {
         }
         var names = ["BATCH 1", "BATCH 2", "BATCH 3"]
         for (var g = 0; g < 3; ++g) {
+            // Cada fila del dataset conserva su color hasta la actualizacion.
+            // Las flechas hacen explicita la agrupacion que antes solo podia
+            // inferirse comparando colores.
+            arrow(ctx, 119, 38 + g * 32, 168, 37 + g * 39, colors[g])
             box(ctx, 170, 22 + g * 39, 95, 31, names[g], "4 ejemplos",
                 g === 0 ? Style.Theme.info_fondo : (g === 1 ? Style.Theme.concepto_fondo : Style.Theme.proceso_fondo),
                 colors[g])
             arrow(ctx, 266, 37 + g * 39, 315, 37 + g * 39, colors[g])
-            pill(ctx, 320, 26 + g * 39, 102, "optimizer.step",
+            pill(ctx, 320, 26 + g * 39, 102, "optimizer.step()",
                  Style.Theme.formula_fondo, Style.Theme.formula_texto, false)
         }
         box(ctx, 465, 38, 115, 66, "1 EPOCH", "12/12 vistos\nmezclar y repetir",
             Style.Theme.proceso_fondo, Style.Theme.proceso_texto)
         for (g = 0; g < 3; ++g)
-            arrow(ctx, 424, 38 + g * 39, 464, 69, Style.Theme.proceso_texto)
+            arrow(ctx, 424, 38 + g * 39, 464, 69, colors[g])
         curveArrow(ctx, 520, 106, 520, 139, 82, 139, 82, 119, Style.Theme.acento)
+        captionTag(ctx, "MEZCLAR Y REPETIR", 300, 133,
+                   Style.Theme.acento, 7)
     }
 
     function paintScene(ctx, width, height) {

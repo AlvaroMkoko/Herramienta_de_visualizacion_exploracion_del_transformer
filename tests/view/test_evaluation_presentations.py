@@ -144,6 +144,16 @@ def test_cada_componente_acepta_su_reactivo_sin_errores(engine, bank, presentaci
     assert objeto.property("implicitHeight") is not None
 
 
+def test_marcador_de_opcion_abrevia_ids_largos(engine):
+    """Verdadero/Falso usa ids semanticos que no deben desbordar la vineta."""
+    objeto = _crear(engine, "ReactivoOpcionUnica")
+
+    assert _evaluar(objeto, 'etiquetaOpcion("verdadero", 0)') == "V"
+    assert _evaluar(objeto, 'etiquetaOpcion("falso", 1)') == "F"
+    assert _evaluar(objeto, 'etiquetaOpcion("a", 0)') == "A"
+    assert _evaluar(objeto, 'etiquetaOpcion("identificador_largo", 2)') == "C"
+
+
 def test_la_pantalla_despacha_por_presentacion_y_no_por_tipo(engine):
     """A3 y F2 son ambos de tipo «etapas» y deben ir a componentes distintos:
     es la prueba de que el despacho mira la presentación."""

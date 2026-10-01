@@ -48,6 +48,19 @@ Item {
         root.respuestaCambiada(root.respuestaActual())
     }
 
+    function etiquetaOpcion(opcionId, indice) {
+        var id = String(opcionId === undefined || opcionId === null
+                        ? "" : opcionId).trim().toLowerCase()
+        if (id === "verdadero")
+            return "V"
+        if (id === "falso")
+            return "F"
+        if (id.length === 1)
+            return id.toUpperCase()
+        return indice >= 0 && indice < 26
+                ? String.fromCharCode(65 + indice) : String(indice + 1)
+    }
+
     Component.onCompleted: root.restaurar()
     onPreguntaChanged: root.restaurar()
 
@@ -96,17 +109,20 @@ Item {
                     // selección además del borde: durante el examen no se revela
                     // si la opción elegida es la correcta.
                     Rectangle {
+                        objectName: "evaluationOptionMarker_" + opcion.modelData.id
                         Layout.preferredWidth: 28 * root.sx
                         Layout.preferredHeight: 28 * root.sx
                         Layout.alignment: Qt.AlignVCenter
                         radius: width / 2
+                        clip: true
                         color: opcion.elegida ? Style.Theme.acento : "transparent"
                         border.width: opcion.elegida ? 0 : 1.5
                         border.color: Style.Theme.borde_medio
 
                         Text {
                             anchors.centerIn: parent
-                            text: String(opcion.modelData.id).toUpperCase()
+                            text: root.etiquetaOpcion(opcion.modelData.id,
+                                                      opcion.index)
                             color: opcion.elegida
                                    ? Style.Theme.texto_sobre_acento
                                    : Style.Theme.texto_secundario
