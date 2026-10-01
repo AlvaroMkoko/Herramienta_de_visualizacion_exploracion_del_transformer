@@ -15,6 +15,7 @@ import torch
 from model.motor_llm.config import ConfiguracionTransformer
 from model.motor_llm.transformer import Transformer
 from viewmodel.inference_controller import InferenceController
+from viewmodel.visual_adapter import _texto_token
 
 
 class TokenizerDePrueba:
@@ -26,6 +27,14 @@ class TokenizerDePrueba:
 
     def decode(self, tokens: list[int]) -> str:
         return ",".join(str(t) for t in tokens)
+
+
+def test_texto_token_separa_marcadores_de_salto_y_tabulacion():
+    class TokenizerEspacios:
+        def decode(self, _tokens: list[int]) -> str:
+            return "\nun\tdos"
+
+    assert _texto_token(TokenizerEspacios(), 1) == "↵\u2009un⇥\u2009dos"
 
 
 # ---------------------------------------------------------------------------
@@ -108,6 +117,7 @@ class TestGeneracionBasica:
             assert visualizacion["cantidad_candidatos"] == 1
             assert visualizacion["predicciones_top"]
             assert any(p["elegido"] for p in visualizacion["predicciones_top"])
+            assert visualizacion["foco_encoder"]
             assert visualizacion["foco_entrada"]
             assert visualizacion["foco_decoder"]
             assert visualizacion["validacion"]["probabilidades_suman_uno"] is True

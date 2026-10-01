@@ -101,6 +101,10 @@ ApplicationWindow {{
         title = window.findChild(QObject, "comparisonScreenTitle")
         assert title is not None
         assert title.property("text") == "Comparación de modelos"
+        assert window.findChild(QObject, "comparisonGenerationMode") is not None
+        assert window.findChild(QObject, "comparisonGenerateButton") is not None
+        assert window.findChild(QObject, "comparisonOpenExplorerButton") is not None
+        assert window.findChild(QObject, "comparisonExplorationPanel") is not None
 
     window.deleteLater()
     engine.deleteLater()

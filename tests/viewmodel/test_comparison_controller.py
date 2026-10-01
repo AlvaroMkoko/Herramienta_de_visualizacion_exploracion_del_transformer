@@ -84,6 +84,49 @@ def test_genera_en_ambos_modelos_con_los_mismos_parametros(qtbot) -> None:
     controlador.liberarModelos()
 
 
+def test_avanza_ambos_modelos_token_por_token(qtbot) -> None:
+    controlador = ComparisonController(BibliotecaFalsa())
+    _instalar_dos(controlador)
+    tokens = {"a": 0, "b": 0}
+    resultados: dict[str, str] = {}
+    detalles: list[dict] = []
+    controlador.controladorA.token_generado.connect(
+        lambda paso: (
+            tokens.__setitem__("a", tokens["a"] + 1),
+            detalles.append(paso["visualizacion"]["detalle_forward"]),
+        )
+    )
+    controlador.controladorB.token_generado.connect(
+        lambda paso: (
+            tokens.__setitem__("b", tokens["b"] + 1),
+            detalles.append(paso["visualizacion"]["detalle_forward"]),
+        )
+    )
+    controlador.controladorA.generacion_completa.connect(
+        lambda texto: resultados.__setitem__("a", texto)
+    )
+    controlador.controladorB.generacion_completa.connect(
+        lambda texto: resultados.__setitem__("b", texto)
+    )
+
+    controlador.iniciarGeneracionPasoAPaso("hola", 3, 1.0, 0, 1.0, True)
+    qtbot.waitUntil(lambda: tokens == {"a": 1, "b": 1}, timeout=5000)
+    assert controlador.estaGenerando is True
+
+    controlador.generarSiguienteToken()
+    qtbot.waitUntil(lambda: tokens == {"a": 2, "b": 2}, timeout=5000)
+    controlador.generarSiguienteToken()
+    qtbot.waitUntil(lambda: len(resultados) == 2, timeout=5000)
+
+    assert tokens == {"a": 3, "b": 3}
+    assert len(detalles) == 6
+    assert all(detalle["metadata"]["architecture"] == "encoder_decoder"
+               for detalle in detalles)
+    assert all(detalle["encoder"] and detalle["decoder"] for detalle in detalles)
+    assert controlador.estaGenerando is False
+    controlador.liberarModelos()
+
+
 def test_rechaza_seleccionar_el_mismo_archivo(qtbot, tmp_path) -> None:
     controlador = ComparisonController(BibliotecaFalsa())
     ruta = tmp_path / "modelo.pt"

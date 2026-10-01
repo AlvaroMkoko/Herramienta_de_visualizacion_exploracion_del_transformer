@@ -54,6 +54,7 @@ def _tarea_generacion(
     top_k: int | None,
     top_p: float | None,
     muestreo_codicioso: bool,
+    incluir_detalle_forward: bool,
 ) -> Generator[dict, None, str]:
     """No necesita revisar `trabajador.debe_detenerse`: `GestorConcurrencia`
     ya lo hace antes de pedir el siguiente valor, así que
@@ -88,6 +89,7 @@ def _tarea_generacion(
             top_k=top_k,
             top_p=top_p,
             muestreo_codicioso=muestreo_codicioso,
+            incluir_detalle_forward=incluir_detalle_forward,
         )
         # La traza contiene tensores PyTorch reales usados únicamente por el
         # adaptador. QML recibe el snapshot reducido y serializable.
@@ -113,12 +115,14 @@ class InferenceController(QObject):
         id_token_inicio: int,
         id_token_fin: int | None = None,
         parent: QObject | None = None,
+        incluir_detalle_forward: bool = True,
     ):
         super().__init__(parent)
         self.modelo = modelo
         self.tokenizer = tokenizer
         self.id_token_inicio = id_token_inicio
         self.id_token_fin = id_token_fin
+        self._incluir_detalle_forward = incluir_detalle_forward
 
         self._gestor = GestorConcurrencia(self)
         self._gestor.iniciado.connect(self.estaGenerandoCambio.emit)
@@ -224,6 +228,7 @@ class InferenceController(QObject):
             _tarea_generacion, self.modelo, self.tokenizer, prompt,
             self.id_token_inicio, self.id_token_fin, max_tokens_nuevos,
             temperatura, top_k, top_p, muestreo_codicioso,
+            self._incluir_detalle_forward,
             velocidad_inicial=velocidad_inicial,
             modo_paso_a_paso=modo_paso_a_paso,
             pasos_iniciales=1 if modo_paso_a_paso else 0,

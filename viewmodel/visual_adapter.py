@@ -110,8 +110,8 @@ def _texto_token(tokenizer, token_id: int, especial: str = "") -> str:
         return "∅"
     return (
         texto.replace(" ", "␠")
-        .replace("\n", "↵")
-        .replace("\t", "⇥")
+        .replace("\n", "↵\u2009")
+        .replace("\t", "⇥\u2009")
         .replace("\r", "")
     )
 
@@ -850,6 +850,7 @@ def resumir_paso_inferencia(
     top_k: int | None,
     top_p: float | None,
     muestreo_codicioso: bool,
+    incluir_detalle_forward: bool = True,
 ) -> dict:
     """Construye una explicación QML-safe del cálculo real de un token.
 
@@ -962,6 +963,9 @@ def resumir_paso_inferencia(
     foco_entrada = _atencion_ultima_consulta(
         paso["pesos_atencion_cruzada_por_capa"], etiquetas_entrada
     )
+    foco_encoder = _atencion_ultima_consulta(
+        paso["pesos_atencion_encoder_por_capa"], etiquetas_entrada
+    )
     foco_decoder = _atencion_ultima_consulta(
         paso["pesos_autoatencion_por_capa"], etiquetas_decoder
     )
@@ -1033,6 +1037,7 @@ def resumir_paso_inferencia(
         "tokens_decoder": etiquetas_decoder,
         "tokens_salida": tokens_salida,
         "tokens_salida_total": len(ids_generados),
+        "foco_encoder": foco_encoder,
         "foco_entrada": foco_entrada,
         "foco_decoder": foco_decoder,
         "predicciones_top": predicciones_top,
@@ -1058,7 +1063,9 @@ def resumir_paso_inferencia(
             "suma_probabilidades": round(float(probabilidades.sum().item()), 8),
             "logits_sin_nan": not bool(torch.isnan(logits).any().item()),
         },
-        "detalle_forward": _detalle_forward(modelo, paso),
+        "detalle_forward": (
+            _detalle_forward(modelo, paso) if incluir_detalle_forward else {}
+        ),
     }
 
 
