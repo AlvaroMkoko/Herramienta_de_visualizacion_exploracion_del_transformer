@@ -757,6 +757,18 @@ Item {
         title: "Explicación · " + (root.operation.title || root.stage.title)
         color: Style.Theme.superficie_alterna
 
+        Component.onCompleted: {
+            if (typeof displayManager !== "undefined" && displayManager)
+                displayManager.registerAuxiliaryWindow(detachedGuideWindow, true)
+        }
+        onVisibleChanged: {
+            if (visible
+                    && typeof displayManager !== "undefined"
+                    && displayManager
+                    && displayManager.hasSecondaryScreen)
+                displayManager.placeAuxiliaryWindow(detachedGuideWindow, true)
+        }
+
         onClosing: function(close) {
             if (root.guideDetached)
                 root.closeDetachedGuide()

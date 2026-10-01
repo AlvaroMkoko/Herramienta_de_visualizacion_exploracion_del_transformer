@@ -269,7 +269,21 @@ PagePrincipal {
         if (!hayTraza)
             return
         indiceExploracion = indiceComparacionPreferido()
-        exploradorComparacion.open()
+        if (root.secondaryDisplayAvailable) {
+            exploradorComparacion.close()
+            exploradorComparacionAparte.show()
+            if (typeof displayManager !== "undefined" && displayManager)
+                displayManager.placeAuxiliaryWindow(
+                            exploradorComparacionAparte, true)
+        } else {
+            exploradorComparacionAparte.hide()
+            exploradorComparacion.open()
+        }
+    }
+
+    function cerrarExploracion() {
+        exploradorComparacion.close()
+        exploradorComparacionAparte.hide()
     }
 
     function avanzarUnToken() {
@@ -1187,23 +1201,10 @@ PagePrincipal {
         }
     }
 
-    Popup {
-        id: exploradorComparacion
-        objectName: "comparisonExplorerPopup"
-        x: (root.width - width) / 2
-        y: (root.height - height) / 2
-        width: root.width - 42 * root.sx
-        height: root.height - 42 * root.sy
-        padding: 0
-        modal: true
-        dim: true
-        focus: true
-        closePolicy: Popup.CloseOnEscape
+    Component {
+        id: panelExploradorComparacion
 
-        Overlay.modal: Rectangle { color: "#990F172A" }
-        background: Rectangle { color: "transparent" }
-
-        contentItem: ComparisonExplorationPanel {
+        ComparisonExplorationPanel {
             snapshotsA: root.pasosVisualizacionA
             snapshotsB: root.pasosVisualizacionB
             infoA: root.controller ? root.controller.modeloAInfo : ({})
@@ -1225,11 +1226,86 @@ PagePrincipal {
             modelAActive: root.modeloAActivo
             modelBActive: root.modeloBActivo
             nextTokenLabel: root.etiquetaAvance
-            sx: Math.min(1, root.sx)
-            sy: Math.min(1, root.sy)
-            onCloseRequested: exploradorComparacion.close()
+            sx: Math.min(1, width / Style.Theme.baseWidth)
+            sy: Math.min(1, height / Style.Theme.baseHeight)
+            onCloseRequested: root.cerrarExploracion()
             onNextTokenRequested: root.avanzarUnToken()
             onStepSelected: function(index) { root.indiceExploracion = index }
         }
+    }
+
+    Popup {
+        id: exploradorComparacion
+        objectName: "comparisonExplorerPopup"
+        x: (root.width - width) / 2
+        y: (root.height - height) / 2
+        width: root.width - 42 * root.sx
+        height: root.height - 42 * root.sy
+        padding: 0
+        modal: true
+        dim: true
+        focus: true
+        closePolicy: Popup.CloseOnEscape
+
+        Overlay.modal: Rectangle { color: "#990F172A" }
+        background: Rectangle { color: "transparent" }
+
+        contentItem: Loader {
+            sourceComponent: panelExploradorComparacion
+        }
+    }
+
+    Window {
+        id: exploradorComparacionAparte
+        objectName: "comparisonExplorerSecondaryWindow"
+        visible: false
+        minimumWidth: 960
+        minimumHeight: 600
+        width: Style.Theme.baseWidth
+        height: Style.Theme.baseHeight
+        title: "Comparaci\u00f3n detallada de modelos"
+        color: Style.Theme.fondo
+
+        Loader {
+            anchors.fill: parent
+            anchors.margins: 12
+            sourceComponent: panelExploradorComparacion
+        }
+
+        Component.onCompleted: {
+            if (typeof displayManager !== "undefined" && displayManager)
+                displayManager.registerAuxiliaryWindow(
+                            exploradorComparacionAparte, true)
+        }
+        onVisibleChanged: {
+            if (visible
+                    && typeof displayManager !== "undefined"
+                    && displayManager)
+                displayManager.placeAuxiliaryWindow(
+                            exploradorComparacionAparte, true)
+        }
+        onClosing: function(close) {
+            root.cerrarExploracion()
+            close.accepted = true
+        }
+    }
+
+    onSecondaryDisplayAvailableChanged: {
+        if (secondaryDisplayAvailable && exploradorComparacion.opened) {
+            exploradorComparacion.close()
+            exploradorComparacionAparte.show()
+            if (typeof displayManager !== "undefined" && displayManager)
+                displayManager.placeAuxiliaryWindow(
+                            exploradorComparacionAparte, true)
+        } else if (!secondaryDisplayAvailable
+                   && exploradorComparacionAparte.visible) {
+            exploradorComparacionAparte.hide()
+            exploradorComparacion.open()
+        }
+    }
+
+    onVisibleChanged: {
+        if (!visible)
+            root.cerrarExploracion()
     }
 }

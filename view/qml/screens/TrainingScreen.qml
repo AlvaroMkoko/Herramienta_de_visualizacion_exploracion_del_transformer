@@ -466,6 +466,20 @@ PagePrincipal {
             }
         }
 
+        Component.onCompleted: {
+            if (typeof displayManager !== "undefined" && displayManager)
+                displayManager.registerAuxiliaryWindow(
+                            detachedTransformerExplanationWindow, true)
+        }
+        onVisibleChanged: {
+            if (visible
+                    && typeof displayManager !== "undefined"
+                    && displayManager
+                    && displayManager.hasSecondaryScreen)
+                displayManager.placeAuxiliaryWindow(
+                            detachedTransformerExplanationWindow, true)
+        }
+
         onClosing: function(close) {
             if (root.transformerExplanationDetached)
                 root.cerrarExplicacionTransformerAparte()

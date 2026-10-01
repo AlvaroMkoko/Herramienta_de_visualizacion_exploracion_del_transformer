@@ -10,9 +10,16 @@ ApplicationWindow {
     visible: true
     width: Style.Theme.baseWidth
     height: Style.Theme.baseHeight
-    minimumWidth: Style.Theme.baseWidth
-    minimumHeight: Style.Theme.baseHeight
+    // Las vistas escalan desde 1280 x 820, pero la ventana puede reducirse
+    // para portatiles con 720--768 px de alto util.
+    minimumWidth: 960
+    minimumHeight: 600
     title: "Visualizador de Transformers"
+
+    readonly property bool multiScreenAvailable:
+        typeof displayManager !== "undefined"
+        && displayManager
+        && displayManager.hasSecondaryScreen
 
     StackView {
         id: stack
@@ -52,13 +59,38 @@ ApplicationWindow {
     }
 
     ThemeSwitch {
+        id: themeSwitch
         z: 100
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.margins: 12
     }
 
+    Rectangle {
+        objectName: "dualScreenIndicator"
+        z: 100
+        visible: window.multiScreenAvailable
+        anchors.right: themeSwitch.left
+        anchors.rightMargin: 8
+        anchors.verticalCenter: themeSwitch.verticalCenter
+        width: 150
+        height: 32
+        radius: height / 2
+        color: Style.Theme.info_fondo
+        border.color: Style.Theme.inferencia_estructura
+
+        Text {
+            anchors.centerIn: parent
+            text: "\u25a3 Vista dual activa"
+            color: Style.Theme.info_texto
+            font.bold: true
+            font.pixelSize: 11
+        }
+    }
+
     Component.onCompleted: {
+        if (typeof displayManager !== "undefined" && displayManager)
+            displayManager.registerMainWindow(window)
         // La primera pantalla aparece sin transición: no hay de dónde venir.
         stack.push("screens/ProfileSelectionScreen.qml", {
             "stackView": stack

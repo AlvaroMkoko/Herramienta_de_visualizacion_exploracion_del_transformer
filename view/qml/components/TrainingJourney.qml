@@ -381,6 +381,20 @@ Item {
         title: "Explicación del entrenamiento · " + root.stage.short
         color: Style.Theme.superficie_alterna
 
+        Component.onCompleted: {
+            if (typeof displayManager !== "undefined" && displayManager)
+                displayManager.registerAuxiliaryWindow(
+                            detachedExplanationWindow, true)
+        }
+        onVisibleChanged: {
+            if (visible
+                    && typeof displayManager !== "undefined"
+                    && displayManager
+                    && displayManager.hasSecondaryScreen)
+                displayManager.placeAuxiliaryWindow(
+                            detachedExplanationWindow, true)
+        }
+
         onClosing: function(close) {
             if (root.explanationDetached)
                 root.closeExplanation()

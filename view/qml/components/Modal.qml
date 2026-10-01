@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Window
 import "../styles" as Style
 
 // Lector modal reutilizable para la teoría contextual del proyecto.
@@ -23,6 +24,13 @@ Popup {
     property string currentSource: ""
     property string currentId: ""
     property string requestError: ""
+    property bool detachedVisible: false
+
+    readonly property bool secondaryDisplayAvailable:
+        typeof displayManager !== "undefined"
+        && displayManager
+        && displayManager.hasSecondaryScreen
+    readonly property bool readerVisible: root.opened || root.detachedVisible
 
     readonly property string errorCarga: root.requestError !== ""
                                                 ? root.requestError
@@ -80,9 +88,26 @@ Popup {
                     "Todavía no hay una explicación para este concepto."
                 )
         root.relacionados = relatedItems || []
-        root.open()
-        theoryPanel.prepareForOpen()
+        if (root.secondaryDisplayAvailable) {
+            root.close()
+            root.detachedVisible = true
+            detachedTheoryWindow.show()
+            if (typeof displayManager !== "undefined" && displayManager)
+                displayManager.placeAuxiliaryWindow(detachedTheoryWindow, true)
+            Qt.callLater(detachedTheoryPanel.prepareForOpen)
+        } else {
+            root.detachedVisible = false
+            detachedTheoryWindow.hide()
+            root.open()
+            theoryPanel.prepareForOpen()
+        }
         return root.concepto
+    }
+
+    function dismiss() {
+        root.close()
+        root.detachedVisible = false
+        detachedTheoryWindow.hide()
     }
 
     function openComponent(componentId) {
@@ -173,6 +198,70 @@ Popup {
         }
     }
 
+    Window {
+        id: detachedTheoryWindow
+        objectName: "detachedTheoryWindow"
+        visible: root.detachedVisible
+        minimumWidth: 620
+        minimumHeight: 520
+        width: 960
+        height: 740
+        title: "Teor\u00eda contextual \u00b7 "
+               + String(root.concepto.title || "Transformer")
+        color: Style.Theme.superficie_alterna
+
+        ContextPanel {
+            id: detachedTheoryPanel
+            objectName: root.panelObjectName + "Detached"
+            anchors.fill: parent
+            anchors.margins: 12
+            visible: root.detachedVisible
+            concepto: root.concepto
+            relatedConcepts: root.relacionados
+            errorCarga: root.errorCarga
+            closable: true
+            expanded: true
+            sx: Math.max(0.88, Math.min(1.10, width / 900))
+            sy: Math.max(0.88, Math.min(1.10, height / 740))
+
+            onCloseRequested: root.dismiss()
+            onConceptRequested: function(conceptId) {
+                root.openConcept(conceptId)
+            }
+        }
+
+        Component.onCompleted: {
+            if (typeof displayManager !== "undefined" && displayManager)
+                displayManager.registerAuxiliaryWindow(detachedTheoryWindow, true)
+        }
+        onVisibleChanged: {
+            if (visible
+                    && typeof displayManager !== "undefined"
+                    && displayManager)
+                displayManager.placeAuxiliaryWindow(detachedTheoryWindow, true)
+        }
+        onClosing: function(close) {
+            root.detachedVisible = false
+            close.accepted = true
+        }
+    }
+
+    onSecondaryDisplayAvailableChanged: {
+        if (secondaryDisplayAvailable && root.opened) {
+            root.close()
+            root.detachedVisible = true
+            detachedTheoryWindow.show()
+            if (typeof displayManager !== "undefined" && displayManager)
+                displayManager.placeAuxiliaryWindow(detachedTheoryWindow, true)
+            Qt.callLater(detachedTheoryPanel.prepareForOpen)
+        } else if (!secondaryDisplayAvailable && root.detachedVisible) {
+            root.detachedVisible = false
+            detachedTheoryWindow.hide()
+            root.open()
+            Qt.callLater(theoryPanel.prepareForOpen)
+        }
+    }
+
     onOpened: theoryPanel.prepareForOpen()
 
     Connections {
@@ -180,7 +269,7 @@ Popup {
         ignoreUnknownSignals: true
 
         function onTeoriaRecargada() {
-            if (root.visible)
+            if (root.readerVisible)
                 root.refresh()
         }
     }

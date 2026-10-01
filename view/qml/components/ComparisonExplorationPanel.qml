@@ -141,6 +141,7 @@ Rectangle {
     radius: 15 * Math.min(sx, sy)
     color: Style.Theme.fondo
     border.color: Style.Theme.borde_medio
+    clip: true
     Accessible.name: "Explorador paralelo de los modelos A y B"
     Accessible.description: "Compara encoder, decoder, atención cruzada y salida para el mismo token generado."
 
@@ -151,20 +152,28 @@ Rectangle {
 
         RowLayout {
             Layout.fillWidth: true
+            Layout.minimumWidth: 0
             Layout.preferredHeight: (root.denseHeight ? 45 : 54) * root.sy
             spacing: 12 * root.sx
 
             ColumnLayout {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 spacing: 1 * root.sy
 
                 Text {
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 0
                     text: "Exploración paralela de los dos modelos"
                     color: Style.Theme.texto_primario
                     font.bold: true
                     font.pixelSize: 22 * Math.min(root.sx, root.sy)
+                    elide: Text.ElideRight
                 }
 
                 Text {
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 0
                     text: root.viewModeIndex === 0
                           ? "Resumen del mismo paso con datos reales de cada inferencia."
                           : (root.singleModelMode
@@ -172,10 +181,9 @@ Rectangle {
                              : "Diez animaciones internas sincronizadas para contrastar ambos modelos.")
                     color: Style.Theme.texto_secundario
                     font.pixelSize: 12 * Math.min(root.sx, root.sy)
+                    elide: Text.ElideRight
                 }
             }
-
-            Item { Layout.fillWidth: true }
 
             SelectorPrincipal {
                 objectName: "comparisonExplorerViewMode"
@@ -199,6 +207,7 @@ Rectangle {
 
         RowLayout {
             Layout.fillWidth: true
+            Layout.minimumWidth: 0
             Layout.preferredHeight: (root.denseHeight ? 32 : 38) * root.sy
             spacing: 8 * root.sx
 
@@ -266,6 +275,7 @@ Rectangle {
         InferenceProcessMap {
             objectName: "comparisonProcessMap"
             Layout.fillWidth: true
+            Layout.minimumWidth: 0
             Layout.preferredHeight: (root.denseHeight ? 58 : 78) * root.sy
             chapters: root.chapters
             currentIndex: root.mapIndex
@@ -673,6 +683,7 @@ Rectangle {
 
         Text {
             Layout.fillWidth: true
+            Layout.minimumWidth: 0
             text: root.viewModeIndex === 0
                   ? "Los pesos de atención describen cómo cada modelo combinó información; no son por sí solos una medida de calidad."
                   : (root.singleModelMode

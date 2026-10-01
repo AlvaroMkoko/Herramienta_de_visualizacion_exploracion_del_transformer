@@ -31,6 +31,7 @@ from PySide6.QtCore import QCoreApplication, QUrl
 
 from core.rutas import recurso
 from view.canvas.animation_engine import VispyItem
+from viewmodel.display_manager import DisplayManager
 from viewmodel.main_viewmodel import MainViewModel
 
 
@@ -68,12 +69,14 @@ def main() -> None:
     # `main_view_model` se queda vivo mientras dure `app.exec()` porque
     # el contexto de QML mantiene una referencia a él (setContextProperty).
     main_view_model = MainViewModel()
+    display_manager = DisplayManager(app)
     app.aboutToQuit.connect(main_view_model.cerrar)
 
     qmlRegisterType(VispyItem, "Vispy", 1, 0, "VispyItem")
 
     engine = QQmlApplicationEngine()
     engine.rootContext().setContextProperty("mainViewModel", main_view_model)
+    engine.rootContext().setContextProperty("displayManager", display_manager)
 
     # QUrl.fromLocalFile y no la ruta en crudo: en Windows, engine.load()
     # interpretaría la letra de unidad de "C:/..." como un esquema de URL.

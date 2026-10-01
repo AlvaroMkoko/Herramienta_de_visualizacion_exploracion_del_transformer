@@ -13,7 +13,7 @@ Page {
     // localizar el lector compartido sin depender de ids internos de QML.
     property string helpModalObjectName: "theoryHelpModal"
     property string helpPanelObjectName: "theoryHelpPanel"
-    readonly property bool theoryModalOpened: theoryHelpModal.opened
+    readonly property bool theoryModalOpened: theoryHelpModal.readerVisible
 
     // Resolución base real de la ventana. Mantener estos valores alineados
     // con Theme evita que una fuente de 12 px termine renderizándose a 7–8 px
@@ -24,6 +24,10 @@ Page {
     // Factores de escala
     readonly property real sx: width / baseWidth
     readonly property real sy: height / baseHeight
+    readonly property bool secondaryDisplayAvailable:
+        typeof displayManager !== "undefined"
+        && displayManager
+        && displayManager.hasSecondaryScreen
 
     function openTheoryComponent(componentId) {
         return theoryHelpModal.openComponent(componentId)
@@ -38,7 +42,7 @@ Page {
     }
 
     function closeTheory() {
-        theoryHelpModal.close()
+        theoryHelpModal.dismiss()
     }
 
     background: Rectangle {
