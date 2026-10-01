@@ -257,8 +257,15 @@ class Transformer(nn.Module):
         top_k: int | None = None,
         top_p: float | None = None,
         muestreo_codicioso: bool = False,
+        obtener_parametros=None,
     ):
         """Generación autoregresiva: produce un token nuevo por paso.
+
+        ``obtener_parametros`` es opcional: si se indica, se llama antes de
+        muestrear cada token y puede devolver valores nuevos de
+        ``temperatura``, ``top_k``, ``top_p`` y ``muestreo_codicioso``. Así la
+        Vista puede cambiarlos entre un token y el siguiente. Los valores
+        realmente usados se reportan en ``parametros_muestreo``.
 
         Es un GENERADOR de Python (usa `yield`), no una función que
         retorna todo el texto de una sola vez — así una capa superior
@@ -328,6 +335,15 @@ class Transformer(nn.Module):
                 if self.config.id_token_relleno is not None:
                     logits_ultimo_paso[:, self.config.id_token_relleno] = float("-inf")
 
+                if obtener_parametros is not None:
+                    nuevos = obtener_parametros() or {}
+                    temperatura = nuevos.get("temperatura", temperatura)
+                    top_k = nuevos.get("top_k", top_k)
+                    top_p = nuevos.get("top_p", top_p)
+                    muestreo_codicioso = nuevos.get(
+                        "muestreo_codicioso", muestreo_codicioso
+                    )
+
                 if muestreo_codicioso:
                     token_nuevo = muestrear_codicioso(logits_ultimo_paso)
                 else:
@@ -338,6 +354,12 @@ class Transformer(nn.Module):
                 yield {
                     "paso": paso,
                     "token_id": token_nuevo.item(),
+                    "parametros_muestreo": {
+                        "temperatura": temperatura,
+                        "top_k": top_k,
+                        "top_p": top_p,
+                        "muestreo_codicioso": muestreo_codicioso,
+                    },
                     "logits_lineales": logits_lineales.detach(),
                     "logits": logits_ultimo_paso.detach(),
                     "pesos_atencion_cruzada_por_capa": self.decoder.pesos_atencion_cruzada_por_capa(),

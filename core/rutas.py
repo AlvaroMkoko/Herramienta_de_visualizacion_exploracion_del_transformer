@@ -128,6 +128,7 @@ DIR_DATASETS: Path = DIR_DATOS / "datasets"
 DIR_CHECKPOINTS: Path = DIR_DATOS / "checkpoints"
 DIR_LOGS: Path = DIR_DATOS / "logs"
 DIR_RESULTADOS: Path = DIR_DATOS / "resultados"
+DIR_CONFIGURACIONES: Path = DIR_DATOS / "configuraciones"
 
 
 def recurso(*partes: str) -> Path:

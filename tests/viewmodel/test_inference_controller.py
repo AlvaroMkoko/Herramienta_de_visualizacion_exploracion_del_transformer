@@ -308,3 +308,35 @@ class TestParadaTemprana:
         # El marcador EOS detiene la generación, pero no forma parte del
         # texto decodificado (ver `_tarea_generacion`).
         assert cantidad_generada == ids_referencia.index(id_fin_forzado)
+
+
+# ---------------------------------------------------------------------------
+# Parámetros de generación modificables entre tokens (RF03)
+# ---------------------------------------------------------------------------
+
+class TestParametrosEnVivo:
+    def test_cambio_entre_tokens_se_aplica_al_siguiente(self, qtbot, controlador):
+        pasos = []
+        controlador.token_generado.connect(pasos.append)
+
+        controlador.iniciar_generacion_paso_a_paso_ui("hola", 3, 1.0, 0, 1.0, False)
+        qtbot.waitUntil(lambda: len(pasos) == 1, timeout=5000)
+        assert pasos[0]["parametros_muestreo"]["muestreo_codicioso"] is False
+
+        assert controlador.actualizarParametrosGeneracion(0.5, 5, 0.8, True)
+        controlador.generar_siguiente_token()
+        qtbot.waitUntil(lambda: len(pasos) == 2, timeout=5000)
+
+        usados = pasos[1]["parametros_muestreo"]
+        assert usados == {
+            "temperatura": 0.5, "top_k": 5, "top_p": 0.8, "muestreo_codicioso": True,
+        }
+        assert pasos[1]["visualizacion"]["modo_muestreo"] == "Codicioso"
+        controlador.detener()
+        qtbot.waitUntil(lambda: not controlador.esta_generando, timeout=5000)
+
+    def test_valores_invalidos_se_rechazan(self, qtbot, controlador):
+        with qtbot.waitSignal(controlador.error, timeout=1000):
+            assert controlador.actualizarParametrosGeneracion(99.0, 0, 1.0, False) is False
+        with qtbot.waitSignal(controlador.error, timeout=1000):
+            assert controlador.actualizarParametrosGeneracion(1.0, 0, 0.0, False) is False

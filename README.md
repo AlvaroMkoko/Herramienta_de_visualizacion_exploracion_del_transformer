@@ -36,7 +36,7 @@ La pantalla inicial permite elegir un perfil:
   aplicar una evaluación se registran nombre, matrícula o identificador, grupo
   y, opcionalmente, edad y correo. La matrícula vincula ambos test.
 
-La ruta formativa presenta la evolución prevista de la plataforma educativa:
+La ruta guiada presenta la evolución prevista de la herramienta:
 
 1. **Pre-test** — diagnóstico inicial de 20 preguntas en cinco dimensiones.
 2. **Recorrido guiado** — disponible. Organiza 18 conceptos esenciales en seis
@@ -46,14 +46,14 @@ La ruta formativa presenta la evolución prevista de la plataforma educativa:
   habilitan al completar el recorrido guiado; cada opción queda registrada al
   abrirse.
 4. **Post-test** — evaluación final equivalente, con resultado total y por dimensión.
-5. **Progreso y resultados** — seguimiento integral; por ahora se muestra como
-   módulo futuro.
+5. **Progreso y resultados** — compara el pre-test con el post-test del perfil
+   activo: puntaje total, cambio, tiempo empleado y desglose por dimensión.
 
 La ruta aplica guardias secuenciales: pre-test, recorrido, laboratorios,
 post-test y seguimiento. El interruptor de ruta estricta se conserva en la
-configuración para demostraciones y desarrollo. El seguimiento integral
-conserva una vista placeholder; el pre-test y el post-test ya cuentan con flujo
-de entrada, resolución y resultados persistidos localmente.
+configuración para demostraciones y desarrollo. El pre-test y el post-test
+cuentan con flujo de entrada, resolución y resultados persistidos localmente,
+y el seguimiento reutiliza el análisis por alumno del panel docente.
 
 El recorrido guiado guarda localmente las unidades completadas y la última
 posición visitada. No requiere un dataset ni un modelo entrenado para comenzar.
@@ -61,21 +61,32 @@ posición visitada. No requiere un dataset ni un modelo entrenado para comenzar.
 El flujo de los laboratorios es:
 
 1. **Configuración** — se define la arquitectura (capas, cabezas, dimensión del
-   modelo, feed-forward, dropout, activación, máscara causal) con una
-   estimación de parámetros y memoria que se actualiza en vivo.
+   modelo, feed-forward, dropout, sesgo de las capas lineales, activación,
+   máscara causal) con una estimación de parámetros y memoria que se actualiza
+   en vivo. Se puede partir de una configuración predefinida (Mínima, Pequeña,
+   Mediana o Base del artículo original) y guardar o recuperar configuraciones
+   propias como archivos JSON en `data/configuraciones`.
 2. **Catálogo de datasets** — se agregan archivos `.jsonl`, `.json`, `.csv`,
    `.txt` o `.pdf`, o se crea un JSONL desde un formulario. La herramienta
    analiza registros, palabras aproximadas, vocabulario, categorías y
    compatibilidad de entrenamiento. Se pueden seleccionar varios y se combinan
-   en un solo corpus.
-3. **Entrenamiento** — métricas en vivo, controles de pausa/reanudación y de
+   en un solo corpus. Incluye dos datasets predefinidos de solo lectura
+   (`data/datasets_predefinidos`): traducción español–inglés básica y
+   preguntas sobre el Transformer.
+3. **Entrenamiento** — métricas en vivo (pérdida, precisión por token,
+  norma del gradiente), controles de pausa/reanudación y de
   velocidad, y dos pestañas: recorrido pedagógico del batch real y nube PCA 3D
   de embeddings. El mapa de arquitectura permanece visible junto a las
   métricas y sus detalles se abren al seleccionar un bloque.
-4. **Resultados** — resumen del entrenamiento, curva de pérdida y opciones de
-   guardado.
-5. **Inferencia** — generación token a token con temperatura, top-k, top-p,
-   muestreo codicioso y control de velocidad.
+4. **Resultados** — resumen del entrenamiento, curva de pérdida, tabla de
+   pérdida media y precisión por época y opciones de guardado.
+5. **Inferencia** — generación token a token con temperatura, top-k, top-p y
+   muestreo codicioso; los parámetros pueden cambiarse entre un token y el
+   siguiente.
+6. **Comparación** — dos modelos guardados generan con el mismo prompt y los
+   mismos parámetros; se comparan las respuestas y, paso a paso, los estados
+   internos (candidatos de salida, entropía de la atención por capa y tokens
+   más atendidos por la atención cruzada).
 
 ## Formato de los datasets
 
@@ -200,7 +211,7 @@ Ambos aceptan `--help` con el listado completo de opciones.
 | Visualización de embeddings 3D | Implementada |
 | Comparación de modelos (CU07) | Implementada |
 | Pre-test y post-test conceptuales | Implementada |
-| Analítica histórica de utilidad (RF22–RF25) | Pendiente |
+| Seguimiento de resultados del estudiante (RF23) | Implementada (pre/post por perfil) |
 
 ## Estructura
 

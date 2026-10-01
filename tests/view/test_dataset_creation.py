@@ -53,6 +53,7 @@ def _create_host(
     qtbot,
 ):
     monkeypatch.setattr(DatasetController, "DATASET_FILE", catalog_path)
+    monkeypatch.setattr(DatasetController, "DIR_PREDEFINIDOS", None)
     view_model = MainViewModel()
     engine = QQmlEngine()
     engine.rootContext().setContextProperty("mainViewModel", view_model)

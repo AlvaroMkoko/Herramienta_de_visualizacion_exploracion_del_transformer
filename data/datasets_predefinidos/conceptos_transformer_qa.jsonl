@@ -1,0 +1,42 @@
+{"instruction": "¿Qué es un token?", "response": "Es la unidad mínima de texto con la que trabaja el modelo; puede ser una palabra, una parte de palabra o un signo.", "category": "conceptos"}
+{"instruction": "¿Qué hace el tokenizador?", "response": "Divide el texto en tokens y asigna a cada uno un identificador numérico del vocabulario.", "category": "conceptos"}
+{"instruction": "¿Qué es un embedding?", "response": "Es un vector de números que representa a un token dentro del modelo.", "category": "conceptos"}
+{"instruction": "¿Para qué sirve la codificación posicional?", "response": "Agrega al embedding información sobre la posición del token, porque la atención por sí sola no conoce el orden.", "category": "conceptos"}
+{"instruction": "¿Qué funciones usa la codificación posicional sinusoidal?", "response": "Usa senos en las dimensiones pares y cosenos en las dimensiones impares, con frecuencias distintas.", "category": "conceptos"}
+{"instruction": "¿Qué es la atención?", "response": "Es un mecanismo que calcula cuánto debe considerar cada token a los demás tokens de la secuencia.", "category": "conceptos"}
+{"instruction": "¿Qué representan Q, K y V?", "response": "Q son las consultas, K son las llaves y V son los valores; se obtienen multiplicando la entrada por matrices aprendidas.", "category": "conceptos"}
+{"instruction": "¿Cómo se calculan los puntajes de atención?", "response": "Se multiplica Q por la transpuesta de K y el resultado se divide entre la raíz de la dimensión de cada cabeza.", "category": "conceptos"}
+{"instruction": "¿Por qué se divide entre la raíz de d_k?", "response": "Para que los puntajes no crezcan demasiado y el softmax no se sature.", "category": "conceptos"}
+{"instruction": "¿Qué hace el softmax en la atención?", "response": "Convierte los puntajes de cada fila en pesos positivos que suman uno.", "category": "conceptos"}
+{"instruction": "¿Qué produce la atención al final?", "response": "Una suma de los vectores V ponderada por los pesos de atención.", "category": "conceptos"}
+{"instruction": "¿Qué es la atención multi-cabeza?", "response": "Es ejecutar varias atenciones en paralelo, cada una con sus propias proyecciones, y concatenar sus resultados.", "category": "conceptos"}
+{"instruction": "¿Por qué el número de cabezas debe dividir a d_model?", "response": "Porque cada cabeza trabaja con d_model entre h dimensiones y ese valor debe ser entero.", "category": "conceptos"}
+{"instruction": "¿Qué hace la máscara causal?", "response": "Impide que una posición del decoder vea los tokens que están después de ella.", "category": "conceptos"}
+{"instruction": "¿Qué pasa si se quita la máscara causal al entrenar?", "response": "El decoder puede ver la respuesta correcta, la pérdida baja muy rápido y el modelo no aprende a generar.", "category": "conceptos"}
+{"instruction": "¿Qué es la atención cruzada?", "response": "Es la atención del decoder en la que las consultas vienen del decoder y las llaves y valores vienen de la salida del encoder.", "category": "conceptos"}
+{"instruction": "¿Qué hace el encoder?", "response": "Procesa la secuencia de entrada completa y produce una representación contextual de cada token.", "category": "conceptos"}
+{"instruction": "¿Qué hace el decoder?", "response": "Genera la secuencia de salida token por token usando lo que ya generó y la salida del encoder.", "category": "conceptos"}
+{"instruction": "¿Qué es la red feed-forward del Transformer?", "response": "Son dos capas lineales con una activación en medio que se aplican a cada posición por separado.", "category": "conceptos"}
+{"instruction": "¿Qué es d_ff?", "response": "Es la dimensión intermedia de la red feed-forward; normalmente es cuatro veces d_model.", "category": "conceptos"}
+{"instruction": "¿Para qué sirve la conexión residual?", "response": "Suma la entrada de una subcapa a su salida, lo que facilita el paso del gradiente en redes profundas.", "category": "conceptos"}
+{"instruction": "¿Qué hace la normalización de capa?", "response": "Centra y escala cada vector para que tenga media cero y varianza uno, y luego aplica gamma y beta.", "category": "conceptos"}
+{"instruction": "¿Qué es Add & Norm?", "response": "Es la combinación de la conexión residual con la normalización de capa después de cada subcapa.", "category": "conceptos"}
+{"instruction": "¿Qué son los logits?", "response": "Son los puntajes sin normalizar que el modelo asigna a cada token del vocabulario.", "category": "conceptos"}
+{"instruction": "¿Qué hace la capa de salida?", "response": "Proyecta el vector final del decoder al tamaño del vocabulario para obtener los logits.", "category": "conceptos"}
+{"instruction": "¿Qué es la entropía cruzada?", "response": "Es la pérdida que mide qué tan baja fue la probabilidad que el modelo asignó al token correcto.", "category": "conceptos"}
+{"instruction": "¿Cuál es la pérdida inicial esperada de un modelo sin entrenar?", "response": "Aproximadamente el logaritmo natural del tamaño del vocabulario, porque reparte la probabilidad casi por igual.", "category": "conceptos"}
+{"instruction": "¿Qué es la retropropagación?", "response": "Es el cálculo de los gradientes de la pérdida respecto a cada peso usando la regla de la cadena.", "category": "conceptos"}
+{"instruction": "¿Qué hace el optimizador Adam?", "response": "Actualiza los pesos usando promedios móviles del gradiente y de su cuadrado.", "category": "conceptos"}
+{"instruction": "¿Qué es la tasa de aprendizaje?", "response": "Es el factor que controla el tamaño de cada actualización de los pesos.", "category": "conceptos"}
+{"instruction": "¿Qué es una época?", "response": "Es una pasada completa por todos los ejemplos del dataset de entrenamiento.", "category": "conceptos"}
+{"instruction": "¿Qué es un lote?", "response": "Es un grupo de ejemplos que se procesan juntos antes de actualizar los pesos.", "category": "conceptos"}
+{"instruction": "¿Qué es el teacher forcing?", "response": "Es entrenar al decoder dándole como entrada la respuesta correcta desplazada una posición.", "category": "conceptos"}
+{"instruction": "¿Qué es la generación autorregresiva?", "response": "Es producir un token a la vez y agregarlo a la entrada para predecir el siguiente.", "category": "conceptos"}
+{"instruction": "¿Qué hace la temperatura?", "response": "Divide los logits antes del softmax; valores bajos concentran la probabilidad y valores altos la reparten.", "category": "conceptos"}
+{"instruction": "¿Qué es top-k?", "response": "Es conservar solo los k tokens con mayor probabilidad antes de muestrear.", "category": "conceptos"}
+{"instruction": "¿Qué es top-p?", "response": "Es conservar el conjunto más pequeño de tokens cuya probabilidad acumulada alcanza p.", "category": "conceptos"}
+{"instruction": "¿Qué es la decodificación codiciosa?", "response": "Es elegir siempre el token con mayor probabilidad.", "category": "conceptos"}
+{"instruction": "¿Qué es el dropout?", "response": "Es apagar al azar una fracción de activaciones durante el entrenamiento para reducir el sobreajuste.", "category": "conceptos"}
+{"instruction": "¿Qué es el weight tying?", "response": "Es usar la misma matriz para el embedding de salida y para la capa de proyección final.", "category": "conceptos"}
+{"instruction": "¿Qué es la precisión por token?", "response": "Es la fracción de posiciones en las que el token más probable coincide con el token correcto.", "category": "conceptos"}
+{"instruction": "¿Qué es la norma del gradiente?", "response": "Es la magnitud del vector de todos los gradientes; indica qué tan grande será la actualización.", "category": "conceptos"}

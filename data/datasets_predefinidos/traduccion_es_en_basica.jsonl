@@ -1,0 +1,100 @@
+{"instruction": "Yo como una manzana.", "response": "I eat an apple.", "category": "traduccion"}
+{"instruction": "Yo como pan.", "response": "I eat bread.", "category": "traduccion"}
+{"instruction": "Yo como arroz.", "response": "I eat rice.", "category": "traduccion"}
+{"instruction": "Tú comes una manzana.", "response": "You eat an apple.", "category": "traduccion"}
+{"instruction": "Tú comes pan.", "response": "You eat bread.", "category": "traduccion"}
+{"instruction": "Tú comes arroz.", "response": "You eat rice.", "category": "traduccion"}
+{"instruction": "Él come una manzana.", "response": "He eats an apple.", "category": "traduccion"}
+{"instruction": "Él come pan.", "response": "He eats bread.", "category": "traduccion"}
+{"instruction": "Él come arroz.", "response": "He eats rice.", "category": "traduccion"}
+{"instruction": "Ella come una manzana.", "response": "She eats an apple.", "category": "traduccion"}
+{"instruction": "Ella come pan.", "response": "She eats bread.", "category": "traduccion"}
+{"instruction": "Ella come arroz.", "response": "She eats rice.", "category": "traduccion"}
+{"instruction": "Nosotros comemos una manzana.", "response": "We eat an apple.", "category": "traduccion"}
+{"instruction": "Nosotros comemos pan.", "response": "We eat bread.", "category": "traduccion"}
+{"instruction": "Nosotros comemos arroz.", "response": "We eat rice.", "category": "traduccion"}
+{"instruction": "Ellos comen una manzana.", "response": "They eat an apple.", "category": "traduccion"}
+{"instruction": "Ellos comen pan.", "response": "They eat bread.", "category": "traduccion"}
+{"instruction": "Ellos comen arroz.", "response": "They eat rice.", "category": "traduccion"}
+{"instruction": "Yo bebo agua.", "response": "I drink water.", "category": "traduccion"}
+{"instruction": "Yo bebo leche.", "response": "I drink milk.", "category": "traduccion"}
+{"instruction": "Yo bebo café.", "response": "I drink coffee.", "category": "traduccion"}
+{"instruction": "Tú bebes agua.", "response": "You drink water.", "category": "traduccion"}
+{"instruction": "Tú bebes leche.", "response": "You drink milk.", "category": "traduccion"}
+{"instruction": "Tú bebes café.", "response": "You drink coffee.", "category": "traduccion"}
+{"instruction": "Él bebe agua.", "response": "He drinks water.", "category": "traduccion"}
+{"instruction": "Él bebe leche.", "response": "He drinks milk.", "category": "traduccion"}
+{"instruction": "Él bebe café.", "response": "He drinks coffee.", "category": "traduccion"}
+{"instruction": "Ella bebe agua.", "response": "She drinks water.", "category": "traduccion"}
+{"instruction": "Ella bebe leche.", "response": "She drinks milk.", "category": "traduccion"}
+{"instruction": "Ella bebe café.", "response": "She drinks coffee.", "category": "traduccion"}
+{"instruction": "Nosotros bebemos agua.", "response": "We drink water.", "category": "traduccion"}
+{"instruction": "Nosotros bebemos leche.", "response": "We drink milk.", "category": "traduccion"}
+{"instruction": "Nosotros bebemos café.", "response": "We drink coffee.", "category": "traduccion"}
+{"instruction": "Ellos beben agua.", "response": "They drink water.", "category": "traduccion"}
+{"instruction": "Ellos beben leche.", "response": "They drink milk.", "category": "traduccion"}
+{"instruction": "Ellos beben café.", "response": "They drink coffee.", "category": "traduccion"}
+{"instruction": "Yo leo un libro.", "response": "I read a book.", "category": "traduccion"}
+{"instruction": "Yo leo el periódico.", "response": "I read the newspaper.", "category": "traduccion"}
+{"instruction": "Yo leo una carta.", "response": "I read a letter.", "category": "traduccion"}
+{"instruction": "Tú lees un libro.", "response": "You read a book.", "category": "traduccion"}
+{"instruction": "Tú lees el periódico.", "response": "You read the newspaper.", "category": "traduccion"}
+{"instruction": "Tú lees una carta.", "response": "You read a letter.", "category": "traduccion"}
+{"instruction": "Él lee un libro.", "response": "He reads a book.", "category": "traduccion"}
+{"instruction": "Él lee el periódico.", "response": "He reads the newspaper.", "category": "traduccion"}
+{"instruction": "Él lee una carta.", "response": "He reads a letter.", "category": "traduccion"}
+{"instruction": "Ella lee un libro.", "response": "She reads a book.", "category": "traduccion"}
+{"instruction": "Ella lee el periódico.", "response": "She reads the newspaper.", "category": "traduccion"}
+{"instruction": "Ella lee una carta.", "response": "She reads a letter.", "category": "traduccion"}
+{"instruction": "Nosotros leemos un libro.", "response": "We read a book.", "category": "traduccion"}
+{"instruction": "Nosotros leemos el periódico.", "response": "We read the newspaper.", "category": "traduccion"}
+{"instruction": "Nosotros leemos una carta.", "response": "We read a letter.", "category": "traduccion"}
+{"instruction": "Ellos leen un libro.", "response": "They read a book.", "category": "traduccion"}
+{"instruction": "Ellos leen el periódico.", "response": "They read the newspaper.", "category": "traduccion"}
+{"instruction": "Ellos leen una carta.", "response": "They read a letter.", "category": "traduccion"}
+{"instruction": "Yo escribo una carta.", "response": "I write a letter.", "category": "traduccion"}
+{"instruction": "Yo escribo un mensaje.", "response": "I write a message.", "category": "traduccion"}
+{"instruction": "Yo escribo un poema.", "response": "I write a poem.", "category": "traduccion"}
+{"instruction": "Tú escribes una carta.", "response": "You write a letter.", "category": "traduccion"}
+{"instruction": "Tú escribes un mensaje.", "response": "You write a message.", "category": "traduccion"}
+{"instruction": "Tú escribes un poema.", "response": "You write a poem.", "category": "traduccion"}
+{"instruction": "Él escribe una carta.", "response": "He writes a letter.", "category": "traduccion"}
+{"instruction": "Él escribe un mensaje.", "response": "He writes a message.", "category": "traduccion"}
+{"instruction": "Él escribe un poema.", "response": "He writes a poem.", "category": "traduccion"}
+{"instruction": "Ella escribe una carta.", "response": "She writes a letter.", "category": "traduccion"}
+{"instruction": "Ella escribe un mensaje.", "response": "She writes a message.", "category": "traduccion"}
+{"instruction": "Ella escribe un poema.", "response": "She writes a poem.", "category": "traduccion"}
+{"instruction": "Nosotros escribimos una carta.", "response": "We write a letter.", "category": "traduccion"}
+{"instruction": "Nosotros escribimos un mensaje.", "response": "We write a message.", "category": "traduccion"}
+{"instruction": "Nosotros escribimos un poema.", "response": "We write a poem.", "category": "traduccion"}
+{"instruction": "Ellos escriben una carta.", "response": "They write a letter.", "category": "traduccion"}
+{"instruction": "Ellos escriben un mensaje.", "response": "They write a message.", "category": "traduccion"}
+{"instruction": "Ellos escriben un poema.", "response": "They write a poem.", "category": "traduccion"}
+{"instruction": "Yo tengo un perro.", "response": "I have a dog.", "category": "traduccion"}
+{"instruction": "Yo tengo un gato.", "response": "I have a cat.", "category": "traduccion"}
+{"instruction": "Yo tengo una casa.", "response": "I have a house.", "category": "traduccion"}
+{"instruction": "Tú tienes un perro.", "response": "You have a dog.", "category": "traduccion"}
+{"instruction": "Tú tienes un gato.", "response": "You have a cat.", "category": "traduccion"}
+{"instruction": "Tú tienes una casa.", "response": "You have a house.", "category": "traduccion"}
+{"instruction": "Él tiene un perro.", "response": "He has a dog.", "category": "traduccion"}
+{"instruction": "Él tiene un gato.", "response": "He has a cat.", "category": "traduccion"}
+{"instruction": "Él tiene una casa.", "response": "He has a house.", "category": "traduccion"}
+{"instruction": "Ella tiene un perro.", "response": "She has a dog.", "category": "traduccion"}
+{"instruction": "Ella tiene un gato.", "response": "She has a cat.", "category": "traduccion"}
+{"instruction": "Ella tiene una casa.", "response": "She has a house.", "category": "traduccion"}
+{"instruction": "Nosotros tenemos un perro.", "response": "We have a dog.", "category": "traduccion"}
+{"instruction": "Nosotros tenemos un gato.", "response": "We have a cat.", "category": "traduccion"}
+{"instruction": "Nosotros tenemos una casa.", "response": "We have a house.", "category": "traduccion"}
+{"instruction": "Ellos tienen un perro.", "response": "They have a dog.", "category": "traduccion"}
+{"instruction": "Ellos tienen un gato.", "response": "They have a cat.", "category": "traduccion"}
+{"instruction": "Ellos tienen una casa.", "response": "They have a house.", "category": "traduccion"}
+{"instruction": "Hola.", "response": "Hello.", "category": "traduccion"}
+{"instruction": "Buenos días.", "response": "Good morning.", "category": "traduccion"}
+{"instruction": "Buenas noches.", "response": "Good night.", "category": "traduccion"}
+{"instruction": "Gracias.", "response": "Thank you.", "category": "traduccion"}
+{"instruction": "Por favor.", "response": "Please.", "category": "traduccion"}
+{"instruction": "¿Cómo estás?", "response": "How are you?", "category": "traduccion"}
+{"instruction": "Estoy bien.", "response": "I am fine.", "category": "traduccion"}
+{"instruction": "Hasta luego.", "response": "See you later.", "category": "traduccion"}
+{"instruction": "¿Dónde está la escuela?", "response": "Where is the school?", "category": "traduccion"}
+{"instruction": "Me gusta aprender.", "response": "I like to learn.", "category": "traduccion"}

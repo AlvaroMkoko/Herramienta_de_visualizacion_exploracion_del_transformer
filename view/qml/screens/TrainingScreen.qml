@@ -40,6 +40,9 @@ PagePrincipal {
     property real perdidaActual: 0
     property real deltaPerdida: 0
     property real normaGradiente: 0
+    property real precisionActual: 0
+    property real precisionMediaEpoca: 0
+    property var resumenEpocas: []
     property string lecturaPerdida: "Inicia el entrenamiento para ver datos reales."
     property string componenteRelevanteId: ""
     property string componenteRelevante: "Esperando el primer batch"
@@ -95,6 +98,13 @@ PagePrincipal {
             color: root.deltaPerdida <= 0
                    ? Style.Theme.exito_texto : Style.Theme.aviso_texto,
             help: "cross_entropy"
+        },
+        {
+            label: "PRECISIÓN",
+            value: root.numero(root.precisionActual * 100, 1) + "%",
+            detail: "Media de la época " + root.numero(root.precisionMediaEpoca * 100, 1) + "%",
+            color: Style.Theme.exito_texto,
+            help: "accuracy"
         },
         {
             label: "GRADIENTE L2",
@@ -303,6 +313,10 @@ PagePrincipal {
                            && paso.eta_segundos !== null
                            ? Number(paso.eta_segundos) : -1
         root.perdidaActual = Number(paso.perdida || 0)
+        root.precisionActual = Number(paso.precision || 0)
+        root.precisionMediaEpoca = Number(paso.precision_media_epoca || 0)
+        if (paso.resumen_epocas !== undefined)
+            root.resumenEpocas = paso.resumen_epocas
 
         var visualizacion = paso.visualizacion || {}
         var resumen = visualizacion.resumen || {}
@@ -383,6 +397,7 @@ PagePrincipal {
 
         function onEntrenamiento_completo(resultado) {
             root.historialFinal = resultado.historial_perdidas || []
+            root.resumenEpocas = resultado.resumen_epocas || root.resumenEpocas
             root.perdidaFinalObtenida = Number(resultado.perdida_final || 0)
             root.epocasCompletadas = resultado.epocas_sesion !== undefined
                                      && resultado.epocas_sesion !== null
@@ -407,6 +422,7 @@ PagePrincipal {
         function onEntrenamiento_cancelado(resultado) {
             var historial = resultado.historial_perdidas || []
             root.historialFinal = historial
+            root.resumenEpocas = resultado.resumen_epocas || root.resumenEpocas
             root.perdidaFinalObtenida = historial.length > 0 ? historial[historial.length - 1] : 0
             root.epocasCompletadas = root.epocaSesionActual
             root.pasosFinales = root.pasoGlobalActual
@@ -1381,6 +1397,7 @@ PagePrincipal {
                         onClicked: root.stackView.push("ResultsScreen.qml", {
                             "stackView": root.stackView,
                             "historialPerdidas": root.historialFinal,
+                            "resumenEpocas": root.resumenEpocas,
                             "perdidaFinal": root.perdidaFinalObtenida,
                             "epocasCompletadas": root.epocasCompletadas,
                             "pasosTotales": root.pasosFinales,

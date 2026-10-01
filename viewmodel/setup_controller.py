@@ -13,9 +13,14 @@ la aplicación vía la señal `modelo_creado`.
 los otros dos controladores con el modelo recién creado).
 """
 
+import json
+import re
 import threading
+from pathlib import Path
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
+
+from core.rutas import DIR_CONFIGURACIONES
 
 from model.motor_llm.config import ConfiguracionTransformer
 from model.motor_llm.tokenizer import ENCODINGS, Tokenizer
@@ -38,6 +43,83 @@ TAMANOS_VOCABULARIO_CONOCIDOS = {
 }
 
 ACTIVACIONES = ["relu", "gelu", "swish"]
+
+# Catálogo de configuraciones arquitectónicas listas para usar (RF21). Son
+# puntos de partida: al aplicarlas solo se cargan los valores en los
+# controles; el usuario puede seguir ajustándolos antes de entrenar.
+CONFIGURACIONES_PREDEFINIDAS = [
+    {
+        "id": "minima",
+        "nombre": "Mínima",
+        "descripcion": "1 capa, 2 cabezas y d_model = 32. Entrena rápido y "
+                       "permite seguir cada tensor con pocas dimensiones.",
+        "arquitectura": {
+            "dimension_modelo": 32, "num_cabezas": 2, "num_capas": 1,
+            "dimension_ff": 128, "longitud_maxima_secuencia": 32,
+            "dropout": 0.1, "activacion": "relu", "usar_mascara_causal": True,
+        },
+        "entrenamiento": {"epocas": 6, "tasa_aprendizaje": 0.001, "batch_size": 6},
+    },
+    {
+        "id": "pequena",
+        "nombre": "Pequeña",
+        "descripcion": "2 capas, 4 cabezas y d_model = 64. Es la arquitectura "
+                       "usada en las pruebas funcionales del proyecto.",
+        "arquitectura": {
+            "dimension_modelo": 64, "num_cabezas": 4, "num_capas": 2,
+            "dimension_ff": 256, "longitud_maxima_secuencia": 64,
+            "dropout": 0.1, "activacion": "relu", "usar_mascara_causal": True,
+        },
+        "entrenamiento": {"epocas": 8, "tasa_aprendizaje": 0.001, "batch_size": 6},
+    },
+    {
+        "id": "mediana",
+        "nombre": "Mediana",
+        "descripcion": "4 capas, 8 cabezas y d_model = 128 con GELU. Requiere más "
+                       "memoria y tiempo; conviene usarla con GPU.",
+        "arquitectura": {
+            "dimension_modelo": 128, "num_cabezas": 8, "num_capas": 4,
+            "dimension_ff": 512, "longitud_maxima_secuencia": 128,
+            "dropout": 0.1, "activacion": "gelu", "usar_mascara_causal": True,
+        },
+        "entrenamiento": {"epocas": 6, "tasa_aprendizaje": 0.0003, "batch_size": 4},
+    },
+    {
+        "id": "base_2017",
+        "nombre": "Base del artículo original",
+        "descripcion": "6 capas, 8 cabezas, d_model = 512 y d_ff = 2048, como el "
+                       "modelo base de Vaswani et al. (2017). Sirve como referencia "
+                       "de escala; entrenarlo requiere una GPU con mucha memoria.",
+        "arquitectura": {
+            "dimension_modelo": 512, "num_cabezas": 8, "num_capas": 6,
+            "dimension_ff": 2048, "longitud_maxima_secuencia": 128,
+            "dropout": 0.1, "activacion": "relu", "usar_mascara_causal": True,
+        },
+        "entrenamiento": {"epocas": 1, "tasa_aprendizaje": 0.0001, "batch_size": 2},
+    },
+]
+
+# Campos que se guardan/cargan en un archivo de configuración, con su tipo.
+_CAMPOS_ARQUITECTURA = {
+    "tipo_encoding": int,
+    "dimension_modelo": int,
+    "num_cabezas": int,
+    "num_capas": int,
+    "dimension_ff": int,
+    "longitud_maxima_secuencia": int,
+    "dropout": float,
+    "compartir_pesos_salida": bool,
+    "activacion": str,
+    "usar_mascara_causal": bool,
+    "usar_sesgo": bool,
+}
+_CAMPOS_ENTRENAMIENTO = {
+    "epocas": int,
+    "tasa_aprendizaje": float,
+    "batch_size": int,
+}
+FORMATO_CONFIGURACION = "tvis-configuracion"
+VERSION_CONFIGURACION = 1
 
 class SetupController(QObject):
     """Controlador de configuración inicial del modelo.
@@ -65,6 +147,7 @@ class SetupController(QObject):
     configuracionActualCambio = Signal()
     ocupadoCambio = Signal()
     faseCambio = Signal()
+    configuracionesGuardadasCambio = Signal()
 
     # Estas senales privadas son el puente seguro entre el hilo Python que
     # materializa los pesos y el hilo de Qt, donde se actualiza el estado QML.
@@ -72,8 +155,15 @@ class SetupController(QObject):
     _creacion_terminada = Signal(int, object, object)
     _creacion_fallida = Signal(int, str)
 
-    def __init__(self, parent: QObject | None = None):
+    def __init__(
+        self,
+        parent: QObject | None = None,
+        directorio_configuraciones: str | Path | None = None,
+    ):
         super().__init__(parent)
+        self._directorio_configuraciones = Path(
+            directorio_configuraciones or DIR_CONFIGURACIONES
+        )
         self.modelo: Transformer | None = None
         self.tokenizer: Tokenizer | None = None
 
@@ -89,6 +179,7 @@ class SetupController(QObject):
         self._compartir_pesos_salida = True
         self._activacion = "relu"
         self._usar_mascara_causal = True
+        self._usar_sesgo = True
         self._configuracion_valida = True
         self._error_configuracion_actual = ""
         self._ocupado = False
@@ -151,7 +242,175 @@ class SetupController(QObject):
             "compartir_pesos_salida": self._compartir_pesos_salida,
             "activacion": self._activacion,
             "usar_mascara_causal": self._usar_mascara_causal,
+            "usar_sesgo": self._usar_sesgo,
         }
+
+    # ------------------------------------------------------------------
+    # Configuraciones predefinidas y guardadas (RF21 / objetivo 1)
+    # ------------------------------------------------------------------
+
+    @Property("QVariantList", constant=True)
+    def configuracionesPredefinidas(self) -> list:
+        return [
+            {
+                "id": item["id"],
+                "nombre": item["nombre"],
+                "descripcion": item["descripcion"],
+                "arquitectura": dict(item["arquitectura"]),
+                "entrenamiento": dict(item["entrenamiento"]),
+            }
+            for item in CONFIGURACIONES_PREDEFINIDAS
+        ]
+
+    @Property("QVariantList", notify=configuracionesGuardadasCambio)
+    def configuracionesGuardadas(self) -> list:
+        """Archivos ``.json`` de configuración guardados por el usuario."""
+        if not self._directorio_configuraciones.is_dir():
+            return []
+        resultado = []
+        for ruta in sorted(self._directorio_configuraciones.glob("*.json")):
+            try:
+                datos = self._leer_archivo_configuracion(ruta)
+            except ValueError:
+                continue
+            resultado.append(
+                {"nombre": str(datos.get("nombre") or ruta.stem), "ruta": str(ruta)}
+            )
+        return resultado
+
+    def _aplicar_arquitectura(self, arquitectura: dict) -> None:
+        """Carga valores en los controles y valida una sola vez al final."""
+        cambio = False
+        for campo, tipo in _CAMPOS_ARQUITECTURA.items():
+            if campo not in arquitectura:
+                continue
+            valor = tipo(arquitectura[campo])
+            atributo = "_" + campo
+            if getattr(self, atributo) != valor:
+                setattr(self, atributo, valor)
+                cambio = True
+        if cambio:
+            self.configuracionActualCambio.emit()
+        self._recalcular_resumen()
+
+    @Slot(str, result="QVariantMap")
+    def aplicarConfiguracionPredefinida(self, identificador: str) -> dict:
+        """Aplica una configuración del catálogo y devuelve los parámetros de
+        entrenamiento sugeridos para que la Vista actualice sus controles."""
+        for item in CONFIGURACIONES_PREDEFINIDAS:
+            if item["id"] == identificador:
+                self._aplicar_arquitectura(item["arquitectura"])
+                return dict(item["entrenamiento"])
+        self.error_configuracion.emit(
+            f"No existe la configuración predefinida '{identificador}'."
+        )
+        return {}
+
+    @staticmethod
+    def _nombre_archivo_configuracion(nombre: str) -> str:
+        limpio = re.sub(r"[^\w\-]+", "_", nombre.strip()).strip("_")[:80]
+        return limpio or "configuracion"
+
+    @Slot(str, "QVariantMap", result=str)
+    def guardarConfiguracion(self, nombre: str, entrenamiento: dict) -> str:
+        """Guarda la arquitectura actual y los parámetros de entrenamiento en
+        un archivo JSON independiente de cualquier modelo. Devuelve la ruta
+        escrita, o cadena vacía si falló (el motivo se emite por
+        ``error_configuracion``). Nunca sobrescribe un archivo existente."""
+        if not self._configuracion_valida:
+            self.error_configuracion.emit(
+                "La configuración actual no es válida; corrígela antes de guardarla."
+            )
+            return ""
+        nombre = str(nombre or "").strip()
+        if not nombre:
+            self.error_configuracion.emit("Escribe un nombre para la configuración.")
+            return ""
+        datos_entrenamiento = {}
+        for campo, tipo in _CAMPOS_ENTRENAMIENTO.items():
+            if entrenamiento and campo in entrenamiento:
+                datos_entrenamiento[campo] = tipo(entrenamiento[campo])
+        contenido = {
+            "formato": FORMATO_CONFIGURACION,
+            "version": VERSION_CONFIGURACION,
+            "nombre": nombre,
+            "arquitectura": self._obtener_configuracion_actual(),
+            "entrenamiento": datos_entrenamiento,
+        }
+        try:
+            self._directorio_configuraciones.mkdir(parents=True, exist_ok=True)
+            base = self._nombre_archivo_configuracion(nombre)
+            ruta = self._directorio_configuraciones / f"{base}.json"
+            contador = 2
+            while ruta.exists():
+                ruta = self._directorio_configuraciones / f"{base}_{contador}.json"
+                contador += 1
+            temporal = ruta.with_name(ruta.name + ".tmp")
+            temporal.write_text(
+                json.dumps(contenido, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
+            temporal.replace(ruta)
+        except OSError as exc:
+            self.error_configuracion.emit(f"No se pudo guardar la configuración: {exc}")
+            return ""
+        self.configuracionesGuardadasCambio.emit()
+        return str(ruta)
+
+    @staticmethod
+    def _leer_archivo_configuracion(ruta: Path) -> dict:
+        try:
+            datos = json.loads(Path(ruta).read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise ValueError(f"No se pudo leer la configuración: {exc}") from exc
+        if not isinstance(datos, dict) or datos.get("formato") != FORMATO_CONFIGURACION:
+            raise ValueError("El archivo no es una configuración de la herramienta.")
+        if not isinstance(datos.get("arquitectura"), dict):
+            raise ValueError("La configuración no contiene la arquitectura.")
+        return datos
+
+    @Slot(str, result="QVariantMap")
+    def cargarConfiguracion(self, ruta: str) -> dict:
+        """Carga una configuración guardada. La arquitectura solo se aplica
+        si es válida; si no, los controles conservan sus valores."""
+        try:
+            datos = self._leer_archivo_configuracion(Path(ruta))
+            arquitectura = {}
+            for campo, tipo in _CAMPOS_ARQUITECTURA.items():
+                if campo not in datos["arquitectura"]:
+                    continue
+                valor = datos["arquitectura"][campo]
+                if isinstance(valor, bool) != (tipo is bool):
+                    raise ValueError(f"El campo {campo} no es válido.")
+                arquitectura[campo] = tipo(valor)
+            if arquitectura.get("activacion", self._activacion) not in ACTIVACIONES:
+                raise ValueError("La función de activación no es válida.")
+            if (
+                arquitectura.get("tipo_encoding", self._tipo_encoding)
+                not in TAMANOS_VOCABULARIO_CONOCIDOS
+            ):
+                raise ValueError("El tokenizador indicado no es válido.")
+            # Se valida con los valores nuevos y se restaura el estado previo
+            # antes de aplicarlos, para no dejar los controles a medias.
+            respaldo = self._obtener_configuracion_actual()
+            for campo, valor in arquitectura.items():
+                setattr(self, "_" + campo, valor)
+            try:
+                self._construir_configuracion(
+                    TAMANOS_VOCABULARIO_CONOCIDOS[self._tipo_encoding] + 3
+                )
+            finally:
+                for campo, valor in respaldo.items():
+                    setattr(self, "_" + campo, valor)
+        except (ValueError, TypeError) as exc:
+            self.error_configuracion.emit(str(exc))
+            return {}
+        self._aplicar_arquitectura(arquitectura)
+        entrenamiento = {}
+        for campo, tipo in _CAMPOS_ENTRENAMIENTO.items():
+            valor = (datos.get("entrenamiento") or {}).get(campo)
+            if isinstance(valor, (int, float)) and not isinstance(valor, bool):
+                entrenamiento[campo] = tipo(valor)
+        return entrenamiento
 
     def _establecer_estado_validacion(self, error: str = "") -> None:
         """Actualiza las propiedades persistentes usadas por los bindings QML.
@@ -227,6 +486,12 @@ class SetupController(QObject):
         — pensado como herramienta educativa, no para uso normal."""
         self._actualizar_parametro("_usar_mascara_causal", valor)
 
+    @Slot(bool)
+    def establecer_usar_sesgo(self, valor: bool) -> None:
+        """Activa o quita el sesgo (bias) de las capas lineales de la
+        atención y de la feed-forward (micro-parametrización, RF02)."""
+        self._actualizar_parametro("_usar_sesgo", bool(valor))
+
     def _recalcular_resumen(self) -> None:
         """Estima la cantidad de parámetros sin instanciar el modelo
         (ni el tokenizador real) completo, para que la Vista pueda
@@ -251,6 +516,7 @@ class SetupController(QObject):
         parametros = self._estimar_parametros(
             v=tamano_vocabulario, d=self._dimension_modelo, n=self._num_capas,
             ff=self._dimension_ff, compartir_pesos_salida=self._compartir_pesos_salida,
+            usar_sesgo=self._usar_sesgo,
         )
         self.resumen_cambio.emit({
             "parametros_totales": parametros,
@@ -259,14 +525,18 @@ class SetupController(QObject):
         })
 
     @staticmethod
-    def _estimar_parametros(v: int, d: int, n: int, ff: int, compartir_pesos_salida: bool) -> int:
+    def _estimar_parametros(
+        v: int, d: int, n: int, ff: int, compartir_pesos_salida: bool,
+        usar_sesgo: bool = True,
+    ) -> int:
         """Fórmula cerrada del total de parámetros entrenables, sin
         instanciar el modelo. Verificada contra `Transformer` real para
         varias configuraciones (ver `test_setup_controller.py`)."""
         embeddings = 2 * v * d
 
-        atencion = 4 * (d * d + d)
-        ff_bloque = 2 * d * ff + ff + d
+        sesgo = 1 if usar_sesgo else 0
+        atencion = 4 * (d * d + d * sesgo)
+        ff_bloque = 2 * d * ff + (ff + d) * sesgo
         ln = 2 * d
 
         bloque_encoder = atencion + ff_bloque + 2 * ln
@@ -294,6 +564,7 @@ class SetupController(QObject):
             id_token_relleno=None,
             activacion=self._activacion,
             usar_mascara_causal=self._usar_mascara_causal,
+            usar_sesgo=self._usar_sesgo,
         )
 
     def adoptar_modelo(
@@ -333,6 +604,7 @@ class SetupController(QObject):
         self._compartir_pesos_salida = modelo.compartir_pesos_salida
         self._activacion = config.activacion
         self._usar_mascara_causal = config.usar_mascara_causal
+        self._usar_sesgo = getattr(config, "usar_sesgo", True)
 
         if self._obtener_configuracion_actual() != configuracion_previa:
             self.configuracionActualCambio.emit()
@@ -393,6 +665,7 @@ class SetupController(QObject):
             id_token_relleno=id_relleno,
             activacion=parametros["activacion"],
             usar_mascara_causal=parametros["usar_mascara_causal"],
+            usar_sesgo=parametros.get("usar_sesgo", True),
         )
         if notificar_fase is not None:
             notificar_fase("Inicializando pesos del Transformer...")

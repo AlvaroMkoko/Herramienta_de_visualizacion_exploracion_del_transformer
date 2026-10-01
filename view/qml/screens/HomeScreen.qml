@@ -87,6 +87,19 @@ PagePrincipal {
         root.abrirEtapa(stageOrder, function() {
             if (stageOrder === 5 && root.progressController)
                 root.progressController.registrarSeguimientoVisitado()
+            if (stageOrder === 5) {
+                // Seguimiento: el mismo análisis que ve el docente, aplicado
+                // a los resultados del perfil activo (RF23).
+                var perfil = mainViewModel.profileController
+                var alumno = perfil && perfil.isTeacher && perfil.hasActiveStudent
+                             ? String(perfil.activeStudent.id) : "__self__"
+                root.stackView.push("StudentAnalysisScreen.qml", {
+                    "stackView": root.stackView,
+                    "studentId": alumno,
+                    "modoSeguimiento": true
+                })
+                return
+            }
             root.stackView.push("ModulePlaceholderScreen.qml", {
                 "stackView": root.stackView,
                 "stageNumber": stageOrder,
@@ -203,7 +216,7 @@ PagePrincipal {
 
                     Text {
                         anchors.centerIn: parent
-                        text: "PLATAFORMA EDUCATIVA"
+                        text: "RUTA DE EXPLORACIÓN"
                         color: Style.Theme.acento_fuerte
                         font.pixelSize: 11
                         font.bold: true
@@ -245,7 +258,10 @@ PagePrincipal {
 
                     Text {
                         Layout.fillWidth: true
-                        text: "Modo de prueba activo: puedes abrir cualquier etapa sin completar las anteriores. El pre-test y el post-test ya están disponibles."
+                        objectName: "routeModeBanner"
+                        text: root.progressController && !root.progressController.rutaEstricta
+                              ? "Modo de prueba activo: puedes abrir cualquier etapa sin completar las anteriores."
+                              : "Avanza en orden: cada etapa se habilita al completar la anterior. Al terminar el post-test podrás comparar tus resultados."
                         color: Style.Theme.acento_fuerte
                         font.pixelSize: 13
                         wrapMode: Text.WordWrap
@@ -546,10 +562,10 @@ PagePrincipal {
                                         opacity: enabled ? 1 : 0.45
                                         ToolTip.visible: hovered && !enabled
                                         ToolTip.text: root.motivoBloqueoEtapa(stageContainer.stageOrder)
-                                        text: "Abrir vista de prueba"
+                                        text: "Ver resultados"
                                         focusPolicy: Qt.StrongFocus
                                         Accessible.name: "Abrir " + stageContainer.title
-                                        Accessible.description: "Abre el placeholder del paso "
+                                        Accessible.description: "Abre el paso "
                                                                 + stageContainer.stageOrder
 
                                         background: Rectangle {
@@ -903,10 +919,10 @@ PagePrincipal {
                         property int stageOrder: 5
                         property string eyebrow: "SEGUIMIENTO"
                         property string title: "Progreso y resultados"
-                        property string description: "Reunirá tus avances, resultados y recomendaciones de estudio."
+                        property string description: "Compara tus resultados del pre-test y del post-test por dimensión."
                         property bool stageAvailable: root.isPlatformStageAvailable(5)
                         property string stageStatus: stageAvailable ? "Disponible" : "Bloqueado"
-                        property string stageRoute: "ModulePlaceholderScreen.qml"
+                        property string stageRoute: "StudentAnalysisScreen.qml"
                         property string kind: "placeholder"
                         property string accentColor: Style.Theme.warning
                         property string note: stageAvailable ? "Compara tu pre-test con tu post-test." : root.motivoBloqueoEtapa(5)
@@ -1084,7 +1100,8 @@ PagePrincipal {
                 Layout.fillWidth: true
                 Layout.leftMargin: root.pageMargin
                 Layout.rightMargin: root.pageMargin
-                text: "Acceso libre para pruebas: las vistas placeholder no representan todavía la funcionalidad final."
+                visible: root.progressController && !root.progressController.rutaEstricta
+                text: "Acceso libre para pruebas: el orden recomendado de la ruta no se está aplicando."
                 color: Style.Theme.texto_secundario
                 font.pixelSize: 11
                 horizontalAlignment: Text.AlignHCenter

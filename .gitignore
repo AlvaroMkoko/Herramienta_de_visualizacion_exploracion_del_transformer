@@ -21,3 +21,6 @@ data/checkpoints/modelo.pt
 cambiar_constantes.py
 
 reporte_especificaciones_desarrollo.md
+!data/datasets_predefinidos/
+!data/datasets_predefinidos/*.json
+!data/datasets_predefinidos/*.jsonl

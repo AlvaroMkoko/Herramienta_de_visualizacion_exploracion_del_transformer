@@ -11,8 +11,18 @@ PagePrincipal {
     objectName: "studentAnalysisScreen"
 
     required property string studentId
+    // true cuando se abre desde la etapa "Seguimiento" de la ruta guiada.
+    property bool modoSeguimiento: false
     readonly property var profileController: mainViewModel.profileController
     property var analysis: ({})
+
+    function duracion(resultado) {
+        if (!resultado || resultado.duration_seconds === undefined)
+            return ""
+        var segundos = Math.round(Number(resultado.duration_seconds))
+        var minutos = Math.floor(segundos / 60)
+        return " · " + (minutos > 0 ? minutos + " min " : "") + (segundos % 60) + " s"
+    }
 
     function reload() {
         root.analysis = root.profileController.studentAnalysis(root.studentId)
@@ -53,13 +63,17 @@ PagePrincipal {
                     Layout.fillWidth: true
                     spacing: 2
                     Text {
-                        text: root.analysis.student ? root.analysis.student.nombre : "Análisis del alumno"
+                        text: root.modoSeguimiento
+                              ? "Seguimiento de resultados"
+                              : (root.analysis.student ? root.analysis.student.nombre : "Análisis del alumno")
                         color: Style.Theme.texto_primario
                         font.pixelSize: 28
                         font.bold: true
                     }
                     Text {
-                        text: root.analysis.student
+                        text: root.modoSeguimiento
+                              ? "Compara tu pre-test con tu post-test. Los resultados se guardan solo en este equipo."
+                              : root.analysis.student
                               ? "ID: " + (root.analysis.student.matricula || "—")
                                 + (root.analysis.student.grupo ? "  ·  Grupo: " + root.analysis.student.grupo : "")
                               : ""
@@ -95,7 +109,7 @@ PagePrincipal {
                             font.bold: true
                         }
                         Text {
-                            text: root.analysis.has_pre ? root.analysis.pre.puntaje + " de " + root.analysis.pre.maximo + " puntos" : "Sin resultado guardado"
+                            text: root.analysis.has_pre ? root.analysis.pre.puntaje + " de " + root.analysis.pre.maximo + " puntos" + root.duracion(root.analysis.pre) : "Sin resultado guardado"
                             color: Style.Theme.texto_secundario
                             font.pixelSize: 11
                         }
@@ -120,7 +134,7 @@ PagePrincipal {
                             font.bold: true
                         }
                         Text {
-                            text: root.analysis.has_post ? root.analysis.post.puntaje + " de " + root.analysis.post.maximo + " puntos" : "Sin resultado guardado"
+                            text: root.analysis.has_post ? root.analysis.post.puntaje + " de " + root.analysis.post.maximo + " puntos" + root.duracion(root.analysis.post) : "Sin resultado guardado"
                             color: Style.Theme.texto_secundario
                             font.pixelSize: 11
                         }

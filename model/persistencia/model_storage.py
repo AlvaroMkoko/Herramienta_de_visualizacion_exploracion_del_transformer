@@ -418,9 +418,11 @@ def _parametros_por_componente(
     dimension = config.dimension_modelo
     dimension_ff = config.dimension_ff
 
+    sesgo = 1 if getattr(config, "usar_sesgo", True) else 0
+
     embedding = vocabulario * dimension
-    atencion = 4 * (dimension * dimension + dimension)
-    feed_forward = 2 * dimension * dimension_ff + dimension_ff + dimension
+    atencion = 4 * (dimension * dimension + dimension * sesgo)
+    feed_forward = 2 * dimension * dimension_ff + (dimension_ff + dimension) * sesgo
     layer_norm = 2 * dimension
     bloque_encoder = atencion + feed_forward + 2 * layer_norm
     bloque_decoder = 2 * atencion + feed_forward + 3 * layer_norm
@@ -494,6 +496,7 @@ def _arquitectura(
         "usar_mascara_causal": config.usar_mascara_causal,
         "mascara_causal": config.usar_mascara_causal,
         "causal_mask": config.usar_mascara_causal,
+        "usar_sesgo": config.usar_sesgo,
         # La implementacion actual aplica LayerNorm despues de sumar la
         # conexion residual (Transformer original, post-norm).
         "tipo_normalizacion": "LayerNorm",
@@ -537,9 +540,11 @@ def _calcular_parametros_esperados(
     capas = config.num_capas
     dimension_ff = config.dimension_ff
 
+    sesgo = 1 if getattr(config, "usar_sesgo", True) else 0
+
     embeddings = 2 * vocab * dimension
-    atencion = 4 * (dimension * dimension + dimension)
-    feed_forward = 2 * dimension * dimension_ff + dimension_ff + dimension
+    atencion = 4 * (dimension * dimension + dimension * sesgo)
+    feed_forward = 2 * dimension * dimension_ff + (dimension_ff + dimension) * sesgo
     layer_norm = 2 * dimension
     bloque_encoder = atencion + feed_forward + 2 * layer_norm
     bloque_decoder = 2 * atencion + feed_forward + 3 * layer_norm

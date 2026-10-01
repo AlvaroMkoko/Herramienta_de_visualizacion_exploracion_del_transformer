@@ -1,0 +1,16 @@
+[
+  {
+    "id": "PRE-TRADUCCION",
+    "archivo": "traduccion_es_en_basica.jsonl",
+    "nombre": "Traducción español–inglés básica",
+    "dominio": "Traducción",
+    "descripcion": "Oraciones cortas en español con su traducción al inglés. Permite observar la atención cruzada entre palabras equivalentes."
+  },
+  {
+    "id": "PRE-CONCEPTOS",
+    "archivo": "conceptos_transformer_qa.jsonl",
+    "nombre": "Preguntas sobre el Transformer",
+    "dominio": "Preguntas y respuestas",
+    "descripcion": "Preguntas breves sobre los componentes del Transformer con su respuesta. Elaborado para este proyecto."
+  }
+]

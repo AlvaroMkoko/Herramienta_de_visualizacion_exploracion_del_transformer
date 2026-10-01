@@ -114,7 +114,10 @@ PagePrincipal {
                     : "Dataset anterior: la compatibilidad final se comprobará al preparar el entrenamiento.",
             "checksum": dataset.checksum || "",
             "estado": dataset.estado || "Pendiente de verificación",
-            "creado_por_app": Boolean(dataset.creado_por_app)
+            "creado_por_app": Boolean(dataset.creado_por_app),
+            "predefinido": Boolean(dataset.predefinido),
+            "descripcion": dataset.descripcion || "",
+            "dominio": dataset.dominio || ""
         }
     }
 
@@ -466,7 +469,9 @@ PagePrincipal {
 
                         Text {
                             Layout.fillWidth: true
-                            text: id
+                            text: predefinido
+                                  ? "Predefinido · " + dominio + " — " + descripcion
+                                  : id
                             color: Style.Theme.texto_secundario
                             font.pixelSize: 12 * Math.min(root.sx, root.sy)
                             elide: Text.ElideMiddle
@@ -504,6 +509,8 @@ PagePrincipal {
                         Layout.preferredHeight: 36 * root.sy
                         text: "Eliminar dataset"
                         size_text: 0.21
+                        // Los predefinidos son de solo lectura: no se ofrece borrarlos.
+                        visible: !predefinido
                         enabled: !root.datasetController.ocupado
                         onClicked: root.eliminarDatasetCompleto(id)
                     }

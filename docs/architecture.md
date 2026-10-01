@@ -46,9 +46,15 @@ Motor Transformer encoder-decoder, fiel al diagrama de *Attention Is All You Nee
   de nombres a partir de la arquitectura y saneamiento de nombres escritos
   por el usuario.
 
-### `evaluacion/` — **pendiente**
-`question_bank.py`, `evaluation_manager.py`, `results_repository.py` y
-`metrics.py` existen como esqueletos con `TODO` (RF22–RF25).
+### `evaluacion/`
+- `question_bank.py` — banco de reactivos (v2, formas A y B de 20 reactivos,
+  cinco dimensiones).
+- `evaluation_manager.py` — estado de una aplicación: navegación, respuestas
+  y duración.
+- `scorers.py` / `metrics.py` — calificación por tipo de reactivo y métricas
+  totales, por dimensión y por nivel de Bloom.
+- `results_repository.py` — historial JSON local con escritura atómica y
+  archivado de versiones anteriores del instrumento.
 
 ## ViewModel (`viewmodel/`)
 
@@ -61,11 +67,17 @@ Motor Transformer encoder-decoder, fiel al diagrama de *Attention Is All You Nee
   el avance educativo. `trainingController` e `inferenceController` aparecen
   recién cuando `SetupController` crea un modelo.
 - `setup_controller.py` — único componente que **crea** el modelo. Calcula un
-  resumen de parámetros en vivo sin instanciar nada ni consultar la red.
+  resumen de parámetros en vivo sin instanciar nada ni consultar la red, y
+  administra las configuraciones predefinidas y las guardadas por el usuario.
 - `training_controller.py` — entrenamiento en segundo plano, guardado de
   checkpoints, configuración de la nube de embeddings e instrumentación del
   batch real (gradientes y valores antes/después de `optimizer.step()`).
-- `inference_controller.py` — generación de texto token a token.
+- `inference_controller.py` — generación de texto token a token; los
+  parámetros de muestreo pueden cambiarse entre tokens.
+- `comparison_controller.py` — carga dos modelos en una sesión independiente
+  y crea un `InferenceController` para cada uno.
+- `profile_controller.py` / `progress_controller.py` — perfil (estudiante o
+  docente), registro de alumnos, análisis pre/post y guardias de la ruta.
 - `dataset_controller.py` — catálogo de datasets: análisis, metadatos,
   vista previa de registros.
 - `model_library_controller.py` — biblioteca de modelos guardados.
@@ -80,7 +92,8 @@ Motor Transformer encoder-decoder, fiel al diagrama de *Attention Is All You Nee
   tokenizador, para decodificar etiquetas). También prepara el ejemplo
   pedagógico de entrenamiento: teacher forcing, máscara, atenciones, Top-K,
   loss y resúmenes de actualización, sin enviar tensores a QML.
-- `evaluation_controller.py` — **pendiente** (RF22–RF25).
+- `evaluation_controller.py` — pre-test y post-test: navegación, calificación
+  y guardado de resultados (RF22, RF24).
 - `signal_manager.py` — **sin uso**. Las pantallas hablan directo con los
   controladores; se conserva solo por referencia histórica.
 
@@ -98,9 +111,12 @@ Motor Transformer encoder-decoder, fiel al diagrama de *Attention Is All You Nee
 
 ## View (`view/`)
 
-- `qml/screens/` — `HomeScreen`, `GuidedLearningScreen`,
-  `ModulePlaceholderScreen`, `SetupScreen`, `DataSetScreen`, `TrainingScreen`,
-  `ResultsScreen`, `InferenceScreen`, `ComparisonScreen`, `EvaluationScreen`.
+- `qml/screens/` — `ProfileSelectionScreen`, `WelcomeScreen`, `HomeScreen`,
+  `GuidedLearningScreen`, `SetupScreen`, `DataSetScreen`, `LoadDataSetScreen`,
+  `TrainingScreen`, `ResultsScreen`, `ModelLibraryScreen`, `ModelDetailScreen`,
+  `InferenceScreen`, `ComparisonScreen`, `EvaluationIntroScreen`,
+  `EvaluationScreen`, `StudentRegistrationScreen`, `TeacherDashboardScreen`,
+  `StudentAnalysisScreen` (también usada como etapa de seguimiento).
 - `qml/components/` — `TransformerDiagram`, `NubeEmbeddings3D`, `TrainingJourney`,
   `SliderColumn`,
   `GuidedConceptReader`, `GuidedLearningActivity`,

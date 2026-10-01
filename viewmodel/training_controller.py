@@ -289,6 +289,10 @@ def _tarea_entrenamiento(
     epoca_inicial = int(estado.get("siguiente_epoca", 0))
     paso_global = int(estado.get("paso_global", 0))
     historial = estado.setdefault("historial_perdidas", [])
+    # Resumen por epoca completa: perdida media y precision por token
+    # (prediccion argmax == objetivo, sin contar el relleno). Solo se agrega
+    # una entrada cuando la epoca termina; una epoca cancelada no se resume.
+    resumen_epocas = estado.setdefault("resumen_epocas", [])
     ejes_pca_previos = None
     inicio_sesion = time.perf_counter()
     pasos_sesion_completados = 0
@@ -315,6 +319,11 @@ def _tarea_entrenamiento(
             # Un proveedor callable puede devolver cantidades distintas entre
             # epocas. En ese caso ya no hay un denominador global honesto.
             pasos_sesion_totales = None
+
+        suma_perdida_epoca = 0.0
+        lotes_epoca_vistos = 0
+        aciertos_epoca = 0
+        tokens_validos_epoca = 0
 
         for paso_epoca, (tokens_origen, tokens_destino, objetivo) in enumerate(batches):
             inicio_paso = time.perf_counter()
@@ -345,6 +354,26 @@ def _tarea_entrenamiento(
                 pasos_sesion_completados += 1
                 perdida_valor = float(perdida.item())
                 historial.append(perdida_valor)
+
+                with torch.no_grad():
+                    mascara_objetivo = (
+                        torch.ones_like(objetivo, dtype=torch.bool)
+                        if id_token_relleno is None
+                        else objetivo.ne(id_token_relleno)
+                    )
+                    aciertos_lote = int(
+                        ((logits.argmax(dim=-1) == objetivo) & mascara_objetivo)
+                        .sum()
+                        .item()
+                    )
+                    validos_lote = int(mascara_objetivo.sum().item())
+                precision_lote = (
+                    aciertos_lote / validos_lote if validos_lote else 0.0
+                )
+                suma_perdida_epoca += perdida_valor
+                lotes_epoca_vistos += 1
+                aciertos_epoca += aciertos_lote
+                tokens_validos_epoca += validos_lote
 
                 cantidad_ejemplos = int(tokens_origen.shape[0])
                 if id_token_relleno is None:
@@ -399,6 +428,14 @@ def _tarea_entrenamiento(
                     "paso_epoca": paso_epoca,
                     "paso_global": paso_global,
                     "perdida": perdida_valor,
+                    "precision": precision_lote,
+                    "perdida_media_epoca": suma_perdida_epoca / lotes_epoca_vistos,
+                    "precision_media_epoca": (
+                        aciertos_epoca / tokens_validos_epoca
+                        if tokens_validos_epoca
+                        else 0.0
+                    ),
+                    "resumen_epocas": [dict(item) for item in resumen_epocas],
                     "norma_gradiente_global": norma_gradiente,
                     "pesos_atencion_encoder_por_capa": pesos_encoder,
                     "pesos_atencion_cruzada_por_capa": pesos_cruzados,
@@ -492,9 +529,23 @@ def _tarea_entrenamiento(
 
         with bloqueo_estado:
             estado["siguiente_epoca"] = epoca + 1
+            if lotes_epoca_vistos:
+                resumen_epocas.append(
+                    {
+                        "epoca": int(epoca),
+                        "lotes": lotes_epoca_vistos,
+                        "perdida_media": suma_perdida_epoca / lotes_epoca_vistos,
+                        "precision": (
+                            aciertos_epoca / tokens_validos_epoca
+                            if tokens_validos_epoca
+                            else 0.0
+                        ),
+                    }
+                )
 
     return {
         "historial_perdidas": list(historial),
+        "resumen_epocas": [dict(item) for item in resumen_epocas],
         "perdida_final": historial[-1] if historial else None,
         "epoca": estado.get("epoca"),
         "paso_global": paso_global,
@@ -602,6 +653,11 @@ class TrainingController(QObject):
             "paso_global": int(ultimo_paso or 0),
             "siguiente_epoca": int(siguiente_epoca),
             "historial_perdidas": historial,
+            "resumen_epocas": [
+                dict(item)
+                for item in metadata_previa.get("resumen_epocas", []) or []
+                if isinstance(item, dict)
+            ],
             "ejemplos_vistos": int(metadata_previa.get("ejemplos_vistos", 0) or 0),
             "tokens_origen_vistos": int(
                 metadata_previa.get("tokens_origen_vistos", 0) or 0
@@ -830,6 +886,17 @@ class TrainingController(QObject):
             valor = self._estado_entrenamiento.get(clave)
             if valor:
                 metadata[clave] = valor
+        resumen_epocas = [
+            dict(item)
+            for item in self._estado_entrenamiento.get("resumen_epocas", [])
+            if isinstance(item, dict)
+        ]
+        if resumen_epocas:
+            # Metricas por epoca medidas en el entrenamiento (no validacion).
+            metadata["resumen_epocas"] = resumen_epocas
+            metadata["historial_precision"] = [
+                float(item.get("precision", 0.0)) for item in resumen_epocas
+            ]
         if not self._estado_entrenamiento.get(
             "telemetria_procedencia_disponible", False
         ):
@@ -1168,8 +1235,16 @@ class TrainingController(QObject):
         self._sincronizar_estado_publico(copiar_historial=True)
         self._limpiar_solicitudes_control()
         self.estaEntrenandoCambio.emit()
+        with self._bloqueo_estado:
+            resumen_epocas = [
+                dict(item)
+                for item in self._estado_entrenamiento.get("resumen_epocas", [])
+            ]
         self.entrenamiento_cancelado.emit(
-            {"historial_perdidas": list(self._historial_perdidas)}
+            {
+                "historial_perdidas": list(self._historial_perdidas),
+                "resumen_epocas": resumen_epocas,
+            }
         )
 
     def _al_error(self, mensaje: str) -> None:

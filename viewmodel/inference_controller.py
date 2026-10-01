@@ -18,6 +18,7 @@ Mismo patrón que `training_controller.py`:
 from __future__ import annotations
 
 import math
+import threading
 from collections.abc import Generator
 from typing import TYPE_CHECKING
 
@@ -54,6 +55,7 @@ def _tarea_generacion(
     top_k: int | None,
     top_p: float | None,
     muestreo_codicioso: bool,
+    obtener_parametros=None,
 ) -> Generator[dict, None, str]:
     """No necesita revisar `trabajador.debe_detenerse`: `GestorConcurrencia`
     ya lo hace antes de pedir el siguiente valor, así que
@@ -69,6 +71,7 @@ def _tarea_generacion(
         tokens_origen, id_token_inicio=id_token_inicio, id_token_fin=id_token_fin,
         max_tokens_nuevos=max_tokens_nuevos, temperatura=temperatura,
         top_k=top_k, top_p=top_p, muestreo_codicioso=muestreo_codicioso,
+        obtener_parametros=obtener_parametros,
     ), start=1):
         # El token de fin (EOS) marca la parada, pero no es parte del
         # texto — se excluye del historial decodificado.
@@ -77,6 +80,9 @@ def _tarea_generacion(
         ids_generados.append(paso["token_id"])
         paso["texto_parcial"] = tokenizer.decode(ids_generados)
         paso["es_ultimo_token"] = numero_paso >= max_tokens_nuevos
+        # Se resume con los parámetros que realmente se usaron en este token
+        # (pudieron cambiar desde la Vista entre un token y otro).
+        usados = paso.get("parametros_muestreo") or {}
         paso["visualizacion"] = resumir_paso_inferencia(
             modelo=modelo,
             tokenizer=tokenizer,
@@ -84,10 +90,10 @@ def _tarea_generacion(
             paso=paso,
             ids_generados=list(ids_generados),
             id_token_inicio=id_token_inicio,
-            temperatura=temperatura,
-            top_k=top_k,
-            top_p=top_p,
-            muestreo_codicioso=muestreo_codicioso,
+            temperatura=usados.get("temperatura", temperatura),
+            top_k=usados.get("top_k", top_k),
+            top_p=usados.get("top_p", top_p),
+            muestreo_codicioso=usados.get("muestreo_codicioso", muestreo_codicioso),
         )
         # La traza contiene tensores PyTorch reales usados únicamente por el
         # adaptador. QML recibe el snapshot reducido y serializable.
@@ -130,6 +136,14 @@ class InferenceController(QObject):
         self._gestor.reanudado.connect(self.estaPausadoCambio.emit)
 
         self._texto_generado_hasta_ahora = ""
+        # Parámetros de muestreo que el hilo de generación lee antes de cada
+        # token. La Vista puede cambiarlos entre tokens (RF03).
+        self._parametros_vivos: dict = {}
+        self._bloqueo_parametros = threading.Lock()
+
+    def _leer_parametros_vivos(self) -> dict:
+        with self._bloqueo_parametros:
+            return dict(self._parametros_vivos)
 
     # ------------------------------------------------------------------
     # Estado: version Python (interna) y version QML (reactiva)
@@ -220,10 +234,18 @@ class InferenceController(QObject):
             self.error.emit("Top-P debe estar en el intervalo (0, 1].")
             return
         self._texto_generado_hasta_ahora = ""
+        with self._bloqueo_parametros:
+            self._parametros_vivos = {
+                "temperatura": float(temperatura),
+                "top_k": top_k,
+                "top_p": top_p,
+                "muestreo_codicioso": bool(muestreo_codicioso),
+            }
         self._gestor.ejecutar_en_segundo_plano(
             _tarea_generacion, self.modelo, self.tokenizer, prompt,
             self.id_token_inicio, self.id_token_fin, max_tokens_nuevos,
             temperatura, top_k, top_p, muestreo_codicioso,
+            self._leer_parametros_vivos,
             velocidad_inicial=velocidad_inicial,
             modo_paso_a_paso=modo_paso_a_paso,
             pasos_iniciales=1 if modo_paso_a_paso else 0,
@@ -284,6 +306,45 @@ class InferenceController(QObject):
             muestreo_codicioso=muestreo_codicioso,
             modo_paso_a_paso=True,
         )
+
+    @Slot(float, int, float, bool, result=bool)
+    def actualizarParametrosGeneracion(
+        self,
+        temperatura: float,
+        top_k: int,
+        top_p: float,
+        muestreo_codicioso: bool,
+    ) -> bool:
+        """Cambia los parámetros de muestreo de una generación en curso.
+
+        Se aplican a partir del siguiente token; los tokens ya generados no
+        se recalculan. Mismos centinelas que ``iniciar_generacion_ui``:
+        ``top_k <= 0`` y ``top_p >= 1`` desactivan el filtro.
+        """
+        if not (
+            math.isfinite(float(temperatura))
+            and TEMPERATURA_MIN <= float(temperatura) <= TEMPERATURA_MAX
+        ):
+            self.error.emit(
+                f"La temperatura debe estar entre {TEMPERATURA_MIN} y {TEMPERATURA_MAX}."
+            )
+            return False
+        top_k_real = int(top_k) if top_k > 0 else None
+        if top_k_real is not None and not TOP_K_MIN <= top_k_real <= TOP_K_MAX:
+            self.error.emit(f"Top-K debe estar entre {TOP_K_MIN} y {TOP_K_MAX}.")
+            return False
+        top_p_real = float(top_p) if top_p < 1.0 else None
+        if top_p_real is not None and not TOP_P_MIN < top_p_real <= TOP_P_MAX:
+            self.error.emit("Top-P debe estar en el intervalo (0, 1].")
+            return False
+        with self._bloqueo_parametros:
+            self._parametros_vivos = {
+                "temperatura": float(temperatura),
+                "top_k": top_k_real,
+                "top_p": top_p_real,
+                "muestreo_codicioso": bool(muestreo_codicioso),
+            }
+        return True
 
     @Slot()
     def generar_siguiente_token(self) -> None:

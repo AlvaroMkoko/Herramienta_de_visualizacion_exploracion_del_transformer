@@ -24,9 +24,9 @@ class FeedForward(nn.Module):
 
     def __init__(self, config: ConfiguracionTransformer):
         super().__init__()
-        self.capa_expansion = nn.Linear(config.dimension_modelo, config.dimension_ff)
+        self.capa_expansion = nn.Linear(config.dimension_modelo, config.dimension_ff, bias=config.usar_sesgo)
         self.activacion = _ACTIVACIONES[config.activacion]()
-        self.capa_proyeccion = nn.Linear(config.dimension_ff, config.dimension_modelo)
+        self.capa_proyeccion = nn.Linear(config.dimension_ff, config.dimension_modelo, bias=config.usar_sesgo)
         self.dropout = nn.Dropout(config.dropout)
         self.ultima_traza: dict | None = None
 

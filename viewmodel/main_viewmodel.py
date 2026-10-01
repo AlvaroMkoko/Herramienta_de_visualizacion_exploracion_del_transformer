@@ -670,6 +670,13 @@ class MainViewModel(QObject):
 
         ids = list(ids_datasets)
         ruta_catalogo = Path(self._dataset_controller.DATASET_FILE)
+        # Los datasets predefinidos no se escriben en dataSets.json: se toman
+        # de la copia en memoria del controlador (solo lectura).
+        predefinidos = {
+            d["id"]: dict(d)
+            for d in self._dataset_controller.datasets
+            if d.get("predefinido")
+        }
         longitud_maxima = max(modelo.config.longitud_maxima_secuencia - 1, 1)
         self._version_preparacion_dataset += 1
         version = self._version_preparacion_dataset
@@ -691,6 +698,7 @@ class MainViewModel(QObject):
                 if not isinstance(datos_catalogo, list):
                     raise ValueError("El catalogo de datasets no contiene una lista.")
                 catalogo = {d.get("id"): d for d in datos_catalogo if isinstance(d, dict)}
+                catalogo.update(predefinidos)
                 metadatas = []
                 for id_dataset in ids:
                     metadata = catalogo.get(id_dataset)

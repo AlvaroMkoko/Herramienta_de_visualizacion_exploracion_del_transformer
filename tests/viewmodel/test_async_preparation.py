@@ -51,6 +51,7 @@ def _view_model_aislado(monkeypatch, tmp_path) -> MainViewModel:
     ruta_catalogo.parent.mkdir(parents=True)
     ruta_catalogo.write_text("[]", encoding="utf8")
     monkeypatch.setattr(DatasetController, "DATASET_FILE", ruta_catalogo)
+    monkeypatch.setattr(DatasetController, "DIR_PREDEFINIDOS", None)
     monkeypatch.setattr(modulo_biblioteca, "DIR_CHECKPOINTS", tmp_path / "modelos")
     monkeypatch.setattr(modulo_main_viewmodel, "DISPOSITIVO", torch.device("cpu"))
     return MainViewModel()
@@ -259,3 +260,28 @@ def test_cancelar_dataset_espera_al_worker_y_no_publica_resultado(
     qtbot.waitUntil(lambda: not view_model.preparandoDataset, timeout=3000)
     assert publicados == []
     assert view_model.trainingController._dataset is None
+
+
+def test_preparar_dataset_predefinido_async(monkeypatch, tmp_path, qtbot):
+    """Los predefinidos no están en dataSets.json y aun así deben prepararse."""
+    from core.rutas import recurso
+
+    ruta_catalogo = tmp_path / "datasets" / "dataSets.json"
+    ruta_catalogo.parent.mkdir(parents=True)
+    ruta_catalogo.write_text("[]", encoding="utf8")
+    monkeypatch.setattr(DatasetController, "DATASET_FILE", ruta_catalogo)
+    monkeypatch.setattr(
+        DatasetController, "DIR_PREDEFINIDOS", recurso("data", "datasets_predefinidos")
+    )
+    monkeypatch.setattr(modulo_biblioteca, "DIR_CHECKPOINTS", tmp_path / "modelos")
+    monkeypatch.setattr(modulo_main_viewmodel, "DISPOSITIVO", torch.device("cpu"))
+    view_model = MainViewModel()
+    tokenizer = TokenizerFalso()
+    modelo = _modelo_pequeno()
+    view_model.setupController.adoptar_modelo(modelo, tokenizer, emitir=False)
+    view_model._instalar_modelo(modelo, tokenizer)
+
+    with qtbot.waitSignal(view_model.datasetListoParaEntrenar, timeout=10000) as listo:
+        view_model.cargarDatasetsParaEntrenarAsync(["PRE-TRADUCCION"])
+
+    assert listo.args == [100]

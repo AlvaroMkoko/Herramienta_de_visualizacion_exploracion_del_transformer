@@ -54,6 +54,35 @@ PagePrincipal {
     property bool preparacionDatasetSolicitada: false
     property bool cancelacionOperacionSolicitada: false
     property var datasetsInicioPendientes: []
+    property string mensajeConfiguracion: ""
+
+    // Aplica a los controles de entrenamiento los valores sugeridos por una
+    // configuración predefinida o guardada.
+    function aplicarEntrenamientoSugerido(entrenamiento) {
+        if (!entrenamiento)
+            return
+        if (entrenamiento.epocas !== undefined)
+            root.epocas = Number(entrenamiento.epocas)
+        if (entrenamiento.tasa_aprendizaje !== undefined)
+            root.tasaAprendizaje = Number(entrenamiento.tasa_aprendizaje)
+        if (entrenamiento.batch_size !== undefined)
+            root.batchSize = Number(entrenamiento.batch_size)
+    }
+
+    readonly property var opcionesConfiguracion: {
+        var opciones = []
+        var predefinidas = mainViewModel.setupController.configuracionesPredefinidas || []
+        for (var i = 0; i < predefinidas.length; ++i)
+            opciones.push({ "texto": "Predefinida · " + predefinidas[i].nombre,
+                            "tipo": "predefinida", "valor": predefinidas[i].id,
+                            "descripcion": predefinidas[i].descripcion })
+        var guardadas = mainViewModel.setupController.configuracionesGuardadas || []
+        for (var j = 0; j < guardadas.length; ++j)
+            opciones.push({ "texto": "Guardada · " + guardadas[j].nombre,
+                            "tipo": "guardada", "valor": guardadas[j].ruta,
+                            "descripcion": "Configuración guardada por el usuario." })
+        return opciones
+    }
     readonly property bool operacionEnCurso: mainViewModel.setupController.ocupado
                                                 || mainViewModel.activandoModelo
                                                 || mainViewModel.preparandoDataset
@@ -445,6 +474,127 @@ PagePrincipal {
                 }
 
                 RectanglePrincipal {
+                    id: rectanguloPuntoPartida
+                    objectName: "setupPresetCard"
+                    width: parent.width
+                    height: visible ? layoutPuntoPartida.implicitHeight + 30 * root.sy : 0
+                    visible: !root.usarModeloActual && localBridge.selectedId === ""
+                    sx: root.sx
+                    sy: root.sy
+
+                    ColumnLayout {
+                        id: layoutPuntoPartida
+                        anchors.fill: parent
+                        anchors.margins: 15 * root.sx
+                        spacing: 6 * root.sy
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 6 * root.sx
+                            Text {
+                                Layout.fillWidth: true
+                                text: "Punto de partida"
+                                color: Style.Theme.texto_primario
+                                font.pixelSize: 16 * root.sx
+                                font.bold: true
+                            }
+                            ConceptHelpButton {
+                                conceptId: "parameter_count"
+                                controlSize: Math.max(24, 27 * Math.min(root.sx, root.sy))
+                                onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                            }
+                        }
+
+                        SelectorPrincipal {
+                            id: comboPuntoPartida
+                            objectName: "setupPresetCombo"
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 35 * root.sy
+                            sx: root.sx
+                            sy: root.sy
+                            model: root.opcionesConfiguracion
+                            textRole: "texto"
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            wrapMode: Text.WordWrap
+                            visible: text !== ""
+                            text: comboPuntoPartida.currentIndex >= 0
+                                  && comboPuntoPartida.currentIndex < root.opcionesConfiguracion.length
+                                  ? root.opcionesConfiguracion[comboPuntoPartida.currentIndex].descripcion : ""
+                            color: Style.Theme.texto_secundario
+                            font.pixelSize: 11 * root.sx
+                        }
+
+                        BotonSecundario {
+                            objectName: "setupApplyPresetButton"
+                            sx: root.sx
+                            sy: root.sy
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 34 * root.sy
+                            text: "Aplicar configuración"
+                            enabled: comboPuntoPartida.currentIndex >= 0 && !root.operacionEnCurso
+                            onClicked: {
+                                var opcion = root.opcionesConfiguracion[comboPuntoPartida.currentIndex]
+                                var entrenamiento = opcion.tipo === "predefinida"
+                                        ? mainViewModel.setupController.aplicarConfiguracionPredefinida(opcion.valor)
+                                        : mainViewModel.setupController.cargarConfiguracion(opcion.valor)
+                                if (entrenamiento && Object.keys(entrenamiento).length > 0) {
+                                    root.aplicarEntrenamientoSugerido(entrenamiento)
+                                    root.mensajeConfiguracion = "Aplicada: " + opcion.texto
+                                }
+                            }
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 6 * root.sx
+                            CampoTextoPrincipal {
+                                id: campoNombreConfiguracion
+                                objectName: "setupConfigNameField"
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 34 * root.sy
+                                sx: root.sx
+                                sy: root.sy
+                                placeholderText: "Nombre para guardar"
+                            }
+                            BotonSecundario {
+                                objectName: "setupSaveConfigButton"
+                                sx: root.sx
+                                sy: root.sy
+                                Layout.preferredWidth: 90 * root.sx
+                                Layout.preferredHeight: 34 * root.sy
+                                text: "Guardar"
+                                enabled: campoNombreConfiguracion.text.trim() !== ""
+                                         && mainViewModel.setupController.configuracionValida
+                                onClicked: {
+                                    var ruta = mainViewModel.setupController.guardarConfiguracion(
+                                        campoNombreConfiguracion.text,
+                                        { "epocas": root.epocas,
+                                          "tasa_aprendizaje": root.tasaAprendizaje,
+                                          "batch_size": root.batchSize })
+                                    if (ruta !== "") {
+                                        root.mensajeConfiguracion = "Configuración guardada."
+                                        campoNombreConfiguracion.text = ""
+                                    }
+                                }
+                            }
+                        }
+
+                        Text {
+                            objectName: "setupConfigMessage"
+                            Layout.fillWidth: true
+                            wrapMode: Text.WordWrap
+                            visible: root.mensajeConfiguracion !== ""
+                            text: root.mensajeConfiguracion
+                            color: Style.Theme.exito_texto
+                            font.pixelSize: 11 * root.sx
+                        }
+                    }
+                }
+
+                RectanglePrincipal {
                 id: rectangulo_configuracion
                 width: parent.width
                 // Altura dinámica que se ajusta a cuántos sliders sean visibles
@@ -698,6 +848,40 @@ PagePrincipal {
                         onValueChanged: {
                             if (!root.usarModeloActual)
                                 mainViewModel.setupController.establecer_dropout(value)
+                        }
+                    }
+
+                    // --- Sesgo (bias) de las capas lineales ---
+                    RowLayout {
+                        Layout.fillWidth: true
+                        visible: (localBridge.selectedId.indexOf("attention") !== -1
+                                  && localBridge.selectedId.indexOf("add_norm") === -1)
+                                 || localBridge.selectedId.indexOf("feed_forward") !== -1
+                        spacing: 6 * root.sx
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: "Sesgo (bias) en capas lineales"
+                            color: Style.Theme.texto_primario
+                            font.pixelSize: 13 * root.sx
+                            wrapMode: Text.WordWrap
+                        }
+                        ConceptHelpButton {
+                            conceptId: "formula_ffn"
+                            controlSize: Math.max(24, 27 * Math.min(root.sx, root.sy))
+                            onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                        }
+                        Switch {
+                            objectName: "setupBiasSwitch"
+                            enabled: !root.usarModeloActual
+                            opacity: enabled ? 1.0 : 0.55
+                            checked: root.usarModeloActual
+                                     ? (mainViewModel.modeloActualInfo.usar_sesgo !== false)
+                                     : (root.configuracionActual.usar_sesgo !== false)
+                            onToggled: {
+                                if (!root.usarModeloActual)
+                                    mainViewModel.setupController.establecer_usar_sesgo(checked)
+                            }
                         }
                     }
 

@@ -19,6 +19,7 @@ def _crear_controlador(
 ) -> DatasetController:
     catalogo = tmp_path / "catalogo" / "datasets.json"
     monkeypatch.setattr(DatasetController, "DATASET_FILE", catalogo)
+    monkeypatch.setattr(DatasetController, "DIR_PREDEFINIDOS", None)
     return DatasetController()
 
 

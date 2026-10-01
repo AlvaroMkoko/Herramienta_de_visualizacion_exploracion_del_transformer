@@ -100,10 +100,13 @@ class AtencionMultiCabeza(nn.Module):
         self.dimension_cabeza = config.dimension_cabeza
         self.dimension_modelo = config.dimension_modelo
 
-        self.proyeccion_q = nn.Linear(config.dimension_modelo, config.dimension_modelo)
-        self.proyeccion_k = nn.Linear(config.dimension_modelo, config.dimension_modelo)
-        self.proyeccion_v = nn.Linear(config.dimension_modelo, config.dimension_modelo)
-        self.proyeccion_salida = nn.Linear(config.dimension_modelo, config.dimension_modelo)
+        sesgo = config.usar_sesgo
+        self.proyeccion_q = nn.Linear(config.dimension_modelo, config.dimension_modelo, bias=sesgo)
+        self.proyeccion_k = nn.Linear(config.dimension_modelo, config.dimension_modelo, bias=sesgo)
+        self.proyeccion_v = nn.Linear(config.dimension_modelo, config.dimension_modelo, bias=sesgo)
+        self.proyeccion_salida = nn.Linear(
+            config.dimension_modelo, config.dimension_modelo, bias=sesgo
+        )
 
         self.dropout_atencion = nn.Dropout(config.dropout)
         self.dropout_salida = nn.Dropout(config.dropout)

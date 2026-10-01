@@ -412,7 +412,7 @@ def test_home_expone_secuencia_y_abre_el_recorrido_guiado(home_qml, qapp, qtbot)
         ("guidedStageCard", 2, True, False, "GuidedLearningScreen.qml"),
         ("labsStageCard", 3, True, False, ""),
         ("posttestStageCard", 4, True, False, "EvaluationIntroScreen.qml"),
-        ("resultsStageCard", 5, True, True, "ModulePlaceholderScreen.qml"),
+        ("resultsStageCard", 5, True, True, "StudentAnalysisScreen.qml"),
     ]
     for object_name, orden, disponible, placeholder, ruta in etapas:
         tarjeta = _buscar(home, object_name)
@@ -485,7 +485,26 @@ def test_home_expone_secuencia_y_abre_el_recorrido_guiado(home_qml, qapp, qtbot)
 
     abrir_evaluacion("pretestOpenButton", "pre", "Pre-test")
     abrir_evaluacion("posttestOpenButton", "post", "Post-test")
-    abrir_placeholder("resultsOpenButton", "Progreso y resultados", 5)
+    # El seguimiento abre el análisis de resultados del perfil activo.
+    _invocar(_buscar(home, "resultsOpenButton"), "clicked")
+    qtbot.waitUntil(
+        lambda: _propiedad(navigation, "depth") == 2
+        and any(
+            _propiedad(item, "visible")
+            for item in window.findChildren(QObject, "studentAnalysisScreen")
+        ),
+        timeout=5000,
+    )
+    seguimiento = next(
+        item
+        for item in window.findChildren(QObject, "studentAnalysisScreen")
+        if _propiedad(item, "visible")
+    )
+    assert _propiedad(seguimiento, "modoSeguimiento") is True
+    assert _propiedad(seguimiento, "studentId") == "__self__"
+    _invocar(_buscar(seguimiento, "studentAnalysisBackButton"), "clicked")
+    qtbot.waitUntil(lambda: _propiedad(navigation, "depth") == 1, timeout=5000)
+    qapp.processEvents()
 
     # Haber avanzado dentro de la primera unidad también debe mostrarse como
     # reanudación, aunque todavía no haya una unidad completa.

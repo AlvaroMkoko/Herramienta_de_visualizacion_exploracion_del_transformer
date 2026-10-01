@@ -18,7 +18,7 @@ import time
 from typing import Any
 import unicodedata
 
-from core.rutas import DIR_DATASETS
+from core.rutas import DIR_DATASETS, recurso
 from PySide6.QtCore import Property, QObject, QThread, QUrl, Signal, Slot
 
 
@@ -468,6 +468,10 @@ class DatasetController(QObject):
     # del proyecto. DIR_DATASETS es absoluta y, al empaquetar, apunta fuera
     # del paquete, donde sí hay permiso de escritura.
     DATASET_FILE = DIR_DATASETS / "dataSets.json"
+    # Datasets que viajan con la aplicación (RF20). Son de solo lectura: se
+    # analizan al iniciar, se muestran junto a los del usuario y no se
+    # escriben en ``dataSets.json`` ni pueden eliminarse.
+    DIR_PREDEFINIDOS: Path | None = recurso("data", "datasets_predefinidos")
 
     ocupadoCambio = Signal()
     progresoCambio = Signal()
@@ -510,17 +514,58 @@ class DatasetController(QObject):
         self._progreso = dict(progreso)
         self.progresoCambio.emit()
 
+    def _cargar_predefinidos(self) -> list[dict[str, Any]]:
+        """Analiza los datasets incluidos con la aplicación.
+
+        Un archivo faltante o inválido se omite: el catálogo del usuario debe
+        seguir funcionando aunque el paquete esté incompleto.
+        """
+        directorio = self.DIR_PREDEFINIDOS
+        if directorio is None:
+            return []
+        catalogo = Path(directorio) / "catalogo.json"
+        try:
+            entradas = json.loads(catalogo.read_text(encoding="utf8"))
+        except (OSError, ValueError):
+            return []
+        predefinidos = []
+        for entrada in entradas if isinstance(entradas, list) else []:
+            try:
+                metadata = _analizar_dataset(
+                    Path(directorio) / str(entrada["archivo"]), str(entrada["id"])
+                )
+            except (KeyError, OSError, ValueError, TypeError):
+                continue
+            metadata.update(
+                {
+                    "id": str(entrada["id"]),
+                    "nombre": str(entrada.get("nombre") or metadata.get("nombre", "")),
+                    "descripcion": str(entrada.get("descripcion", "")),
+                    "dominio": str(entrada.get("dominio", "")),
+                    "predefinido": True,
+                }
+            )
+            predefinidos.append(metadata)
+        return predefinidos
+
     def cargar_datasets(self) -> None:
         self.DATASET_FILE.parent.mkdir(parents=True, exist_ok=True)
         if not self.DATASET_FILE.exists():
             with self.DATASET_FILE.open("w", encoding="utf8") as archivo:
                 json.dump([], archivo, indent=4, ensure_ascii=False)
         with self.DATASET_FILE.open("r", encoding="utf8") as archivo:
-            self.datasets = json.load(archivo)
+            del_usuario = [
+                dataset for dataset in json.load(archivo)
+                if not dataset.get("predefinido")
+            ]
+        self.datasets = self._cargar_predefinidos() + del_usuario
 
     def guardar_datasets(self) -> None:
+        del_usuario = [
+            dataset for dataset in self.datasets if not dataset.get("predefinido")
+        ]
         with self.DATASET_FILE.open("w", encoding="utf8") as archivo:
-            json.dump(self.datasets, archivo, indent=4, ensure_ascii=False)
+            json.dump(del_usuario, archivo, indent=4, ensure_ascii=False)
 
     @Slot(result="QVariantList")
     def obtenerDatasets(self) -> list[dict[str, Any]]:
@@ -546,6 +591,10 @@ class DatasetController(QObject):
 
     @Slot(str)
     def eliminarDataset(self, id_dataset: str) -> None:
+        existente = self._buscar_por_id(id_dataset)
+        if existente is not None and existente.get("predefinido"):
+            self.error.emit("Los datasets predefinidos no se pueden eliminar.")
+            return
         self.datasets = [
             dataset for dataset in self.datasets if dataset["id"] != id_dataset
         ]

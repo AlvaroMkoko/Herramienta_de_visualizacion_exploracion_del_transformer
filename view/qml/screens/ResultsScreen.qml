@@ -11,6 +11,8 @@ PagePrincipal {
 
     // --- Datos recibidos desde TrainingScreen al navegar aquí ---
     property var historialPerdidas: []
+    // Una entrada por época completa: {epoca, lotes, perdida_media, precision}
+    property var resumenEpocas: []
     property real perdidaFinal: 0
     property int epocasCompletadas: 0
     property int pasosTotales: 0
@@ -274,6 +276,77 @@ PagePrincipal {
                     color: Style.Theme.texto_primario
                     font.pixelSize: 13 * root.sx
                     font.bold: true
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                visible: root.resumenEpocas.length > 0
+                spacing: 6 * root.sx
+                Text {
+                    text: "Métricas por época"
+                    color: Style.Theme.texto_primario
+                    font.pixelSize: 15 * root.sx
+                    font.bold: true
+                }
+                ConceptHelpButton {
+                    conceptId: "accuracy"
+                    controlSize: Math.max(22, 25 * Math.min(root.sx, root.sy))
+                    onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                }
+                Item { Layout.fillWidth: true }
+                Text {
+                    text: "Medidas sobre los datos de entrenamiento"
+                    color: Style.Theme.texto_terciario
+                    font.pixelSize: 10 * root.sx
+                }
+            }
+
+            ListView {
+                id: tablaEpocas
+                objectName: "resultsEpochTable"
+                Layout.fillWidth: true
+                Layout.preferredHeight: Math.min(root.resumenEpocas.length + 1, 6) * 22 * root.sy
+                visible: root.resumenEpocas.length > 0
+                clip: true
+                model: root.resumenEpocas
+                boundsBehavior: Flickable.StopAtBounds
+                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                header: Row {
+                    width: tablaEpocas.width
+                    height: 22 * root.sy
+                    Repeater {
+                        model: ["Época", "Lotes", "Pérdida media", "Precisión por token"]
+                        Text {
+                            required property string modelData
+                            width: tablaEpocas.width / 4
+                            text: modelData
+                            color: Style.Theme.texto_secundario
+                            font.bold: true
+                            font.pixelSize: 11 * root.sx
+                        }
+                    }
+                }
+                delegate: Row {
+                    id: filaEpoca
+                    required property var modelData
+                    width: tablaEpocas.width
+                    height: 22 * root.sy
+                    Repeater {
+                        model: [
+                            String(Number(filaEpoca.modelData.epoca) + 1),
+                            String(filaEpoca.modelData.lotes),
+                            Number(filaEpoca.modelData.perdida_media).toFixed(4),
+                            (Number(filaEpoca.modelData.precision) * 100).toFixed(1) + "%"
+                        ]
+                        Text {
+                            required property string modelData
+                            width: tablaEpocas.width / 4
+                            text: modelData
+                            color: Style.Theme.texto_primario
+                            font.pixelSize: 11 * root.sx
+                        }
+                    }
                 }
             }
 

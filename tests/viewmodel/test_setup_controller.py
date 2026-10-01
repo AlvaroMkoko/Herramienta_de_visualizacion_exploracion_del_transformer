@@ -150,6 +150,7 @@ class TestEstadoConfiguracion:
             "compartir_pesos_salida": True,
             "activacion": "relu",
             "usar_mascara_causal": True,
+            "usar_sesgo": True,
         }
 
     def test_transicion_invalida_a_valida_limpia_el_error(self, controlador):

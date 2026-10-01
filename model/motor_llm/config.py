@@ -43,6 +43,9 @@ class ConfiguracionTransformer:
         usar_mascara_causal: si es False, el decoder puede ver tokens
             futuros durante el entrenamiento. Deliberadamente incorrecto,
             pensado como herramienta educativa (ver Transformer.crear_mascaras).
+        usar_sesgo: si es False, las proyecciones Q, K, V y de salida de la
+            atención y las dos capas de la feed-forward se crean sin vector
+            de sesgo (bias). LayerNorm y la capa de salida lo conservan.
     """
 
     tamano_vocabulario: int
@@ -55,6 +58,7 @@ class ConfiguracionTransformer:
     id_token_relleno: int | None = None
     activacion: str = "relu"              # "relu" | "gelu" | "swish"
     usar_mascara_causal: bool = True
+    usar_sesgo: bool = True
 
     def __post_init__(self) -> None:
         if self.dimension_modelo % self.num_cabezas != 0:

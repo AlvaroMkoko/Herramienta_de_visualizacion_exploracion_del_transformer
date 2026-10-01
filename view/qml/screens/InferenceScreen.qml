@@ -90,6 +90,23 @@ PagePrincipal {
                     muestreoCodicioso.checked)
     }
 
+    // Temperatura, Top-K, Top-P y el modo codicioso pueden cambiarse entre
+    // un token y el siguiente; el cambio se aplica al próximo token (RF03).
+    readonly property bool parametrosEditables: !root.controller
+                                                || !root.controller.estaGenerando
+                                                || !root.tokenEnProceso
+
+    function sincronizarParametros() {
+        if (!root.controller || !root.controller.estaGenerando)
+            return
+        if (root.controller.actualizarParametrosGeneracion(
+                    temperatura.value,
+                    usarTopK.checked ? topK.value : 0,
+                    usarTopP.checked ? topP.value : 1.0,
+                    muestreoCodicioso.checked))
+            root.mensajeEstado = "Parámetros actualizados: se aplicarán al siguiente token."
+    }
+
     Connections {
         target: root.controller
         ignoreUnknownSignals: true
@@ -553,8 +570,8 @@ PagePrincipal {
                         to: 2.0
                         stepSize: 0.05
                         value: 1.0
-                        enabled: (!root.controller || !root.controller.estaGenerando)
-                                 && !muestreoCodicioso.checked
+                        enabled: root.parametrosEditables && !muestreoCodicioso.checked
+                        onMoved: root.sincronizarParametros()
                     }
 
                     RowLayout {
@@ -562,11 +579,12 @@ PagePrincipal {
 
                         CasillaPrincipal {
                             id: usarTopK
+                            objectName: "usarTopKCheck"
                             Layout.fillWidth: true
                             text: "Usar Top-K"
                             checked: true
-                            enabled: (!root.controller || !root.controller.estaGenerando)
-                                     && !muestreoCodicioso.checked
+                            enabled: root.parametrosEditables && !muestreoCodicioso.checked
+                            onToggled: root.sincronizarParametros()
                         }
                         ConceptHelpButton {
                             conceptId: "top_k"
@@ -581,6 +599,7 @@ PagePrincipal {
                             value: 50
                             editable: true
                             enabled: usarTopK.checked && usarTopK.enabled
+                            onValueModified: root.sincronizarParametros()
                         }
                     }
                     RowLayout {
@@ -588,11 +607,12 @@ PagePrincipal {
 
                         CasillaPrincipal {
                             id: usarTopP
+                            objectName: "usarTopPCheck"
                             Layout.fillWidth: true
                             text: "Usar Top-P"
                             checked: true
-                            enabled: (!root.controller || !root.controller.estaGenerando)
-                                     && !muestreoCodicioso.checked
+                            enabled: root.parametrosEditables && !muestreoCodicioso.checked
+                            onToggled: root.sincronizarParametros()
                         }
                         ConceptHelpButton {
                             conceptId: "top_p"
@@ -617,6 +637,7 @@ PagePrincipal {
                         stepSize: 0.01
                         value: 0.90
                         enabled: usarTopP.checked && usarTopP.enabled
+                        onMoved: root.sincronizarParametros()
                     }
 
                     RowLayout {
@@ -627,7 +648,8 @@ PagePrincipal {
                             Layout.fillWidth: true
                             text: "Muestreo codicioso (elegir siempre el token más probable)"
                             checked: false
-                            enabled: !root.controller || !root.controller.estaGenerando
+                            enabled: root.parametrosEditables
+                            onToggled: root.sincronizarParametros()
                         }
                         ConceptHelpButton {
                             conceptId: "greedy_sampling"

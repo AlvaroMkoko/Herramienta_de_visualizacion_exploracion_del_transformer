@@ -81,7 +81,10 @@ ColumnLayout {
 
             text: tipo_dato === "entero"
                     ? Math.round(slider.value)
-                    : Number(slider.value).toFixed(3)
+                    // Valores pequeños (p. ej. learning rate 0.0003) necesitan
+                    // un decimal más para no mostrarse como 0.000.
+                    : Number(slider.value).toFixed(
+                          Math.abs(slider.value) > 0 && Math.abs(slider.value) < 0.01 ? 4 : 3)
 
             color: Style.Theme.acento
 

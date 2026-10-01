@@ -9,6 +9,7 @@ soporte opción múltiple, ordenamientos, clasificaciones y reactivos por etapas
 from __future__ import annotations
 
 from copy import deepcopy
+import time
 from typing import Any
 
 from .metrics import compute_metrics
@@ -29,6 +30,7 @@ class EvaluationManager:
         self.answers: dict[str, Any] = {}
         self.current_index = 0
         self.result: dict[str, Any] = {}
+        self._inicio_monotonico: float | None = None
 
     def start_evaluation(self, assessment_type: str) -> None:
         self.assessment_type = str(assessment_type).lower().strip()
@@ -37,6 +39,7 @@ class EvaluationManager:
         self.answers = {}
         self.current_index = 0
         self.result = {}
+        self._inicio_monotonico = time.monotonic()
 
     # ------------------------------------------------------------------
     # Estado
@@ -158,10 +161,17 @@ class EvaluationManager:
             raise EvaluationStateError(
                 "La evaluación todavía tiene preguntas pendientes."
             )
-        return compute_metrics(
+        resultado = compute_metrics(
             self.assessment_type,
             self.questions,
             self.answers,
             self.question_bank.dimensions,
             self.question_bank.instrument_version,
         )
+        if self._inicio_monotonico is not None:
+            # Tiempo total desde que se abrió el primer reactivo hasta que se
+            # respondió el último; incluye las revisiones de reactivos previos.
+            resultado["duration_seconds"] = round(
+                time.monotonic() - self._inicio_monotonico, 1
+            )
+        return resultado

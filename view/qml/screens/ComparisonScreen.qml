@@ -28,6 +28,21 @@ PagePrincipal {
     property int duracionB: 0
     property string estadoA: "Listo"
     property string estadoB: "Listo"
+    // Snapshots del forward real de cada token, para la vista interna.
+    property var pasosA: []
+    property var pasosB: []
+    property bool mostrarInterior: false
+    // Paso que muestran ambos paneles (0 = seguir el último token).
+    property int pasoSeleccionado: 0
+    readonly property int pasosDisponibles: Math.max(root.pasosA.length, root.pasosB.length)
+    readonly property int pasoVisible: root.pasoSeleccionado > 0
+                                       ? Math.min(root.pasoSeleccionado, root.pasosDisponibles)
+                                       : root.pasosDisponibles
+
+    function pasoDe(lista) {
+        var indice = root.pasoVisible - 1
+        return indice >= 0 && indice < lista.length ? lista[indice] : null
+    }
 
     readonly property bool modelosListos: controller && controller.modelosListos
     readonly property bool cargando: controller && controller.cargando
@@ -125,6 +140,9 @@ PagePrincipal {
         textoB = ""
         tokensA = 0
         tokensB = 0
+        pasosA = []
+        pasosB = []
+        pasoSeleccionado = 0
         duracionA = 0
         duracionB = 0
         estadoA = "Listo"
@@ -144,6 +162,9 @@ PagePrincipal {
         textoB = ""
         tokensA = 0
         tokensB = 0
+        pasosA = []
+        pasosB = []
+        pasoSeleccionado = 0
         duracionA = 0
         duracionB = 0
         inicioA = Date.now()
@@ -221,6 +242,11 @@ PagePrincipal {
         function onToken_generado(paso) {
             if (paso && paso.texto_parcial !== undefined)
                 root.textoA = String(paso.texto_parcial)
+            if (paso && paso.visualizacion) {
+                var siguientes = root.pasosA.slice(0)
+                siguientes.push(paso.visualizacion)
+                root.pasosA = siguientes
+            }
             root.tokensA += 1
             root.estadoA = "Generando token " + root.tokensA + "…"
         }
@@ -253,6 +279,11 @@ PagePrincipal {
         function onToken_generado(paso) {
             if (paso && paso.texto_parcial !== undefined)
                 root.textoB = String(paso.texto_parcial)
+            if (paso && paso.visualizacion) {
+                var siguientes = root.pasosB.slice(0)
+                siguientes.push(paso.visualizacion)
+                root.pasosB = siguientes
+            }
             root.tokensB += 1
             root.estadoB = "Generando token " + root.tokensB + "…"
         }
@@ -813,8 +844,75 @@ PagePrincipal {
         }
 
         RowLayout {
+            id: barraVistaComparacion
+            objectName: "comparisonViewBar"
             anchors.top: panelPrompt.bottom
-            anchors.topMargin: 16 * root.sy
+            anchors.topMargin: 10 * root.sy
+            anchors.left: parent.left
+            anchors.right: parent.right
+            height: 36 * root.sy
+            spacing: 10 * root.sx
+
+            BotonSecundario {
+                objectName: "comparisonShowOutputButton"
+                Layout.preferredWidth: 150 * root.sx
+                Layout.preferredHeight: 32 * root.sy
+                sx: root.sx
+                sy: root.sy
+                text: "Respuestas"
+                checkable: true
+                checked: !root.mostrarInterior
+                font.bold: checked
+                onClicked: root.mostrarInterior = false
+            }
+            BotonSecundario {
+                objectName: "comparisonShowInternalButton"
+                Layout.preferredWidth: 190 * root.sx
+                Layout.preferredHeight: 32 * root.sy
+                sx: root.sx
+                sy: root.sy
+                text: "Estados internos"
+                checkable: true
+                checked: root.mostrarInterior
+                font.bold: checked
+                onClicked: root.mostrarInterior = true
+            }
+            Item { Layout.fillWidth: true }
+            Text {
+                visible: root.mostrarInterior
+                text: root.pasosDisponibles > 0
+                      ? "Paso " + root.pasoVisible + " de " + root.pasosDisponibles
+                        + (root.pasoSeleccionado === 0 ? " (siguiendo el último)" : "")
+                      : "Sin pasos generados"
+                color: Style.Theme.texto_secundario
+                font.pixelSize: 12 * Math.min(root.sx, root.sy)
+            }
+            Slider {
+                objectName: "comparisonStepSlider"
+                visible: root.mostrarInterior
+                Layout.preferredWidth: 260 * root.sx
+                from: 1
+                to: Math.max(1, root.pasosDisponibles)
+                stepSize: 1
+                enabled: root.pasosDisponibles > 1
+                value: root.pasoVisible
+                onMoved: root.pasoSeleccionado = Math.round(value)
+            }
+            BotonSecundario {
+                visible: root.mostrarInterior
+                Layout.preferredWidth: 110 * root.sx
+                Layout.preferredHeight: 32 * root.sy
+                sx: root.sx
+                sy: root.sy
+                text: "Último"
+                enabled: root.pasoSeleccionado !== 0
+                onClicked: root.pasoSeleccionado = 0
+            }
+        }
+
+        RowLayout {
+            anchors.top: barraVistaComparacion.bottom
+            anchors.topMargin: 10 * root.sy
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.bottom: parent.bottom
@@ -826,6 +924,7 @@ PagePrincipal {
                         etiqueta: "MODELO A",
                         info: root.controller ? root.controller.modeloAInfo : {},
                         texto: root.textoA,
+                        pasoInterno: root.pasoDe(root.pasosA),
                         tokens: root.tokensA,
                         duracion: root.duracionA,
                         estado: root.estadoA,
@@ -836,6 +935,7 @@ PagePrincipal {
                         etiqueta: "MODELO B",
                         info: root.controller ? root.controller.modeloBInfo : {},
                         texto: root.textoB,
+                        pasoInterno: root.pasoDe(root.pasosB),
                         tokens: root.tokensB,
                         duracion: root.duracionB,
                         estado: root.estadoB,
@@ -892,7 +992,20 @@ PagePrincipal {
                             elide: Text.ElideRight
                         }
 
+                        ComparacionInterna {
+                            objectName: "comparisonInternal_" + resultadoModelo.modelData.etiqueta
+                            visible: root.mostrarInterior
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            paso: resultadoModelo.modelData.pasoInterno
+                            acento: resultadoModelo.modelData.acento
+                            sx: root.sx
+                            sy: root.sy
+                            onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
+                        }
+
                         Rectangle {
+                            visible: !root.mostrarInterior
                             Layout.fillWidth: true
                             Layout.fillHeight: true
                             radius: 8 * root.sx
