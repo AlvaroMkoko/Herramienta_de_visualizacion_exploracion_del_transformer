@@ -207,7 +207,7 @@ PagePrincipal {
 
                     Repeater {
                         model: [
-                            "Selecciona una sola respuesta por pregunta.",
+                            "Responde según el formato: elegir, ordenar, relacionar o escribir.",
                             "Debes responder para poder avanzar.",
                             "No se mostrará si acertaste hasta terminar.",
                             "Tus respuestas no modifican el modelo Transformer."
@@ -254,7 +254,7 @@ PagePrincipal {
                             ColumnLayout {
                                 Layout.fillWidth: true
                                 Text { text: "TIEMPO APROX."; color: Style.Theme.texto_secundario; font.pixelSize: 10 * root.sx; font.bold: true }
-                                Text { text: "20-25 min"; color: Style.Theme.texto_primario; font.pixelSize: 20 * root.sx; font.bold: true }
+                                Text { text: "30-40 min"; color: Style.Theme.texto_primario; font.pixelSize: 20 * root.sx; font.bold: true }
                             }
                         }
                     }

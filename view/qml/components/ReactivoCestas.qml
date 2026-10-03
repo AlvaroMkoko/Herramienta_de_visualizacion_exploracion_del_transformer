@@ -110,13 +110,15 @@ AsignacionBase {
                 font.pixelSize: 13 * root.sx
             }
 
-            ColumnLayout {
+            GridLayout {
                 id: fichasMonton
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.top: parent.top
                 anchors.margins: 10 * root.sx
-                spacing: 7 * root.sy
+                columns: root.width >= 760 * root.sx ? 2 : 1
+                columnSpacing: 8 * root.sx
+                rowSpacing: 7 * root.sy
 
                 Repeater {
                     model: root.montonOrdenado()

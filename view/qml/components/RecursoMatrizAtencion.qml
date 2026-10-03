@@ -35,7 +35,7 @@ Item {
                                    ? root.recurso.valores : []
 
     readonly property real anchoCelda: 84 * root.sx
-    readonly property real altoCelda: 40 * root.sy
+    readonly property real altoCelda: 34 * root.sy
     readonly property real anchoEtiqueta: 96 * root.sx
 
     function valorEn(fila, columna) {
@@ -56,7 +56,7 @@ Item {
     Rectangle {
         id: tarjeta
         width: root.width
-        implicitHeight: contenido.implicitHeight + 28 * root.sy
+        implicitHeight: contenido.implicitHeight + 20 * root.sy
         radius: 12 * root.sx
         color: Style.Theme.superficie_alterna
         border.width: 1
@@ -67,8 +67,8 @@ Item {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.top: parent.top
-            anchors.margins: 14 * root.sx
-            spacing: 10 * root.sy
+            anchors.margins: 10 * root.sx
+            spacing: 7 * root.sy
 
             Text {
                 Layout.fillWidth: true
