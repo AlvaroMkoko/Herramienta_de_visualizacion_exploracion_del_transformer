@@ -249,6 +249,12 @@ def test_recorrido_expone_seis_unidades_y_dieciocho_conceptos(guided_qml, qtbot)
         "guidedConceptReader",
         "guidedConceptVisualization",
         "guidedConceptDiagram",
+        "guidedLearningContentStack",
+        "guidedConceptView",
+        "guidedActivityView",
+        "guidedActivityBackButton",
+        "guidedActivityFooter",
+        "guidedActivityNextUnitButton",
         "guidedActivityCard",
         "guidedQuestionPanel",
         "guidedObservePanel",
@@ -260,6 +266,8 @@ def test_recorrido_expone_seis_unidades_y_dieciocho_conceptos(guided_qml, qtbot)
 
     activity = _buscar(window, "guidedActivityCard")
     concept_visual = _buscar(window, "guidedConceptVisualization")
+    assert _propiedad(screen, "activityView") is False
+    assert _propiedad(activity, "visible") is False
     assert _propiedad(activity, "stageLabels") == ["1 · Pregunta", "2 · Observa"]
     assert _propiedad(concept_visual, "conceptId") == "que_es_transformer"
     assert _propiedad(concept_visual, "accessibleSummary")
@@ -301,6 +309,13 @@ def test_navegacion_cambia_concepto_y_respeta_unidades(guided_qml, qapp):
     _invocar(screen, "nextConcept")
     _invocar(screen, "nextConcept")
     qapp.processEvents()
+    assert _propiedad(screen, "currentConceptIndex") == 2
+    assert _propiedad(screen, "activityView") is True
+
+    # La actividad es una segunda vista, no un panel que compite con la lectura.
+    _invocar(screen, "previousConcept")
+    qapp.processEvents()
+    assert _propiedad(screen, "activityView") is False
     assert _propiedad(screen, "currentConceptIndex") == 2
 
 
@@ -356,12 +371,21 @@ def test_actividad_se_limita_a_pregunta_y_observacion_y_actualiza_progreso(
     _invocar(screen, "resetProgress")
     _invocar(screen, "selectUnit", 0)
     qapp.processEvents()
+    assert _propiedad(screen, "activityView") is False
+    assert _propiedad(_buscar(window, "guidedConceptView"), "visible") is True
+    assert _propiedad(_buscar(window, "guidedActivityView"), "visible") is False
+
+    _invocar(screen, "showActivity")
+    qapp.processEvents()
+    assert _propiedad(screen, "activityView") is True
+    assert _propiedad(_buscar(window, "guidedConceptView"), "visible") is False
+    assert _propiedad(_buscar(window, "guidedActivityView"), "visible") is True
     assert _propiedad(screen, "activityStage") == 0
     assert _propiedad(screen, "selectedPrediction") == -1
     assert _propiedad(screen, "completedUnitsCount") == 0
     assert _propiedad(demo, "visualType") == "pipeline"
-    assert _propiedad(demo, "compactLayout") is True
-    assert _propiedad(demo, "implicitHeight") >= 250
+    assert _propiedad(demo, "compactLayout") is False
+    assert _propiedad(demo, "implicitHeight") >= 150
     assert "dataset aporta instruction" in _propiedad(demo, "accessibleSummary")
     _buscar(window, "guidedPipelineDatasetBlock")
     _buscar(window, "guidedPipelineTokenizationBlock")
@@ -376,6 +400,9 @@ def test_actividad_se_limita_a_pregunta_y_observacion_y_actualiza_progreso(
     qapp.processEvents()
     assert _propiedad(screen, "activityStage") == 1
     assert _propiedad(observation_panel, "visible") is True
+    assert _propiedad(_buscar(window, "guidedActivityCard"), "height") > 300
+    assert _propiedad(_buscar(window, "guidedActivityFooter"), "height") < 80
+    assert _propiedad(_buscar(window, "guidedActivityNextUnitButton"), "height") < 80
     assert _propiedad(screen, "completedUnitsCount") == 1
     assert _propiedad(pedagogical_explanation, "visible") is True
     assert window.findChild(QObject, "guidedExplanationInput") is None

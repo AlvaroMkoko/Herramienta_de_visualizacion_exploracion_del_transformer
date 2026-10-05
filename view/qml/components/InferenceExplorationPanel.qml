@@ -1399,7 +1399,7 @@ Item {
                                 font.pixelSize: Math.max(11, 10 * root.sx)
                             }
 
-                            Button {
+                            BotonAccesible {
                                 objectName: "inferenceDetachGuideButton"
                                 Layout.preferredHeight: Math.max(28, 30 * root.sy)
                                 text: root.guideDetached ? "Acoplar" : "Abrir aparte"
@@ -1418,7 +1418,7 @@ Item {
                                               : "Libera espacio y mantiene la explicación en otra ventana"
                             }
 
-                            Button {
+                            BotonAccesible {
                                 objectName: "inferenceLocationMapToggle"
                                 Layout.preferredHeight: Math.max(28, 30 * root.sy)
                                 text: root.locationMapVisible ? "Ocultar mapa" : "Mostrar mapa"
@@ -1750,7 +1750,7 @@ Item {
                                 }
                             }
 
-                            Button {
+                            BotonAccesible {
                                 id: fullExplanationButton
                                 objectName: "inferenceFullExplanationButton"
                                 property string targetConceptId: String(
@@ -1998,7 +1998,7 @@ Item {
                                 }
                             }
 
-                            Button {
+                            BotonAccesible {
                                 objectName: "inferenceDetailsToggle"
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: Math.max(38, 42 * root.sy)

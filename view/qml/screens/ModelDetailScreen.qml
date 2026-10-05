@@ -656,7 +656,7 @@ PagePrincipal {
         Repeater {
             model: ["Arquitectura", "Procedencia", "Historial", "Tokenizador",
                     "Salud", "Versiones", "Integridad"]
-            delegate: TabButton {
+            delegate: PestanaAccesible {
                 required property var modelData
                 text: modelData
                 font.bold: checked

@@ -219,7 +219,7 @@ Rectangle {
                 font.pixelSize: 10 * Math.min(root.sx, root.sy)
             }
 
-            Button {
+            BotonAccesible {
                 objectName: "comparisonPreviousTokenButton"
                 Layout.preferredWidth: 38 * root.sx
                 Layout.preferredHeight: 32 * root.sy
@@ -240,7 +240,7 @@ Rectangle {
                 font.pixelSize: 12 * Math.min(root.sx, root.sy)
             }
 
-            Button {
+            BotonAccesible {
                 objectName: "comparisonNextTokenHistoryButton"
                 Layout.preferredWidth: 38 * root.sx
                 Layout.preferredHeight: 32 * root.sy
@@ -420,7 +420,7 @@ Rectangle {
                             visible: !root.singleModelMode
                                      && root.operationSupportsLayer()
                             spacing: 3 * root.sx
-                            Button {
+                            BotonAccesible {
                                 Layout.preferredWidth: 30 * root.sx
                                 Layout.preferredHeight: 30 * root.sy
                                 text: "−"
@@ -436,7 +436,7 @@ Rectangle {
                                 font.bold: true
                                 font.pixelSize: 10 * Math.min(root.sx, root.sy)
                             }
-                            Button {
+                            BotonAccesible {
                                 Layout.preferredWidth: 30 * root.sx
                                 Layout.preferredHeight: 30 * root.sy
                                 text: "+"
@@ -449,7 +449,7 @@ Rectangle {
                             visible: !root.singleModelMode
                                      && root.operationSupportsHead()
                             spacing: 3 * root.sx
-                            Button {
+                            BotonAccesible {
                                 Layout.preferredWidth: 30 * root.sx
                                 Layout.preferredHeight: 30 * root.sy
                                 text: "−"
@@ -465,7 +465,7 @@ Rectangle {
                                 font.bold: true
                                 font.pixelSize: 10 * Math.min(root.sx, root.sy)
                             }
-                            Button {
+                            BotonAccesible {
                                 Layout.preferredWidth: 30 * root.sx
                                 Layout.preferredHeight: 30 * root.sy
                                 text: "+"
@@ -474,7 +474,7 @@ Rectangle {
                             }
                         }
 
-                        Button {
+                        BotonAccesible {
                             visible: !root.singleModelMode
                                      && root.animationIndex === 6
                             Layout.preferredWidth: visible ? 148 * root.sx : 0
@@ -544,7 +544,7 @@ Rectangle {
                         RowLayout {
                             visible: root.operationSupportsLayer()
                             spacing: 3 * root.sx
-                            Button {
+                            BotonAccesible {
                                 Layout.preferredWidth: 30 * root.sx
                                 Layout.preferredHeight: 28 * root.sy
                                 text: "−"
@@ -560,7 +560,7 @@ Rectangle {
                                 font.bold: true
                                 font.pixelSize: 10 * Math.min(root.sx, root.sy)
                             }
-                            Button {
+                            BotonAccesible {
                                 Layout.preferredWidth: 30 * root.sx
                                 Layout.preferredHeight: 28 * root.sy
                                 text: "+"
@@ -572,7 +572,7 @@ Rectangle {
                         RowLayout {
                             visible: root.operationSupportsHead()
                             spacing: 3 * root.sx
-                            Button {
+                            BotonAccesible {
                                 Layout.preferredWidth: 30 * root.sx
                                 Layout.preferredHeight: 28 * root.sy
                                 text: "−"
@@ -588,7 +588,7 @@ Rectangle {
                                 font.bold: true
                                 font.pixelSize: 10 * Math.min(root.sx, root.sy)
                             }
-                            Button {
+                            BotonAccesible {
                                 Layout.preferredWidth: 30 * root.sx
                                 Layout.preferredHeight: 28 * root.sy
                                 text: "+"
@@ -597,7 +597,7 @@ Rectangle {
                             }
                         }
 
-                        Button {
+                        BotonAccesible {
                             visible: root.animationIndex === 6
                             Layout.preferredWidth: visible ? 148 * root.sx : 0
                             Layout.preferredHeight: 29 * root.sy

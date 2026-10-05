@@ -306,7 +306,7 @@ Item {
                         }
 
                         // Reapertura de una etapa bloqueada.
-                        Button {
+                        BotonAccesible {
                             id: botonCambiar
                             objectName: "evaluationStageUnlock_" + bloqueEtapa.etapaId
                             visible: bloqueEtapa.bloqueada
@@ -350,7 +350,7 @@ Item {
                     }
 
                     // ── Disparador del acordeón (solo etapas que no puntúan)
-                    Button {
+                    BotonAccesible {
                         id: disparadorAcordeon
                         objectName: "evaluationStageDisclosure_" + bloqueEtapa.etapaId
                         visible: bloqueEtapa.enAcordeon && !bloqueEtapa.desplegada

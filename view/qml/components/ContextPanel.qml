@@ -102,7 +102,7 @@ Rectangle {
                 }
             }
 
-            Button {
+            BotonAccesible {
                 id: closeButton
 
                 visible: root.closable
@@ -366,7 +366,7 @@ Rectangle {
                     }
                     Repeater {
                         model: root.relacionados
-                        delegate: Button {
+                        delegate: BotonAccesible {
                             id: relatedDelegate
                             required property var modelData
                             width: parent.width

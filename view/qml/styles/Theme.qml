@@ -40,7 +40,9 @@ QtObject {
         "texto_secundario":  "#6B7280",
         "texto_secundario_fuerte":"#334155",
         "borde":             "#aeb0b3",
-        "borde_boton":       "#afb4b9",
+        // Un contorno de control necesita al menos 3:1 contra superficies
+        // claras para seguir siendo reconocible sin depender del hover.
+        "borde_boton":       "#64748B",
         "borde_cuadro":      "#9e979f",
         "success":           "#22C55E",
         "warning":           "#F59E0B",
@@ -138,7 +140,7 @@ QtObject {
         "texto_secundario":  "#A5A2BB",
         "texto_secundario_fuerte":"#C6C3D8",
         "borde":             "#3A3A4A",
-        "borde_boton":       "#45445A",
+        "borde_boton":       "#8F8AA6",
         "borde_cuadro":      "#4A4860",
         "texto_sobre_color": "#FFFFFF",
         "texto_sobre_acento": "#14141C",

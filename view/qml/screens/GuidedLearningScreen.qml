@@ -20,6 +20,10 @@ PagePrincipal {
                                                  ? currentUnit.activity.options.length : 0
     property int currentUnitIndex: 0
     property int currentConceptIndex: 0
+    // La lectura y la comprobación viven en vistas separadas. Mantener la
+    // actividad fuera del lateral evita que la pregunta compita con el
+    // concepto que se está estudiando.
+    property bool activityView: false
     property int activityStage: 0
     property int selectedPrediction: -1
     property var optionOrder: []
@@ -247,8 +251,17 @@ PagePrincipal {
             root.fallbackCompletedUnitIds = root.fallbackCompletedUnitIds.filter(
                 function(id) { return id !== unitId })
         root.currentConceptIndex = 0
+        root.activityView = false
         root.restoreActivityState()
         root.savePosition()
+    }
+
+    function showActivity() {
+        root.activityView = true
+    }
+
+    function showConceptContent() {
+        root.activityView = false
     }
 
     function refreshConcept() {
@@ -284,6 +297,7 @@ PagePrincipal {
             return
         root.currentUnitIndex = target
         root.currentConceptIndex = 0
+        root.activityView = false
         root.restoreActivityState()
         root.savePosition()
     }
@@ -292,9 +306,8 @@ PagePrincipal {
         if (root.currentConceptIndex < root.currentUnitConceptCount - 1) {
             root.currentConceptIndex += 1
             root.savePosition()
-        } else if (root.currentUnitIndex < root.totalUnits - 1
-                   && root.currentUnitCompleted) {
-            root.selectUnit(root.currentUnitIndex + 1)
+        } else {
+            root.showActivity()
         }
     }
 
@@ -303,10 +316,15 @@ PagePrincipal {
         if (!isFinite(target) || target < 0 || target >= root.currentUnitConceptCount)
             return
         root.currentConceptIndex = target
+        root.activityView = false
         root.savePosition()
     }
 
     function previousConcept() {
+        if (root.activityView) {
+            root.showConceptContent()
+            return
+        }
         if (root.currentConceptIndex > 0) {
             root.currentConceptIndex -= 1
             root.savePosition()
@@ -348,6 +366,7 @@ PagePrincipal {
         root.progressRevision += 1
         root.currentUnitIndex = 0
         root.currentConceptIndex = 0
+        root.activityView = false
         root.selectedPrediction = -1
         root.activityStage = 0
         root.savePosition()
@@ -433,6 +452,8 @@ PagePrincipal {
         onActivated: {
             if (root.theoryModalOpened)
                 root.closeTheory()
+            else if (root.activityView)
+                root.showConceptContent()
             else
                 root.leaveScreen()
         }
@@ -611,7 +632,7 @@ PagePrincipal {
                     Repeater {
                         model: root.units
 
-                        delegate: Button {
+                        delegate: BotonAccesible {
                             id: unitDelegate
                             required property var modelData
                             required property int index
@@ -717,10 +738,16 @@ PagePrincipal {
                 }
             }
 
-            ColumnLayout {
+            StackLayout {
+                id: learningContentStack
+                objectName: "guidedLearningContentStack"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                spacing: 9 * root.uiScale
+                currentIndex: root.activityView ? 1 : 0
+
+                ColumnLayout {
+                    objectName: "guidedConceptView"
+                    spacing: 9 * root.uiScale
 
                 Rectangle {
                     Layout.fillWidth: true
@@ -760,7 +787,7 @@ PagePrincipal {
                             Repeater {
                                 model: root.currentUnit.conceptIds || []
 
-                                delegate: Button {
+                                delegate: BotonAccesible {
                                     id: conceptDelegate
                                     required property var modelData
                                     required property int index
@@ -851,15 +878,14 @@ PagePrincipal {
                         Layout.fillHeight: true
                         sx: root.uiScale
                         sy: root.uiScale
-                        enabled: root.globalConceptNumber < root.totalCoreConcepts || root.currentConceptIndex < root.currentUnitConceptCount - 1
-                                 || root.currentUnitCompleted
                         text: root.currentConceptIndex < root.currentUnitConceptCount - 1
-                              ? "Siguiente concepto →" : "Siguiente unidad →"
+                              ? "Siguiente concepto →" : "Ir a la actividad →"
                         activeFocusOnTab: true
                         Accessible.name: text
+                        Accessible.description: root.currentConceptIndex < root.currentUnitConceptCount - 1
+                                                ? "Abre el siguiente concepto"
+                                                : "Abre la actividad de esta unidad en una vista separada"
                         onClicked: root.nextConcept()
-                        ToolTip.visible: hovered && !enabled
-                        ToolTip.text: "Completa la actividad de esta unidad para continuar"
 
                     }
 
@@ -878,22 +904,112 @@ PagePrincipal {
                         onClicked: root.repeatCurrentUnit()
                     }
                 }
-            }
 
-            GuidedLearningActivity {
-                id: activityCard
-                Layout.preferredWidth: 330 * root.uiScale
-                Layout.fillHeight: true
-                activity: root.currentUnit.activity || ({})
-                stage: root.activityStage
-                selectedPrediction: root.selectedPrediction
-                unitCompleted: root.currentUnitCompleted
-                scaleFactor: root.uiScale
-                onPredictionSelected: function(optionIndex) {
-                    root.selectPrediction(optionIndex)
                 }
-                onObservationRequested: root.showObservation()
-                optionOrder: root.optionOrder
+
+                ColumnLayout {
+                    objectName: "guidedActivityView"
+                    spacing: 9 * root.uiScale
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 64 * root.uiScale
+                        Layout.minimumHeight: 64 * root.uiScale
+                        Layout.maximumHeight: 64 * root.uiScale
+                        radius: 12 * root.uiScale
+                        color: Style.Theme.surface
+                        border.color: Style.Theme.acento_fondo
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: 10 * root.uiScale
+                            spacing: 12 * root.uiScale
+
+                            BotonSecundario {
+                                id: activityBackButton
+                                objectName: "guidedActivityBackButton"
+                                Layout.preferredWidth: 180 * root.uiScale
+                                Layout.fillHeight: true
+                                sx: root.uiScale
+                                sy: root.uiScale
+                                text: "← Volver al contenido"
+                                activeFocusOnTab: true
+                                Accessible.name: text
+                                Accessible.description: "Regresa a los conceptos de la unidad"
+                                onClicked: root.showConceptContent()
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 2 * root.uiScale
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: "ACTIVIDAD · UNIDAD " + (root.currentUnitIndex + 1)
+                                    color: Style.Theme.acento_fuerte
+                                    font.bold: true
+                                    font.pixelSize: 11 * root.uiScale
+                                }
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: "Responde primero; la observación aparecerá después."
+                                    color: Style.Theme.texto_secundario
+                                    font.pixelSize: 10 * root.uiScale
+                                }
+                            }
+                        }
+                    }
+
+                    GuidedLearningActivity {
+                        id: activityCard
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        activity: root.currentUnit.activity || ({})
+                        stage: root.activityStage
+                        selectedPrediction: root.selectedPrediction
+                        unitCompleted: root.currentUnitCompleted
+                        scaleFactor: root.uiScale
+                        onPredictionSelected: function(optionIndex) {
+                            root.selectPrediction(optionIndex)
+                        }
+                        onObservationRequested: root.showObservation()
+                        optionOrder: root.optionOrder
+                    }
+
+                    RowLayout {
+                        objectName: "guidedActivityFooter"
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 42 * root.uiScale
+                        Layout.minimumHeight: 42 * root.uiScale
+                        Layout.maximumHeight: 42 * root.uiScale
+                        visible: root.activityStage === 1
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: root.currentUnitIndex < root.totalUnits - 1
+                                  ? "Actividad completada. Puedes continuar cuando estés listo."
+                                  : "Has completado la última actividad del recorrido."
+                            color: Style.Theme.texto_secundario
+                            font.pixelSize: 10 * root.uiScale
+                            wrapMode: Text.WordWrap
+                        }
+
+                        BotonSecundario {
+                            id: activityNextUnitButton
+                            objectName: "guidedActivityNextUnitButton"
+                            Layout.preferredWidth: 180 * root.uiScale
+                            Layout.fillHeight: true
+                            visible: root.currentUnitIndex < root.totalUnits - 1
+                            sx: root.uiScale
+                            sy: root.uiScale
+                            text: "Siguiente unidad →"
+                            activeFocusOnTab: true
+                            Accessible.name: text
+                            onClicked: root.selectUnit(root.currentUnitIndex + 1)
+                        }
+                    }
+                }
             }
         }
     }

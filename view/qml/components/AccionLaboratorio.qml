@@ -17,7 +17,7 @@ import "../styles" as Style
 //       detalle: "Elige datos e hiperparámetros"
 //       onClicked: ...
 //   }
-AbstractButton {
+ControlActivableAccesible {
     id: control
 
     property string glifo: ""

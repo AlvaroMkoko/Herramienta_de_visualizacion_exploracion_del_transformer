@@ -545,20 +545,37 @@ Item {
         }
     }
 
-    component FlowButton: Rectangle {
+    component FlowButton: BotonAccesible {
         id: flowButton
         property string label: ""
         property bool primary: false
         property real sx: 1
         property real sy: 1
-        signal clicked()
+        text: label
         implicitWidth: buttonText.implicitWidth + 22 * sx
-        implicitHeight: 32 * sy
-        radius: 8 * sx
-        color: primary ? Style.Theme.inferencia_estructura : Style.Theme.surface
-        border.color: Style.Theme.inferencia_estructura
-        Text { id: buttonText; anchors.centerIn: parent; text: flowButton.label; color: flowButton.primary ? Style.Theme.inferencia_sobre_estructura : Style.Theme.inferencia_estructura; font.bold: true; font.pixelSize: 9 * flowButton.sx }
-        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: flowButton.clicked() }
+        implicitHeight: Math.max(36, 32 * sy)
+        radioResaltado: 8 * sx
+
+        background: Rectangle {
+            radius: flowButton.radioResaltado
+            color: flowButton.primary
+                   ? (flowButton.down ? Style.Theme.inferencia_contexto
+                                      : Style.Theme.inferencia_estructura)
+                   : (flowButton.hovered ? Style.Theme.info_fondo
+                                         : Style.Theme.surface)
+            border.color: Style.Theme.inferencia_estructura
+        }
+
+        contentItem: Text {
+            id: buttonText
+            text: flowButton.label
+            color: flowButton.primary ? Style.Theme.inferencia_sobre_estructura
+                                      : Style.Theme.inferencia_estructura
+            font.bold: true
+            font.pixelSize: Math.max(Style.Theme.smallSize, 9 * flowButton.sx)
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+        }
     }
 
     component MiniHead: Rectangle {

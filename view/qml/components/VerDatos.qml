@@ -85,7 +85,7 @@ Popup {
                 }
             }
 
-            ToolButton {
+            BotonHerramientaAccesible {
                 id: closeButton
 
                 Layout.alignment: Qt.AlignTop

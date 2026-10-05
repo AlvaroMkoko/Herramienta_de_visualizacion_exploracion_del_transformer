@@ -324,7 +324,7 @@ Rectangle {
                     }
                 }
 
-                Button {
+                BotonAccesible {
                     id: deepDiveButton
                     objectName: "guidedDeepDiveButton"
                     width: parent.width

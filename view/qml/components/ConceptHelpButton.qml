@@ -4,7 +4,7 @@ import "../styles" as Style
 
 // Boton pequeno para solicitar una explicacion contextual. No consulta datos
 // ni abre ventanas por su cuenta: el padre decide como atender la senal.
-ToolButton {
+BotonHerramientaAccesible {
     id: root
     objectName: "conceptHelp_" + root.conceptId
 

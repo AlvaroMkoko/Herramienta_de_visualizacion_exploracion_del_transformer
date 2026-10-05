@@ -206,7 +206,7 @@ Dialog {
                 }
             }
 
-            ToolButton {
+            BotonHerramientaAccesible {
                 id: closeButton
                 objectName: "datasetCreatorCloseButton"
                 Layout.alignment: Qt.AlignTop
@@ -468,7 +468,7 @@ Dialog {
                             Accessible.name: "Category, etiqueta opcional"
                         }
 
-                        Button {
+                        BotonAccesible {
                             id: addExampleButton
                             objectName: "datasetAddExampleButton"
                             Layout.alignment: Qt.AlignRight
@@ -572,7 +572,7 @@ Dialog {
                                     font.pixelSize: 13
                                 }
 
-                                ToolButton {
+                                BotonHerramientaAccesible {
                                     id: removeButton
                                     objectName: "datasetDeleteExampleButton_" + exampleCard.index
                                     Layout.preferredWidth: 34
@@ -670,7 +670,7 @@ Dialog {
             Layout.fillWidth: true
             spacing: 10
 
-            Button {
+            BotonAccesible {
                 id: cancelButton
                 objectName: "datasetCreatorCancelButton"
                 Layout.preferredWidth: 125
@@ -710,7 +710,7 @@ Dialog {
                 wrapMode: Text.WordWrap
             }
 
-            Button {
+            BotonAccesible {
                 id: createButton
                 objectName: "datasetCreateConfirmButton"
                 Layout.preferredWidth: 185

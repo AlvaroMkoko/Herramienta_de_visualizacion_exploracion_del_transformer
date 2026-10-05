@@ -72,7 +72,7 @@ Item {
         Repeater {
             model: root.opciones
 
-            delegate: Button {
+            delegate: BotonAccesible {
                 id: opcion
                 required property var modelData
                 required property int index

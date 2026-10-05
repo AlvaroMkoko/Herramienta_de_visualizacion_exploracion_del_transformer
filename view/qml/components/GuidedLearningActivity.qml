@@ -227,7 +227,7 @@ Rectangle {
                     Repeater {
                         model: root.options()
 
-                                                delegate: Button {
+                                                delegate: BotonAccesible {
                             id: optionDelegate
                             required property var modelData
                             required property int index
@@ -282,7 +282,7 @@ Rectangle {
                         }
                     }
 
-                    Button {
+                    BotonAccesible {
                         id: revealButton
                         objectName: "guidedObserveButton"
                         width: parent.width

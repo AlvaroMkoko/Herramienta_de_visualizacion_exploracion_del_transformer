@@ -674,7 +674,7 @@ Item {
                                     elide: Text.ElideRight
                                     font.pixelSize: root.fontSize(9, root.sx)
                                 }
-                                Button {
+                                BotonAccesible {
                                     objectName: "trainingDetachExplanationButton"
                                     flat: true
                                     text: root.explanationDetached
@@ -694,7 +694,7 @@ Item {
                                                      : "Devuelve la explicación junto a la animación")
                                                   : "Mueve la explicación a una segunda ventana"
                                 }
-                                Button {
+                                BotonAccesible {
                                     flat: true
                                     text: "×"
                                     font.bold: true
@@ -1052,7 +1052,7 @@ Item {
         }
     }
 
-    component SmallButton: Button {
+    component SmallButton: BotonAccesible {
         id: smallButton
         property string label: ""
         property bool primary: false
@@ -1619,8 +1619,8 @@ Item {
                 Layout.fillWidth: true
                 currentIndex: maskedScene.viewIndex
                 onCurrentIndexChanged: maskedScene.viewIndex = currentIndex
-                TabButton { text: "1 · Regla de la máscara" }
-                TabButton { text: "2 · Pesos permitidos" }
+                PestanaAccesible { text: "1 · Regla de la máscara" }
+                PestanaAccesible { text: "2 · Pesos permitidos" }
             }
             StackLayout {
                 Layout.fillWidth: true

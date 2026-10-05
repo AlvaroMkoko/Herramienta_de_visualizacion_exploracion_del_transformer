@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import "../styles" as Style
 
-AbstractButton {
+ControlActivableAccesible {
     id: control
     objectName: "themeSwitch"
 

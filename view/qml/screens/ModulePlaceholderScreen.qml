@@ -21,7 +21,7 @@ PagePrincipal {
             Layout.fillWidth: true
             spacing: 14
 
-            Button {
+            BotonAccesible {
                 id: backButton
                 objectName: "modulePlaceholderBackButton"
                 Layout.preferredWidth: 118
@@ -146,7 +146,7 @@ PagePrincipal {
 
                 Item { Layout.fillHeight: true }
 
-                Button {
+                BotonAccesible {
                     objectName: "modulePlaceholderReturnButton"
                     Layout.alignment: Qt.AlignHCenter
                     Layout.preferredWidth: 210

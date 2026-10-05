@@ -16,6 +16,20 @@ ApplicationWindow {
     minimumHeight: 600
     title: "Visualizador de Transformers"
 
+    // Los controles Qt no personalizados heredan también una paleta legible.
+    // Esto cubre botones estándar de diálogos y evita que una incorporación
+    // futura vuelva a caer en los colores de plataforma de bajo contraste.
+    palette.window: Style.Theme.fondo
+    palette.windowText: Style.Theme.texto_primario
+    palette.base: Style.Theme.surface
+    palette.text: Style.Theme.texto_primario
+    palette.button: Style.Theme.boton
+    palette.buttonText: Style.Theme.texto_primario
+    palette.highlight: Style.Theme.acento
+    palette.highlightedText: Style.Theme.texto_sobre_acento
+    palette.mid: Style.Theme.borde_boton
+    palette.dark: Style.Theme.borde
+
     readonly property bool multiScreenAvailable:
         typeof displayManager !== "undefined"
         && displayManager
