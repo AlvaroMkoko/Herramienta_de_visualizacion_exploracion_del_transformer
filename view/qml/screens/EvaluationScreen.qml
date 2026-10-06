@@ -31,7 +31,10 @@ PagePrincipal {
     objectName: "evaluationScreen"
 
     property string assessmentType: "pre"
-    readonly property var evaluationController: mainViewModel.evaluationController
+    property string moduleId: ""
+    readonly property var evaluationController: moduleId.length > 0
+                                                ? mainViewModel.moduleEvaluationController
+                                                : mainViewModel.evaluationController
     readonly property var currentQuestion: evaluationController.currentQuestion
     readonly property bool showingResult: evaluationController.finished
     property string errorMessage: ""
@@ -90,6 +93,13 @@ PagePrincipal {
             root.stackView.pop(root.stackView.get(root.stackView.depth - 3))
         else
             root.stackView.pop()
+    }
+
+    function startAssessment() {
+        if (root.moduleId.length > 0)
+            root.evaluationController.startModuleEvaluation(root.moduleId, root.assessmentType)
+        else
+            root.evaluationController.startEvaluation(root.assessmentType)
     }
 
     function numero(valor, decimales) {
@@ -157,7 +167,7 @@ PagePrincipal {
 
     Component.onCompleted: {
         if (!evaluationController.isActive && !evaluationController.finished)
-            evaluationController.startEvaluation(assessmentType)
+            root.startAssessment()
         root.questionAtTop = evaluationController.currentQuestionNumber
     }
 
@@ -302,7 +312,10 @@ PagePrincipal {
                               letra: Style.Theme.acento_fuerte },
                             { texto: root.currentQuestion.bloom_level || "",
                               fondo: Style.Theme.info_fondo,
-                              letra: Style.Theme.info_texto }
+                              letra: Style.Theme.info_texto },
+                            { texto: root.currentQuestion.formato || "",
+                              fondo: Style.Theme.chip_fondo,
+                              letra: Style.Theme.texto_secundario_fuerte }
                         ]
 
                         delegate: Rectangle {
@@ -803,16 +816,27 @@ PagePrincipal {
                         Layout.preferredWidth: 240 * root.sx
                         Layout.preferredHeight: 54 * root.sy
                         text: "Repetir evaluación"
-                        onClicked: root.evaluationController.startEvaluation(root.assessmentType)
+                        onClicked: root.startAssessment()
                     }
                     BotonPrincipal {
                         objectName: "evaluationReturnHomeButton"
                         Layout.preferredWidth: 250 * root.sx
                         Layout.preferredHeight: 54 * root.sy
-                        text: mainViewModel.profileController.isTeacher
-                              ? "Volver al panel docente"
-                              : "Volver al flujo formativo"
-                        onClicked: root.returnToLearningPath()
+                        text: root.moduleId.length > 0 && root.assessmentType === "post"
+                              ? "Ver resultados del módulo"
+                              : (mainViewModel.profileController.isTeacher
+                                 ? "Volver al panel docente"
+                                 : "Volver al flujo formativo")
+                        onClicked: {
+                            if (root.moduleId.length > 0 && root.assessmentType === "post") {
+                                root.stackView.push("ModuleResultsScreen.qml", {
+                                    "stackView": root.stackView,
+                                    "moduleId": root.moduleId
+                                })
+                            } else {
+                                root.returnToLearningPath()
+                            }
+                        }
                     }
                 }
             }

@@ -13,6 +13,7 @@ Rectangle {
     property var relatedConcepts: []
     property string loadError: ""
     property real scaleFactor: 1.0
+    property bool showVisualization: true
 
     signal deepDiveRequested(string conceptId)
 
@@ -123,8 +124,9 @@ Rectangle {
                 }
 
                 GuidedDemoVisualization {
+                    visible: root.showVisualization
                     width: parent.width
-                    height: implicitHeight
+                    height: visible ? implicitHeight : 0
                     conceptId: root.textFor("id")
                     scaleFactor: root.scaleFactor
                 }

@@ -24,10 +24,13 @@ from model.gestor_de_datos.dataset_loader import (
 
 from .dataset_controller import DatasetController
 from .comparison_controller import ComparisonController
+from .course_controller import CourseController
 from .evaluation_controller import EvaluationController
 from .inference_controller import InferenceController
 from .learning_controller import LearningController
 from .model_library_controller import ModelLibraryController
+from .module_evaluation_controller import ModuleEvaluationController
+from .module_laboratory_controller import ModuleLaboratoryController
 from .progress_controller import ProgressController
 from .profile_controller import ProfileController
 from .setup_controller import SetupController
@@ -99,8 +102,22 @@ class MainViewModel(QObject):
             self._model_library_controller, self
         )
         self._evaluation_controller = EvaluationController(self)
+        self._module_evaluation_controller = ModuleEvaluationController(
+            self, repository=self._evaluation_controller.repository
+        )
         self._profile_controller = ProfileController(self._evaluation_controller, self)
         self._evaluation_controller.set_profile_controller(self._profile_controller)
+        self._module_evaluation_controller.set_profile_controller(self._profile_controller)
+        self._course_controller = CourseController(
+            self._module_evaluation_controller, self
+        )
+        self._module_laboratory_controller = ModuleLaboratoryController(self)
+        self._module_laboratory_controller.analysisCompleted.connect(
+            self._course_controller.completeLaboratory
+        )
+        self._module_laboratory_controller.analysisCompleted.connect(
+            self._record_module_model_configuration
+        )
         self._progress_controller = ProgressController(
             self._learning_controller, self._evaluation_controller, self
         )
@@ -173,6 +190,18 @@ class MainViewModel(QObject):
     @Property(QObject, constant=True)
     def evaluationController(self) -> EvaluationController:
         return self._evaluation_controller
+
+    @Property(QObject, constant=True)
+    def moduleEvaluationController(self) -> ModuleEvaluationController:
+        return self._module_evaluation_controller
+
+    @Property(QObject, constant=True)
+    def courseController(self) -> CourseController:
+        return self._course_controller
+
+    @Property(QObject, constant=True)
+    def moduleLaboratoryController(self) -> ModuleLaboratoryController:
+        return self._module_laboratory_controller
 
     @Property(QObject, constant=True)
     def profileController(self) -> ProfileController:
@@ -301,6 +330,7 @@ class MainViewModel(QObject):
                 self._controladores_retirados.append(controlador)
             self._training_controller = None
             self._inference_controller = None
+            self._module_laboratory_controller.clear_model()
             self._modelo_actual_info = {}
             self.trainingControllerCambio.emit()
             self.inferenceControllerCambio.emit()
@@ -509,6 +539,7 @@ class MainViewModel(QObject):
         self._inference_controller = nuevo_inferencia
 
         self._transformer_bridge.establecer_modelo(modelo)
+        self._module_laboratory_controller.set_model(modelo, tokenizer)
         manifest = getattr(resultado_carga, "manifest", None) if resultado_carga else None
         entrenamiento = (manifest or {}).get("entrenamiento", {})
         token_info = (manifest or {}).get("tokenizer", {})
@@ -544,6 +575,14 @@ class MainViewModel(QObject):
             nombre = (manifest or {}).get("nombre", "modelo")
             self._model_library_controller.operacion_exitosa.emit(
                 f"Modelo activado: {nombre}"
+            )
+
+    @Slot(str)
+    def _record_module_model_configuration(self, _module_id: str) -> None:
+        """Persiste el modelo sólo cuando realmente se usa en el curso."""
+        if self._modelo_actual_info:
+            self._course_controller.recordModelConfiguration(
+                self._modelo_actual_info
             )
 
     # ------------------------------------------------------------------

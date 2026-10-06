@@ -1,5 +1,18 @@
 # Transformer Visualizer
 
+La experiencia educativa principal está organizada como un curso de ocho
+módulos progresivos. Cada módulo recorre su propio **Pre-test (15 de un banco
+de 25) → recorrido guiado → laboratorio con datos reales → Post-test (15 de
+25) → resultados y recomendaciones**. El avance, los intentos, el tiempo, las
+preguntas utilizadas y la configuración del modelo se conservan entre
+sesiones. Cada intento mezcla siete formatos calificables y actividades de
+memoria, comprensión, aplicación y razonamiento para evitar una secuencia de
+preguntas repetitivas de opción única.
+
+La definición pedagógica vive en `data/aprendizaje/modules.json`; las cinco
+pantallas del ciclo son reutilizables y se alimentan dinámicamente desde
+`CourseController`, manteniendo la separación PySide6 + QML + MVVM.
+
 Herramienta de escritorio para explorar, entrenar e interpretar modelos tipo
 Transformer, construida bajo el patrón **MVVM**:
 

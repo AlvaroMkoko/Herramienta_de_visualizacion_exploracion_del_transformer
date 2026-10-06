@@ -1,5 +1,77 @@
 # Arquitectura del Sistema (MVVM)
 
+## Curso modular progresivo
+
+La ruta educativa principal ya no evalúa todo el Transformer como una sola
+unidad. El flujo se repite dentro de ocho módulos:
+
+```
+Módulo → Pre-test → Recorrido guiado → Laboratorio → Post-test → Resultados
+```
+
+### Diagnóstico de la implementación anterior
+
+- `EvaluationController` y `EvaluationManager` ya separaban presentación,
+  estado y calificación, pero cargaban dos formas globales fijas de 20
+  reactivos. Se reutilizaron mediante `ModuleEvaluationController`.
+- `GuidedLearningScreen` contenía seis unidades y gran parte de su contenido
+  dentro de QML. Su motor de teoría sigue disponible para ayuda contextual;
+  el curso nuevo mueve estructura, objetivos y pasos a datos declarativos.
+- Los laboratorios de entrenamiento, biblioteca, comparación e inferencia
+  eran pantallas completas y no estaban acotados por concepto. Se conservan
+  por compatibilidad y se añade un laboratorio modular que sólo publica las
+  activaciones pertinentes al módulo actual.
+- `ProgressController` persiste cinco etapas globales. Se conserva para la
+  ruta anterior; `CourseController` gestiona en paralelo las cinco etapas de
+  cada uno de los ocho módulos.
+- `ResultsRepository` ya ofrecía escritura JSON atómica. Ahora admite filtrar
+  resultados por `module_id`, sin cambiar el contrato de resultados legados.
+
+### Componentes nuevos
+
+**Modelo educativo y datos**
+
+- `data/aprendizaje/modules.json`: ocho módulos, cada uno con ocho conceptos,
+  ocho pasos guiados, configuración de laboratorio y ocho retos de aplicación.
+- `model/aprendizaje/learning_module.py`: carga y validación del catálogo.
+- `model/aprendizaje/module_question_bank.py`: genera dos formas paralelas de
+  25 reactivos por módulo. Cada intento elige 15 (cinco por dificultad),
+  prioriza preguntas no vistas y garantiza siete interacciones: opción
+  múltiple, selección múltiple, verdadero/falso, ordenar, relacionar,
+  respuesta corta y completar espacios. Los reactivos se etiquetan por
+  dificultad y proceso cognitivo (`Recordar`, `Comprender`, `Aplicar` y
+  `Analizar`).
+- `model/aprendizaje/progress_repository.py`: persistencia atómica del módulo
+  actual, etapas, intentos, preguntas usadas, tiempo, dificultades y modelo.
+
+**ViewModels**
+
+- `ModuleEvaluationController`: adapta el evaluador existente al banco y al
+  ámbito del módulo; los resultados guardan reactivos, respuestas, categoría,
+  dificultad, concepto y duración.
+- `CourseController`: calcula bloqueos, estado (`not_started`, `in_progress`,
+  `completed`, `review_recommended`), avance global y comparación pre/post.
+- `ModuleLaboratoryController`: ejecuta un forward real y entrega sólo los
+  datos relevantes (IDs, embeddings, Q/K/V, scores, mapas, residuales, FFN,
+  máscaras, logits y probabilidades). Los tensores nunca cruzan a QML; sus
+  valores completos se consultan por páginas.
+
+**Vista reutilizable**
+
+- `ModuleMapScreen`, `ModuleScreen`, `ModuleGuidedTourScreen`,
+  `ModuleLaboratoryScreen` y `ModuleResultsScreen` cargan el módulo activo en
+  lugar de duplicarse ocho veces.
+- `EvaluationIntroScreen` y `EvaluationScreen` aceptan opcionalmente
+  `moduleId`; sin él conservan exactamente el instrumento global anterior.
+
+### Compatibilidad e incorporación incremental
+
+La ruta global, sus controladores y las pantallas históricas no se eliminaron.
+El botón principal de bienvenida abre el curso modular, mientras que las APIs
+anteriores continúan disponibles para pruebas, perfiles docentes y accesos
+existentes. Los resultados sin `module_id` permanecen separados de los del
+curso al calcular progreso modular.
+
 Este documento mapea el diseño arquitectónico (TT1, sección 4.9) contra la
 estructura real del código. Cuando un componente está diseñado pero todavía
 no implementado, se marca como **pendiente**.

@@ -142,6 +142,7 @@ class ResultsRepository:
         self,
         assessment_type: str | None = None,
         student_id: str | None = None,
+        module_id: str | None = None,
     ) -> list[dict[str, Any]]:
         results = self._results
         if assessment_type:
@@ -156,14 +157,27 @@ class ResultsRepository:
                 for result in results
                 if self._pertenece_al_estudiante(result, student_id)
             ]
+        if module_id is not None:
+            results = [
+                result
+                for result in results
+                if str(result.get("module_id", "")) == str(module_id)
+            ]
         return deepcopy(results)
 
     def latest(
-        self, assessment_type: str, student_id: str | None = None
+        self,
+        assessment_type: str,
+        student_id: str | None = None,
+        module_id: str | None = None,
     ) -> dict[str, Any]:
         for result in reversed(self._results):
             if (
                 result.get("assessment_type") == assessment_type
+                and (
+                    module_id is None
+                    or str(result.get("module_id", "")) == str(module_id)
+                )
                 and (
                     student_id is None
                     or self._pertenece_al_estudiante(result, student_id)
@@ -202,3 +216,16 @@ class ResultsRepository:
                 pass
             except OSError:
                 self._persistir()
+
+    def clear_module_results(self, student_id: str | None = None) -> None:
+        """Elimina sólo intentos del curso modular y conserva el flujo legado."""
+        self._results = [
+            result
+            for result in self._results
+            if not result.get("module_id")
+            or (
+                student_id is not None
+                and not self._pertenece_al_estudiante(result, student_id)
+            )
+        ]
+        self._persistir()

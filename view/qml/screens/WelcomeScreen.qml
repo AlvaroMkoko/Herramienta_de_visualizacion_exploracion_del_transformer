@@ -160,7 +160,7 @@ PagePrincipal {
 
     // ── Navegación ───────────────────────────────────────────────────
     function abrirRuta() {
-        root.stackView.push("HomeScreen.qml", { "stackView": root.stackView })
+        root.stackView.push("ModuleMapScreen.qml", { "stackView": root.stackView })
     }
 
     function abrirLaboratorio(pantalla, laboratorioId) {

@@ -17,6 +17,8 @@ data/checkpoints/modelo.pt
 
 !data/teoria/transformer.json
 !data/evaluacion/question_bank.json
+!data/aprendizaje/
+!data/aprendizaje/modules.json
 !data/resultados/resultados_evaluacion.json
 cambiar_constantes.py
 

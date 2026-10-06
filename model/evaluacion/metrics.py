@@ -64,8 +64,16 @@ def compute_metrics(
                 "question_id": question_id,
                 "code": question.get("code", ""),
                 "dimension_id": question.get("dimension_id", ""),
+                "concept_id": question.get(
+                    "concept_id", question.get("dimension_id", "")
+                ),
+                "category": question.get(
+                    "category", question.get("dimension_id", "")
+                ),
+                "difficulty": question.get("difficulty", ""),
                 "bloom_level": question.get("bloom_level", ""),
                 "tipo": question.get("tipo", ""),
+                "prompt": question.get("prompt", ""),
                 "puntaje": resultado["puntaje"],
                 "maximo": resultado["maximo"],
                 "correcto": resultado["correcto"],
@@ -105,7 +113,7 @@ def compute_metrics(
         )
 
     por_bloom = []
-    for nivel in ("Recordar", "Comprender", "Aplicar"):
+    for nivel in ("Recordar", "Comprender", "Aplicar", "Analizar"):
         propios = [d for d in detalles if d["bloom_level"] == nivel]
         if not propios:
             continue

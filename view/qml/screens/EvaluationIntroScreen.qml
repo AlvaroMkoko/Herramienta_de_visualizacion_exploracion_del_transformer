@@ -11,11 +11,29 @@ PagePrincipal {
     objectName: "evaluationIntroScreen"
 
     property string assessmentType: "pre"
-    readonly property var evaluationController: mainViewModel.evaluationController
+    property string moduleId: ""
+    readonly property var evaluationController: moduleId.length > 0
+                                                ? mainViewModel.moduleEvaluationController
+                                                : mainViewModel.evaluationController
     readonly property bool isPreTest: assessmentType === "pre"
+    readonly property bool isModuleEvaluation: moduleId.length > 0
     property string errorMessage: ""
 
-    Component.onCompleted: evaluationController.prepareEvaluation(assessmentType)
+    function prepareAssessment() {
+        if (root.moduleId.length > 0)
+            root.evaluationController.prepareModuleEvaluation(root.moduleId, root.assessmentType)
+        else
+            root.evaluationController.prepareEvaluation(root.assessmentType)
+    }
+
+    function startAssessment() {
+        if (root.moduleId.length > 0)
+            root.evaluationController.startModuleEvaluation(root.moduleId, root.assessmentType)
+        else
+            root.evaluationController.startEvaluation(root.assessmentType)
+    }
+
+    Component.onCompleted: prepareAssessment()
 
     Connections {
         target: root.evaluationController
@@ -74,7 +92,9 @@ PagePrincipal {
 
                 Text {
                     anchors.centerIn: parent
-                    text: root.isPreTest ? "FORMA A" : "FORMA B"
+                    text: root.isModuleEvaluation
+                          ? String(root.evaluationController.forma || "EVALUACIÓN").toUpperCase()
+                          : (root.isPreTest ? "FORMA A" : "FORMA B")
                     color: root.isPreTest ? Style.Theme.info_texto : Style.Theme.acento_fuerte
                     font.pixelSize: 13 * root.sx
                     font.bold: true
@@ -146,48 +166,80 @@ PagePrincipal {
                         font.letterSpacing: 0.8
                     }
 
-                    Repeater {
-                        model: root.evaluationController.dimensions
-                        delegate: Rectangle {
-                            id: dimensionCard
-                            required property var modelData
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 54 * root.sy
-                            radius: 9 * root.sx
-                            color: Style.Theme.superficie_alterna
-                            border.color: Style.Theme.borde_medio
+                    // Un módulo expone ocho dimensiones. La lista anterior
+                    // las apilaba en filas fijas y las últimas quedaban fuera
+                    // de la tarjeta. La cuadrícula aprovecha el ancho y deja
+                    // desplazamiento vertical como respaldo.
+                    ScrollView {
+                        id: dimensionsScroll
+                        objectName: "evaluationDimensionsScroll"
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        clip: true
+                        contentWidth: availableWidth
+                        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                        ScrollBar.vertical.policy: contentHeight > availableHeight + 2
+                                                   ? ScrollBar.AsNeeded
+                                                   : ScrollBar.AlwaysOff
 
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.leftMargin: 15 * root.sx
-                                anchors.rightMargin: 15 * root.sx
-                                spacing: 12 * root.sx
+                        GridLayout {
+                            id: dimensionGrid
+                            objectName: "evaluationDimensionGrid"
+                            width: dimensionsScroll.availableWidth
+                            columns: root.isModuleEvaluation && width >= 560 * root.sx ? 2 : 1
+                            rowSpacing: 10 * root.sy
+                            columnSpacing: 10 * root.sx
 
-                                Rectangle {
-                                    Layout.preferredWidth: 32 * root.sx
-                                    Layout.preferredHeight: 32 * root.sy
-                                    radius: width / 2
-                                    color: Style.Theme.acento_fondo
-                                    Text { anchors.centerIn: parent; text: "✓"; color: Style.Theme.acento_fuerte; font.bold: true }
-                                }
-                                Text {
+                            Repeater {
+                                model: root.evaluationController.dimensions
+                                delegate: Rectangle {
+                                    id: dimensionCard
+                                    required property var modelData
                                     Layout.fillWidth: true
-                                    text: dimensionCard.modelData.name
-                                    color: Style.Theme.texto_primario
-                                    font.pixelSize: 16 * root.sx
-                                    font.bold: true
-                                    wrapMode: Text.WordWrap
-                                }
-                                Text {
-                                    text: dimensionCard.modelData.question_count + " preguntas"
-                                    color: Style.Theme.texto_secundario
-                                    font.pixelSize: 13 * root.sx
+                                    Layout.preferredWidth: (dimensionGrid.width
+                                                            - dimensionGrid.columnSpacing
+                                                              * (dimensionGrid.columns - 1))
+                                                           / dimensionGrid.columns
+                                    Layout.preferredHeight: 58 * root.sy
+                                    radius: 9 * root.sx
+                                    color: Style.Theme.superficie_alterna
+                                    border.color: Style.Theme.borde_medio
+
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        anchors.leftMargin: 13 * root.sx
+                                        anchors.rightMargin: 13 * root.sx
+                                        spacing: 9 * root.sx
+
+                                        Rectangle {
+                                            Layout.preferredWidth: 30 * root.sx
+                                            Layout.preferredHeight: 30 * root.sy
+                                            radius: width / 2
+                                            color: Style.Theme.acento_fondo
+                                            Text { anchors.centerIn: parent; text: "✓"; color: Style.Theme.acento_fuerte; font.bold: true }
+                                        }
+                                        Text {
+                                            Layout.fillWidth: true
+                                            text: dimensionCard.modelData.name
+                                            color: Style.Theme.texto_primario
+                                            font.pixelSize: 14 * root.sx
+                                            font.bold: true
+                                            wrapMode: Text.WordWrap
+                                            maximumLineCount: 2
+                                            elide: Text.ElideRight
+                                        }
+                                        Text {
+                                            text: dimensionCard.modelData.question_count
+                                                  + (dimensionCard.modelData.question_count === 1
+                                                     ? " pregunta" : " preguntas")
+                                            color: Style.Theme.texto_secundario
+                                            font.pixelSize: 11 * root.sx
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
-
-                    Item { Layout.fillHeight: true }
                 }
             }
 
@@ -206,7 +258,12 @@ PagePrincipal {
                     Text { text: "Antes de comenzar"; color: Style.Theme.texto_primario; font.pixelSize: 25 * root.sx; font.bold: true }
 
                     Repeater {
-                        model: [
+                        model: root.isModuleEvaluation ? [
+                            "Responde según el formato: elegir, seleccionar, ordenar, relacionar o escribir.",
+                            "El intento combina 5 preguntas básicas, 5 intermedias y 5 avanzadas.",
+                            "No se mostrará si acertaste hasta terminar.",
+                            "Cada intento combina memoria, comprensión, aplicación y razonamiento."
+                        ] : [
                             "Responde según el formato: elegir, ordenar, relacionar o escribir.",
                             "Debes responder para poder avanzar.",
                             "No se mostrará si acertaste hasta terminar.",
@@ -254,7 +311,12 @@ PagePrincipal {
                             ColumnLayout {
                                 Layout.fillWidth: true
                                 Text { text: "TIEMPO APROX."; color: Style.Theme.texto_secundario; font.pixelSize: 10 * root.sx; font.bold: true }
-                                Text { text: "30-40 min"; color: Style.Theme.texto_primario; font.pixelSize: 20 * root.sx; font.bold: true }
+                                Text {
+                                    text: root.isModuleEvaluation ? "15-25 min" : "30-40 min"
+                                    color: Style.Theme.texto_primario
+                                    font.pixelSize: 20 * root.sx
+                                    font.bold: true
+                                }
                             }
                         }
                     }
@@ -267,8 +329,8 @@ PagePrincipal {
                         color: Style.Theme.exito_fondo
                         Text {
                             anchors.centerIn: parent
-                            text: "Último resultado: " + root.evaluationController.previousResult.correct + "/"
-                                  + root.evaluationController.previousResult.total + " ("
+                            text: "Último resultado: " + root.evaluationController.previousResult.puntaje + "/"
+                                  + root.evaluationController.previousResult.maximo + " ("
                                   + root.evaluationController.previousResult.percentage + "%)"
                             color: Style.Theme.exito_texto
                             font.pixelSize: 14 * root.sx
@@ -296,11 +358,12 @@ PagePrincipal {
                               : "Comenzar " + root.evaluationController.title.toLowerCase()
                         onClicked: {
                             root.errorMessage = ""
-                            root.evaluationController.startEvaluation(root.assessmentType)
+                            root.startAssessment()
                             if (root.evaluationController.isActive) {
                                 root.stackView.push("EvaluationScreen.qml", {
                                     "stackView": root.stackView,
-                                    "assessmentType": root.assessmentType
+                                    "assessmentType": root.assessmentType,
+                                    "moduleId": root.moduleId
                                 })
                             }
                         }

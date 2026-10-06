@@ -128,7 +128,11 @@ class EvaluationController(QObject):
         return self._profile_controller.result_student_filter()
 
     def _latest(self, assessment_type: str) -> dict[str, Any]:
-        return self._repository.latest(assessment_type, self._student_filter())
+        # El instrumento histórico ocupa el ámbito vacío. Los intentos del
+        # curso llevan ``module_id`` y no deben desbloquear la ruta global.
+        return self._repository.latest(
+            assessment_type, self._student_filter(), module_id=""
+        )
 
     def _prepare(self, assessment_type: str) -> None:
         normalized = str(assessment_type).lower().strip()
@@ -341,7 +345,9 @@ class EvaluationController(QObject):
 
     @Property("QVariantList", notify=questionChanged)
     def history(self) -> list[dict[str, Any]]:
-        return self._repository.get_history(student_id=self._student_filter())
+        return self._repository.get_history(
+            student_id=self._student_filter(), module_id=""
+        )
 
     @Property("QVariantMap", notify=questionChanged)
     def improvement(self) -> dict[str, Any]:
@@ -431,6 +437,10 @@ class EvaluationController(QObject):
         porque `canContinue` también se reinicia en ese momento."""
         self.questionChanged.emit()
         self.stateChanged.emit()
+
+    def _enrich_result(self, result: dict[str, Any]) -> dict[str, Any]:
+        """Punto de extensión para evaluaciones con contexto adicional."""
+        return result
 
     @Slot(str)
     def prepareEvaluation(self, assessment_type: str) -> None:
@@ -535,6 +545,7 @@ class EvaluationController(QObject):
         # a rehacer del 6 en adelante.
         self._restaurar_respuesta_del_reactivo()
         if result:
+            result = self._enrich_result(result)
             if self._profile_controller is not None:
                 student = self._profile_controller.result_student_snapshot()
                 if student:
