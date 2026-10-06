@@ -79,7 +79,7 @@ AsignacionBase {
                 wrapMode: Text.WordWrap
             }
 
-            Button {
+            BotonAccesible {
                 id: botonLimpiar
                 visible: Object.keys(root.asignaciones).length > 0
                 objectName: "evaluationClearPairs"

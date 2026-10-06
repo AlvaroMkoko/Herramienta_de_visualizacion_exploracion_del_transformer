@@ -354,7 +354,7 @@ Item {
             Repeater {
                 model: root.fragmentos
 
-                delegate: Button {
+                delegate: BotonAccesible {
                     id: filaFragmento
                     required property var modelData
 
@@ -467,7 +467,7 @@ Item {
                 model: root.etapaCorreccion && root.etapaCorreccion.options
                        ? root.etapaCorreccion.options : []
 
-                delegate: Button {
+                delegate: BotonAccesible {
                     id: opcion
                     required property var modelData
                     required property int index

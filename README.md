@@ -170,6 +170,13 @@ operación aprendida del Transformer.
 - Desde la biblioteca se puede importar/exportar un archivo, copiarlo al
   portapapeles, copiar únicamente su ficha JSON o generar un código `TVIS1`
   para modelos de hasta 5 MiB.
+- La comparación ejecuta el mismo prompt en dos modelos y permite avanzar un
+  token por vez o generar de corrido. Para cada token se pueden contrastar la
+  autoatención del encoder, la atención causal y cruzada del decoder, y los
+  candidatos de salida. El último paso sincronizado conserva además la captura
+  tensorial para reproducir en paralelo diez vistas animadas: embeddings,
+  posición, Q/K/V y máscara, flujo de atención, multi-head, FFN, residual con
+  LayerNorm, trayectoria por capas, proyección y carrera Softmax.
 
 El formato portable contiene un manifiesto JSON inspeccionable y pesos de
 PyTorch cargados con `weights_only=True`, verificados mediante SHA-256. Los

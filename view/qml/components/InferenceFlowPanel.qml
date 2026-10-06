@@ -304,7 +304,7 @@ Item {
 
                 Repeater {
                     model: ["Student", "Developer", "Researcher"]
-                    delegate: Button {
+                    delegate: BotonAccesible {
                         id: modeButton
                         required property string modelData
                         required property int index
@@ -316,7 +316,7 @@ Item {
                     }
                 }
 
-                Button {
+                BotonAccesible {
                     text: root.tokenProcessing ? "Generando token…" : "▶ Siguiente token"
                     enabled: root.canGenerateNext && !root.tokenProcessing
                     onClicked: root.nextTokenRequested()
@@ -324,9 +324,9 @@ Item {
                     ToolTip.visible: hovered
                     ToolTip.text: "Ejecuta un nuevo paso autoregresivo y carga su forward pass"
                 }
-                Button { text: "↺ Reset"; onClicked: root.resetView() }
-                Button { text: "⇩ Exportar"; onClicked: root.exportView() }
-                Button {
+                BotonAccesible { text: "↺ Reset"; onClicked: root.resetView() }
+                BotonAccesible { text: "⇩ Exportar"; onClicked: root.exportView() }
+                BotonAccesible {
                     text: "✕"
                     flat: true
                     onClicked: root.closeRequested()
@@ -484,7 +484,7 @@ Item {
                             onValueModified: root.headIndex = value - 1
                             Accessible.name: "Cabeza de atención"
                         }
-                        ToolButton {
+                        BotonHerramientaAccesible {
                             Layout.preferredWidth: 38 * root.sx
                             Layout.minimumWidth: 38 * root.sx
                             Layout.maximumWidth: 38 * root.sx
@@ -492,7 +492,7 @@ Item {
                             onClicked: root.setScene(root.sceneIndex - 1)
                             Accessible.name: "Paso anterior"
                         }
-                        ToolButton {
+                        BotonHerramientaAccesible {
                             Layout.preferredWidth: 38 * root.sx
                             Layout.minimumWidth: 38 * root.sx
                             Layout.maximumWidth: 38 * root.sx
@@ -500,7 +500,7 @@ Item {
                             onClicked: root.playing = !root.playing
                             Accessible.name: root.playing ? "Pausar animación" : "Reproducir animación"
                         }
-                        ToolButton {
+                        BotonHerramientaAccesible {
                             Layout.preferredWidth: 38 * root.sx
                             Layout.minimumWidth: 38 * root.sx
                             Layout.maximumWidth: 38 * root.sx
@@ -942,7 +942,7 @@ Item {
                         spacing: 4 * root.sx
                         Repeater {
                             model: root.sceneDefinitions
-                            delegate: Button {
+                            delegate: BotonAccesible {
                                 id: timelineStep
                                 required property var modelData
                                 required property int index
@@ -996,7 +996,7 @@ Item {
                         wrapMode: Text.WordWrap; font.pixelSize: 22 * root.sx
                     }
                 }
-                Button {
+                BotonAccesible {
                     text: "✕"; flat: true
                     onClicked: detailCard.close()
                     Accessible.name: "Cerrar explicación"
@@ -1033,7 +1033,7 @@ Item {
                     }
                 }
             }
-            Button {
+            BotonAccesible {
                 Layout.alignment: Qt.AlignRight
                 text: "Entendido"
                 onClicked: detailCard.close()

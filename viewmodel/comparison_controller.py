@@ -192,6 +192,48 @@ class ComparisonController(QObject):
         top_p: float,
         muestreo_codicioso: bool,
     ) -> None:
+        self._iniciar_generacion_compartida(
+            prompt,
+            max_tokens_nuevos,
+            temperatura,
+            top_k,
+            top_p,
+            muestreo_codicioso,
+            modo_paso_a_paso=False,
+        )
+
+    @Slot(str, int, float, int, float, bool)
+    def iniciarGeneracionPasoAPaso(
+        self,
+        prompt: str,
+        max_tokens_nuevos: int,
+        temperatura: float,
+        top_k: int,
+        top_p: float,
+        muestreo_codicioso: bool,
+    ) -> None:
+        """Inicia ambos modelos y autoriza exactamente su primer token."""
+        self._iniciar_generacion_compartida(
+            prompt,
+            max_tokens_nuevos,
+            temperatura,
+            top_k,
+            top_p,
+            muestreo_codicioso,
+            modo_paso_a_paso=True,
+        )
+
+    def _iniciar_generacion_compartida(
+        self,
+        prompt: str,
+        max_tokens_nuevos: int,
+        temperatura: float,
+        top_k: int,
+        top_p: float,
+        muestreo_codicioso: bool,
+        *,
+        modo_paso_a_paso: bool,
+    ) -> None:
         if not self.modelosListos:
             self.error.emit("Primero carga dos modelos para comparar.")
             return
@@ -234,7 +276,15 @@ class ComparisonController(QObject):
                 top_k=top_k_real,
                 top_p=top_p_real,
                 muestreo_codicioso=muestreo_codicioso,
+                modo_paso_a_paso=modo_paso_a_paso,
             )
+
+    @Slot()
+    def generarSiguienteToken(self) -> None:
+        """Avanza una vez cada modelo que siga activo en la sesion manual."""
+        for controlador in (self._controlador_a, self._controlador_b):
+            if controlador is not None and controlador.esta_generando:
+                controlador.generar_siguiente_token()
 
     @Slot()
     def detener(self) -> None:
@@ -327,7 +377,14 @@ class ComparisonController(QObject):
         id_relleno = modelo.config.id_token_relleno
         id_inicio = id_relleno + 1 if id_relleno is not None else None
         id_fin = id_relleno + 2 if id_relleno is not None else None
-        controlador = InferenceController(modelo, tokenizer, id_inicio, id_fin, self)
+        controlador = InferenceController(
+            modelo,
+            tokenizer,
+            id_inicio,
+            id_fin,
+            self,
+            incluir_detalle_forward=True,
+        )
         controlador.estaGenerandoCambio.connect(self.estaGenerandoCambio.emit)
         return controlador
 

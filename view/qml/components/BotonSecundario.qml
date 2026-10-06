@@ -10,7 +10,7 @@ import "../styles" as Style
 // encima de la tarjeta que lo contiene, para no competir con ella.
 //
 // La variante `peligro` es para acciones destructivas (eliminar, descartar).
-Button {
+BotonAccesible {
     id: control
 
     property real sx: 1

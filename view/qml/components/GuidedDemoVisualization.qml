@@ -159,7 +159,7 @@ Rectangle {
         },
         "epoch_batch": {
             "title": "Los ejemplos se procesan por grupos",
-            "caption": "Cada batch produce una actualización. Una epoch termina cuando todos los ejemplos del dataset participaron una vez.",
+            "caption": "Los 12 ejemplos forman tres batches de 4; cada batch produce una actualización y la epoch termina al completar los tres.",
             "steps": [
                 { "label": "Dataset", "detail": "12 ejemplos" },
                 { "label": "Batch", "detail": "3 grupos de 4" },

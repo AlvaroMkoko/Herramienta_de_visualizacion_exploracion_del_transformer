@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
 import "../styles" as Style
 
@@ -34,8 +33,7 @@ Item {
                                                    : 1
     readonly property int renderedTokenCount: tokenRepeater.count
     readonly property real compactContentWidth: (
-        70 + 112 + 112 * (1 + (hiddenVisualRatio - 1) * progress)
-        + 92 + 112 + 4 * 4 + 10) * sx
+        64 + 72 * (2 + hiddenVisualRatio) + 76 + 4 * 4 + 10) * sx
 
     function tokenColor(index) {
         var palette = Style.Theme.identidades_inferencia
@@ -125,12 +123,12 @@ Item {
                 anchors.fill: parent
                 anchors.margins: 8 * root.sx
                 spacing: 8 * root.sx
-                StageLabel { Layout.fillWidth: true; Layout.minimumWidth: 0; title: "ENTRADA"; subtitle: "d_model = " + root.inputDimension; accent: Style.Theme.inferencia_estructura; sx: root.sx }
+                StageLabel { Layout.fillWidth: true; Layout.minimumWidth: 0; Layout.preferredWidth: 1; title: "ENTRADA"; subtitle: "d_model = " + root.inputDimension; accent: Style.Theme.inferencia_estructura; sx: root.sx }
                 Text { visible: !root.compact; text: "→"; color: Style.Theme.texto_terciario; font.bold: true; font.pixelSize: 18 * root.sx }
-                StageLabel { Layout.fillWidth: true; Layout.minimumWidth: 0; title: "EXPANSIÓN W₁"; subtitle: "d_ff = " + root.hiddenDimension; accent: Style.Theme.inferencia_transformacion; sx: root.sx }
-                StageLabel { Layout.fillWidth: true; Layout.minimumWidth: 0; title: root.activationName.toUpperCase(); subtitle: root.activationName.toLowerCase().indexOf("relu") >= 0 ? "negativos → 0" : "atenuación suave"; accent: Style.Theme.inferencia_foco; sx: root.sx }
+                StageLabel { Layout.fillWidth: true; Layout.minimumWidth: 0; Layout.preferredWidth: 1; title: "EXPANSIÓN W₁"; subtitle: "d_ff = " + root.hiddenDimension; accent: Style.Theme.inferencia_transformacion; sx: root.sx }
+                StageLabel { Layout.fillWidth: true; Layout.minimumWidth: 0; Layout.preferredWidth: 1; title: root.activationName.toUpperCase(); subtitle: root.activationName.toLowerCase().indexOf("relu") >= 0 ? "negativos → 0" : "atenuación suave"; accent: Style.Theme.inferencia_foco; sx: root.sx }
                 Text { visible: !root.compact; text: "→"; color: Style.Theme.texto_terciario; font.bold: true; font.pixelSize: 18 * root.sx }
-                StageLabel { Layout.fillWidth: true; Layout.minimumWidth: 0; title: "PROYECCIÓN W₂"; subtitle: "d_model = " + root.outputDimension; accent: Style.Theme.inferencia_resultado; sx: root.sx }
+                StageLabel { Layout.fillWidth: true; Layout.minimumWidth: 0; Layout.preferredWidth: 1; title: "PROYECCIÓN W₂"; subtitle: "d_model = " + root.outputDimension; accent: Style.Theme.inferencia_resultado; sx: root.sx }
             }
         }
 
@@ -165,22 +163,46 @@ Item {
                     model: root.tokenRows
                     delegate: Rectangle {
                         id: tokenRow
+                        objectName: "feedForwardTokenRow"
                         required property var modelData
                         required property int index
+                        readonly property real laneMargin: (root.compact ? 5 : 9) * root.sx
+                        readonly property real laneSpacing: (root.compact ? 4 : 8) * root.sx
+                        readonly property real tokenCardWidth: (root.compact ? 64 : 92) * root.sx
+                        readonly property real activationWidth: (root.compact ? 76 : 116) * root.sx
+                        readonly property real arrowWidth: root.compact ? 0 : 18 * root.sx
+                        readonly property real animatedHiddenRatio: 1
+                                + (root.hiddenVisualRatio - 1) * root.progress
+                        readonly property real vectorSpace: Math.max(
+                            0,
+                            width - 2 * laneMargin - tokenCardWidth
+                            - activationWidth - 2 * arrowWidth
+                            - (root.compact ? 4 : 6) * laneSpacing)
+                        readonly property real vectorUnitWidth: Math.max(
+                            (root.compact ? 34 : 46) * root.sx,
+                            vectorSpace / (2 + animatedHiddenRatio))
+                        readonly property bool contentFits: 2 * laneMargin
+                                + tokenCardWidth + activationWidth
+                                + 2 * arrowWidth
+                                + (root.compact ? 4 : 6) * laneSpacing
+                                + vectorUnitWidth * (2 + animatedHiddenRatio)
+                                <= width + 1
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         Layout.minimumHeight: 100 * root.sy
                         radius: 10 * root.sx
                         color: Style.Theme.surface
                         border.color: root.tokenColor(tokenRow.index)
+                        clip: true
 
                         RowLayout {
                             anchors.fill: parent
-                            anchors.margins: (root.compact ? 5 : 9) * root.sx
-                            spacing: (root.compact ? 4 : 8) * root.sx
+                            anchors.margins: tokenRow.laneMargin
+                            spacing: tokenRow.laneSpacing
 
                             Rectangle {
-                                Layout.preferredWidth: (root.compact ? 70 : 92) * root.sx
+                                Layout.minimumWidth: 0
+                                Layout.preferredWidth: tokenRow.tokenCardWidth
                                 Layout.fillHeight: true
                                 radius: 8 * root.sx
                                 color: Qt.alpha(root.tokenColor(tokenRow.index), 0.10)
@@ -202,7 +224,8 @@ Item {
                             }
 
                             VectorStrip {
-                                Layout.preferredWidth: (root.compact ? 112 : 150) * root.sx
+                                Layout.minimumWidth: 0
+                                Layout.preferredWidth: tokenRow.vectorUnitWidth
                                 Layout.fillHeight: true
                                 values: tokenRow.modelData.entrada || []
                                 dimension: tokenRow.modelData.dimension_entrada
@@ -212,11 +235,12 @@ Item {
                                 sx: root.sx; sy: root.sy
                             }
 
-                            Text { visible: !root.compact; text: "→"; color: Style.Theme.texto_terciario; font.bold: true; font.pixelSize: 18 * root.sx }
+                            Text { visible: !root.compact; Layout.minimumWidth: 0; Layout.preferredWidth: tokenRow.arrowWidth; text: "→"; color: Style.Theme.texto_terciario; font.bold: true; horizontalAlignment: Text.AlignHCenter; font.pixelSize: 18 * root.sx }
 
                             VectorStrip {
-                                Layout.preferredWidth: (root.compact ? 112 : 150) * (1 + (root.hiddenVisualRatio - 1)
-                                                                 * root.progress) * root.sx
+                                Layout.minimumWidth: 0
+                                Layout.preferredWidth: tokenRow.vectorUnitWidth
+                                                       * tokenRow.animatedHiddenRatio
                                 Layout.fillHeight: true
                                 values: tokenRow.modelData.preactivacion || []
                                 dimension: tokenRow.modelData.dimension_oculta
@@ -228,7 +252,8 @@ Item {
                             }
 
                             ActivationGate {
-                                Layout.preferredWidth: (root.compact ? 92 : 128) * root.sx
+                                Layout.minimumWidth: 0
+                                Layout.preferredWidth: tokenRow.activationWidth
                                 Layout.fillHeight: true
                                 activation: root.activationName
                                 negativeFraction: Number(tokenRow.modelData.fraccion_negativa || 0)
@@ -237,10 +262,12 @@ Item {
                                 opacity: 0.25 + 0.75 * root.progress
                             }
 
-                            Text { visible: !root.compact; text: "→"; color: Style.Theme.texto_terciario; font.bold: true; font.pixelSize: 18 * root.sx }
+                            Text { visible: !root.compact; Layout.minimumWidth: 0; Layout.preferredWidth: tokenRow.arrowWidth; text: "→"; color: Style.Theme.texto_terciario; font.bold: true; horizontalAlignment: Text.AlignHCenter; font.pixelSize: 18 * root.sx }
 
                             VectorStrip {
-                                Layout.preferredWidth: (root.compact ? 112 : 150) * root.sx
+                                objectName: "feedForwardOutputStrip"
+                                Layout.minimumWidth: 0
+                                Layout.preferredWidth: tokenRow.vectorUnitWidth
                                 Layout.fillHeight: true
                                 values: tokenRow.modelData.salida || []
                                 dimension: tokenRow.modelData.dimension_salida

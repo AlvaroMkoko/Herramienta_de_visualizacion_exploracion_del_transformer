@@ -1,1 +1,683 @@
-{}
+{
+  "version": 2,
+  "results": [
+    {
+      "schema_version": 2,
+      "instrument_version": 3,
+      "assessment_type": "pre",
+      "puntaje": 2.7,
+      "maximo": 20.0,
+      "percentage": 13.5,
+      "reactivos": 20,
+      "respondidas": 20,
+      "dimensions": [
+        {
+          "id": "tokenizacion",
+          "name": "Tokenización",
+          "puntaje": 0.0,
+          "maximo": 4.0,
+          "reactivos": 4,
+          "percentage": 0.0
+        },
+        {
+          "id": "embeddings_posicion",
+          "name": "Embeddings y Codificación Posicional",
+          "puntaje": 0.5,
+          "maximo": 4.0,
+          "reactivos": 4,
+          "percentage": 12.5
+        },
+        {
+          "id": "atencion_qkv",
+          "name": "Mecanismo de Atención Query/Key/Value",
+          "puntaje": 0.0,
+          "maximo": 4.0,
+          "reactivos": 4,
+          "percentage": 0.0
+        },
+        {
+          "id": "feedforward_normalizacion",
+          "name": "Feed-Forward y Normalización",
+          "puntaje": 2.0,
+          "maximo": 4.0,
+          "reactivos": 4,
+          "percentage": 50.0
+        },
+        {
+          "id": "estrategias_muestreo",
+          "name": "Estrategias de Muestreo",
+          "puntaje": 0.2,
+          "maximo": 4.0,
+          "reactivos": 4,
+          "percentage": 5.0
+        }
+      ],
+      "bloom": [
+        {
+          "id": "Recordar",
+          "name": "Recordar",
+          "puntaje": 0.0,
+          "maximo": 5.0,
+          "reactivos": 5,
+          "percentage": 0.0
+        },
+        {
+          "id": "Comprender",
+          "name": "Comprender",
+          "puntaje": 2.3333,
+          "maximo": 10.0,
+          "reactivos": 10,
+          "percentage": 23.3
+        },
+        {
+          "id": "Aplicar",
+          "name": "Aplicar",
+          "puntaje": 0.3667,
+          "maximo": 5.0,
+          "reactivos": 5,
+          "percentage": 7.3
+        }
+      ],
+      "answers": [
+        {
+          "question_id": "pre_t1",
+          "code": "T1",
+          "dimension_id": "tokenizacion",
+          "bloom_level": "Recordar",
+          "tipo": "texto",
+          "puntaje": 0.0,
+          "maximo": 1.0,
+          "correcto": false,
+          "respondida": true,
+          "respuesta": {
+            "texto": "jsldfjsld"
+          },
+          "detalle": {
+            "escrito": "jsldfjsld",
+            "normalizado": "jsldfjsld"
+          }
+        },
+        {
+          "question_id": "pre_t2",
+          "code": "T2",
+          "dimension_id": "tokenizacion",
+          "bloom_level": "Comprender",
+          "tipo": "opcion_unica",
+          "puntaje": 0.0,
+          "maximo": 1.0,
+          "correcto": false,
+          "respondida": true,
+          "respuesta": {
+            "opcion_id": "b"
+          },
+          "detalle": {
+            "elegida": "b",
+            "esperada": "c"
+          }
+        },
+        {
+          "question_id": "pre_t3",
+          "code": "T3",
+          "dimension_id": "tokenizacion",
+          "bloom_level": "Comprender",
+          "tipo": "opcion_unica",
+          "puntaje": 0.0,
+          "maximo": 1.0,
+          "correcto": false,
+          "respondida": true,
+          "respuesta": {
+            "opcion_id": "c"
+          },
+          "detalle": {
+            "elegida": "c",
+            "esperada": "a"
+          }
+        },
+        {
+          "question_id": "pre_t4",
+          "code": "T4",
+          "dimension_id": "tokenizacion",
+          "bloom_level": "Aplicar",
+          "tipo": "asignacion",
+          "puntaje": 0.0,
+          "maximo": 1.0,
+          "correcto": false,
+          "respondida": true,
+          "respuesta": {
+            "asignaciones": {
+              "p1": "2",
+              "p2": "4",
+              "p3": "3",
+              "p4": "1"
+            }
+          },
+          "detalle": {
+            "aciertos": 0,
+            "total": 4,
+            "por_elemento": {
+              "p1": {
+                "elegido": "2",
+                "esperado": "3"
+              },
+              "p2": {
+                "elegido": "4",
+                "esperado": "1"
+              },
+              "p3": {
+                "elegido": "3",
+                "esperado": "4"
+              },
+              "p4": {
+                "elegido": "1",
+                "esperado": "2"
+              }
+            }
+          }
+        },
+        {
+          "question_id": "pre_e1",
+          "code": "E1",
+          "dimension_id": "embeddings_posicion",
+          "bloom_level": "Recordar",
+          "tipo": "opcion_unica",
+          "puntaje": 0.0,
+          "maximo": 1.0,
+          "correcto": false,
+          "respondida": true,
+          "respuesta": {
+            "opcion_id": "c"
+          },
+          "detalle": {
+            "elegida": "c",
+            "esperada": "b"
+          }
+        },
+        {
+          "question_id": "pre_e2",
+          "code": "E2",
+          "dimension_id": "embeddings_posicion",
+          "bloom_level": "Comprender",
+          "tipo": "seleccion_multiple",
+          "puntaje": 0.3333,
+          "maximo": 1.0,
+          "correcto": false,
+          "respondida": true,
+          "respuesta": {
+            "opciones_ids": [
+              "b"
+            ]
+          },
+          "detalle": {
+            "elegidas": [
+              "b"
+            ],
+            "esperadas": [
+              "a",
+              "b",
+              "d"
+            ],
+            "aciertos": 1,
+            "errores": 0
+          }
+        },
+        {
+          "question_id": "pre_e3",
+          "code": "E3",
+          "dimension_id": "embeddings_posicion",
+          "bloom_level": "Comprender",
+          "tipo": "opcion_unica",
+          "puntaje": 0.0,
+          "maximo": 1.0,
+          "correcto": false,
+          "respondida": true,
+          "respuesta": {
+            "opcion_id": "c"
+          },
+          "detalle": {
+            "elegida": "c",
+            "esperada": "d"
+          }
+        },
+        {
+          "question_id": "pre_e4",
+          "code": "E4",
+          "dimension_id": "embeddings_posicion",
+          "bloom_level": "Aplicar",
+          "tipo": "asignacion",
+          "puntaje": 0.1667,
+          "maximo": 1.0,
+          "correcto": false,
+          "respondida": true,
+          "respuesta": {
+            "asignaciones": {
+              "c1": "emb",
+              "c2": "pos",
+              "c3": "ambos",
+              "c4": "ambos",
+              "c5": "pos",
+              "c6": "emb"
+            }
+          },
+          "detalle": {
+            "aciertos": 1,
+            "total": 6,
+            "por_elemento": {
+              "c1": {
+                "elegido": "emb",
+                "esperado": "pos"
+              },
+              "c2": {
+                "elegido": "pos",
+                "esperado": "emb"
+              },
+              "c3": {
+                "elegido": "ambos",
+                "esperado": "ambos"
+              },
+              "c4": {
+                "elegido": "ambos",
+                "esperado": "pos"
+              },
+              "c5": {
+                "elegido": "pos",
+                "esperado": "emb"
+              },
+              "c6": {
+                "elegido": "emb",
+                "esperado": "ambos"
+              }
+            }
+          }
+        },
+        {
+          "question_id": "pre_a1",
+          "code": "A1",
+          "dimension_id": "atencion_qkv",
+          "bloom_level": "Recordar",
+          "tipo": "asignacion",
+          "puntaje": 0.0,
+          "maximo": 1.0,
+          "correcto": false,
+          "respondida": true,
+          "respuesta": {
+            "asignaciones": {
+              "k": "b",
+              "q": "a",
+              "v": "c",
+              "w": "d"
+            }
+          },
+          "detalle": {
+            "aciertos": 0,
+            "total": 4,
+            "por_elemento": {
+              "q": {
+                "elegido": "a",
+                "esperado": "c"
+              },
+              "k": {
+                "elegido": "b",
+                "esperado": "d"
+              },
+              "v": {
+                "elegido": "c",
+                "esperado": "b"
+              },
+              "w": {
+                "elegido": "d",
+                "esperado": "a"
+              }
+            }
+          }
+        },
+        {
+          "question_id": "pre_a2",
+          "code": "A2",
+          "dimension_id": "atencion_qkv",
+          "bloom_level": "Comprender",
+          "tipo": "etapas",
+          "puntaje": 0.0,
+          "maximo": 1.0,
+          "correcto": false,
+          "respondida": true,
+          "respuesta": {
+            "etapas": {
+              "e1": {
+                "opcion_id": "a"
+              },
+              "e2": {
+                "opcion_id": "b"
+              }
+            }
+          },
+          "detalle": {
+            "etapas": {
+              "e1": {
+                "puntua": true,
+                "aplica": true,
+                "peso": 0.5,
+                "puntaje": 0.0,
+                "maximo": 1.0,
+                "correcto": false,
+                "detalle": {
+                  "elegida": "a",
+                  "esperada": "c"
+                }
+              },
+              "e2": {
+                "puntua": true,
+                "aplica": true,
+                "peso": 0.5,
+                "puntaje": 0.0,
+                "maximo": 1.0,
+                "correcto": false,
+                "detalle": {
+                  "elegida": "b",
+                  "esperada": "a"
+                }
+              }
+            },
+            "exigir_todas": true
+          }
+        },
+        {
+          "question_id": "pre_a3",
+          "code": "A3",
+          "dimension_id": "atencion_qkv",
+          "bloom_level": "Comprender",
+          "tipo": "etapas",
+          "puntaje": 0.0,
+          "maximo": 1.0,
+          "correcto": false,
+          "respondida": true,
+          "respuesta": {
+            "etapas": {
+              "e1": {
+                "opcion_id": "3"
+              },
+              "e2": {
+                "opcion_id": "b"
+              }
+            }
+          },
+          "detalle": {
+            "etapas": {
+              "e1": {
+                "puntua": true,
+                "aplica": true,
+                "peso": 0.5,
+                "puntaje": 0.0,
+                "maximo": 1.0,
+                "correcto": false,
+                "detalle": {
+                  "elegida": "3",
+                  "esperada": "2"
+                }
+              },
+              "e2": {
+                "puntua": true,
+                "aplica": true,
+                "peso": 0.5,
+                "puntaje": 0.0,
+                "maximo": 1.0,
+                "correcto": false,
+                "detalle": {
+                  "elegida": "b",
+                  "esperada": "a"
+                }
+              }
+            },
+            "exigir_todas": false
+          }
+        },
+        {
+          "question_id": "pre_a4",
+          "code": "A4",
+          "dimension_id": "atencion_qkv",
+          "bloom_level": "Aplicar",
+          "tipo": "opcion_unica",
+          "puntaje": 0.0,
+          "maximo": 1.0,
+          "correcto": false,
+          "respondida": true,
+          "respuesta": {
+            "opcion_id": "a"
+          },
+          "detalle": {
+            "elegida": "a",
+            "esperada": "b"
+          }
+        },
+        {
+          "question_id": "pre_f1",
+          "code": "F1",
+          "dimension_id": "feedforward_normalizacion",
+          "bloom_level": "Recordar",
+          "tipo": "opcion_unica",
+          "puntaje": 0.0,
+          "maximo": 1.0,
+          "correcto": false,
+          "respondida": true,
+          "respuesta": {
+            "opcion_id": "d"
+          },
+          "detalle": {
+            "elegida": "d",
+            "esperada": "a"
+          }
+        },
+        {
+          "question_id": "pre_f2",
+          "code": "F2",
+          "dimension_id": "feedforward_normalizacion",
+          "bloom_level": "Comprender",
+          "tipo": "etapas",
+          "puntaje": 1.0,
+          "maximo": 1.0,
+          "correcto": true,
+          "respondida": true,
+          "respuesta": {
+            "etapas": {
+              "e1": {
+                "opcion_id": "verdadero"
+              }
+            }
+          },
+          "detalle": {
+            "etapas": {
+              "e1": {
+                "puntua": true,
+                "aplica": true,
+                "peso": 1.0,
+                "puntaje": 1.0,
+                "maximo": 1.0,
+                "correcto": true,
+                "detalle": {
+                  "elegida": "verdadero",
+                  "esperada": "verdadero"
+                }
+              },
+              "e2": {
+                "puntua": false,
+                "texto": ""
+              }
+            },
+            "exigir_todas": false
+          }
+        },
+        {
+          "question_id": "pre_f3",
+          "code": "F3",
+          "dimension_id": "feedforward_normalizacion",
+          "bloom_level": "Comprender",
+          "tipo": "opcion_unica",
+          "puntaje": 1.0,
+          "maximo": 1.0,
+          "correcto": true,
+          "respondida": true,
+          "respuesta": {
+            "opcion_id": "c"
+          },
+          "detalle": {
+            "elegida": "c",
+            "esperada": "c"
+          }
+        },
+        {
+          "question_id": "pre_f4",
+          "code": "F4",
+          "dimension_id": "feedforward_normalizacion",
+          "bloom_level": "Aplicar",
+          "tipo": "opcion_unica",
+          "puntaje": 0.0,
+          "maximo": 1.0,
+          "correcto": false,
+          "respondida": true,
+          "respuesta": {
+            "opcion_id": "c"
+          },
+          "detalle": {
+            "elegida": "c",
+            "esperada": "d"
+          }
+        },
+        {
+          "question_id": "pre_s1",
+          "code": "S1",
+          "dimension_id": "estrategias_muestreo",
+          "bloom_level": "Recordar",
+          "tipo": "opcion_unica",
+          "puntaje": 0.0,
+          "maximo": 1.0,
+          "correcto": false,
+          "respondida": true,
+          "respuesta": {
+            "opcion_id": "d"
+          },
+          "detalle": {
+            "elegida": "d",
+            "esperada": "b"
+          }
+        },
+        {
+          "question_id": "pre_s2",
+          "code": "S2",
+          "dimension_id": "estrategias_muestreo",
+          "bloom_level": "Comprender",
+          "tipo": "asignacion",
+          "puntaje": 0.0,
+          "maximo": 1.0,
+          "correcto": false,
+          "respondida": true,
+          "respuesta": {
+            "asignaciones": {
+              "t1": "a",
+              "t2": "b",
+              "t3": "c",
+              "t4": "d"
+            }
+          },
+          "detalle": {
+            "aciertos": 0,
+            "total": 4,
+            "por_elemento": {
+              "t1": {
+                "elegido": "a",
+                "esperado": "c"
+              },
+              "t2": {
+                "elegido": "b",
+                "esperado": "d"
+              },
+              "t3": {
+                "elegido": "c",
+                "esperado": "a"
+              },
+              "t4": {
+                "elegido": "d",
+                "esperado": "b"
+              }
+            }
+          }
+        },
+        {
+          "question_id": "pre_s3",
+          "code": "S3",
+          "dimension_id": "estrategias_muestreo",
+          "bloom_level": "Comprender",
+          "tipo": "opcion_unica",
+          "puntaje": 0.0,
+          "maximo": 1.0,
+          "correcto": false,
+          "respondida": true,
+          "respuesta": {
+            "opcion_id": "b"
+          },
+          "detalle": {
+            "elegida": "b",
+            "esperada": "a"
+          }
+        },
+        {
+          "question_id": "pre_s4",
+          "code": "S4",
+          "dimension_id": "estrategias_muestreo",
+          "bloom_level": "Aplicar",
+          "tipo": "asignacion",
+          "puntaje": 0.2,
+          "maximo": 1.0,
+          "correcto": false,
+          "respondida": true,
+          "respuesta": {
+            "asignaciones": {
+              "p1": "4",
+              "p2": "5",
+              "p3": "3",
+              "p4": "2",
+              "p5": "1"
+            }
+          },
+          "detalle": {
+            "aciertos": 1,
+            "total": 5,
+            "por_elemento": {
+              "p1": {
+                "elegido": "4",
+                "esperado": "3"
+              },
+              "p2": {
+                "elegido": "5",
+                "esperado": "5"
+              },
+              "p3": {
+                "elegido": "3",
+                "esperado": "1"
+              },
+              "p4": {
+                "elegido": "2",
+                "esperado": "4"
+              },
+              "p5": {
+                "elegido": "1",
+                "esperado": "2"
+              }
+            }
+          }
+        }
+      ],
+      "cualitativos": [],
+      "completed_at": "2026-10-01T01:45:26.063996+00:00",
+      "student": {
+        "id": "__self__",
+        "nombre": "Estudiante (modo individual)",
+        "matricula": "",
+        "grupo": "",
+        "edad": "",
+        "correo": "",
+        "origen": "individual"
+      },
+      "student_id": "__self__"
+    }
+  ],
+  "archivados": []
+}

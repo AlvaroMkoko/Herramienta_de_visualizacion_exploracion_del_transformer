@@ -3,7 +3,7 @@ import QtQuick.Controls
 import "../styles" as Style
 
 
-    Button {
+    BotonAccesible {
         
         /*
         Boton lo que esta comentado es lo que se tiene que poner

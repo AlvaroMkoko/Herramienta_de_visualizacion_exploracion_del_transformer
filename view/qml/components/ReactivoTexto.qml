@@ -50,6 +50,12 @@ Item {
 
     implicitHeight: columna.implicitHeight
 
+    TextMetrics {
+        id: metricasPlaceholder
+        font: campo.font
+        text: campo.placeholderText
+    }
+
     // Devuelve las palabras a cada lado del hueco. Si el enunciado no trae
     // hueco, todo queda del lado izquierdo y el campo aparece al final: así
     // nunca se pierde el texto de la pregunta, pase lo que pase con el banco.
@@ -117,7 +123,10 @@ Item {
                 // Crece con lo escrito para que la oración no salte de golpe,
                 // pero nunca tanto como para empujar el resto fuera del renglón.
                 width: Math.max(230 * root.sx,
-                                Math.min(430 * root.sx, contentWidth + 46 * root.sx))
+                                Math.min(430 * root.sx,
+                                         Math.max(contentWidth,
+                                                  metricasPlaceholder.advanceWidth)
+                                         + 46 * root.sx))
                 height: 46 * root.sy
                 sx: root.sx
                 sy: root.sy

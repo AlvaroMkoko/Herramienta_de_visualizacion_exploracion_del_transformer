@@ -73,7 +73,7 @@ Popup {
                     wrapMode: Text.WordWrap
                 }
 
-                ToolButton {
+                BotonHerramientaAccesible {
                     id: cerrarButton
                     objectName: "detalleComponenteCerrarButton"
                     Layout.preferredWidth: 30 * root.sx

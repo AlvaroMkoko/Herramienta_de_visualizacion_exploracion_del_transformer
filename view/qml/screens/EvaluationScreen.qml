@@ -345,7 +345,12 @@ PagePrincipal {
                     clip: true
                     contentWidth: availableWidth
                     ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-                    ScrollBar.vertical.policy: ScrollBar.AsNeeded
+                    // En los reactivos largos la barra debe seguir visible:
+                    // es la señal de que hay destinos u opciones más abajo.
+                    ScrollBar.vertical.policy: questionScroll.contentHeight
+                                                       > questionScroll.availableHeight + 2
+                                                   ? ScrollBar.AlwaysOn
+                                                   : ScrollBar.AlwaysOff
 
                     ColumnLayout {
                         width: questionScroll.availableWidth
@@ -556,7 +561,10 @@ PagePrincipal {
                                    + "Se actualiza al continuar."
                                  : (root.evaluationController.canContinue
                                     ? "Respuesta registrada"
-                                    : "Completa tu respuesta para continuar"))
+                                    : (questionScroll.contentHeight
+                                       > questionScroll.availableHeight + 2
+                                       ? "Desplázate para ver todo y completa tu respuesta"
+                                       : "Completa tu respuesta para continuar")))
                         color: root.errorMessage !== ""
                                ? Style.Theme.error_texto
                                : (root.evaluationController.isRevisiting
@@ -690,7 +698,7 @@ PagePrincipal {
                                 id: filaDimension
                                 required property var modelData
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: 68 * root.sy
+                                Layout.preferredHeight: 56 * root.sy
                                 radius: 10 * root.sx
                                 color: Style.Theme.superficie_alterna
                                 border.width: 1
@@ -698,7 +706,7 @@ PagePrincipal {
 
                                 RowLayout {
                                     anchors.fill: parent
-                                    anchors.margins: 14 * root.sx
+                                    anchors.margins: 10 * root.sx
                                     spacing: 12 * root.sx
 
                                     Text {

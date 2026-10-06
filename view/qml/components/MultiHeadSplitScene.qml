@@ -327,14 +327,29 @@ Item {
 
     }
 
-    component ReplayButton: Rectangle {
+    component ReplayButton: BotonAccesible {
         id: button
         property real sx: 1
         property real sy: 1
-        signal clicked()
-        implicitWidth: 112 * sx; implicitHeight: 32 * sy; radius: 8 * sx
-        color: Style.Theme.inferencia_transformacion
-        Text { anchors.centerIn: parent; text: "↺ Reproducir"; color: Style.Theme.inferencia_sobre_transformacion; font.bold: true; font.pixelSize: 9 * button.sx }
-        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: button.clicked() }
+        text: "↺ Reproducir"
+        implicitWidth: Math.max(112 * sx, buttonText.implicitWidth + 22 * sx)
+        implicitHeight: Math.max(36, 32 * sy)
+        radioResaltado: 8 * sx
+
+        background: Rectangle {
+            radius: button.radioResaltado
+            color: button.down ? Style.Theme.acento_fuerte
+                               : Style.Theme.inferencia_transformacion
+        }
+
+        contentItem: Text {
+            id: buttonText
+            text: button.text
+            color: Style.Theme.inferencia_sobre_transformacion
+            font.bold: true
+            font.pixelSize: Math.max(Style.Theme.smallSize, 9 * button.sx)
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+        }
     }
 }

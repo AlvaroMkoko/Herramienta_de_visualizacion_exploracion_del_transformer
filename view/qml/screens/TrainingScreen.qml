@@ -482,6 +482,20 @@ PagePrincipal {
             }
         }
 
+        Component.onCompleted: {
+            if (typeof displayManager !== "undefined" && displayManager)
+                displayManager.registerAuxiliaryWindow(
+                            detachedTransformerExplanationWindow, true)
+        }
+        onVisibleChanged: {
+            if (visible
+                    && typeof displayManager !== "undefined"
+                    && displayManager
+                    && displayManager.hasSecondaryScreen)
+                displayManager.placeAuxiliaryWindow(
+                            detachedTransformerExplanationWindow, true)
+        }
+
         onClosing: function(close) {
             if (root.transformerExplanationDetached)
                 root.cerrarExplicacionTransformerAparte()
@@ -744,7 +758,7 @@ PagePrincipal {
                                 root.trainingController.activarVisualizacionPedagogica(barraPestanas.currentIndex === 0)
                             }
 
-                            TabButton {
+                            PestanaAccesible {
                                 id: guidedTab
                                 text: "Vista guiada"
                                 background: Rectangle {
@@ -767,7 +781,7 @@ PagePrincipal {
                                     verticalAlignment: Text.AlignVCenter
                                 }
                             }
-                            TabButton {
+                            PestanaAccesible {
                                 id: embeddingsTab
                                 text: "Espacio de embeddings"
                                 background: Rectangle {
@@ -790,7 +804,7 @@ PagePrincipal {
                                     verticalAlignment: Text.AlignVCenter
                                 }
                             }
-                            TabButton {
+                            PestanaAccesible {
                                 id: componentDetailTab
                                 objectName: "trainingComponentDetailTab"
                                 text: localBridge.selectedId === ""
@@ -892,7 +906,7 @@ PagePrincipal {
                             font.bold: true
                             font.pixelSize: 10 * root.sx
                         }
-                        Button {
+                        BotonAccesible {
                             id: detachedMapExplanationButton
                             objectName: "trainingOpenDetachedTransformerExplanationButton"
                             visible: localBridge.selectedId !== ""

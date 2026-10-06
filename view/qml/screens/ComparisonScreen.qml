@@ -43,6 +43,17 @@ PagePrincipal {
         var indice = root.pasoVisible - 1
         return indice >= 0 && indice < lista.length ? lista[indice] : null
     }
+    property var pasosVisualizacionA: []
+    property var pasosVisualizacionB: []
+    property var detallesPendientesA: ({})
+    property var detallesPendientesB: ({})
+    property var detalleForwardComunA: ({})
+    property var detalleForwardComunB: ({})
+    property int indiceDetalleComun: -1
+    property int indiceExploracion: -1
+    property bool sesionPasoAPaso: false
+    property bool pasoPendienteA: false
+    property bool pasoPendienteB: false
 
     readonly property bool modelosListos: controller && controller.modelosListos
     readonly property bool cargando: controller && controller.cargando
@@ -50,6 +61,22 @@ PagePrincipal {
     readonly property var controladorB: controller ? controller.controladorB : null
     readonly property int maxTokensPermitidos: controller
             ? controller.maxTokensPermitidos : 512
+    readonly property bool pasoPendiente: pasoPendienteA || pasoPendienteB
+    readonly property bool hayTraza: pasosVisualizacionA.length > 0
+                                      || pasosVisualizacionB.length > 0
+    readonly property bool modeloAActivo: Boolean(controladorA
+                                                   && controladorA.estaGenerando)
+    readonly property bool modeloBActivo: Boolean(controladorB
+                                                   && controladorB.estaGenerando)
+    readonly property string etiquetaAvance: {
+        if (modeloAActivo && modeloBActivo)
+            return "Siguiente token en ambos"
+        if (modeloAActivo)
+            return "Continuar solo Modelo A"
+        if (modeloBActivo)
+            return "Continuar solo Modelo B"
+        return "Generación finalizada"
+    }
 
     function valor(item, nombres, alternativo) {
         if (item === undefined || item === null)
@@ -147,7 +174,147 @@ PagePrincipal {
         duracionB = 0
         estadoA = "Listo"
         estadoB = "Listo"
+        sesionPasoAPaso = false
+        pasoPendienteA = false
+        pasoPendienteB = false
+        pasosVisualizacionA = []
+        pasosVisualizacionB = []
+        detallesPendientesA = ({})
+        detallesPendientesB = ({})
+        detalleForwardComunA = ({})
+        detalleForwardComunB = ({})
+        indiceDetalleComun = -1
+        indiceExploracion = -1
         controller.cargarModelos(ruta(seleccionadoA), ruta(seleccionadoB))
+    }
+
+    function snapshotLigero(paso) {
+        if (!paso || paso.visualizacion === undefined)
+            return null
+        var snapshot = paso.visualizacion
+        var resumen = ({})
+        for (var clave in snapshot) {
+            if (clave !== "detalle_forward")
+                resumen[clave] = snapshot[clave]
+        }
+        return resumen
+    }
+
+    function agregarDetallePendiente(modelo, indice, detalle) {
+        if (!detalle || detalle.metadata === undefined)
+            return
+        var origen = modelo === "A" ? detallesPendientesA : detallesPendientesB
+        var actualizado = ({})
+        for (var clave in origen)
+            actualizado[clave] = origen[clave]
+        actualizado[String(indice)] = detalle
+        if (modelo === "A")
+            detallesPendientesA = actualizado
+        else
+            detallesPendientesB = actualizado
+    }
+
+    function detallesPosteriores(origen, indice) {
+        var restantes = ({})
+        for (var clave in origen) {
+            if (Number(clave) > indice)
+                restantes[clave] = origen[clave]
+        }
+        return restantes
+    }
+
+    function sincronizarDetallesComunes() {
+        var indice = Math.min(pasosVisualizacionA.length,
+                              pasosVisualizacionB.length) - 1
+        if (indice < 0)
+            return
+        var clave = String(indice)
+        var detalleA = detallesPendientesA[clave]
+        var detalleB = detallesPendientesB[clave]
+        if (!detalleA || detalleA.metadata === undefined
+                || !detalleB || detalleB.metadata === undefined)
+            return
+        detalleForwardComunA = detalleA
+        detalleForwardComunB = detalleB
+        indiceDetalleComun = indice
+        // Solo permanece en memoria la captura común más reciente y los
+        // pasos adelantados que todavía esperan a su pareja.
+        detallesPendientesA = detallesPosteriores(detallesPendientesA, indice)
+        detallesPendientesB = detallesPosteriores(detallesPendientesB, indice)
+    }
+
+    function detallePara(modelo, indice) {
+        if (indice === indiceDetalleComun)
+            return modelo === "A" ? detalleForwardComunA : detalleForwardComunB
+        var pendientes = modelo === "A" ? detallesPendientesA : detallesPendientesB
+        return pendientes[String(indice)] || ({})
+    }
+
+    function indiceDetallePara(modelo, indice) {
+        var detalle = detallePara(modelo, indice)
+        return detalle && detalle.metadata !== undefined ? indice : -1
+    }
+
+    function indiceComparacionPreferido() {
+        var comunes = Math.min(pasosVisualizacionA.length,
+                               pasosVisualizacionB.length)
+        if (comunes > 0)
+            return comunes - 1
+        return Math.max(pasosVisualizacionA.length,
+                        pasosVisualizacionB.length) - 1
+    }
+
+    function registrarToken(modelo, paso) {
+        var resumen = snapshotLigero(paso)
+        var detalle = paso && paso.visualizacion
+                ? (paso.visualizacion.detalle_forward || ({})) : ({})
+        if (modelo === "A") {
+            if (resumen)
+                pasosVisualizacionA = pasosVisualizacionA.concat([resumen])
+            agregarDetallePendiente("A", pasosVisualizacionA.length - 1, detalle)
+            pasoPendienteA = sesionPasoAPaso && Boolean(paso && paso.es_ultimo_token)
+        } else {
+            if (resumen)
+                pasosVisualizacionB = pasosVisualizacionB.concat([resumen])
+            agregarDetallePendiente("B", pasosVisualizacionB.length - 1, detalle)
+            pasoPendienteB = sesionPasoAPaso && Boolean(paso && paso.es_ultimo_token)
+        }
+        sincronizarDetallesComunes()
+        indiceExploracion = indiceComparacionPreferido()
+    }
+
+    function abrirExploracion() {
+        if (!hayTraza)
+            return
+        indiceExploracion = indiceComparacionPreferido()
+        if (root.secondaryDisplayAvailable) {
+            exploradorComparacion.close()
+            exploradorComparacionAparte.show()
+            if (typeof displayManager !== "undefined" && displayManager)
+                displayManager.placeAuxiliaryWindow(
+                            exploradorComparacionAparte, true)
+        } else {
+            exploradorComparacionAparte.hide()
+            exploradorComparacion.open()
+        }
+    }
+
+    function cerrarExploracion() {
+        exploradorComparacion.close()
+        exploradorComparacionAparte.hide()
+    }
+
+    function avanzarUnToken() {
+        if (!controller || !sesionPasoAPaso || !controller.estaGenerando
+                || pasoPendiente)
+            return
+        pasoPendienteA = Boolean(controladorA && controladorA.estaGenerando)
+        pasoPendienteB = Boolean(controladorB && controladorB.estaGenerando)
+        estadoA = pasoPendienteA ? "Procesando siguiente token…" : estadoA
+        estadoB = pasoPendienteB ? "Procesando siguiente token…" : estadoB
+        mensajeEstado = etiquetaAvance + "…"
+        mensajeEsError = false
+        controller.generarSiguienteToken()
     }
 
     function iniciarComparacion() {
@@ -171,15 +338,38 @@ PagePrincipal {
         inicioB = inicioA
         estadoA = "Preparando generación…"
         estadoB = "Preparando generación…"
-        mensajeEstado = "Generando con los mismos parámetros…"
+        pasosVisualizacionA = []
+        pasosVisualizacionB = []
+        detallesPendientesA = ({})
+        detallesPendientesB = ({})
+        detalleForwardComunA = ({})
+        detalleForwardComunB = ({})
+        indiceDetalleComun = -1
+        indiceExploracion = -1
+        sesionPasoAPaso = modoGeneracion.currentIndex === 0
+        pasoPendienteA = sesionPasoAPaso
+        pasoPendienteB = sesionPasoAPaso
+        mensajeEstado = sesionPasoAPaso
+                ? "Generando el primer token en ambos modelos…"
+                : "Generando de corrido con los mismos parámetros…"
         mensajeEsError = false
-        controller.iniciarGeneracion(
-                    prompt,
-                    maxTokens.value,
-                    temperatura.value,
-                    usarTopK.checked ? topK.value : 0,
-                    usarTopP.checked ? topP.value : 1.0,
-                    muestreoCodicioso.checked)
+        if (sesionPasoAPaso) {
+            controller.iniciarGeneracionPasoAPaso(
+                        prompt,
+                        maxTokens.value,
+                        temperatura.value,
+                        usarTopK.checked ? topK.value : 0,
+                        usarTopP.checked ? topP.value : 1.0,
+                        muestreoCodicioso.checked)
+        } else {
+            controller.iniciarGeneracion(
+                        prompt,
+                        maxTokens.value,
+                        temperatura.value,
+                        usarTopK.checked ? topK.value : 0,
+                        usarTopP.checked ? topP.value : 1.0,
+                        muestreoCodicioso.checked)
+        }
     }
 
     function volver() {
@@ -219,6 +409,8 @@ PagePrincipal {
         function onError(mensaje) {
             root.mensajeEstado = String(mensaje)
             root.mensajeEsError = true
+            root.pasoPendienteA = false
+            root.pasoPendienteB = false
             if (root.estadoA.indexOf("Preparando") === 0)
                 root.estadoA = "No iniciada"
             if (root.estadoB.indexOf("Preparando") === 0)
@@ -242,19 +434,23 @@ PagePrincipal {
         function onToken_generado(paso) {
             if (paso && paso.texto_parcial !== undefined)
                 root.textoA = String(paso.texto_parcial)
-            if (paso && paso.visualizacion) {
-                var siguientes = root.pasosA.slice(0)
-                siguientes.push(paso.visualizacion)
-                root.pasosA = siguientes
-            }
+            root.registrarToken("A", paso)
+            var resumenA = root.snapshotLigero(paso)
+            if (resumenA)
+                root.pasosA = root.pasosA.concat([resumenA])
             root.tokensA += 1
-            root.estadoA = "Generando token " + root.tokensA + "…"
+            root.estadoA = root.sesionPasoAPaso
+                    ? "Token " + root.tokensA + " listo"
+                    : "Generando token " + root.tokensA + "…"
+            if (root.sesionPasoAPaso && !root.pasoPendiente)
+                root.mensajeEstado = "Paso listo. Explora las trazas o genera el siguiente token."
         }
         function onGeneracion_completa(texto) {
             if (texto !== undefined && texto !== null)
                 root.textoA = String(texto)
             root.duracionA = Math.max(0, Date.now() - root.inicioA)
             root.estadoA = "Completada"
+            root.pasoPendienteA = false
             root.mensajeEstado = root.controladorB && root.controladorB.estaGenerando
                     ? "Modelo A terminó; Modelo B continúa generando…"
                     : "Comparación finalizada. Revisa ambas respuestas."
@@ -264,9 +460,11 @@ PagePrincipal {
                 root.textoA = String(texto)
             root.duracionA = Math.max(0, Date.now() - root.inicioA)
             root.estadoA = "Detenida"
+            root.pasoPendienteA = false
         }
         function onError(mensaje) {
             root.estadoA = "Error: " + String(mensaje)
+            root.pasoPendienteA = false
             root.mensajeEstado = "Modelo A: " + String(mensaje)
             root.mensajeEsError = true
         }
@@ -279,19 +477,23 @@ PagePrincipal {
         function onToken_generado(paso) {
             if (paso && paso.texto_parcial !== undefined)
                 root.textoB = String(paso.texto_parcial)
-            if (paso && paso.visualizacion) {
-                var siguientes = root.pasosB.slice(0)
-                siguientes.push(paso.visualizacion)
-                root.pasosB = siguientes
-            }
+            root.registrarToken("B", paso)
+            var resumenB = root.snapshotLigero(paso)
+            if (resumenB)
+                root.pasosB = root.pasosB.concat([resumenB])
             root.tokensB += 1
-            root.estadoB = "Generando token " + root.tokensB + "…"
+            root.estadoB = root.sesionPasoAPaso
+                    ? "Token " + root.tokensB + " listo"
+                    : "Generando token " + root.tokensB + "…"
+            if (root.sesionPasoAPaso && !root.pasoPendiente)
+                root.mensajeEstado = "Paso listo. Explora las trazas o genera el siguiente token."
         }
         function onGeneracion_completa(texto) {
             if (texto !== undefined && texto !== null)
                 root.textoB = String(texto)
             root.duracionB = Math.max(0, Date.now() - root.inicioB)
             root.estadoB = "Completada"
+            root.pasoPendienteB = false
             root.mensajeEstado = root.controladorA && root.controladorA.estaGenerando
                     ? "Modelo B terminó; Modelo A continúa generando…"
                     : "Comparación finalizada. Revisa ambas respuestas."
@@ -301,9 +503,11 @@ PagePrincipal {
                 root.textoB = String(texto)
             root.duracionB = Math.max(0, Date.now() - root.inicioB)
             root.estadoB = "Detenida"
+            root.pasoPendienteB = false
         }
         function onError(mensaje) {
             root.estadoB = "Error: " + String(mensaje)
+            root.pasoPendienteB = false
             root.mensajeEstado = "Modelo B: " + String(mensaje)
             root.mensajeEsError = true
         }
@@ -340,7 +544,7 @@ PagePrincipal {
             }
             Text {
                 text: root.modelosListos
-                      ? "Mismo prompt y muestreo; dos resultados independientes."
+                      ? "Mismo prompt; compara encoder, decoder y salida token a token."
                       : "Selecciona modelos ya entrenados desde tu biblioteca local."
                 color: Style.Theme.texto_secundario
                 font.pixelSize: 14 * Math.min(root.sx, root.sy)
@@ -656,6 +860,15 @@ PagePrincipal {
                         font.bold: true
                         font.pixelSize: 13 * Math.min(root.sx, root.sy)
                     }
+                    BotonAcento {
+                        objectName: "comparisonOpenExplorerButton"
+                        visible: root.hayTraza
+                        Layout.preferredWidth: 205 * root.sx
+                        Layout.preferredHeight: 34 * root.sy
+                        text: "Explorar encoder y decoder"
+                        font.pixelSize: 11 * Math.min(root.sx, root.sy)
+                        onClicked: root.abrirExploracion()
+                    }
                     BotonPrincipal {
                         Layout.preferredWidth: 170 * root.sx
                         Layout.preferredHeight: 34 * root.sy
@@ -802,19 +1015,54 @@ PagePrincipal {
 
                         RowLayout {
                             Layout.fillWidth: true
-                            Item { Layout.fillWidth: true }
-                            BotonPrincipal {
-                                Layout.preferredWidth: 225 * root.sx
-                                Layout.preferredHeight: 45 * root.sy
-                                text: "▶ Generar ambos"
-                                size_text: 0.25
+                            spacing: 7 * root.sx
+
+                            Text {
+                                text: "Modo"
+                                color: Style.Theme.texto_secundario
+                                font.pixelSize: 11 * Math.min(root.sx, root.sy)
+                            }
+
+                            SelectorPrincipal {
+                                id: modoGeneracion
+                                objectName: "comparisonGenerationMode"
+                                Layout.preferredWidth: 152 * root.sx
+                                Layout.preferredHeight: 38 * root.sy
+                                model: ["Token por token", "De corrido"]
+                                currentIndex: 0
                                 enabled: !root.controller.estaGenerando
-                                         && campoPrompt.text.trim().length > 0
+                                sx: root.sx
+                                sy: root.sy
+                            }
+
+                            Item { Layout.fillWidth: true }
+
+                            BotonPrincipal {
+                                objectName: "comparisonGenerateButton"
+                                Layout.preferredWidth: 205 * root.sx
+                                Layout.preferredHeight: 45 * root.sy
+                                text: root.sesionPasoAPaso && root.controller.estaGenerando
+                                      ? root.etiquetaAvance
+                                      : (modoGeneracion.currentIndex === 0
+                                         ? "▶ Primer token" : "▶ Generar ambos")
+                                size_text: 0.25
+                                enabled: campoPrompt.text.trim().length > 0
+                                         && (!root.controller.estaGenerando
+                                             || (root.sesionPasoAPaso
+                                                 && !root.pasoPendiente))
                                 opacity: enabled ? 1.0 : 0.48
-                                onClicked: root.iniciarComparacion()
+                                onClicked: {
+                                    if (root.sesionPasoAPaso
+                                            && root.controller.estaGenerando)
+                                        root.avanzarUnToken()
+                                    else
+                                        root.iniciarComparacion()
+                                }
                             }
                             BotonPrincipal {
-                                Layout.preferredWidth: 130 * root.sx
+                                visible: !root.sesionPasoAPaso
+                                         && root.controller.estaGenerando
+                                Layout.preferredWidth: visible ? 116 * root.sx : 0
                                 Layout.preferredHeight: 45 * root.sy
                                 text: root.controladorA && root.controladorA.estaPausado
                                       ? "▶ Reanudar" : "⏸ Pausar"
@@ -829,7 +1077,7 @@ PagePrincipal {
                                 }
                             }
                             BotonPrincipal {
-                                Layout.preferredWidth: 120 * root.sx
+                                Layout.preferredWidth: 108 * root.sx
                                 Layout.preferredHeight: 45 * root.sy
                                 text: "■ Detener"
                                 size_text: 0.24
@@ -1060,5 +1308,113 @@ PagePrincipal {
                 }
             }
         }
+    }
+
+    Component {
+        id: panelExploradorComparacion
+
+        ComparisonExplorationPanel {
+            snapshotsA: root.pasosVisualizacionA
+            snapshotsB: root.pasosVisualizacionB
+            infoA: root.controller ? root.controller.modeloAInfo : ({})
+            infoB: root.controller ? root.controller.modeloBInfo : ({})
+            detailA: root.detallePara("A", root.indiceExploracion)
+            detailB: root.detallePara("B", root.indiceExploracion)
+            detailIndexA: root.indiceDetallePara("A", root.indiceExploracion)
+            detailIndexB: root.indiceDetallePara("B", root.indiceExploracion)
+            selectedIndex: root.indiceExploracion
+            stepMode: root.sesionPasoAPaso
+            canGenerateNext: Boolean(root.controller
+                                     && root.controller.estaGenerando
+                                     && root.sesionPasoAPaso)
+            tokenProcessing: root.pasoPendiente
+            stateA: root.estadoA
+            stateB: root.estadoB
+            tokenCountA: root.tokensA
+            tokenCountB: root.tokensB
+            modelAActive: root.modeloAActivo
+            modelBActive: root.modeloBActivo
+            nextTokenLabel: root.etiquetaAvance
+            sx: Math.min(1, width / Style.Theme.baseWidth)
+            sy: Math.min(1, height / Style.Theme.baseHeight)
+            onCloseRequested: root.cerrarExploracion()
+            onNextTokenRequested: root.avanzarUnToken()
+            onStepSelected: function(index) { root.indiceExploracion = index }
+        }
+    }
+
+    Popup {
+        id: exploradorComparacion
+        objectName: "comparisonExplorerPopup"
+        x: (root.width - width) / 2
+        y: (root.height - height) / 2
+        width: root.width - 42 * root.sx
+        height: root.height - 42 * root.sy
+        padding: 0
+        modal: true
+        dim: true
+        focus: true
+        closePolicy: Popup.CloseOnEscape
+
+        Overlay.modal: Rectangle { color: "#990F172A" }
+        background: Rectangle { color: "transparent" }
+
+        contentItem: Loader {
+            sourceComponent: panelExploradorComparacion
+        }
+    }
+
+    Window {
+        id: exploradorComparacionAparte
+        objectName: "comparisonExplorerSecondaryWindow"
+        visible: false
+        minimumWidth: 960
+        minimumHeight: 600
+        width: Style.Theme.baseWidth
+        height: Style.Theme.baseHeight
+        title: "Comparaci\u00f3n detallada de modelos"
+        color: Style.Theme.fondo
+
+        Loader {
+            anchors.fill: parent
+            anchors.margins: 12
+            sourceComponent: panelExploradorComparacion
+        }
+
+        Component.onCompleted: {
+            if (typeof displayManager !== "undefined" && displayManager)
+                displayManager.registerAuxiliaryWindow(
+                            exploradorComparacionAparte, true)
+        }
+        onVisibleChanged: {
+            if (visible
+                    && typeof displayManager !== "undefined"
+                    && displayManager)
+                displayManager.placeAuxiliaryWindow(
+                            exploradorComparacionAparte, true)
+        }
+        onClosing: function(close) {
+            root.cerrarExploracion()
+            close.accepted = true
+        }
+    }
+
+    onSecondaryDisplayAvailableChanged: {
+        if (secondaryDisplayAvailable && exploradorComparacion.opened) {
+            exploradorComparacion.close()
+            exploradorComparacionAparte.show()
+            if (typeof displayManager !== "undefined" && displayManager)
+                displayManager.placeAuxiliaryWindow(
+                            exploradorComparacionAparte, true)
+        } else if (!secondaryDisplayAvailable
+                   && exploradorComparacionAparte.visible) {
+            exploradorComparacionAparte.hide()
+            exploradorComparacion.open()
+        }
+    }
+
+    onVisibleChanged: {
+        if (!visible)
+            root.cerrarExploracion()
     }
 }

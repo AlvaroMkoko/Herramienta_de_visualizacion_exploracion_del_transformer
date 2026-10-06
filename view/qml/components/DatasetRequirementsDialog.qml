@@ -76,7 +76,7 @@ Dialog {
                 }
             }
 
-            ToolButton {
+            BotonHerramientaAccesible {
                 id: closeButton
                 objectName: "datasetRequirementsCloseButton"
                 Layout.alignment: Qt.AlignTop
@@ -430,7 +430,7 @@ Dialog {
                 font.pixelSize: 12
             }
 
-            Button {
+            BotonAccesible {
                 id: understoodButton
                 objectName: "datasetRequirementsUnderstoodButton"
                 Layout.preferredWidth: 150

@@ -647,35 +647,40 @@ Item {
         }
     }
 
-    component RaceButton: Rectangle {
+    component RaceButton: BotonAccesible {
         id: raceButton
         property string label: ""
         property bool primary: false
         property real sx: 1
         property real sy: 1
-        signal clicked()
+        text: label
         implicitWidth: primary ? 98 * sx : 38 * sx
-        implicitHeight: 32 * sy
-        radius: 8 * sx
-        color: !enabled ? Style.Theme.superficie_alterna
-                        : (primary ? Style.Theme.inferencia_foco : Style.Theme.surface)
-        border.color: !enabled ? Style.Theme.borde_suave : Style.Theme.inferencia_foco
+        implicitHeight: Math.max(36, 32 * sy)
+        radioResaltado: 8 * sx
         opacity: enabled ? 1 : 0.55
-        Text {
-            anchors.centerIn: parent
+
+        background: Rectangle {
+            radius: raceButton.radioResaltado
+            color: !raceButton.enabled
+                   ? Style.Theme.superficie_alterna
+                   : (raceButton.primary
+                      ? Style.Theme.inferencia_foco
+                      : (raceButton.hovered ? Style.Theme.aviso_fondo
+                                            : Style.Theme.surface))
+            border.color: !raceButton.enabled ? Style.Theme.borde_suave
+                                              : Style.Theme.inferencia_foco
+        }
+
+        contentItem: Text {
             text: raceButton.label
             color: raceButton.primary && raceButton.enabled
                    ? Style.Theme.inferencia_sobre_foco
                    : (raceButton.enabled ? Style.Theme.inferencia_foco
                                          : Style.Theme.texto_terciario)
             font.bold: true
-            font.pixelSize: 9 * raceButton.sx
-        }
-        MouseArea {
-            anchors.fill: parent
-            enabled: raceButton.enabled
-            cursorShape: Qt.PointingHandCursor
-            onClicked: raceButton.clicked()
+            font.pixelSize: Math.max(Style.Theme.smallSize, 9 * raceButton.sx)
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
         }
     }
 }

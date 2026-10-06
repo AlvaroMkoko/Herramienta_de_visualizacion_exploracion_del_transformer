@@ -11,7 +11,16 @@ os.environ.setdefault("QSG_RHI_BACKEND", "software")
 os.environ.setdefault("QT_QUICK_CONTROLS_STYLE", "Basic")
 
 import pytest
-from PySide6.QtCore import Q_ARG, QMetaObject, QObject, Qt, QUrl
+from PySide6.QtCore import (
+    Property,
+    Q_ARG,
+    QMetaObject,
+    QObject,
+    Qt,
+    QUrl,
+    Signal,
+    Slot,
+)
 from PySide6.QtQml import QJSValue, QQmlComponent, QQmlEngine
 from PySide6.QtQuick import QQuickItem
 
@@ -22,6 +31,27 @@ from viewmodel.visual_adapter import _CONCEPTO_POR_METRICA
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 QML_ROOT = PROJECT_ROOT / "view" / "qml"
+
+
+class _DisplayManagerPrueba(QObject):
+    screensChanged = Signal()
+
+    def __init__(self):
+        super().__init__()
+        self.placements = 0
+
+    @Property(bool, notify=screensChanged)
+    def hasSecondaryScreen(self):  # noqa: N802
+        return True
+
+    @Slot(QObject, bool)
+    def registerAuxiliaryWindow(self, _window, _maximize):  # noqa: N802
+        return None
+
+    @Slot(QObject, bool, result=bool)
+    def placeAuxiliaryWindow(self, _window, _maximize):  # noqa: N802
+        self.placements += 1
+        return True
 
 
 def _errors(component: QQmlComponent) -> str:
@@ -41,6 +71,60 @@ def _invoke_qml(obj: QObject, method: str, argument=None) -> None:
             Q_ARG("QVariant", argument),
         )
     assert invoked, f"No se pudo invocar {method}"
+
+
+def test_lector_contextual_usa_la_segunda_pantalla_cuando_esta_disponible(qapp):
+    engine = QQmlEngine()
+    display_manager = _DisplayManagerPrueba()
+    theory_controller = TheoryController()
+    engine.rootContext().setContextProperty("displayManager", display_manager)
+    engine.rootContext().setContextProperty("theoryController", theory_controller)
+    component = QQmlComponent(engine)
+    component.setData(
+        b"""
+import QtQuick
+import QtQuick.Controls
+import "components" as Components
+
+ApplicationWindow {
+    width: 900
+    height: 700
+    visible: false
+    Components.Modal {
+        objectName: "dualTheoryModal"
+        hostWidth: 900
+        hostHeight: 700
+        theoryController: theoryController
+    }
+}
+""",
+        QUrl.fromLocalFile(str(QML_ROOT / "DualTheoryHost.qml")),
+    )
+    assert component.status() != QQmlComponent.Status.Error, _errors(component)
+    window = component.create()
+    assert window is not None, _errors(component)
+
+    modal = window.findChild(QObject, "dualTheoryModal")
+    detached = window.findChild(QObject, "detachedTheoryWindow")
+    assert modal is not None
+    assert detached is not None
+
+    _invoke_qml(modal, "openConcept", "embeddings")
+    qapp.processEvents()
+
+    assert modal.property("detachedVisible") is True
+    assert modal.property("readerVisible") is True
+    assert modal.property("opened") is False
+    assert detached.property("visible") is True
+    assert display_manager.placements > 0
+
+    _invoke_qml(modal, "dismiss")
+    qapp.processEvents()
+    assert modal.property("readerVisible") is False
+
+    window.deleteLater()
+    engine.deleteLater()
+    qapp.processEvents()
 
 
 @pytest.mark.parametrize(
@@ -101,6 +185,10 @@ ApplicationWindow {{
         title = window.findChild(QObject, "comparisonScreenTitle")
         assert title is not None
         assert title.property("text") == "Comparación de modelos"
+        assert window.findChild(QObject, "comparisonGenerationMode") is not None
+        assert window.findChild(QObject, "comparisonGenerateButton") is not None
+        assert window.findChild(QObject, "comparisonOpenExplorerButton") is not None
+        assert window.findChild(QObject, "comparisonExplorationPanel") is not None
 
     window.deleteLater()
     engine.deleteLater()

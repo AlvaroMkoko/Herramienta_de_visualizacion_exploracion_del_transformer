@@ -1,0 +1,318 @@
+PREGUNTAS Y RESPUESTAS CORRECTAS — PRE-TEST Y POST-TEST
+Fuente: data/evaluacion/question_bank.json
+
+==============================================================================
+PRE-TEST
+==============================================================================
+
+1. [T1] Tokenización
+   Tipo: Completar
+   Pregunta: Los tokenizadores modernos construyen su vocabulario con el algoritmo ________, que une repetidamente el par de símbolos contiguos más frecuente del corpus hasta formar sub-palabras.
+   Respuesta correcta: byte-pair encoding
+   También se aceptan: byte pair encoding; bpe; codificación por pares de bytes; codificación de pares de bytes
+
+2. [T2] Tokenización
+   Tipo: Opción múltiple
+   Pregunta: Un tokenizador por sub-palabras procesa la frase «el desparasitante». ¿Cuál es el resultado más coherente con su funcionamiento?
+   Respuesta correcta: (c) ["el", " des", "paras", "itante"]: la palabra común queda entera y la rara se arma con fragmentos
+
+3. [T3] Tokenización
+   Tipo: Opción múltiple
+   Pregunta: Tras tokenizar, «gato» recibe el ID 9040 y «perro» el ID 9041. ¿Qué se puede concluir de que sus IDs sean consecutivos?
+   Respuesta correcta: (a) Nada sobre su significado: el ID solo indica qué fila ocupa el token en el vocabulario
+
+4. [T4] Tokenización
+   Tipo: Ordenar elementos
+   Pregunta: Ordena las representaciones por las que pasa la frase «el gato duerme» desde que se escribe hasta que está lista para combinarse con la codificación posicional.
+   Respuesta correcta:
+   - «el gato duerme» (texto plano) -> 1
+   - ["el", " gato", " duerme"] -> 2
+   - [318, 9040, 15234] -> 3
+   - Tres vectores de d_model números, uno por token -> 4
+
+5. [E1] Embeddings y Codificación Posicional
+   Tipo: Opción múltiple
+   Pregunta: ¿Qué es el embedding de un token?
+   Respuesta correcta: (b) Un vector de números, aprendido durante el entrenamiento, que representa al token
+
+6. [E2] Embeddings y Codificación Posicional
+   Tipo: Selección múltiple
+   Pregunta: Selecciona todas las afirmaciones correctas sobre la entrada al modelo (embedding + codificación posicional).
+   Respuestas correctas:
+   - (a) El embedding de «banco» es el mismo en «me senté en el banco» y en «fui al banco a pagar»
+   - (b) El embedding y la codificación posicional se suman elemento a elemento
+   - (d) En el Transformer original, la codificación posicional se calcula con una fórmula fija; no se aprende
+
+7. [E3] Embeddings y Codificación Posicional
+   Tipo: Opción múltiple — predicción
+   Pregunta: Se elimina la codificación posicional y se pasan por la self-attention del encoder dos frases que producen exactamente los mismos tokens: «el perro mordió al hombre» y «el hombre mordió al perro».
+             
+             Predice qué ocurre con el vector de salida de «perro».
+   Respuesta correcta: (d) Será idéntico en ambas frases, porque la atención por sí sola no distingue el orden
+
+8. [E4] Embeddings y Codificación Posicional
+   Tipo: Clasificación / arrastrar y soltar
+   Pregunta: Clasifica cada enunciado en la categoría que le corresponde: solo al Embedding, solo a la Codificación posicional, o a Ambos.
+   Respuesta correcta:
+   - Es idéntico para «gato» y para «perro» si ambos ocupan la posición 3 -> Codificación posicional
+   - Sus valores cambian cuando el modelo se entrena -> Embedding
+   - Para una frase, forma una matriz [seq_len, d_model] -> Ambos
+   - Se obtiene con senos y cosenos de distintas frecuencias -> Codificación posicional
+   - Da el mismo vector a «banco» sin importar dónde aparezca -> Embedding
+   - Es uno de los dos sumandos que forman la entrada X de la primera capa -> Ambos
+
+9. [A1] Mecanismo de Atención Query/Key/Value
+   Tipo: Relacionar columnas
+   Pregunta: Relaciona cada elemento del mecanismo de atención con su función.
+   Respuesta correcta:
+   - Query -> Lo que un token está buscando en los demás
+   - Key -> Lo que un token ofrece para que los demás lo encuentren
+   - Value -> El contenido que un token entrega si otros lo atienden
+   - Pesos de atención -> Proporción en que un token toma información de cada uno de los demás; cada fila suma 1
+
+10. [A2] Mecanismo de Atención Query/Key/Value
+   Tipo: Dos etapas (resultado + razón)
+   Pregunta: Un modelo calcula los scores de atención como Q·Kᵀ, pero NO los divide entre √d_k. Se aumenta d_k de 16 a 1024.
+   Respuestas por etapa:
+   - Resultado: ¿Qué le ocurre a la distribución que produce softmax en cada fila?
+     Correcta: (c) Se vuelve casi one-hot: un token se queda con casi todo el peso
+   - Razón: ¿Cuál es la razón de ese resultado?
+     Correcta: (a) La varianza de cada producto punto crece con d_k, así que los scores quedan muy separados
+
+11. [A3] Mecanismo de Atención Query/Key/Value
+   Tipo: Detectar y corregir error
+   Pregunta: Lee la afirmación. Contiene exactamente un error.
+             
+             «En la self-attention enmascarada del decoder, [1] cada token puede atenderse a sí mismo, [2] la máscara bloquea el triángulo inferior de la matriz de scores, [3] colocando −∞ antes de softmax, [4] para que ningún token vea posiciones futuras.»
+   Respuestas por etapa:
+   - Detectar: ¿Cuál fragmento contiene el error?
+     Correcta: (2) [2] la máscara bloquea el triángulo inferior de la matriz de scores
+   - Corregir: Elige la corrección adecuada.
+     Correcta: (a) …la máscara bloquea el triángulo superior de la matriz de scores…
+
+12. [A4] Mecanismo de Atención Query/Key/Value
+   Tipo: Interpretación de matriz de atención
+   Pregunta: La matriz muestra los pesos de atención de una cabeza del encoder (fila = token que atiende, columna = token atendido). ¿De qué token toma más información «ladró» para construir su nueva representación?
+   Recurso: Pesos de atención (fila = token que atiende, columna = token atendido)
+            Columnas: El | perro | ladró | fuerte
+            El: 0,40 | 0,35 | 0,15 | 0,10
+            perro: 0,10 | 0,30 | 0,45 | 0,15
+            ladró: 0,05 | 0,62 | 0,18 | 0,15
+            fuerte: 0,05 | 0,15 | 0,70 | 0,10
+   Respuesta correcta: (b) perro
+
+13. [F1] Feed-Forward y Normalización
+   Tipo: Opción múltiple
+   Pregunta: ¿Qué hace la red feed-forward (FFN) dentro de cada capa del Transformer?
+   Respuesta correcta: (a) Transforma cada token por separado, usando los mismos pesos para todas las posiciones
+
+14. [F2] Feed-Forward y Normalización
+   Tipo: Verdadero/Falso + justificación
+   Pregunta: «Layer Normalization calcula la media y la varianza sobre las d_model componentes de cada token, sin usar los demás tokens ni los demás ejemplos del batch.»
+   Respuestas por etapa:
+   - Verdadero o Falso: ¿La afirmación es verdadera o falsa?
+     Correcta: (verdadero) Verdadero
+   - Justificación: Justifica brevemente tu respuesta:
+     Respuesta abierta de justificación; esta etapa no se puntúa y no tiene una única respuesta correcta.
+
+15. [F3] Feed-Forward y Normalización
+   Tipo: Opción múltiple
+   Pregunta: La atención ya reúne información de todos los tokens. ¿Por qué se necesita la FFN después de ella?
+   Respuesta correcta: (c) Porque la atención solo promedia Values (algo lineal) y la FFN añade no linealidad
+
+16. [F4] Feed-Forward y Normalización
+   Tipo: Opción múltiple — predicción
+   Pregunta: En un bloque Add & Norm, un token llega con x = [1.0, −2.0, 0.5] y la subcapa produce Sublayer(x) = [0.2, 0.1, −0.5].
+             
+             Predice qué vector entra a LayerNorm.
+   Respuesta correcta: (d) [1.2, −1.9, 0.0]
+
+17. [S1] Estrategias de Muestreo
+   Tipo: Opción múltiple
+   Pregunta: ¿Qué hace la temperatura T durante la generación de texto?
+   Respuesta correcta: (b) Divide los logits antes de softmax: concentra la distribución (T < 1) o la reparte (T > 1)
+
+18. [S2] Estrategias de Muestreo
+   Tipo: Relacionar columnas
+   Pregunta: Relaciona cada estrategia de generación con el comportamiento que produce.
+   Respuesta correcta:
+   - Greedy -> Elige siempre el token más probable; con el mismo contexto repite la misma elección
+   - Top-k -> Sortea siempre entre la misma cantidad de candidatos, sin importar qué tan segura sea la distribución
+   - Top-p -> Sortea entre los tokens que acumulan cierta probabilidad; cuántos son cambia según la confianza del modelo
+   - Temperatura alta (T > 1) -> Da más oportunidad a alternativas que antes eran poco probables
+
+19. [S3] Estrategias de Muestreo
+   Tipo: Opción múltiple — predicción
+   Pregunta: Los logits de tres candidatos son [2, 1, 0]. Con T = 1, el primero tiene probabilidad ≈ 0.67.
+             
+             Si se baja la temperatura a T = 0.5, predice qué ocurre con la probabilidad del primer candidato.
+   Respuesta correcta: (a) Sube (≈ 0.87), porque las diferencias entre logits se amplifican
+
+20. [S4] Estrategias de Muestreo
+   Tipo: Ordenar elementos
+   Pregunta: Ordena los pasos que sigue el modelo para elegir el siguiente token con temperatura y top-k.
+   Respuesta correcta:
+   - La capa Linear produce un logit por cada token del vocabulario -> 1
+   - Se dividen los logits entre la temperatura T -> 2
+   - Softmax convierte los logits ajustados en probabilidades -> 3
+   - Top-k conserva los k tokens más probables y renormaliza sus probabilidades -> 4
+   - Se sortea un token entre los candidatos que quedaron -> 5
+
+==============================================================================
+POST-TEST
+==============================================================================
+
+1. [T1] Tokenización
+   Tipo: Completar
+   Pregunta: El algoritmo de tokenización por sub-palabras que aprende qué fragmentos son frecuentes fusionando, paso a paso, pares de símbolos adyacentes se llama ________.
+   Respuesta correcta: byte-pair encoding
+   También se aceptan: byte pair encoding; bpe; codificación por pares de bytes; codificación de pares de bytes
+
+2. [T2] Tokenización
+   Tipo: Opción múltiple
+   Pregunta: Un tokenizador por sub-palabras recibe la frase «la hiperparametrización». ¿Cuál es el resultado más coherente con su funcionamiento?
+   Respuesta correcta: (b) ["la", " hiper", "param", "etr", "ización"]: la palabra común queda entera y la rara se arma con fragmentos
+
+3. [T3] Tokenización
+   Tipo: Opción múltiple
+   Pregunta: En un vocabulario, «banco» tiene el ID 500 y «silla» el ID 501. Un compañero afirma que, por eso, el modelo «sabe» que ambas palabras se relacionan con sentarse. ¿Qué es lo correcto?
+   Respuesta correcta: (d) No: el ID solo es un índice; cualquier relación de significado se aprende en los embeddings
+
+4. [T4] Tokenización
+   Tipo: Ordenar elementos
+   Pregunta: Ordena las representaciones por las que pasa la frase «tokenización rápida» desde que se escribe hasta que está lista para combinarse con la codificación posicional.
+   Respuesta correcta:
+   - «tokenización rápida» (texto plano) -> 1
+   - ["token", "iz", "ación", " rápida"] -> 2
+   - [5021, 318, 7788, 12040] -> 3
+   - Una matriz de 4 filas × d_model columnas -> 4
+
+5. [E1] Embeddings y Codificación Posicional
+   Tipo: Opción múltiple
+   Pregunta: ¿Cómo se obtiene el embedding de un token a partir de su ID?
+   Respuesta correcta: (a) Se toma la fila de la tabla de embeddings (aprendida) que indica el ID
+
+6. [E2] Embeddings y Codificación Posicional
+   Tipo: Selección múltiple
+   Pregunta: Selecciona todas las afirmaciones correctas sobre la entrada al modelo (embedding + codificación posicional).
+   Respuestas correctas:
+   - (a) La codificación posicional tiene la misma forma que la matriz de embeddings: [seq_len, d_model]
+   - (c) Dos tokens distintos que ocupan la misma posición (en frases distintas) reciben la misma codificación posicional
+   - (e) Tras el entrenamiento, tokens con usos parecidos tienden a tener embeddings parecidos
+
+7. [E3] Embeddings y Codificación Posicional
+   Tipo: Opción múltiple — predicción
+   Pregunta: Sin codificación posicional, se desordenan (permutan) las filas de la matriz de entrada X de la self-attention del encoder.
+             
+             Predice qué ocurre con la matriz de salida.
+   Respuesta correcta: (c) Contiene los mismos vectores de antes, solo reordenados igual que la entrada
+
+8. [E4] Embeddings y Codificación Posicional
+   Tipo: Clasificación / arrastrar y soltar
+   Pregunta: Clasifica cada enunciado en la categoría que le corresponde: solo al Embedding, solo a la Codificación posicional, o a Ambos.
+   Respuesta correcta:
+   - Se obtiene usando el ID del token como índice de fila -> Embedding
+   - Puede calcularse para posiciones más largas que las vistas en entrenamiento -> Codificación posicional
+   - Tiene d_model componentes por cada token -> Ambos
+   - Depende de dónde está el token, no de cuál es -> Codificación posicional
+   - Tokens de uso parecido terminan con vectores parecidos -> Embedding
+   - Tiene una fila por cada token de la secuencia de entrada -> Ambos
+
+9. [A1] Mecanismo de Atención Query/Key/Value
+   Tipo: Relacionar columnas
+   Pregunta: La atención se parece a un buscador. Relaciona cada elemento de la atención con su equivalente en la búsqueda.
+   Respuesta correcta:
+   - Query -> El término que escribes en la barra de búsqueda
+   - Key -> Los títulos indexados con los que se compara lo que escribiste
+   - Value -> El contenido de cada resultado, que es lo que realmente se recibe
+   - Salida de la atención (Z) -> La mezcla final de contenidos, ponderada por qué tanto coincidió cada uno
+
+10. [A2] Mecanismo de Atención Query/Key/Value
+   Tipo: Dos etapas (resultado + razón)
+   Pregunta: Dos modelos son idénticos salvo por d_k: el Modelo 1 usa d_k = 8 y el Modelo 2 usa d_k = 512. Ninguno divide los scores entre √d_k.
+   Respuestas por etapa:
+   - Resultado: ¿En cuál es más probable que softmax se sature (un peso casi en 1 y el resto casi en 0)?
+     Correcta: (b) En el Modelo 2
+   - Razón: ¿Cuál es la razón?
+     Correcta: (d) El producto punto suma más términos y su varianza crece con d_k, separando los scores
+
+11. [A3] Mecanismo de Atención Query/Key/Value
+   Tipo: Detectar y corregir error
+   Pregunta: Lee la afirmación. Contiene exactamente un error.
+             
+             «En la self-attention enmascarada del decoder, [1] la máscara tiene la misma forma que la matriz de scores, [2] las posiciones bloqueadas reciben −∞ antes de softmax, [3] por lo que su peso queda en 0.5 después de softmax, [4] y así el token i solo atiende a las posiciones 1 a i.»
+   Respuestas por etapa:
+   - Detectar: ¿Cuál fragmento contiene el error?
+     Correcta: (3) [3] por lo que su peso queda en 0.5 después de softmax
+   - Corregir: Elige la corrección adecuada.
+     Correcta: (c) …por lo que su peso queda exactamente en 0 después de softmax…
+
+12. [A4] Mecanismo de Atención Query/Key/Value
+   Tipo: Interpretación de matriz de atención
+   Pregunta: La matriz muestra los pesos de atención de una cabeza del encoder (fila = token que atiende, columna = token atendido). ¿De qué token toma más información «comió» para construir su nueva representación?
+   Recurso: Pesos de atención (fila = token que atiende, columna = token atendido)
+            Columnas: La | niña | comió | pan
+            La: 0,30 | 0,50 | 0,10 | 0,10
+            niña: 0,15 | 0,25 | 0,50 | 0,10
+            comió: 0,05 | 0,30 | 0,15 | 0,50
+            pan: 0,05 | 0,20 | 0,60 | 0,15
+   Respuesta correcta: (d) pan
+
+13. [F1] Feed-Forward y Normalización
+   Tipo: Opción múltiple
+   Pregunta: ¿Cuál es la estructura de la FFN en el Transformer original?
+   Respuesta correcta: (c) Dos capas lineales con una activación en medio: expande de d_model a d_ff y regresa a d_model
+
+14. [F2] Feed-Forward y Normalización
+   Tipo: Verdadero/Falso + justificación
+   Pregunta: «Layer Normalization calcula la media y la varianza de cada característica usando los valores de todos los ejemplos del batch.»
+   Respuestas por etapa:
+   - Verdadero o Falso: ¿La afirmación es verdadera o falsa?
+     Correcta: (falso) Falso
+   - Justificación: Justifica brevemente tu respuesta:
+     Respuesta abierta de justificación; esta etapa no se puntúa y no tiene una única respuesta correcta.
+
+15. [F3] Feed-Forward y Normalización
+   Tipo: Opción múltiple
+   Pregunta: Si se quitara la ReLU de la FFN, dejando dos capas lineales seguidas, ¿qué se perdería?
+   Respuesta correcta: (b) La no linealidad: dos capas lineales seguidas equivalen a una sola capa lineal
+
+16. [F4] Feed-Forward y Normalización
+   Tipo: Opción múltiple — predicción
+   Pregunta: En un bloque Add & Norm, un token llega con x = [0.4, 1.5, −1.0] y la subcapa produce Sublayer(x) = [−0.4, 0.5, 0.2].
+             
+             Predice qué vector entra a LayerNorm.
+   Respuesta correcta: (a) [0.0, 2.0, −0.8]
+
+17. [S1] Estrategias de Muestreo
+   Tipo: Opción múltiple
+   Pregunta: ¿Sobre qué actúa la temperatura T durante la generación de texto?
+   Respuesta correcta: (d) Sobre los logits, que se dividen entre T antes de aplicar softmax
+
+18. [S2] Estrategias de Muestreo
+   Tipo: Relacionar columnas
+   Pregunta: Relaciona cada configuración de generación con el efecto que produce.
+   Respuesta correcta:
+   - T = 0.3 -> Refuerza al candidato principal; las salidas se vuelven más predecibles, aunque aún se sortea
+   - T = 1.5 -> Aplana la distribución; las salidas se vuelven más variadas
+   - Top-k = 1 -> Equivale a greedy: solo queda el token más probable
+   - Top-p = 0.95 -> Conserva el grupo mínimo de tokens que acumula el 95 % de la probabilidad
+
+19. [S3] Estrategias de Muestreo
+   Tipo: Opción múltiple — predicción
+   Pregunta: Los logits de tres candidatos son [2, 1, 0]. Con T = 1, el primero tiene probabilidad ≈ 0.67.
+             
+             Si se sube la temperatura a T = 2, predice qué ocurre con la probabilidad del primer candidato.
+   Respuesta correcta: (c) Baja (≈ 0.51), porque las diferencias entre logits se reducen
+
+20. [S4] Estrategias de Muestreo
+   Tipo: Ordenar elementos
+   Pregunta: Ordena los pasos que sigue el modelo para elegir el siguiente token con T = 0.8 y top-p = 0.9.
+   Respuesta correcta:
+   - La capa Linear convierte el vector de la última posición en logits -> 1
+   - Los logits se dividen entre 0.8 -> 2
+   - Softmax convierte los logits ajustados en probabilidades -> 3
+   - Top-p conserva el grupo mínimo de tokens que acumula 0.9 y renormaliza -> 4
+   - Se sortea un token y se añade al contexto para el siguiente paso -> 5
+
+

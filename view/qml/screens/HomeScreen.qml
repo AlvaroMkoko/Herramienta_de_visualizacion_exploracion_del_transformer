@@ -143,7 +143,7 @@ PagePrincipal {
                 Layout.topMargin: 14
                 spacing: 8
 
-                Button {
+                BotonAccesible {
                     id: backToWelcomeButton
                     objectName: "homeBackToWelcomeButton"
                     Layout.preferredWidth: 150
@@ -471,7 +471,7 @@ PagePrincipal {
 
                                     Item { Layout.fillHeight: true }
 
-                                    Button {
+                                    BotonAccesible {
                                         id: guidedButton
                                         objectName: stageContainer.kind === "guided"
                                                     ? "guidedStartButton"
@@ -508,7 +508,7 @@ PagePrincipal {
                                         onClicked: root.openGuidedLearning()
                                     }
 
-                                    Button {
+                                    BotonAccesible {
                                         id: evaluationButton
                                         objectName: stageContainer.kind === "evaluation"
                                                     ? stageContainer.testButtonName
@@ -548,7 +548,7 @@ PagePrincipal {
                                         onClicked: root.openEvaluation(stageContainer.assessmentType)
                                     }
 
-                                    Button {
+                                    BotonAccesible {
                                         id: placeholderButton
                                         objectName: stageContainer.stagePlaceholder
                                                     ? stageContainer.testButtonName
@@ -595,7 +595,7 @@ PagePrincipal {
                                         visible: stageContainer.kind === "labs"
                                         spacing: 5
 
-                                        Button {
+                                        BotonAccesible {
                                             id: trainingButton
                                             objectName: stageContainer.kind === "labs"
                                                         ? "trainingLabButton"
@@ -645,7 +645,7 @@ PagePrincipal {
                                             }
                                         }
 
-                                        Button {
+                                        BotonAccesible {
                                             id: libraryButton
                                             objectName: stageContainer.kind === "labs"
                                                         ? "modelLibraryLabButton"
@@ -695,7 +695,7 @@ PagePrincipal {
                                             }
                                         }
 
-                                        Button {
+                                        BotonAccesible {
                                             id: comparisonButton
                                             objectName: stageContainer.kind === "labs"
                                                         ? "comparisonLabButton"
@@ -1063,7 +1063,7 @@ PagePrincipal {
                         }
                     }
 
-                    Button {
+                    BotonAccesible {
                         id: datasetButton
                         objectName: "datasetManagerButton"
                         Layout.preferredWidth: 168

@@ -810,29 +810,31 @@ Item {
         }
     }
 
-    component SceneButton: Rectangle {
+    component SceneButton: BotonAccesible {
         id: sceneButton
         property string label: ""
         property real sx: 1
         property real sy: 1
-        signal clicked()
+        text: label
         implicitWidth: buttonText.implicitWidth + 22 * sx
-        implicitHeight: 32 * sy
-        radius: 8 * sx
-        color: Style.Theme.inferencia_transformacion
-        border.color: Style.Theme.inferencia_transformacion
-        Text {
+        implicitHeight: Math.max(36, 32 * sy)
+        radioResaltado: 8 * sx
+
+        background: Rectangle {
+            radius: sceneButton.radioResaltado
+            color: sceneButton.down ? Style.Theme.acento_fuerte
+                                    : Style.Theme.inferencia_transformacion
+            border.color: Style.Theme.inferencia_transformacion
+        }
+
+        contentItem: Text {
             id: buttonText
-            anchors.centerIn: parent
             text: sceneButton.label
             color: Style.Theme.inferencia_sobre_transformacion
             font.bold: true
-            font.pixelSize: 9 * sceneButton.sx
-        }
-        MouseArea {
-            anchors.fill: parent
-            cursorShape: Qt.PointingHandCursor
-            onClicked: sceneButton.clicked()
+            font.pixelSize: Math.max(Style.Theme.smallSize, 9 * sceneButton.sx)
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
         }
     }
 

@@ -66,7 +66,7 @@ Rectangle {
                 Accessible.name: text
             }
 
-            ToolButton {
+            BotonHerramientaAccesible {
                 Layout.preferredWidth: 30 * root.contentScale
                 Layout.preferredHeight: 30 * root.contentScale
                 text: "×"
@@ -89,7 +89,7 @@ Rectangle {
             wrapMode: Text.WordWrap
         }
 
-        Button {
+        BotonAccesible {
             id: openButton
 
             objectName: root.openButtonObjectName

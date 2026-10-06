@@ -8,7 +8,7 @@ import "../styles" as Style
 // `enfasis: "medio"` lo baja a contorno de acento cuando la acción sigue
 // siendo relevante pero ya no es la recomendada (p. ej. "Repasar la ruta"
 // después de completarla).
-Button {
+BotonAccesible {
     id: control
 
     // "alto" | "medio"
