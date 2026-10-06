@@ -4,10 +4,15 @@ from __future__ import annotations
 
 import json
 import random
+import re
 
 from core.rutas import recurso
 from model.aprendizaje import LearningModuleCatalog, ModuleQuestionBank
-from model.evaluacion.scorers import calificar, es_respuesta_completa
+from model.evaluacion.scorers import (
+    calificar,
+    es_respuesta_completa,
+    normalizar_texto,
+)
 
 
 def _correct_answer(question: dict) -> dict:
@@ -59,18 +64,23 @@ def test_cada_modulo_tiene_25_preguntas_pre_y_post():
         bank.set_module(module["id"])
         assert len(bank.all_questions("pre")) == 25
         assert len(bank.all_questions("post")) == 25
-        assert {
-            question["difficulty"] for question in bank.all_questions("pre")
-        } == {"Básica", "Intermedia", "Avanzada"}
+        assert {question["difficulty"] for question in bank.all_questions("pre")} == {
+            "Básica",
+            "Intermedia",
+            "Avanzada",
+        }
         assert {
             question["pedagogical_type"] for question in bank.all_questions("pre")
         } == set(ModuleQuestionBank.PEDAGOGICAL_TYPES)
         assert {
             question["pedagogical_type"] for question in bank.all_questions("post")
         } == set(ModuleQuestionBank.PEDAGOGICAL_TYPES)
-        assert {
-            question["bloom_level"] for question in bank.all_questions("pre")
-        } == {"Recordar", "Comprender", "Aplicar", "Analizar"}
+        assert {question["bloom_level"] for question in bank.all_questions("pre")} == {
+            "Recordar",
+            "Comprender",
+            "Aplicar",
+            "Analizar",
+        }
 
 
 def test_intento_selecciona_15_equilibradas_y_minimiza_repeticiones():
@@ -86,9 +96,9 @@ def test_intento_selecciona_15_equilibradas_y_minimiza_repeticiones():
         for level in ("Básica", "Intermedia", "Avanzada")
     } == {"Básica": 5, "Intermedia": 5, "Avanzada": 5}
     assert len({question["concept_id"] for question in first_questions}) == 8
-    assert {
-        question["pedagogical_type"] for question in first_questions
-    } == set(ModuleQuestionBank.PEDAGOGICAL_TYPES)
+    assert {question["pedagogical_type"] for question in first_questions} == set(
+        ModuleQuestionBank.PEDAGOGICAL_TYPES
+    )
 
 
 def test_cada_intento_pre_y_post_incluye_los_siete_formatos():
@@ -97,9 +107,7 @@ def test_cada_intento_pre_y_post_incluye_los_siete_formatos():
 
     for module in catalog.modules:
         for assessment in ("pre", "post"):
-            bank = ModuleQuestionBank(
-                catalog, module["id"], rng=random.Random(17)
-            )
+            bank = ModuleQuestionBank(catalog, module["id"], rng=random.Random(17))
             bank.start_attempt(assessment)
             assert {
                 question["pedagogical_type"]
@@ -139,3 +147,76 @@ def test_los_400_reactivos_modulares_son_completables_y_calificables():
                 answer = _correct_answer(question)
                 assert es_respuesta_completa(question, answer)
                 assert calificar(question, answer)["puntaje"] == 1.0
+
+
+def test_reactivos_no_repiten_opciones_claves_ni_destinos():
+    catalog = LearningModuleCatalog()
+    bank = ModuleQuestionBank(catalog, rng=random.Random(23))
+
+    for module in catalog.modules:
+        bank.set_module(module["id"])
+        for assessment in ("pre", "post"):
+            for question in bank.all_questions(assessment):
+                options = [
+                    normalizar_texto(option["text"])
+                    for option in question.get("options", [])
+                ]
+                accepted = [
+                    normalizar_texto(answer)
+                    for answer in question.get("respuestas_aceptadas", [])
+                ]
+                destinations = [
+                    normalizar_texto(destination["texto"])
+                    for destination in question.get("destinos", [])
+                ]
+                assert len(options) == len(set(options))
+                assert len(accepted) == len(set(accepted))
+                assert len(destinations) == len(set(destinations))
+
+
+def test_preguntas_de_forma_piden_un_solo_tensor_bien_definido():
+    catalog = LearningModuleCatalog()
+    bank = ModuleQuestionBank(catalog, rng=random.Random(29))
+
+    for module in catalog.modules:
+        bank.set_module(module["id"])
+        for assessment in ("pre", "post"):
+            question = next(
+                item
+                for item in bank.all_questions(assessment)
+                if item["id"].endswith("_b8")
+            )
+            assert re.fullmatch(r"\[[^\[\]]+\]", question["respuestas_aceptadas"][0])
+
+
+def test_respuestas_de_dimensiones_aceptan_notaciones_equivalentes():
+    bank = ModuleQuestionBank(module_id="module_1", rng=random.Random(31))
+    matrix_question = next(
+        item for item in bank.all_questions("pre") if item["id"].endswith("_a1")
+    )
+    assert calificar(matrix_question, {"texto": "3 x 7"})["puntaje"] == 1.0
+
+    bank.set_module("module_8")
+    output_question = next(
+        item for item in bank.all_questions("pre") if item["id"].endswith("_a1")
+    )
+    assert calificar(output_question, {"texto": "[B,T,|V|]"})["puntaje"] == 1.0
+
+
+def test_reactivo_de_logits_mantiene_la_misma_logica_en_pre_y_post():
+    bank = ModuleQuestionBank(module_id="module_7", rng=random.Random(37))
+
+    for assessment in ("pre", "post"):
+        question = next(
+            item
+            for item in bank.all_questions(assessment)
+            if item["id"].endswith("_a2")
+        )
+        correct_id = question["correct_option_id"]
+        correct_text = next(
+            option["text"]
+            for option in question["options"]
+            if option["id"] == correct_id
+        )
+        assert "¿Es válido?" in question["prompt"]
+        assert correct_text.startswith("Sí;")

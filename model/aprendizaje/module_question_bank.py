@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 import random
+import re
 from typing import Any, Iterable
 
 from model.evaluacion.question_bank import QuestionBank, QuestionBankError
@@ -28,7 +29,7 @@ class ModuleQuestionBank:
     VALID_ASSESSMENTS = ("pre", "post")
     QUESTIONS_PER_ATTEMPT = 15
     QUESTIONS_PER_LEVEL = 5
-    INSTRUMENT_VERSION = 5
+    INSTRUMENT_VERSION = 6
 
     PEDAGOGICAL_TYPES = (
         "opcion_multiple",
@@ -39,6 +40,65 @@ class ModuleQuestionBank:
         "respuesta_corta",
         "completar_espacios",
     )
+
+    FALSE_CONCEPT_CLAIMS = {
+        "module_1": {
+            "B3": "Convierte por sí solo cada ID en su vector contextual completo.",
+            "B4": (
+                "El orden de los IDs no afecta la secuencia y puede permutarse "
+                "sin consecuencias."
+            ),
+        },
+        "module_2": {
+            "B3": ("Contiene una sola probabilidad por token y no usa el eje d_model."),
+            "B4": "Indica cuántos tokens contiene el vocabulario.",
+        },
+        "module_3": {
+            "B3": "Son máscaras fijas y no parámetros aprendidos.",
+            "B4": "Combina directamente los Values y produce el contexto final.",
+        },
+        "module_4": {
+            "B3": (
+                "Obliga a todas las cabezas a usar exactamente el mismo subespacio."
+            ),
+            "B4": "Exige que todas las cabezas aprendan el mismo mapa de atención.",
+        },
+        "module_5": {
+            "B3": (
+                "Sólo permite atender posiciones anteriores mediante una máscara causal."
+            ),
+            "B4": "Cambia la longitud T y agrega tokens nuevos.",
+        },
+        "module_6": {
+            "B3": "Permite atender sin restricción a tokens futuros.",
+            "B4": (
+                "Obtiene Q, K y V exclusivamente de posiciones futuras del decoder."
+            ),
+        },
+        "module_7": {
+            "B3": ("Convierte por sí sola los logits en probabilidades que suman uno."),
+            "B4": "Mantiene logits crudos y no realiza ninguna normalización.",
+        },
+        "module_8": {
+            "B3": (
+                "Envía los IDs enteros directamente al encoder sin embeddings ni posición."
+            ),
+            "B4": (
+                "Procesa el destino sin usar el prefijo causal ni la memoria del encoder."
+            ),
+        },
+    }
+
+    I8_DISTRACTOR_INDICES = {
+        1: {"pre": (0, 1, 2), "post": (0, 4, 7)},
+        2: {"pre": (0, 3, 7), "post": (3, 4, 7)},
+        3: {"pre": (0, 2, 7), "post": (0, 5, 6)},
+        4: {"pre": (0, 1, 2), "post": (0, 5, 6)},
+        5: {"pre": (1, 2, 4), "post": (1, 4, 7)},
+        6: {"pre": (0, 1, 6), "post": (0, 3, 6)},
+        7: {"pre": (0, 1, 3), "post": (0, 4, 6)},
+        8: {"pre": (0, 2, 6), "post": (0, 1, 3)},
+    }
 
     def __init__(
         self,
@@ -75,7 +135,9 @@ class ModuleQuestionBank:
     @property
     def dimensions(self) -> list[dict[str, str]]:
         module = self.catalog.get(self._module_id)
-        return [{"id": item["id"], "name": item["title"]} for item in module["concepts"]]
+        return [
+            {"id": item["id"], "name": item["title"]} for item in module["concepts"]
+        ]
 
     @property
     def criterios(self) -> dict[str, str]:
@@ -148,13 +210,17 @@ class ModuleQuestionBank:
         covered_formats: set[str],
     ) -> int:
         preferences = (
-            lambda q: q["concept_id"] not in covered_concepts
-            and q["pedagogical_type"] not in covered_formats,
+            lambda q: (
+                q["concept_id"] not in covered_concepts
+                and q["pedagogical_type"] not in covered_formats
+            ),
             lambda q: q["concept_id"] not in covered_concepts,
             lambda q: q["pedagogical_type"] not in covered_formats,
         )
         for predicate in preferences:
-            index = next((i for i, question in enumerate(pool) if predicate(question)), None)
+            index = next(
+                (i for i, question in enumerate(pool) if predicate(question)), None
+            )
             if index is not None:
                 return index
         return 0
@@ -201,7 +267,9 @@ class ModuleQuestionBank:
     def _normalize(self, assessment_type: str) -> str:
         normalized = str(assessment_type).strip().lower()
         if normalized not in self.VALID_ASSESSMENTS:
-            raise QuestionBankError(f"Tipo de evaluación desconocido: {assessment_type!r}.")
+            raise QuestionBankError(
+                f"Tipo de evaluación desconocido: {assessment_type!r}."
+            )
         return normalized
 
     def _shuffle_question(self, question: dict[str, Any]) -> dict[str, Any]:
@@ -217,10 +285,7 @@ class ModuleQuestionBank:
         # Las posiciones 1..N de un ordenamiento deben seguir visibles en
         # secuencia; en relacionar sí conviene variar ambas columnas.
         destinations = shuffled.get("destinos")
-        if (
-            isinstance(destinations, list)
-            and shuffled.get("subtipo") != "ordenar"
-        ):
+        if isinstance(destinations, list) and shuffled.get("subtipo") != "ordenar":
             self._rng.shuffle(destinations)
         return shuffled
 
@@ -331,7 +396,7 @@ class ModuleQuestionBank:
             difficulty,
             bloom_level,
             cognitive_process,
-            f"Decide si la afirmación es verdadera o falsa:\n\n«{statement}»",
+            f"Lee la afirmación y decide si es verdadera o falsa:\n\n{statement}",
             ["Verdadero", "Falso"],
             0 if correct else 1,
             pedagogical_type="verdadero_falso",
@@ -416,6 +481,31 @@ class ModuleQuestionBank:
         )
         question["placeholder"] = placeholder
         return question
+
+    @staticmethod
+    def _accepted_short_answers(answer: Any) -> list[str]:
+        """Incluye variantes de escritura sin ampliar el significado correcto."""
+
+        value = str(answer).strip()
+        candidates = [value]
+
+        if ":" in value:
+            suffix = value.rsplit(":", 1)[1].strip()
+            if suffix:
+                candidates.append(suffix)
+
+        shapes = re.findall(r"\[([^\[\]]+)\]", value)
+        if len(shapes) == 1:
+            parts = [part.strip() for part in shapes[0].split(",")]
+            if len(parts) > 1 and all(parts):
+                candidates.extend((" x ".join(parts), " por ".join(parts)))
+
+        aliases = {
+            "keys y values": ("K y V", "claves y valores"),
+            "query": ("Q", "consulta"),
+        }
+        candidates.extend(aliases.get(value.casefold(), ()))
+        return list(dict.fromkeys(item for item in candidates if item))
 
     @classmethod
     def _assignment_question(
@@ -554,11 +644,12 @@ class ModuleQuestionBank:
 
         concept = concepts[1]
         if assessment == "pre":
-            statement = f"{concept['title']}: {concept['description']}"
+            description = concept["description"]
             correct = True
         else:
-            statement = f"{concept['title']}: {concepts[2]['description']}"
+            description = self.FALSE_CONCEPT_CLAIMS[module["id"]]["B3"]
             correct = False
+        statement = f"La función específica de «{concept['title']}» es: {description}"
         questions.append(
             self._true_false(
                 prefix,
@@ -575,11 +666,12 @@ class ModuleQuestionBank:
 
         concept = concepts[3]
         if assessment == "pre":
-            statement = f"{concept['title']}: {concepts[6]['description']}"
+            description = self.FALSE_CONCEPT_CLAIMS[module["id"]]["B4"]
             correct = False
         else:
-            statement = f"{concept['title']}: {concept['description']}"
+            description = concept["description"]
             correct = True
+        statement = f"La función específica de «{concept['title']}» es: {description}"
         questions.append(
             self._true_false(
                 prefix,
@@ -659,7 +751,20 @@ class ModuleQuestionBank:
             )
         )
 
-        dimension_step = steps[7 if assessment == "pre" else 0]
+        dimension_indices = {
+            1: (6, 3),
+            2: (7, 0),
+            3: (7, 0),
+            4: (7, 0),
+            5: (7, 0),
+            6: (7, 0),
+            7: (6, 0),
+            8: (5, 1),
+        }
+        dimension_index = dimension_indices[int(module["order"])][
+            0 if assessment == "pre" else 1
+        ]
+        dimension_step = steps[dimension_index]
         questions.append(
             self._text_question(
                 prefix,
@@ -668,9 +773,9 @@ class ModuleQuestionBank:
                 "Básica",
                 "Aplicar",
                 "Lectura de dimensiones",
-                f"Escribe la dimensión o forma indicada para la salida de "
-                f"«{dimension_step['title']}»: ________.",
-                [dimension_step["dimensions"]],
+                f"¿Qué forma tiene el tensor producido por "
+                f"«{dimension_step['title']}»?",
+                self._accepted_short_answers(dimension_step["dimensions"]),
                 pedagogical_type="respuesta_corta",
                 formato="Respuesta numérica/corta",
                 placeholder="Ejemplo: [B,T,d_model]",
@@ -699,7 +804,9 @@ class ModuleQuestionBank:
                     elements,
                     destinations,
                     subtype="ordenar",
-                    related_concepts=[step["concept_id"] for step in ordered_steps[:-1]],
+                    related_concepts=[
+                        step["concept_id"] for step in ordered_steps[:-1]
+                    ],
                 )
             )
 
@@ -791,7 +898,7 @@ class ModuleQuestionBank:
             )
         )
 
-        output_step = steps[6 if assessment == "pre" else 5]
+        output_step = steps[6 if assessment == "pre" else 4]
         questions.append(
             self._text_question(
                 prefix,
@@ -802,7 +909,7 @@ class ModuleQuestionBank:
                 "Reconstrucción del flujo",
                 f"Completa: «{output_step['title']}» recibe "
                 f"{output_step['input']} y produce ________.",
-                [output_step["output"]],
+                self._accepted_short_answers(output_step["output"]),
                 pedagogical_type="completar_espacios",
                 formato="Completar espacios",
                 placeholder="Escribe la salida de la etapa",
@@ -814,9 +921,8 @@ class ModuleQuestionBank:
         why_step = steps[why_index]
         distractor_whys = [
             steps[index]["why"]
-            for index in range(len(steps))
-            if index != why_index
-        ][:3]
+            for index in self.I8_DISTRACTOR_INDICES[int(module["order"])][assessment]
+        ]
         questions.append(
             self._single_choice(
                 prefix,
@@ -842,7 +948,8 @@ class ModuleQuestionBank:
                 "Intermedia",
                 "Comprender",
                 "Seguimiento entrada–salida",
-                "Selecciona los DOS pares entrada → salida que respetan el flujo.",
+                "Selecciona los DOS pares que describen la entrada y la salida "
+                "de una misma etapa del recorrido.",
                 [
                     f"{first_edge['input']} → {first_edge['output']}",
                     f"{second_edge['input']} → {second_edge['output']}",
@@ -864,8 +971,9 @@ class ModuleQuestionBank:
                 "Avanzada",
                 "Aplicar",
                 "Cálculo o interpretación",
-                "Resuelve sin opciones: " + self._challenge_prompt(challenge, assessment),
-                [self._correct_answer(challenge)],
+                "Resuelve sin opciones: "
+                + self._challenge_prompt(challenge, assessment),
+                self._accepted_short_answers(self._correct_answer(challenge)),
                 pedagogical_type="respuesta_corta",
                 formato="Respuesta numérica/corta",
                 placeholder="Escribe el valor o la dimensión",
@@ -899,17 +1007,17 @@ class ModuleQuestionBank:
                 "Avanzada",
                 "Analizar",
                 "Razonamiento",
-                "Selecciona las DOS conclusiones correctas. Cada opción combina "
-                "un caso con su resultado.",
+                "Se presentan dos casos. Selecciona las DOS opciones en las que "
+                "el caso y la respuesta están emparejados correctamente.",
                 [
-                    f"{self._challenge_prompt(first_challenge, assessment)} "
-                    f"→ {self._correct_answer(first_challenge)}",
-                    f"{self._challenge_prompt(second_challenge, assessment)} "
-                    f"→ {self._correct_answer(second_challenge)}",
-                    f"{self._challenge_prompt(first_challenge, assessment)} "
-                    f"→ {self._wrong_answer(first_challenge)}",
-                    f"{self._challenge_prompt(second_challenge, assessment)} "
-                    f"→ {self._wrong_answer(second_challenge)}",
+                    f"Caso 1 — {self._challenge_prompt(first_challenge, assessment)} "
+                    f"Respuesta propuesta: {self._correct_answer(first_challenge)}",
+                    f"Caso 2 — {self._challenge_prompt(second_challenge, assessment)} "
+                    f"Respuesta propuesta: {self._correct_answer(second_challenge)}",
+                    f"Caso 1 — {self._challenge_prompt(first_challenge, assessment)} "
+                    f"Respuesta propuesta: {self._wrong_answer(first_challenge)}",
+                    f"Caso 2 — {self._challenge_prompt(second_challenge, assessment)} "
+                    f"Respuesta propuesta: {self._wrong_answer(second_challenge)}",
                 ],
                 (0, 1),
                 related_concepts=[second_challenge["concept_id"]],
@@ -953,7 +1061,8 @@ class ModuleQuestionBank:
                 "Avanzada",
                 "Analizar",
                 "Transferencia",
-                "Relaciona cada situación con la conclusión que se deduce de ella.",
+                "Relaciona cada situación con la conclusión correcta. Cada "
+                "conclusión se usa una sola vez.",
                 elements,
                 destinations,
                 subtype="relacionar",
@@ -964,9 +1073,12 @@ class ModuleQuestionBank:
         )
 
         challenge = challenges[4]
+        conclusion_is_correct = (
+            int(module["order"]) + (0 if assessment == "pre" else 1)
+        ) % 2 == 0
         conclusion = (
             self._correct_answer(challenge)
-            if assessment == "pre"
+            if conclusion_is_correct
             else self._wrong_answer(challenge)
         )
         questions.append(
@@ -977,9 +1089,9 @@ class ModuleQuestionBank:
                 "Avanzada",
                 "Analizar",
                 "Razonamiento",
-                f"Ante el caso «{self._challenge_prompt(challenge, assessment)}», "
-                f"la conclusión «{conclusion}» es correcta.",
-                assessment == "pre",
+                f"Caso: {self._challenge_prompt(challenge, assessment)}\n"
+                f"Conclusión propuesta: {conclusion}",
+                conclusion_is_correct,
                 explanation=f"La conclusión correcta es {self._correct_answer(challenge)}.",
             )
         )
@@ -997,8 +1109,9 @@ class ModuleQuestionBank:
                 "Avanzada",
                 "Aplicar",
                 "Cálculo sin pistas",
-                "Responde sin opciones: " + self._challenge_prompt(challenge, assessment),
-                [self._correct_answer(challenge)],
+                "Responde sin opciones: "
+                + self._challenge_prompt(challenge, assessment),
+                self._accepted_short_answers(self._correct_answer(challenge)),
                 pedagogical_type="respuesta_corta",
                 formato="Respuesta numérica/corta",
                 placeholder="Escribe una respuesta breve",
@@ -1039,4 +1152,3 @@ class ModuleQuestionBank:
         question_ids: set[str] = set()
         for question in questions:
             QuestionBank._validate_question(question, dimension_ids, question_ids)
-
