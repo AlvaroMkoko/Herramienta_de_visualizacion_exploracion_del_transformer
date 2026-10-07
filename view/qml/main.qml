@@ -81,6 +81,7 @@ ApplicationWindow {
     }
 
     Rectangle {
+        id: indicadorDual
         objectName: "dualScreenIndicator"
         z: 100
         visible: window.multiScreenAvailable
@@ -99,6 +100,78 @@ ApplicationWindow {
             color: Style.Theme.info_texto
             font.bold: true
             font.pixelSize: 11
+        }
+    }
+
+    // ── Aula conectada (alumno) ──────────────────────────────────────
+    // Visibles en cualquier pantalla: el alumno no tiene que volver a la
+    // bienvenida para saber si su docente lo ve o para leer un aviso.
+    readonly property var aulaAlumno: typeof mainViewModel !== "undefined" && mainViewModel
+                                      ? mainViewModel.classroomStudentController : null
+
+    Rectangle {
+        id: chipAula
+        objectName: "classroomStatusChip"
+        readonly property bool enLinea: visible && window.aulaAlumno.conectado
+        z: 100
+        visible: window.aulaAlumno !== null && window.aulaAlumno.enClase
+        anchors.right: indicadorDual.visible ? indicadorDual.left : themeSwitch.left
+        anchors.rightMargin: 8
+        anchors.verticalCenter: themeSwitch.verticalCenter
+        width: textoChipAula.implicitWidth + 30
+        height: 32
+        radius: height / 2
+        color: enLinea ? Style.Theme.exito_fondo : Style.Theme.aviso_fondo
+        border.color: enLinea ? Style.Theme.success : Style.Theme.warning
+        Accessible.role: Accessible.StaticText
+        Accessible.name: "Estado de la clase: " + textoChipAula.text
+
+        Text {
+            id: textoChipAula
+            anchors.centerIn: parent
+            text: chipAula.visible
+                  ? (chipAula.enLinea ? "● " : "○ ") + window.aulaAlumno.estadoTexto
+                  : ""
+            color: chipAula.enLinea ? Style.Theme.exito_texto : Style.Theme.aviso_texto
+            font.bold: true
+            font.pixelSize: 11
+        }
+    }
+
+    Rectangle {
+        id: avisoAula
+        objectName: "classroomAnnouncementBanner"
+        z: 101
+        visible: window.aulaAlumno !== null && window.aulaAlumno.ultimoAviso !== ""
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.top: parent.top
+        anchors.topMargin: 56
+        width: Math.min(640, window.width - 48)
+        height: Math.max(textoAviso.implicitHeight, cerrarAviso.height) + 28
+        radius: 12
+        color: Style.Theme.info_fondo
+        border.color: Style.Theme.info
+
+        Text {
+            id: textoAviso
+            anchors.left: parent.left
+            anchors.right: cerrarAviso.left
+            anchors.margins: 14
+            anchors.verticalCenter: parent.verticalCenter
+            text: avisoAula.visible ? "📣 Aviso del docente: " + window.aulaAlumno.ultimoAviso : ""
+            color: Style.Theme.info_texto
+            font.pixelSize: 14
+            wrapMode: Text.WordWrap
+        }
+        BotonSecundario {
+            id: cerrarAviso
+            anchors.right: parent.right
+            anchors.rightMargin: 14
+            anchors.verticalCenter: parent.verticalCenter
+            width: 100
+            height: 32
+            text: "Entendido"
+            onClicked: window.aulaAlumno.descartarAviso()
         }
     }
 

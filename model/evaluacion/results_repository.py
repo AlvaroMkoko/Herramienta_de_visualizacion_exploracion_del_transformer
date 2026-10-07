@@ -10,10 +10,12 @@ avance pre→post cruce dos instrumentos distintos.
 from __future__ import annotations
 
 from copy import deepcopy
+import hashlib
 import json
 import os
 from pathlib import Path
 from typing import Any
+import uuid
 
 #: Versión del esquema de resultados que produce ``model.evaluacion.metrics``.
 RESULT_SCHEMA_VERSION = 2
@@ -78,10 +80,23 @@ class ResultsRepository:
             deepcopy(item) for item in archivados if isinstance(item, dict)
         ] + [item for item in validos if self._version_de(item) != RESULT_SCHEMA_VERSION]
 
-        if len(self._results) != len(validos):
-            # Se archivaron resultados de un instrumento anterior; conviene
-            # dejarlo escrito para que el archivo refleje la nueva separación.
+        sin_id = [item for item in self._results if not item.get("result_id")]
+        for item in sin_id:
+            item["result_id"] = self._id_determinista(item)
+
+        if len(self._results) != len(validos) or sin_id:
+            # Se archivaron resultados de un instrumento anterior o se les
+            # asignó identificador; conviene dejarlo escrito para que el
+            # archivo refleje el cambio.
             self._persistir()
+
+    @staticmethod
+    def _id_determinista(resultado: dict[str, Any]) -> str:
+        """Identificador estable para resultados guardados antes de que
+        existiera ``result_id``: el mismo contenido produce el mismo id en
+        cualquier equipo, así que sincronizarlo dos veces no lo duplica."""
+        contenido = json.dumps(resultado, ensure_ascii=False, sort_keys=True, default=str)
+        return "h" + hashlib.sha256(contenido.encode("utf-8")).hexdigest()[:31]
 
     def _persistir(self) -> None:
         if self._ruta is None:
@@ -113,8 +128,30 @@ class ResultsRepository:
     def save_result(self, evaluation_result: dict[str, Any]) -> None:
         resultado = deepcopy(evaluation_result)
         resultado.setdefault("schema_version", RESULT_SCHEMA_VERSION)
+        # El id permite sincronizar el resultado con el aula sin duplicarlo.
+        # Se escribe también en el dict recibido para que quien lo emita
+        # después (``evaluationCompleted``) comparta el mismo identificador.
+        resultado.setdefault("result_id", uuid.uuid4().hex)
+        evaluation_result.setdefault("result_id", resultado["result_id"])
         self._results.append(resultado)
         self._persistir()
+
+    def has_result(self, result_id: str) -> bool:
+        return any(item.get("result_id") == result_id for item in self._results)
+
+    def save_unique(self, evaluation_result: dict[str, Any]) -> bool:
+        """Guarda sólo si su ``result_id`` no existe. Devuelve si lo guardó.
+
+        Usado por el docente: un mismo resultado puede llegar por red y luego
+        otra vez dentro de un archivo ``.tvclase``.
+        """
+        result_id = str(evaluation_result.get("result_id", "")).strip()
+        if not result_id or self.has_result(result_id):
+            return False
+        if self._version_de(evaluation_result) != RESULT_SCHEMA_VERSION:
+            return False
+        self.save_result(evaluation_result)
+        return True
 
     @staticmethod
     def _student_id_de(resultado: dict[str, Any]) -> str:

@@ -26,3 +26,4 @@ reporte_especificaciones_desarrollo.md
 !data/datasets_predefinidos/
 !data/datasets_predefinidos/*.json
 !data/datasets_predefinidos/*.jsonl
+!data/aula/palabras_bloqueadas.json

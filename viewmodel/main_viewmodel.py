@@ -22,6 +22,7 @@ from model.gestor_de_datos.dataset_loader import (
     obtener_id_token_relleno,
 )
 
+from .aula import ClassroomHostController, ClassroomStudentController
 from .dataset_controller import DatasetController
 from .comparison_controller import ComparisonController
 from .course_controller import CourseController
@@ -121,6 +122,18 @@ class MainViewModel(QObject):
         self._progress_controller = ProgressController(
             self._learning_controller, self._evaluation_controller, self
         )
+        # Aula conectada. Ninguno abre la red al construirse: el docente al
+        # crear o reabrir una clase y el alumno al entrar con su perfil.
+        self._classroom_host_controller = ClassroomHostController(
+            self, catalog=self._course_controller.catalog
+        )
+        self._classroom_student_controller = ClassroomStudentController(
+            self._course_controller,
+            self._evaluation_controller.repository,
+            (self._evaluation_controller, self._module_evaluation_controller),
+            self._profile_controller,
+            self,
+        )
         self._training_controller: TrainingController | None = None
         self._inference_controller: InferenceController | None = None
         self._transformer_bridge = TransformerBridge(self)
@@ -210,6 +223,14 @@ class MainViewModel(QObject):
     @Property(QObject, constant=True)
     def progressController(self) -> ProgressController:
         return self._progress_controller
+
+    @Property(QObject, constant=True)
+    def classroomHostController(self) -> ClassroomHostController:
+        return self._classroom_host_controller
+
+    @Property(QObject, constant=True)
+    def classroomStudentController(self) -> ClassroomStudentController:
+        return self._classroom_student_controller
 
     @Property(QObject, notify=trainingControllerCambio)
     def trainingController(self) -> TrainingController | None:

@@ -52,6 +52,17 @@ PagePrincipal {
                 }
             }
 
+            BotonSecundario {
+                objectName: "teacherClassroomButton"
+                Layout.preferredWidth: 190
+                Layout.preferredHeight: 46
+                text: mainViewModel.classroomHostController.activa
+                      ? "● Clase en red abierta" : "Clase en red"
+                onClicked: root.stackView.push("ClassroomSetupScreen.qml", {
+                    "stackView": root.stackView
+                })
+            }
+
             BotonPrincipal {
                 objectName: "teacherNewAssessmentButton"
                 Layout.preferredWidth: 210

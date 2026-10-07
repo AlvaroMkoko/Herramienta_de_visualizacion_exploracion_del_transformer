@@ -43,7 +43,28 @@ class CourseController(QObject):
         )
         if self._current_module_id not in self._catalog.module_ids:
             self._current_module_id = self._catalog.module_ids[0]
+        # Módulos que el docente habilitó en la clase. ``None`` = sin clase o
+        # con todos habilitados; esta restricción vence al modo revisión.
+        self._class_modules: frozenset[str] | None = None
         self._evaluation.evaluationCompleted.connect(self._on_evaluation_completed)
+
+    @property
+    def catalog(self) -> LearningModuleCatalog:
+        return self._catalog
+
+    def progress_snapshot(self) -> dict[str, Any]:
+        """Estado persistido del curso, para sincronizarlo con el aula."""
+        return self._repository.snapshot()
+
+    def set_class_modules(self, module_ids: list[str] | None) -> None:
+        allowed = None if module_ids is None else frozenset(map(str, module_ids))
+        if allowed == self._class_modules:
+            return
+        self._class_modules = allowed
+        self.progressChanged.emit()
+
+    def _blocked_by_class(self, module_id: str) -> bool:
+        return self._class_modules is not None and module_id not in self._class_modules
 
     def _student_filter(self) -> str | None:
         return self._evaluation._student_filter()  # frontera interna compartida
@@ -87,6 +108,8 @@ class CourseController(QObject):
         }.get(stage, False)
 
     def _module_unlocked(self, module_id: str) -> bool:
+        if self._blocked_by_class(module_id):
+            return False
         if self.REVIEW_MODE_UNLOCK_ALL:
             return True
         module = self._catalog.get(module_id)
@@ -183,6 +206,8 @@ class CourseController(QObject):
     def stageAvailable(self, module_id: str, stage: str) -> bool:
         if module_id not in self._catalog.module_ids or stage not in STAGES:
             return False
+        if self._blocked_by_class(module_id):
+            return False
         if self.REVIEW_MODE_UNLOCK_ALL:
             return True
         if not self._module_unlocked(module_id):
@@ -198,6 +223,8 @@ class CourseController(QObject):
     def stageBlockReason(self, module_id: str, stage: str) -> str:
         if self.stageAvailable(module_id, stage):
             return ""
+        if self._blocked_by_class(module_id):
+            return "El docente todavía no habilita este módulo en la clase."
         if not self._module_unlocked(module_id):
             return "Completa el módulo anterior para desbloquear éste."
         labels = {

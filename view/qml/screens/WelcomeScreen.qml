@@ -36,6 +36,7 @@ PagePrincipal {
     readonly property var progressController: vm ? vm.progressController : null
     readonly property var profileController: vm ? vm.profileController : null
     readonly property var libraryController: vm ? vm.modelLibraryController : null
+    readonly property var classroomController: vm ? vm.classroomStudentController : null
 
     property int revision: 0
     Connections {
@@ -161,6 +162,10 @@ PagePrincipal {
     // ── Navegación ───────────────────────────────────────────────────
     function abrirRuta() {
         root.stackView.push("ModuleMapScreen.qml", { "stackView": root.stackView })
+    }
+
+    function abrirClase() {
+        root.stackView.push("JoinClassScreen.qml", { "stackView": root.stackView })
     }
 
     function abrirLaboratorio(pantalla, laboratorioId) {
@@ -434,6 +439,68 @@ PagePrincipal {
                         // Relleno final: mantiene las acciones pegadas a la
                         // descripción (proximidad) en vez de repartir el hueco.
                         Item { Layout.fillHeight: true }
+                    }
+                }
+
+                // ── Clase en red ───────────────────────────────────
+                // Franja discreta: la ruta sigue siendo la acción principal.
+                Rectangle {
+                    id: franjaClase
+                    objectName: "welcomeClassroomStrip"
+                    readonly property var cc: root.classroomController
+                    readonly property bool enClase: cc ? cc.enClase : false
+                    Layout.fillWidth: true
+                    Layout.topMargin: 24
+                    implicitHeight: 64
+                    radius: 12
+                    visible: cc !== null
+                    color: Style.Theme.surface
+                    border.color: Style.Theme.borde_suave
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 18
+                        anchors.rightMargin: 12
+                        spacing: 12
+                        Text {
+                            text: "👥"
+                            font.family: Style.Theme.fuente_emoji
+                            font.pixelSize: 20
+                        }
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 1
+                            Text {
+                                Layout.fillWidth: true
+                                text: franjaClase.enClase
+                                      ? "Clase: " + franjaClase.cc.nombreClase + "  ·  «" + franjaClase.cc.apodo + "»"
+                                      : "¿Tu docente compartió un código de clase?"
+                                color: Style.Theme.texto_primario
+                                font.family: Style.Theme.fuente_interfaz
+                                font.pixelSize: 14
+                                font.bold: true
+                                elide: Text.ElideRight
+                            }
+                            Text {
+                                Layout.fillWidth: true
+                                text: franjaClase.enClase
+                                      ? franjaClase.cc.estadoTexto
+                                        + (franjaClase.cc.pendientes > 0
+                                           ? "  ·  " + franjaClase.cc.pendientes + " evaluación(es) por enviar" : "")
+                                      : "Únete para que tu docente vea tu avance. Puedes seguir trabajando sin conexión."
+                                color: Style.Theme.texto_secundario
+                                font.family: Style.Theme.fuente_interfaz
+                                font.pixelSize: 12
+                                elide: Text.ElideRight
+                            }
+                        }
+                        BotonSecundario {
+                            objectName: "welcomeClassroomButton"
+                            Layout.preferredWidth: 170
+                            Layout.preferredHeight: 38
+                            text: franjaClase.enClase ? "Ver mi clase" : "Unirse a una clase"
+                            onClicked: root.abrirClase()
+                        }
                     }
                 }
             }

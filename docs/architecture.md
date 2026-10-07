@@ -76,6 +76,27 @@ Este documento mapea el diseño arquitectónico (TT1, sección 4.9) contra la
 estructura real del código. Cuando un componente está diseñado pero todavía
 no implementado, se marca como **pendiente**.
 
+## Aula conectada
+
+El docente comparte un código de clase y los alumnos se unen con un apodo; la
+app del docente actúa como servidor en la red local (o en su hotspot), con
+archivos `.tvclase` como respaldo sin red.
+
+- `model/aula/` — protocolo, reglas de la clase (`SesionClase`), persistencia
+  del docente y del alumno, archivos firmados y análisis del grupo. Sin Qt.
+- `viewmodel/aula/` — transporte (`QWebSocketServer`/`QWebSocket` y
+  descubrimiento por `QUdpSocket`) y los controladores
+  `classroomHostController` y `classroomStudentController`.
+- Vista: `ClassroomSetupScreen`, `ClassroomScreen` (docente) y
+  `JoinClassScreen` (alumno); indicador de estado y avisos en `main.qml`.
+- `CourseController` expone `progress_snapshot()` y respeta los módulos que el
+  docente habilita (`set_class_modules`), incluso en modo revisión.
+- `ResultsRepository` asigna `result_id` a cada resultado para sincronizarlo
+  sin duplicados.
+
+Funcionamiento de la red: [red_aula.md](red_aula.md). Guía de uso:
+[uso_aula.md](uso_aula.md).
+
 ## Model (`model/`)
 
 Capa sin ninguna dependencia de Qt/QML: se puede importar y probar sin

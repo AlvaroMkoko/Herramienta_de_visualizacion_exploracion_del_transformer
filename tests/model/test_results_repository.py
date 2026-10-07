@@ -44,8 +44,11 @@ def test_guarda_y_relee_entre_sesiones(tmp_path):
     ruta = tmp_path / "resultados.json"
     ResultsRepository(ruta).save_result(resultado())
 
-    # Un repositorio nuevo equivale a reabrir la aplicación.
-    assert ResultsRepository(ruta).latest("pre") == resultado()
+    # Un repositorio nuevo equivale a reabrir la aplicación. El repositorio
+    # agrega ``result_id`` para poder sincronizar el resultado con el aula.
+    releido = ResultsRepository(ruta).latest("pre")
+    assert releido.pop("result_id")
+    assert releido == resultado()
 
 
 def test_el_archivo_declara_la_version_del_esquema(tmp_path):

@@ -1,0 +1,11 @@
+{
+  "descripcion": "Lista base de palabras que no se aceptan en apodos. El docente puede ampliarla; se comparan sin acentos ni mayúsculas.",
+  "palabras": [
+    "puto", "puta", "putito", "pendejo", "pendeja", "verga", "vergas", "chingar",
+    "chingada", "chingado", "chinga", "culero", "culera", "cabron", "cabrona",
+    "mamon", "mamona", "pinche", "joto", "jotos", "maricon", "marica", "mierda",
+    "culo", "coño", "zorra", "perra", "idiota", "imbecil", "estupido", "estupida",
+    "pito", "panocha", "nalgas", "teta", "tetas", "violador", "nazi", "hitler",
+    "fuck", "shit", "bitch", "dick", "porn", "porno", "sexo", "xxx"
+  ]
+}
