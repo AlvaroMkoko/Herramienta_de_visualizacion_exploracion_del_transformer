@@ -12,6 +12,7 @@ os.environ.setdefault("QT_QUICK_CONTROLS_STYLE", "Basic")
 from PySide6.QtCore import QObject, QUrl
 from PySide6.QtQml import QQmlComponent, QQmlEngine
 
+from model.aprendizaje import LearningModuleCatalog
 from viewmodel.main_viewmodel import MainViewModel
 
 
@@ -72,6 +73,52 @@ def test_pantallas_modulares_compilan_y_se_instancian(qapp):
     dimensions_grid = window.findChild(QObject, "evaluationDimensionGrid")
     assert dimensions_scroll is not None
     assert dimensions_grid is not None
+
+    window.deleteLater()
+    engine.deleteLater()
+
+
+def test_los_64_pasos_modulares_tienen_ilustracion_especifica(qapp):
+    engine = QQmlEngine()
+    view_model = MainViewModel()
+    engine.rootContext().setContextProperty("mainViewModel", view_model)
+    component = QQmlComponent(engine)
+    component.setData(
+        HOST,
+        QUrl.fromLocalFile(str(ROOT / "view" / "qml" / "ModuleScreensHost.qml")),
+    )
+
+    assert component.status() != QQmlComponent.Status.Error, _errors(component)
+    window = component.create()
+    assert window is not None, _errors(component)
+    qapp.processEvents()
+
+    visual = window.findChild(QObject, "moduleGuidedVisualization")
+    diagram = window.findChild(QObject, "guidedConceptDiagram")
+    assert visual is not None
+    assert diagram is not None
+
+    summaries = set()
+    catalog = LearningModuleCatalog()
+    step_ids = [
+        step["id"]
+        for module in catalog.modules
+        for step in module["guided_steps"]
+    ]
+    assert len(step_ids) == 64
+
+    for step_id in step_ids:
+        visual.setProperty("stepId", step_id)
+        qapp.processEvents()
+        assert visual.property("hasDedicatedVisual") is True
+        assert str(visual.property("visualKind")).strip()
+        assert diagram.property("sceneKind") == step_id
+        summary = str(visual.property("accessibleSummary")).strip()
+        assert len(summary) >= 60
+        assert "Cómo fluye la información" not in summary
+        summaries.add(summary)
+
+    assert len(summaries) == 64
 
     window.deleteLater()
     engine.deleteLater()

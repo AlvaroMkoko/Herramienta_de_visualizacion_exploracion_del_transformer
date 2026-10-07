@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import "../styles" as Style
+import "GuidedVisualCatalog.js" as VisualCatalog
 
 Rectangle {
     id: root
@@ -11,6 +12,7 @@ Rectangle {
 
     property string visualType: "pipeline"
     property string conceptId: ""
+    property string stepId: ""
     property real scaleFactor: 1.0
     readonly property bool compactLayout: conceptId === ""
                                           && width > 0
@@ -168,12 +170,22 @@ Rectangle {
             ]
         }
     })
-    readonly property var conceptVisual: conceptVisuals[conceptId]
-                                         || ({ "title": "Cómo fluye la información",
-                                               "caption": "Sigue las flechas de izquierda a derecha.",
-                                               "steps": [] })
+    readonly property var stepVisual: VisualCatalog.stepVisual(stepId)
+    readonly property bool hasDedicatedVisual: stepId !== ""
+                                                ? stepVisual !== null
+                                                : conceptVisuals[conceptId] !== undefined
+    readonly property string visualKind: stepVisual !== null
+                                          ? String(stepVisual.kind || "") : ""
+    readonly property var conceptVisual: stepVisual !== null
+                                         ? stepVisual
+                                         : conceptVisuals[conceptId]
+                                           || ({ "title": "Cómo fluye la información",
+                                                 "caption": "Sigue las flechas de izquierda a derecha.",
+                                                 "steps": [] })
 
     readonly property string accessibleSummary: {
+        if (stepVisual !== null)
+            return String(stepVisual.title) + ". " + String(stepVisual.caption)
         if (conceptId !== "")
             return String(conceptVisual.title) + ". " + String(conceptVisual.caption)
         if (visualType === "dataset_pairs")
@@ -222,6 +234,7 @@ Rectangle {
                      : compactLayout && visualType === "training" ? 250
                      : compactLayout ? 185 : 170) * scaleFactor
     radius: 9 * scaleFactor
+    clip: true
     color: Style.Theme.fondo
     border.color: Style.Theme.borde_suave
     Accessible.name: "Demostración didáctica con datos precalculados"
@@ -250,6 +263,9 @@ Rectangle {
                 color: Style.Theme.texto_secundario
                 font.bold: true
                 font.pixelSize: (root.conceptId !== "" ? 10 : 8) * root.scaleFactor
+                wrapMode: Text.WordWrap
+                maximumLineCount: 2
+                elide: Text.ElideRight
             }
         }
 
@@ -282,6 +298,7 @@ Rectangle {
 
         GuidedConceptDiagram {
             conceptId: root.conceptId
+            stepId: root.stepId
             scaleFactor: root.scaleFactor
         }
     }

@@ -200,7 +200,9 @@ PagePrincipal {
             spacing: 14 * root.uiScale
 
             ColumnLayout {
-                Layout.preferredWidth: 410 * root.uiScale
+                Layout.preferredWidth: Math.max(360 * root.uiScale,
+                                                Math.min(500 * root.uiScale,
+                                                         root.width * 0.39))
                 Layout.minimumWidth: 360 * root.uiScale
                 Layout.fillHeight: true
                 spacing: 10 * root.uiScale
@@ -208,9 +210,12 @@ PagePrincipal {
                 GuidedDemoVisualization {
                     objectName: "moduleGuidedVisualization"
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 225 * root.uiScale
+                    Layout.preferredHeight: Math.min(260 * root.uiScale,
+                                                     Math.max(220 * root.uiScale,
+                                                              root.height * 0.31))
                     Layout.minimumHeight: 190 * root.uiScale
                     conceptId: root.currentTheoryConceptId
+                    stepId: String(root.currentStep.id || "")
                     scaleFactor: root.uiScale
                 }
 

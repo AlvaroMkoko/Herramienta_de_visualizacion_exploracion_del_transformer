@@ -2,14 +2,17 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import "../styles" as Style
+import "GuidedVisualCatalog.js" as VisualCatalog
 
 Item {
     id: root
     objectName: "guidedConceptDiagram"
+    clip: true
 
     property string conceptId: ""
+    property string stepId: ""
     property real scaleFactor: 1.0
-    readonly property string sceneKind: conceptId
+    readonly property string sceneKind: stepId !== "" ? stepId : conceptId
 
     function canvasFont(size, bold) {
         return (bold ? "bold " : "") + size + "px \""
@@ -27,6 +30,453 @@ Item {
         if (normalized < 0.80)
             return Style.Theme.escala_sec_3
         return Style.Theme.escala_sec_4
+    }
+
+    function miniMatrix(ctx, x, y, rows, columns, cell, accent, mode) {
+        for (var row = 0; row < rows; ++row) {
+            for (var column = 0; column < columns; ++column) {
+                var active = mode === "diagonal" ? column <= row
+                           : mode === "row" ? row === Math.floor(rows / 2)
+                           : mode === "checker" ? (row + column) % 3 === 0
+                           : (row * columns + column) % 4 === 0
+                ctx.fillStyle = active
+                                ? Qt.alpha(accent, 0.42)
+                                : Style.Theme.superficie_alterna
+                roundedPath(ctx, x + column * (cell + 2),
+                            y + row * (cell + 2), cell, cell, 2)
+                ctx.fill()
+                ctx.strokeStyle = active ? accent : Style.Theme.borde_suave
+                ctx.lineWidth = active ? 1.2 : 0.7
+                ctx.stroke()
+            }
+        }
+    }
+
+    function miniBars(ctx, x, baseline, values: var, width, maximumHeight, colors: var) {
+        var barValues = Array.from(values || [])
+        var barWidth = width / Math.max(1, barValues.length) - 5
+        for (var i = 0; i < barValues.length; ++i) {
+            var height = Math.max(3, barValues[i] * maximumHeight)
+            ctx.fillStyle = colors && colors[i]
+                            ? colors[i] : root.attentionColor(values[i])
+            roundedPath(ctx, x + i * (barWidth + 5), baseline - height,
+                        barWidth, height, 3)
+            ctx.fill()
+        }
+        ctx.strokeStyle = Style.Theme.borde_medio
+        ctx.lineWidth = 1
+        ctx.beginPath()
+        ctx.moveTo(x - 2, baseline + 1)
+        ctx.lineTo(x + width, baseline + 1)
+        ctx.stroke()
+    }
+
+    function miniTokens(ctx, labels: var, y, selected, palette: var) {
+        var gap = 5
+        var width = Math.min(54, (242 - gap * (labels.length - 1)) / labels.length)
+        var total = width * labels.length + gap * (labels.length - 1)
+        var start = 300 - total / 2
+        for (var i = 0; i < labels.length; ++i) {
+            var tone = palette && palette[i] ? palette[i] : Style.Theme.info_texto
+            var fill = i === selected ? Style.Theme.acento_fondo
+                                      : Style.Theme.info_fondo
+            pill(ctx, start + i * (width + gap), y, width, labels[i],
+                 fill, i === selected ? Style.Theme.acento : tone,
+                 i === selected)
+        }
+    }
+
+    function drawStageGlyph(ctx, kind) {
+        var x = 178
+        var y = 40
+        var accent = Style.Theme.acento
+
+        if (kind === "text") {
+            box(ctx, 194, 48, 212, 47, "«El gato duerme»", "cadena de caracteres",
+                Style.Theme.superficie_alterna, Style.Theme.texto_secundario_fuerte)
+        } else if (kind === "tokens") {
+            miniTokens(ctx, ["El", "gat", "o", "duerme"], 57, 1)
+            label(ctx, "límites aprendidos por el tokenizador", 300, 94,
+                  Style.Theme.texto_secundario, 8, false, "center")
+        } else if (kind === "lookup") {
+            pill(ctx, 184, 59, 54, "gat", Style.Theme.info_fondo,
+                 Style.Theme.info_texto, true)
+            arrow(ctx, 240, 71, 265, 71, accent)
+            miniMatrix(ctx, 272, 45, 4, 5, 10, Style.Theme.concepto_texto, "row")
+            arrow(ctx, 336, 71, 364, 71, accent)
+            pill(ctx, 369, 59, 52, "804", Style.Theme.proceso_fondo,
+                 Style.Theme.proceso_texto, true)
+        } else if (kind === "ids") {
+            miniTokens(ctx, ["El", "gato", "duerme"], 43, -1)
+            label(ctx, "↓             ↓             ↓", 300, 74,
+                  Style.Theme.acento, 10, true, "center")
+            miniTokens(ctx, ["51", "804", "219"], 82, 1)
+        } else if (kind === "special") {
+            miniTokens(ctx, ["BOS", "El", "gato", "EOS"], 60, 0,
+                       [Style.Theme.formula_texto, Style.Theme.info_texto,
+                        Style.Theme.info_texto, Style.Theme.proceso_texto])
+        } else if (kind === "sequence") {
+            label(ctx, "posición     0          1          2", 300, 47,
+                  Style.Theme.texto_secundario, 8, true, "center")
+            miniTokens(ctx, ["51", "804", "219"], 65, 1)
+        } else if (kind === "padding") {
+            miniTokens(ctx, ["51", "804", "219", "PAD"], 42, 3)
+            miniTokens(ctx, ["18", "42", "73", "91"], 82, -1)
+        } else if (kind === "padding_mask") {
+            miniTokens(ctx, ["51", "804", "PAD", "PAD"], 39, 2)
+            miniTokens(ctx, ["✓", "✓", "×", "×"], 79, 2,
+                       [Style.Theme.proceso_texto, Style.Theme.proceso_texto,
+                        Style.Theme.error_texto, Style.Theme.error_texto])
+        } else if (kind === "embedding_table") {
+            miniMatrix(ctx, 218, 42, 5, 8, 11, Style.Theme.concepto_texto, "row")
+            label(ctx, "|V| filas", 201, 72, Style.Theme.concepto_texto, 8, true, "center")
+            label(ctx, "d_model columnas →", 345, 107,
+                  Style.Theme.formula_texto, 8, true, "center")
+        } else if (kind === "lookup_vector") {
+            pill(ctx, 180, 59, 52, "804", Style.Theme.info_fondo,
+                 Style.Theme.info_texto, true)
+            arrow(ctx, 233, 71, 262, 71, accent)
+            miniMatrix(ctx, 268, 44, 4, 5, 11, Style.Theme.concepto_texto, "row")
+            arrow(ctx, 335, 71, 363, 71, accent)
+            miniBars(ctx, 370, 91, [0.3, 0.8, 0.5, 0.2], 54, 45)
+        } else if (kind === "scale_vector") {
+            miniBars(ctx, 188, 92, [0.25, 0.5, 0.35, 0.2], 72, 44)
+            label(ctx, "E", 224, 106, Style.Theme.texto_secundario, 8, true, "center")
+
+            arrow(ctx, 264, 72, 279, 72, accent)
+            pill(ctx, 282, 60, 55, "× √d", Style.Theme.formula_fondo,
+                 Style.Theme.formula_texto, true)
+            arrow(ctx, 340, 72, 357, 72, accent)
+
+            miniBars(ctx, 360, 92, [0.45, 0.9, 0.63, 0.36], 72, 44)
+            label(ctx, "E escalado", 396, 106, Style.Theme.texto_secundario, 8, true, "center")
+        } else if (kind === "position_index") {
+            miniTokens(ctx, ["El", "gato", "duerme", "."], 46, -1)
+            miniTokens(ctx, ["0", "1", "2", "3"], 82, 2)
+        } else if (kind === "position_wave") {
+            ctx.lineWidth = 2
+            for (var wave = 0; wave < 2; ++wave) {
+                ctx.strokeStyle = wave === 0 ? Style.Theme.formula_texto
+                                             : Style.Theme.info_texto
+                ctx.beginPath()
+                for (var px = 190; px <= 410; px += 4) {
+                    var py = 68 + Math.sin((px - 190) / (15 + wave * 8) + wave) * (15 - wave * 4)
+                    if (px === 190) ctx.moveTo(px, py); else ctx.lineTo(px, py)
+                }
+                ctx.stroke()
+            }
+            label(ctx, "P₀        P₁        P₂        P₃", 300, 101,
+                  Style.Theme.texto_secundario, 8, true, "center")
+        } else if (kind === "vector_sum" || kind === "dual_embeddings") {
+            miniMatrix(ctx, 190, 55, 2, 4, 10, Style.Theme.info_texto, "checker")
+            label(ctx, "+", 254, 72, accent, 13, true, "center")
+            miniMatrix(ctx, 268, 55, 2, 4, 10, Style.Theme.formula_texto, "diagonal")
+            label(ctx, "=", 331, 72, accent, 13, true, "center")
+            miniMatrix(ctx, 345, 55, 2, 4, 10, Style.Theme.proceso_texto, "row")
+        } else if (kind === "representation" || kind === "attention_input"
+                   || kind === "encoder_input") {
+            miniMatrix(ctx, 235, 43, 4, 8, 12, Style.Theme.proceso_texto, "checker")
+            label(ctx, "token × d_model", 300, 105,
+                  Style.Theme.proceso_texto, 8, true, "center")
+        } else if (kind === "qkv" || kind === "joint_qkv") {
+            box(ctx, 183, 55, 56, 36, "X", "", Style.Theme.superficie_alterna,
+                Style.Theme.texto_secundario_fuerte)
+            var qkvLabels = ["Q", "K", "V"]
+            var qkvColors = [Style.Theme.matriz_query_texto,
+                             Style.Theme.matriz_key_texto,
+                             Style.Theme.matriz_value_texto]
+            var qkvFills = [Style.Theme.matriz_query_fondo,
+                            Style.Theme.matriz_key_fondo,
+                            Style.Theme.matriz_value_fondo]
+            for (var q = 0; q < 3; ++q) {
+                arrow(ctx, 240, 73, 290, 48 + q * 25, qkvColors[q])
+                pill(ctx, 296, 36 + q * 25, 62, qkvLabels[q], qkvFills[q], qkvColors[q], true)
+            }
+            label(ctx, "WQ · WK · WV", 390, 73, Style.Theme.formula_texto, 8, true, "center")
+        } else if (kind === "transpose") {
+            miniMatrix(ctx, 186, 48, 4, 6, 9, Style.Theme.matriz_key_texto, "checker")
+            arrow(ctx, 252, 72, 318, 72, accent, "Kᵀ")
+            miniMatrix(ctx, 339, 42, 6, 4, 9, Style.Theme.matriz_key_texto, "checker")
+        } else if (kind === "score_matrix" || kind === "head_scores") {
+            miniMatrix(ctx, 206, 49, 3, 5, 10, Style.Theme.matriz_query_texto, "row")
+            label(ctx, "×", 278, 72, accent, 13, true, "center")
+            miniMatrix(ctx, 291, 49, 5, 3, 10, Style.Theme.matriz_key_texto, "checker")
+            label(ctx, "=", 345, 72, accent, 13, true, "center")
+            miniMatrix(ctx, 359, 49, 3, 3, 10, Style.Theme.formula_texto, "diagonal")
+        } else if (kind === "scale_scores") {
+            box(ctx, 183, 54, 94, 40, "[4, 1, −2]", "scores",
+                Style.Theme.formula_fondo, Style.Theme.formula_texto)
+            arrow(ctx, 278, 74, 330, 74, accent, "÷ √dₖ")
+            box(ctx, 334, 54, 84, 40, "[0.5, .12, −.25]", "escalados",
+                Style.Theme.proceso_fondo, Style.Theme.proceso_texto)
+        } else if (kind === "softmax_row" || kind === "final_softmax"
+                   || kind === "logits_probabilities") {
+            miniBars(ctx, 196, 96, [0.18, 0.72, 0.1], 78, 55,
+                     [Style.Theme.formula_texto, Style.Theme.formula_texto,
+                      Style.Theme.formula_texto])
+            arrow(ctx, 284, 72, 328, 72, accent, "softmax")
+            miniBars(ctx, 340, 96, [0.18, 0.72, 0.1], 78, 55)
+            label(ctx, "Σ = 1", 379, 105, Style.Theme.proceso_texto, 8, true, "center")
+        } else if (kind === "weighted_values" || kind === "head_context") {
+            var weights = ["0.7×V₁", "0.2×V₂", "0.1×V₃"]
+            for (var w = 0; w < weights.length; ++w)
+                pill(ctx, 181, 38 + w * 28, 82, weights[w],
+                     Style.Theme.matriz_value_fondo, Style.Theme.matriz_value_texto,
+                     w === 0)
+            arrow(ctx, 270, 72, 327, 72, accent, "Σ")
+            box(ctx, 333, 51, 88, 45, "CONTEXTO", "mezcla de V",
+                Style.Theme.proceso_fondo, Style.Theme.proceso_texto)
+        } else if (kind === "attention_output") {
+            var stages = ["QKᵀ", "÷√dₖ", "Softmax", "×V"]
+            for (var s = 0; s < stages.length; ++s) {
+                pill(ctx, 177 + s * 63, 58, 52, stages[s],
+                     s === 3 ? Style.Theme.proceso_fondo : Style.Theme.formula_fondo,
+                     s === 3 ? Style.Theme.proceso_texto : Style.Theme.formula_texto,
+                     s === 3)
+                if (s < stages.length - 1)
+                    arrow(ctx, 230 + s * 63, 70, 238 + s * 63, 70, accent)
+            }
+        } else if (kind === "split_heads") {
+            box(ctx, 183, 57, 82, 35, "d_model", "vector completo",
+                Style.Theme.superficie_alterna, Style.Theme.texto_secundario_fuerte)
+            for (var head = 0; head < 3; ++head) {
+                arrow(ctx, 266, 74, 326, 45 + head * 27,
+                      [Style.Theme.info_texto, Style.Theme.concepto_texto,
+                       Style.Theme.proceso_texto][head])
+                pill(ctx, 333, 33 + head * 27, 82, "H" + (head + 1) + " · d_head",
+                     [Style.Theme.info_fondo, Style.Theme.concepto_fondo,
+                      Style.Theme.proceso_fondo][head],
+                     [Style.Theme.info_texto, Style.Theme.concepto_texto,
+                      Style.Theme.proceso_texto][head], false)
+            }
+        } else if (kind === "head_maps") {
+            var headColors = [Style.Theme.info_texto, Style.Theme.concepto_texto,
+                              Style.Theme.proceso_texto]
+            for (var map = 0; map < 3; ++map) {
+                miniMatrix(ctx, 190 + map * 76, 50, 4, 4, 10,
+                           headColors[map], map === 0 ? "diagonal"
+                           : map === 1 ? "row" : "checker")
+                label(ctx, "H" + (map + 1), 211 + map * 76, 104,
+                      headColors[map], 8, true, "center")
+            }
+        } else if (kind === "concat") {
+            var concatColors = [Style.Theme.info, Style.Theme.acento,
+                                Style.Theme.proceso_texto]
+            for (var part = 0; part < 3; ++part) {
+                ctx.fillStyle = concatColors[part]
+                roundedPath(ctx, 197 + part * 67, 58, 62, 31, 4)
+                ctx.fill()
+                label(ctx, "H" + (part + 1), 228 + part * 67, 74,
+                      Style.Theme.texto_sobre_color, 8, true, "center")
+            }
+            label(ctx, "[ H1 | H2 | H3 ]", 300, 106,
+                  Style.Theme.formula_texto, 8, true, "center")
+        } else if (kind === "output_projection" || kind === "vocab_projection") {
+            miniBars(ctx, 185, 92, [0.3, 0.75, 0.5, 0.2], 70, 45)
+            arrow(ctx, 265, 72, 327, 72, accent,
+                  kind === "vocab_projection" ? "W_vocab" : "Wᴼ")
+            miniMatrix(ctx, 342, 51, 4, 6, 9,
+                       kind === "vocab_projection" ? Style.Theme.formula_texto
+                                                   : Style.Theme.proceso_texto,
+                       "checker")
+        } else if (kind === "multihead_output") {
+            for (var mh = 0; mh < 3; ++mh)
+                pill(ctx, 181, 38 + mh * 28, 57, "H" + (mh + 1),
+                     Style.Theme.concepto_fondo, Style.Theme.concepto_texto, false)
+            arrow(ctx, 245, 72, 307, 72, accent, "Concat + Wᴼ")
+            box(ctx, 316, 51, 102, 45, "MHA(X)", "[B,T,d_model]",
+                Style.Theme.proceso_fondo, Style.Theme.proceso_texto)
+        } else if (kind === "encoder_attention" || kind === "masked_attention") {
+            var nodeXs = [205, 265, 325, 385]
+            for (var node = 0; node < nodeXs.length; ++node)
+                pill(ctx, nodeXs[node] - 21, 80, 42, String(node + 1),
+                     Style.Theme.info_fondo, Style.Theme.info_texto,
+                     node === 2)
+            for (var key = 0; key < nodeXs.length; ++key) {
+                if (kind === "masked_attention" && key > 2)
+                    continue
+                curveArrow(ctx, nodeXs[2], 80, nodeXs[2], 43,
+                           nodeXs[key], 43, nodeXs[key], 79,
+                           key === 1 ? Style.Theme.acento
+                                     : Qt.alpha(Style.Theme.info_texto, 0.58))
+            }
+            if (kind === "masked_attention")
+                captionTag(ctx, "futuro bloqueado", 388, 43,
+                           Style.Theme.error_texto, 7)
+        } else if (kind === "residual" || kind === "residual_norm") {
+            box(ctx, 180, 56, 62, 38, "X", "entrada",
+                Style.Theme.info_fondo, Style.Theme.info_texto)
+            arrow(ctx, 243, 75, 294, 75, accent, "subcapa")
+            pill(ctx, 303, 63, 38, "+", Style.Theme.formula_fondo,
+                 Style.Theme.formula_texto, true)
+            arrow(ctx, 342, 75, 368, 75, accent)
+            pill(ctx, 374, 63, 49, kind === "residual_norm" ? "Norm" : "Y",
+                 Style.Theme.proceso_fondo, Style.Theme.proceso_texto, true)
+            curveArrow(ctx, 210, 55, 210, 30, 322, 30, 322, 62,
+                       Style.Theme.info_texto)
+        } else if (kind === "layer_norm") {
+            miniBars(ctx, 190, 92, [0.95, 0.2, 0.75, 0.1], 74, 48)
+            arrow(ctx, 272, 72, 326, 72, accent, "Norm")
+            miniBars(ctx, 342, 92, [0.52, 0.38, 0.64, 0.42], 74, 48)
+        } else if (kind === "ffn_expand" || kind === "ffn_project"
+                   || kind === "decoder_ffn") {
+            var leftWidth = kind === "ffn_project" ? 88 : 48
+            var middleWidth = kind === "ffn_project" ? 48 : 88
+            box(ctx, 181, 58, leftWidth, 34,
+                kind === "ffn_project" ? "d_ff" : "d_model", "",
+                Style.Theme.info_fondo, Style.Theme.info_texto)
+            arrow(ctx, 182 + leftWidth, 75, 293, 75, accent)
+            box(ctx, 298, 48, middleWidth, 54,
+                kind === "ffn_project" ? "d_model" : "d_ff",
+                kind === "decoder_ffn" ? "+ residual" : "ReLU / GELU",
+                Style.Theme.formula_fondo, Style.Theme.formula_texto)
+            arrow(ctx, 299 + middleWidth, 75, 417, 75, accent)
+        } else if (kind === "encoder_stack" || kind === "decoder_stack") {
+            for (var layer = 0; layer < 4; ++layer) {
+                box(ctx, 188 + layer * 58, 48 - layer * 5, 72, 48,
+                    "CAPA " + (layer + 1), layer === 3 ? "salida" : "",
+                    layer === 3 ? Style.Theme.proceso_fondo : Style.Theme.concepto_fondo,
+                    layer === 3 ? Style.Theme.proceso_texto : Style.Theme.concepto_texto)
+            }
+            label(ctx, "N bloques con la misma interfaz", 300, 111,
+                  Style.Theme.texto_secundario, 8, true, "center")
+        } else if (kind === "shifted_prefix") {
+            miniTokens(ctx, ["hola", "mundo", "EOS"], 40, -1)
+            label(ctx, "desplazar una posición ↓", 300, 75,
+                  Style.Theme.formula_texto, 8, true, "center")
+            miniTokens(ctx, ["BOS", "hola", "mundo"], 84, 0)
+        } else if (kind === "causal_mask") {
+            miniMatrix(ctx, 256, 39, 5, 5, 11,
+                       Style.Theme.proceso_texto, "diagonal")
+            label(ctx, "✓ pasado y presente · × futuro", 300, 106,
+                  Style.Theme.error_texto, 8, true, "center")
+        } else if (kind === "cross_attention") {
+            label(ctx, "K / V · ENCODER", 300, 42,
+                  Style.Theme.matriz_key_texto, 8, true, "center")
+
+            // Q consulta todas las posiciones de la fuente. El grosor de cada
+            // enlace anticipa el peso de atención que se muestra debajo.
+            attentionLink(ctx, 207, 92, 218, 76, 229, 76, 241, 72,
+                          Style.Theme.matriz_query_texto, 0.20)
+            attentionLink(ctx, 207, 92, 235, 76, 275, 76, 300, 72,
+                          Style.Theme.matriz_query_texto, 0.75)
+            attentionLink(ctx, 207, 92, 252, 76, 330, 76, 359, 72,
+                          Style.Theme.matriz_query_texto, 0.35)
+
+            miniTokens(ctx, ["El", "gato", "duerme"], 50, 1)
+            pill(ctx, 178, 91, 58, "Q dec.", Style.Theme.formula_fondo,
+                 Style.Theme.matriz_query_texto, true)
+
+            label(ctx, "pesos α", 279, 119,
+                  Style.Theme.texto_secundario, 7, true, "center")
+            miniBars(ctx, 246, 108, [0.20, 0.75, 0.35], 70, 25,
+                     [Style.Theme.info_texto, Style.Theme.acento,
+                      Style.Theme.info_texto])
+            arrow(ctx, 320, 102, 345, 102, Style.Theme.acento)
+            pill(ctx, 350, 90, 77, "Σ α · V", Style.Theme.proceso_fondo,
+                 Style.Theme.proceso_texto, true)
+        } else if (kind === "cross_ffn") {
+            label(ctx, "K / V · ENCODER", 300, 42,
+                  Style.Theme.matriz_key_texto, 8, true, "center")
+
+            attentionLink(ctx, 207, 95, 218, 77, 229, 77, 241, 72,
+                          Style.Theme.matriz_query_texto, 0.20)
+            attentionLink(ctx, 207, 95, 235, 77, 275, 77, 300, 72,
+                          Style.Theme.matriz_query_texto, 0.75)
+            attentionLink(ctx, 207, 95, 252, 77, 330, 77, 359, 72,
+                          Style.Theme.matriz_query_texto, 0.35)
+
+            miniTokens(ctx, ["El", "gato", "duerme"], 50, 1)
+            captionTag(ctx, "α: 0.20   0.75   0.35", 300, 83,
+                       Style.Theme.texto_secundario, 7)
+            pill(ctx, 178, 94, 58, "Q dec.", Style.Theme.formula_fondo,
+                 Style.Theme.matriz_query_texto, true)
+            pill(ctx, 257, 94, 76, "Σ α · V", Style.Theme.proceso_fondo,
+                 Style.Theme.proceso_texto, true)
+            arrow(ctx, 336, 106, 350, 106, Style.Theme.acento)
+            pill(ctx, 354, 94, 70, "+ FFN", Style.Theme.formula_fondo,
+                 Style.Theme.formula_texto, true)
+        } else if (kind === "last_state") {
+            miniTokens(ctx, ["BOS", "El", "gato", "duerme"], 55, 3)
+            arrow(ctx, 390, 88, 390, 107, Style.Theme.acento)
+            label(ctx, "h_t · vector de la última posición", 300, 110,
+                  Style.Theme.proceso_texto, 8, true, "center")
+        } else if (kind === "temperature") {
+            miniBars(ctx, 185, 94, [0.35, 0.75, 0.5, 0.3], 78, 50)
+            label(ctx, "T < 1", 224, 105, Style.Theme.formula_texto, 8, true, "center")
+            miniBars(ctx, 340, 94, [0.48, 0.58, 0.53, 0.45], 78, 50)
+            label(ctx, "T > 1", 379, 105, Style.Theme.info_texto, 8, true, "center")
+            arrow(ctx, 277, 72, 328, 72, accent, "comparar")
+        } else if (kind === "top_k" || kind === "top_p") {
+            var candidateValues = [0.88, 0.68, 0.48, 0.28, 0.14]
+            var candidateColors = []
+            for (var candidate = 0; candidate < candidateValues.length; ++candidate) {
+                var kept = kind === "top_k" ? candidate < 3 : candidate < 2
+                candidateColors.push(kept ? root.attentionColor(candidateValues[candidate])
+                                          : Style.Theme.divisor)
+            }
+            miniBars(ctx, 215, 96, candidateValues, 170, 58, candidateColors)
+            label(ctx, kind === "top_k" ? "K = 3" : "0.60 + 0.25 ≥ p",
+                  300, 108, kind === "top_k" ? Style.Theme.concepto_texto
+                                              : Style.Theme.proceso_texto,
+                  8, true, "center")
+        } else if (kind === "select_token") {
+            miniBars(ctx, 195, 94, [0.18, 0.63, 0.12, 0.07], 170, 56)
+            captionTag(ctx, "«duerme» seleccionado", 340, 44,
+                       Style.Theme.proceso_texto, 8)
+        } else if (kind === "generation_loop") {
+            miniTokens(ctx, ["BOS", "El", "gato", "+ token"], 56, 3)
+            curveArrow(ctx, 391, 81, 430, 119, 182, 119, 209, 82,
+                       Style.Theme.proceso_texto)
+            captionTag(ctx, "repetir", 300, 112, Style.Theme.proceso_texto, 8)
+        } else if (kind === "source_target") {
+            pill(ctx, 181, 43, 92, "FUENTE", Style.Theme.info_fondo,
+                 Style.Theme.info_texto, true)
+            pill(ctx, 181, 81, 92, "OBJETIVO", Style.Theme.formula_fondo,
+                 Style.Theme.formula_texto, true)
+            arrow(ctx, 275, 55, 355, 55, Style.Theme.info_texto, "src_ids")
+            arrow(ctx, 275, 93, 355, 93, Style.Theme.formula_texto, "tgt_ids")
+            miniMatrix(ctx, 369, 46, 3, 4, 10, Style.Theme.proceso_texto, "checker")
+        } else if (kind === "full_transformer") {
+            pill(ctx, 178, 60, 46, "src", Style.Theme.info_fondo,
+                 Style.Theme.info_texto, true)
+            arrow(ctx, 225, 72, 251, 72, Style.Theme.info_texto)
+            box(ctx, 254, 47, 68, 50, "ENC", "memoria",
+                Style.Theme.concepto_fondo, Style.Theme.concepto_texto)
+            arrow(ctx, 323, 72, 348, 72, accent)
+            box(ctx, 351, 47, 68, 50, "DEC", "prefijo",
+                Style.Theme.formula_fondo, Style.Theme.formula_texto)
+            curveArrow(ctx, 400, 98, 425, 126, 335, 126, 366, 98,
+                       Style.Theme.proceso_texto)
+        } else {
+            box(ctx, 204, 51, 192, 46, "TRANSFORMACIÓN", "entrada → operación → salida",
+                Style.Theme.concepto_fondo, Style.Theme.concepto_texto)
+        }
+    }
+
+    function drawStepScene(ctx) {
+        var visual = VisualCatalog.stepVisual(root.stepId)
+        if (visual === null) {
+            drawPipeline(ctx)
+            return
+        }
+        box(ctx, 10, 50, 122, 49, String(visual.before), "entrada",
+            Style.Theme.info_fondo, Style.Theme.info_texto)
+        arrow(ctx, 133, 74, 157, 74, Style.Theme.acento)
+
+        ctx.fillStyle = Style.Theme.concepto_fondo
+        roundedPath(ctx, 160, 10, 280, 122, 10)
+        ctx.fill()
+        ctx.strokeStyle = Qt.alpha(Style.Theme.acento, 0.82)
+        ctx.lineWidth = 2
+        ctx.stroke()
+        label(ctx, String(visual.focus), 300, 25, Style.Theme.acento_fuerte,
+              10, true, "center")
+        drawStageGlyph(ctx, String(visual.kind))
+
+        arrow(ctx, 442, 74, 466, 74, Style.Theme.acento)
+        box(ctx, 468, 50, 122, 49, String(visual.after), "resultado",
+            Style.Theme.proceso_fondo, Style.Theme.proceso_texto)
     }
 
     function roundedPath(ctx, x, y, width, height, radius) {
@@ -148,6 +598,24 @@ Item {
         ctx.lineTo(x2 - Math.cos(angle + 0.55) * 6,
                    y2 - Math.sin(angle + 0.55) * 6)
         ctx.closePath()
+        ctx.fill()
+    }
+
+    function attentionLink(ctx, x1, y1, cx1, cy1, cx2, cy2, x2, y2,
+                           color, strength) {
+        var boundedStrength = Math.max(0, Math.min(1, strength))
+        ctx.strokeStyle = Qt.alpha(color || Style.Theme.acento,
+                                   0.28 + boundedStrength * 0.72)
+        ctx.lineWidth = 0.8 + boundedStrength * 2.5
+        ctx.beginPath()
+        ctx.moveTo(x1, y1)
+        ctx.bezierCurveTo(cx1, cy1, cx2, cy2, x2, y2)
+        ctx.stroke()
+
+        ctx.fillStyle = Qt.alpha(color || Style.Theme.acento,
+                                 0.42 + boundedStrength * 0.58)
+        ctx.beginPath()
+        ctx.arc(x2, y2, 1.5 + boundedStrength * 1.8, 0, Math.PI * 2)
         ctx.fill()
     }
 
@@ -618,7 +1086,8 @@ Item {
                       (height - 145 * sceneScale) / 2)
         ctx.scale(sceneScale, sceneScale)
         var id = root.conceptId
-        if (id === "que_es_transformer") drawQueEsTransformer(ctx)
+        if (root.stepId !== "") drawStepScene(ctx)
+        else if (id === "que_es_transformer") drawQueEsTransformer(ctx)
         else if (id === "encoder_decoder_general") drawEncoderDecoder(ctx)
         else if (id === "flujo_general") drawPipeline(ctx)
         else if (id === "tokenizacion") drawTokenization(ctx)
@@ -651,6 +1120,7 @@ Item {
     }
 
     onConceptIdChanged: diagram.requestPaint()
+    onStepIdChanged: diagram.requestPaint()
 
     Connections {
         target: Style.Theme
