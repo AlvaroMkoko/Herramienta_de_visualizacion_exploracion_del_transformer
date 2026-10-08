@@ -176,7 +176,20 @@ ApplicationWindow {{
     assert window is not None, _errors(component)
     qapp.processEvents()
 
-    if screen_name == "InferenceScreen":
+    if screen_name == "ResultsScreen":
+        notice = window.findChild(QQuickItem, "resultsSaveNotice")
+        assert notice is not None
+        filename = "modelo_con_un_nombre_extremadamente_largo_20261008.tvismodel"
+        notice.setProperty(
+            "message",
+            "Guardado: C:\\Users\\Leona\\Documents\\Proyecto\\"
+            "una_ruta_muy_larga_que_no_contiene_espacios\\"
+            f"checkpoints\\{filename}",
+        )
+        notice.setProperty("visible", True)
+        qapp.processEvents()
+        assert notice.property("fileName") == filename
+    elif screen_name == "InferenceScreen":
         progress = window.findChild(QObject, "inferenceLaboratoryProgress")
         assert progress is not None
         assert progress.property("currentStep") == 2

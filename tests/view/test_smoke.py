@@ -342,11 +342,22 @@ def test_entrenamiento_muestra_el_segundo_paso_del_laboratorio(training_qml, qap
     journey = training_qml.findChild(QObject, "trainingJourney")
     screen = training_qml.findChild(QObject, "trainingScreen")
     summary_strip = training_qml.findChild(QObject, "trainingSummaryStrip")
+    sidebar = training_qml.findChild(QObject, "trainingSidebar")
+    controls_card = training_qml.findChild(QObject, "trainingControlsCard")
+    save_notice = training_qml.findChild(QObject, "trainingSaveNotice")
 
-    assert progress is not None
-    assert journey is not None
-    assert screen is not None
-    assert summary_strip is not None
+    assert all(
+        item is not None
+        for item in (
+            progress,
+            journey,
+            screen,
+            summary_strip,
+            sidebar,
+            controls_card,
+            save_notice,
+        )
+    )
     assert progress.property("currentStep") == 1
     assert progress.property("totalSteps") == 3
     assert progress.property("currentStepTitle") == "Entrenamiento"
@@ -359,6 +370,24 @@ def test_entrenamiento_muestra_el_segundo_paso_del_laboratorio(training_qml, qap
     assert journey.property("sx") <= 1.10
     assert journey.property("sy") <= 1.08
     assert summary_strip.property("height") < 70
+    assert sidebar.property("width") <= screen.property("sidebarWidth") + 1
+
+    filename = (
+        "modelo_64d_6enc-6dec_4h_relu_Truemascara-c_"
+        "step17_cpu_20261008_153429.tvismodel"
+    )
+    screen.setProperty(
+        "mensajeCheckpoint",
+        "Guardado: C:\\Users\\Leona\\Documents\\Proyecto\\"
+        "Proyecto_Transformer_visualizacion\\"
+        "Herramienta_de_visualizacion_exploracion_del_transformer\\"
+        f"data\\checkpoints\\{filename}",
+    )
+    qapp.processEvents()
+
+    assert save_notice.property("visible") is True
+    assert save_notice.property("fileName") == filename
+    assert save_notice.property("width") <= controls_card.property("width")
 
 
 def test_explicacion_del_entrenamiento_se_desacopla_y_distingue_backward_de_step(

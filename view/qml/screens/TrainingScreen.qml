@@ -20,6 +20,15 @@ PagePrincipal {
     // usa una escala acotada y dedica el espacio extra a la visualización.
     readonly property real leftSx: Math.max(0.78, Math.min(1.10, root.sx))
     readonly property real leftSy: Math.max(0.74, Math.min(1.08, root.sy))
+    // La barra lateral conserva proporciones cómodas en ventanas anchas.
+    // Antes crecía con todo el ancho de pantalla, quitaba espacio a la
+    // visualización principal y hacía que sus controles se apilaran.
+    readonly property real sidebarSx: Math.max(0.78, Math.min(1.18, root.sx))
+    readonly property real sidebarSy: Math.max(0.74, Math.min(1.08, root.sy))
+    readonly property real sidebarWidth: Math.max(
+        330 * root.sidebarSx,
+        Math.min(455 * root.sidebarSx, root.width * 0.31)
+    )
 
     property int epocasIniciales: 10
     property real tasaAprendizajeInicial: 0.0003
@@ -603,29 +612,29 @@ PagePrincipal {
         anchors.leftMargin: 22 * root.leftSx
         anchors.rightMargin: 22 * root.leftSx
         anchors.bottomMargin: 14 * root.leftSy
-        spacing: 18 * root.leftSx
+        spacing: 20 * root.leftSx
 
         RectanglePrincipal {
             id: mapaCard
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.minimumWidth: 720 * root.leftSx
+            Layout.minimumWidth: 660 * root.leftSx
             sx: root.leftSx
             sy: root.leftSy
 
             ColumnLayout {
                 anchors.fill: parent
-                anchors.margins: 10 * root.leftSx
-                spacing: 5 * root.leftSy
+                anchors.margins: 14 * root.leftSx
+                spacing: 7 * root.leftSy
 
                 RowLayout {
                     Layout.fillWidth: true
                     id: trainingSummaryStrip
                     objectName: "trainingSummaryStrip"
-                    Layout.preferredHeight: 48 * root.leftSy
-                    Layout.minimumHeight: 48 * root.leftSy
-                    Layout.maximumHeight: 48 * root.leftSy
-                    spacing: 7 * root.leftSx
+                    Layout.preferredHeight: 52 * root.leftSy
+                    Layout.minimumHeight: 52 * root.leftSy
+                    Layout.maximumHeight: 52 * root.leftSy
+                    spacing: 9 * root.leftSx
 
                     Repeater {
                         model: root.metricasResumen.length
@@ -688,9 +697,9 @@ PagePrincipal {
                 Rectangle {
                     Layout.fillWidth: true
                     objectName: "trainingBatchReading"
-                    Layout.preferredHeight: 40 * root.leftSy
-                    Layout.minimumHeight: 40 * root.leftSy
-                    Layout.maximumHeight: 40 * root.leftSy
+                    Layout.preferredHeight: 44 * root.leftSy
+                    Layout.minimumHeight: 44 * root.leftSy
+                    Layout.maximumHeight: 44 * root.leftSy
                     radius: 9 * root.leftSx
                     color: Style.Theme.aviso_fondo
                     border.color: Style.Theme.warning
@@ -747,9 +756,9 @@ PagePrincipal {
                         TabBar {
                             id: barraPestanas
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 29 * root.leftSy
-                            Layout.minimumHeight: 29 * root.leftSy
-                            Layout.maximumHeight: 29 * root.leftSy
+                            Layout.preferredHeight: 32 * root.leftSy
+                            Layout.minimumHeight: 32 * root.leftSy
+                            Layout.maximumHeight: 32 * root.leftSy
                             spacing: 5 * root.leftSx
                             background: Rectangle { color: "transparent" }
 
@@ -877,34 +886,36 @@ PagePrincipal {
         }
 
         ColumnLayout {
+            id: trainingSidebar
             objectName: "trainingSidebar"
-            Layout.preferredWidth: 400 * root.sx
-            Layout.minimumWidth: 340 * root.sx
+            Layout.preferredWidth: root.sidebarWidth
+            Layout.minimumWidth: 300 * root.sidebarSx
+            Layout.maximumWidth: root.sidebarWidth
             Layout.fillHeight: true
-            spacing: 12 * root.sy
+            spacing: 14 * root.sidebarSy
 
             RectanglePrincipal {
                 objectName: "trainingArchitectureCard"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                sx: root.sx
-                sy: root.sy
+                sx: root.sidebarSx
+                sy: root.sidebarSy
 
                 ColumnLayout {
                     id: mapaPanelLayout
                     anchors.fill: parent
-                    anchors.margins: 12 * root.sx
-                    spacing: 8 * root.sy
+                    anchors.margins: 14 * root.sidebarSx
+                    spacing: 10 * root.sidebarSy
 
                     RowLayout {
                         Layout.fillWidth: true
-                        spacing: 6 * root.sx
+                        spacing: 6 * root.sidebarSx
                         Text {
                             Layout.fillWidth: true
                             text: "MAPA DE ARQUITECTURA"
                             color: Style.Theme.acento_fuerte
                             font.bold: true
-                            font.pixelSize: 10 * root.sx
+                            font.pixelSize: 10 * root.sidebarSx
                         }
                         BotonAccesible {
                             id: detachedMapExplanationButton
@@ -912,14 +923,14 @@ PagePrincipal {
                             visible: localBridge.selectedId !== ""
                             Layout.preferredHeight: Math.max(
                                                         22,
-                                                        25 * Math.min(root.sx,
-                                                                      root.sy))
+                                                        25 * Math.min(root.sidebarSx,
+                                                                      root.sidebarSy))
                             text: root.transformerExplanationDetached
                                   ? "Explicación abierta ↗"
                                   : "Abrir explicación ↗"
                             flat: true
                             font.bold: true
-                            font.pixelSize: Math.max(10, Math.min(13, 10 * root.sx))
+                            font.pixelSize: Math.max(10, Math.min(13, 10 * root.sidebarSx))
                             onClicked: {
                                 if (root.transformerExplanationDetached) {
                                     detachedTransformerExplanationWindow.raise()
@@ -935,7 +946,8 @@ PagePrincipal {
                         ConceptHelpButton {
                             objectName: "trainingMapHelpButton"
                             conceptId: "que_es_transformer"
-                            controlSize: Math.max(22, 25 * Math.min(root.sx, root.sy))
+                            controlSize: Math.max(22, 25 * Math.min(root.sidebarSx,
+                                                                   root.sidebarSy))
                             onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
                         }
                     }
@@ -944,7 +956,7 @@ PagePrincipal {
                         Layout.fillWidth: true
                         text: "Selecciona un bloque: su explicación se abrirá en una ventana aparte."
                         color: Style.Theme.texto_secundario
-                        font.pixelSize: 10 * root.sx
+                        font.pixelSize: 10 * root.sidebarSx
                         wrapMode: Text.WordWrap
                     }
 
@@ -1214,33 +1226,34 @@ PagePrincipal {
             RectanglePrincipal {
                 objectName: "trainingControlsCard"
                 Layout.fillWidth: true
-                Layout.preferredHeight: controlesEntrenamiento.implicitHeight + 24 * root.sy
-                sx: root.sx
-                sy: root.sy
+                Layout.preferredHeight: controlesEntrenamiento.implicitHeight
+                                        + 28 * root.sidebarSy
+                sx: root.sidebarSx
+                sy: root.sidebarSy
 
                 ColumnLayout {
                     id: controlesEntrenamiento
                     anchors.fill: parent
-                    anchors.margins: 12 * root.sx
-                    spacing: 8 * root.sy
+                    anchors.margins: 14 * root.sidebarSx
+                    spacing: 10 * root.sidebarSy
 
                     Text {
                         Layout.fillWidth: true
                         text: "CONTROL DEL ENTRENAMIENTO"
                         color: Style.Theme.acento_fuerte
                         font.bold: true
-                        font.pixelSize: 10 * root.sx
+                        font.pixelSize: 10 * root.sidebarSx
                         horizontalAlignment: Text.AlignHCenter
                     }
 
                     RowLayout {
                         Layout.fillWidth: true
-                        spacing: 6 * root.sx
+                        spacing: 6 * root.sidebarSx
 
                         BusyIndicator {
                             objectName: "trainingBatchBusyIndicator"
-                            Layout.preferredWidth: 22 * root.sy
-                            Layout.preferredHeight: 22 * root.sy
+                            Layout.preferredWidth: 22 * root.sidebarSy
+                            Layout.preferredHeight: 22 * root.sidebarSy
                             running: root.trainingController.estaEntrenando
                                      && (!root.trainingController.estaPausado
                                          || root.trainingController.pausaSolicitada
@@ -1256,7 +1269,7 @@ PagePrincipal {
                                    ? Style.Theme.aviso_texto : Style.Theme.texto_secundario
                             horizontalAlignment: Text.AlignHCenter
                             wrapMode: Text.WordWrap
-                            font.pixelSize: 10 * root.sx
+                            font.pixelSize: 10 * root.sidebarSx
                             font.bold: root.trainingController.pausaSolicitada
                                        || root.trainingController.detencionSolicitada
                         }
@@ -1264,7 +1277,7 @@ PagePrincipal {
 
                     ProgressBar {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 12 * root.sy
+                        Layout.preferredHeight: 12 * root.sidebarSy
                         objectName: "trainingGlobalProgressBar"
                         from: 0
                         to: 1
@@ -1276,11 +1289,11 @@ PagePrincipal {
 
                     RowLayout {
                         Layout.fillWidth: true
-                        spacing: 8 * root.sx
+                        spacing: 8 * root.sidebarSx
 
                         BotonPrincipal {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 42 * root.sy
+                            Layout.preferredHeight: 42 * root.sidebarSy
                             enabled: !root.trainingController.detencionSolicitada
                             opacity: enabled ? 1 : 0.45
                             text: !root.trainingController.estaEntrenando
@@ -1309,7 +1322,7 @@ PagePrincipal {
 
                         BotonPrincipal {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 42 * root.sy
+                            Layout.preferredHeight: 42 * root.sidebarSy
                             text: "■ Detener"
                             enabled: root.trainingController.estaEntrenando
                                      && !root.trainingController.detencionSolicitada
@@ -1320,9 +1333,9 @@ PagePrincipal {
 
                     BotonSecundario {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 32 * root.sy
-                        sx: root.sx
-                        sy: root.sy
+                        Layout.preferredHeight: 32 * root.sidebarSy
+                        sx: root.sidebarSx
+                        sy: root.sidebarSy
                         text: root.advancedControlsVisible
                               ? "Ocultar ajustes ↑"
                               : "Ajustes de ejecución ↓"
@@ -1332,11 +1345,11 @@ PagePrincipal {
                     RowLayout {
                         visible: root.advancedControlsVisible
                         Layout.fillWidth: true
-                        spacing: 8 * root.sx
+                        spacing: 8 * root.sidebarSx
 
                         BotonPrincipal {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 36 * root.sy
+                            Layout.preferredHeight: 36 * root.sidebarSy
                             size_text: 0.18
                             text: "🐇 Más rápido"
                             enabled: root.indiceVelocidad > 0
@@ -1346,7 +1359,7 @@ PagePrincipal {
 
                         BotonPrincipal {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 36 * root.sy
+                            Layout.preferredHeight: 36 * root.sidebarSy
                             size_text: 0.18
                             text: "🐢 Más lento"
                             enabled: root.indiceVelocidad < root.velocidadesDisponibles.length - 1
@@ -1364,47 +1377,60 @@ PagePrincipal {
                                  : "")
                         color: Style.Theme.texto_secundario
                         horizontalAlignment: Text.AlignHCenter
-                        font.pixelSize: 10 * root.sx
+                        font.pixelSize: 10 * root.sidebarSx
                     }
 
                     RowLayout {
                         visible: root.advancedControlsVisible
                         Layout.fillWidth: true
-                        spacing: 5 * root.sx
+                        spacing: 5 * root.sidebarSx
                         Item { Layout.fillWidth: true }
                         Text {
                             text: "LR " + root.tasaAprendizajeInicial.toFixed(4)
                                   + "  ·  Batch " + root.batchSizeInicial
                                   + "  ·  " + root.epocasIniciales + " épocas"
                             color: Style.Theme.texto_secundario
-                            font.pixelSize: 10 * root.sx
+                            font.pixelSize: 10 * root.sidebarSx
                         }
                         ConceptHelpButton {
                             conceptId: "learning_rate"
-                            controlSize: Math.max(21, 24 * Math.min(root.sx, root.sy))
+                            controlSize: Math.max(21, 24 * Math.min(root.sidebarSx,
+                                                                   root.sidebarSy))
                             onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
                         }
                         ConceptHelpButton {
                             conceptId: "epoch_batch"
-                            controlSize: Math.max(21, 24 * Math.min(root.sx, root.sy))
+                            controlSize: Math.max(21, 24 * Math.min(root.sidebarSx,
+                                                                   root.sidebarSy))
                             onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
                         }
                         Item { Layout.fillWidth: true }
                     }
 
-                    Text {
-                        visible: root.mensajeError !== "" || root.mensajeCheckpoint !== ""
+                    SaveStatusNotice {
+                        objectName: "trainingSaveNotice"
                         Layout.fillWidth: true
-                        text: root.mensajeError !== "" ? "⚠ " + root.mensajeError : "✓ " + root.mensajeCheckpoint
-                        color: root.mensajeError !== "" ? Style.Theme.error_texto : Style.Theme.exito_texto
+                        Layout.minimumWidth: 0
+                        visible: root.mensajeCheckpoint !== "" && root.mensajeError === ""
+                        message: root.mensajeCheckpoint
+                        sx: root.sidebarSx
+                        sy: root.sidebarSy
+                    }
+
+                    Text {
+                        visible: root.mensajeError !== ""
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        text: "⚠ " + root.mensajeError
+                        color: Style.Theme.error_texto
                         horizontalAlignment: Text.AlignHCenter
-                        wrapMode: Text.WordWrap
-                        font.pixelSize: 10 * root.sx
+                        wrapMode: Text.WrapAnywhere
+                        font.pixelSize: 10 * root.sidebarSx
                     }
 
                     BotonPrincipal {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 42 * root.sy
+                        Layout.preferredHeight: 42 * root.sidebarSy
                         text: root.fueCancelado ? "Ver resumen parcial →" : "Finalizar entrenamiento →"
                         enabled: root.entrenamientoTerminado && !root.trainingController.estaEntrenando
                         opacity: enabled ? 1 : 0.45

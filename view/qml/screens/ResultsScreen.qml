@@ -560,19 +560,21 @@ PagePrincipal {
                     }
                 }
 
-                Text {
+                SaveStatusNotice {
+                    objectName: "resultsSaveNotice"
                     Layout.fillWidth: true
+                    Layout.minimumWidth: 0
                     visible: root.mensajeGuardado !== ""
-                    wrapMode: Text.WordWrap
-                    text: root.mensajeGuardado
-                    color: Style.Theme.exito_texto
-                    font.pixelSize: 11 * root.sx
+                    message: root.mensajeGuardado
+                    sx: root.sx
+                    sy: root.sy
                 }
 
                 Text {
                     Layout.fillWidth: true
+                    Layout.minimumWidth: 0
                     visible: root.mensajeError !== ""
-                    wrapMode: Text.WordWrap
+                    wrapMode: Text.WrapAnywhere
                     text: root.mensajeError
                     color: Style.Theme.error_texto
                     font.pixelSize: 11 * root.sx
