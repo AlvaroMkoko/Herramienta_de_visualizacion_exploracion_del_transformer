@@ -12,14 +12,13 @@ docs
 
 .pytest_cache/
 data/checkpoints/modelo.pt
+data/resultados/resultados_evaluacion.json
 
 *.pt
-!data/resultados/resultados_evaluacion.json
 !data/teoria/transformer.json
 !data/evaluacion/question_bank.json
 !data/aprendizaje/
 !data/aprendizaje/modules.json
-!data/resultados/resultados_evaluacion.json
 cambiar_constantes.py
 
 reporte_especificaciones_desarrollo.md
