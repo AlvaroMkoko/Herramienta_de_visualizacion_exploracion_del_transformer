@@ -14,7 +14,7 @@ docs
 data/checkpoints/modelo.pt
 
 *.pt
-
+!data/resultados/resultados_evaluacion.json
 !data/teoria/transformer.json
 !data/evaluacion/question_bank.json
 !data/aprendizaje/
