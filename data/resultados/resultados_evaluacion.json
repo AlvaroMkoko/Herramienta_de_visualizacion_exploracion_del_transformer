@@ -676,7 +676,8 @@
         "correo": "",
         "origen": "individual"
       },
-      "student_id": "__self__"
+      "student_id": "__self__",
+      "result_id": "h831b5c6633e88c3b430419186513da1"
     },
     {
       "schema_version": 2,
@@ -1290,7 +1291,8 @@
         "correo": "",
         "origen": "individual"
       },
-      "student_id": "__self__"
+      "student_id": "__self__",
+      "result_id": "h21b2770c57019e9efc323f7fd4d176b"
     }
   ],
   "archivados": []
