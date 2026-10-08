@@ -19,56 +19,103 @@ PagePrincipal {
         })
     }
 
+    FondoInicio {
+        anchors.fill: parent
+        intensidad: 0.56
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 34
         spacing: 18
 
-        RowLayout {
+        Rectangle {
             Layout.fillWidth: true
-            spacing: 12
+            Layout.preferredHeight: 112
+            radius: 20
+            color: Style.Theme.surface
+            border.width: 1
+            border.color: Style.Theme.borde_medio
 
-            BotonSecundario {
-                objectName: "teacherBackButton"
-                Layout.preferredWidth: 150
-                Layout.preferredHeight: 38
-                text: "← Cambiar perfil"
-                onClicked: root.stackView.pop()
+            Rectangle {
+                anchors.left: parent.left
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                width: 6
+                radius: 3
+                color: Style.Theme.info
             }
 
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 2
-                Text {
-                    text: "Panel del profesor"
-                    color: Style.Theme.texto_primario
-                    font.pixelSize: 30
-                    font.bold: true
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 24
+                anchors.rightMargin: 20
+                spacing: 14
+
+                BotonSecundario {
+                    objectName: "teacherBackButton"
+                    Layout.preferredWidth: root.width < 1100 ? 136 : 150
+                    Layout.preferredHeight: 38
+                    text: "← Cambiar perfil"
+                    onClicked: root.stackView.pop()
                 }
-                Text {
-                    text: "Seguimiento de pre-test y post-test por alumno"
-                    color: Style.Theme.texto_secundario
-                    font.pixelSize: 13
+
+                Rectangle {
+                    visible: root.width >= 1100
+                    Layout.preferredWidth: 48
+                    Layout.preferredHeight: 48
+                    radius: 15
+                    color: Style.Theme.info_fondo
+                    Text {
+                        anchors.centerIn: parent
+                        text: "P"
+                        color: Style.Theme.info_texto
+                        font.pixelSize: 21
+                        font.bold: true
+                    }
                 }
-            }
 
-            BotonSecundario {
-                objectName: "teacherClassroomButton"
-                Layout.preferredWidth: 190
-                Layout.preferredHeight: 46
-                text: mainViewModel.classroomHostController.activa
-                      ? "● Clase en red abierta" : "Clase en red"
-                onClicked: root.stackView.push("ClassroomSetupScreen.qml", {
-                    "stackView": root.stackView
-                })
-            }
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 1
+                    Text {
+                        text: "ESPACIO DOCENTE"
+                        color: Style.Theme.info_texto
+                        font.pixelSize: 10
+                        font.bold: true
+                        font.letterSpacing: 1.3
+                    }
+                    Text {
+                        text: "Panel del profesor"
+                        color: Style.Theme.texto_primario
+                        font.pixelSize: root.width < 1100 ? 25 : 29
+                        font.bold: true
+                    }
+                    Text {
+                        text: "Seguimiento de pre-test y post-test por alumno"
+                        color: Style.Theme.texto_secundario
+                        font.pixelSize: 13
+                    }
+                }
 
-            BotonPrincipal {
-                objectName: "teacherNewAssessmentButton"
-                Layout.preferredWidth: 210
-                Layout.preferredHeight: 46
-                text: "+ Aplicar evaluación"
-                onClicked: root.newAssessment()
+                BotonSecundario {
+                    objectName: "teacherClassroomButton"
+                    Layout.preferredWidth: root.width < 1100 ? 156 : 190
+                    Layout.preferredHeight: 46
+                    text: mainViewModel.classroomHostController.activa
+                          ? "● Clase en red abierta" : "Clase en red"
+                    onClicked: root.stackView.push("ClassroomSetupScreen.qml", {
+                        "stackView": root.stackView
+                    })
+                }
+
+                BotonPrincipal {
+                    objectName: "teacherNewAssessmentButton"
+                    Layout.preferredWidth: root.width < 1100 ? 180 : 210
+                    Layout.preferredHeight: 46
+                    text: "+ Aplicar evaluación"
+                    onClicked: root.newAssessment()
+                }
             }
         }
 
@@ -79,11 +126,19 @@ PagePrincipal {
 
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 86
-                radius: 12
+                Layout.preferredHeight: 94
+                radius: 16
                 color: Style.Theme.surface
                 border.width: 1
                 border.color: Style.Theme.borde_suave
+                Rectangle {
+                    anchors.left: parent.left
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    width: 5
+                    radius: 3
+                    color: Style.Theme.acento
+                }
                 RowLayout {
                     anchors.fill: parent
                     anchors.margins: 18
@@ -104,11 +159,19 @@ PagePrincipal {
 
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 86
-                radius: 12
+                Layout.preferredHeight: 94
+                radius: 16
                 color: Style.Theme.surface
                 border.width: 1
                 border.color: Style.Theme.borde_suave
+                Rectangle {
+                    anchors.left: parent.left
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    width: 5
+                    radius: 3
+                    color: Style.Theme.info
+                }
                 RowLayout {
                     anchors.fill: parent
                     anchors.margins: 18
@@ -131,7 +194,7 @@ PagePrincipal {
         Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            radius: 14
+            radius: 20
             color: Style.Theme.surface
             border.width: 1
             border.color: Style.Theme.borde_cuadro

@@ -24,6 +24,7 @@ Rectangle {
     property string fuenteGlifo: Style.Theme.fuente_simbolos
     property color glifoColor: Style.Theme.acento
     property color glifoFondo: Style.Theme.acento_fondo
+    property color acentoTarjeta: glifoColor
     property string titulo: ""
     property string descripcion: ""
 
@@ -40,11 +41,14 @@ Rectangle {
     readonly property bool resaltada: destacada || hover.hovered
 
     implicitHeight: columna.implicitHeight + 2 * 28
-    radius: 16
+    radius: 20
     color: Style.Theme.surface
     border.width: destacada ? 2 : 1
-    border.color: resaltada ? Style.Theme.acento : Style.Theme.borde_medio
+    border.color: resaltada ? root.acentoTarjeta : Style.Theme.borde_medio
+    scale: hover.hovered ? 1.006 : 1
+    transformOrigin: Item.Center
     Behavior on border.color { ColorAnimation { duration: Style.Theme.duracionMedia } }
+    Behavior on scale { NumberAnimation { duration: Style.Theme.duracionCorta; easing.type: Easing.OutCubic } }
 
     Accessible.role: Accessible.Grouping
     Accessible.name: titulo
@@ -54,6 +58,32 @@ Rectangle {
 
     // Entrada compartida con el resto de la app (ver AparicionSuave.qml).
     AparicionSuave { objetivo: root; retraso: root.retrasoEntrada }
+
+    Rectangle {
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.leftMargin: 28
+        width: root.resaltada ? 78 : 42
+        height: 4
+        radius: 2
+        color: root.acentoTarjeta
+        opacity: root.destacada ? 1 : 0.72
+
+        Behavior on width { NumberAnimation { duration: Style.Theme.duracionMedia; easing.type: Easing.OutCubic } }
+    }
+
+    Rectangle {
+        width: 118
+        height: 118
+        radius: 59
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.rightMargin: -46
+        anchors.topMargin: -54
+        color: root.glifoFondo
+        opacity: Style.Theme.modoOscuro ? 0.16 : 0.38
+        Accessible.ignored: true
+    }
 
     ColumnLayout {
         id: columna

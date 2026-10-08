@@ -130,7 +130,52 @@ def test_resultados_por_modulo_calculan_mejora_y_recomendacion(tmp_path):
     )
 
     summary = course.moduleResults("module_1")
+    assert summary["comparable"] is True
     assert summary["delta_percentage"] == 40.0
     assert summary["relative_improvement"] == 100.0
     assert summary["duration_seconds"] == 40.0
     assert "Tokenización" in summary["mastered"]
+
+
+def test_resultados_de_versiones_distintas_no_calculan_mejora(tmp_path):
+    results = ResultsRepository(tmp_path / "results.json")
+    evaluation = ModuleEvaluationController(repository=results)
+    course = CourseController(
+        evaluation,
+        repository=ModuleProgressRepository(tmp_path / "progress.json"),
+    )
+    common = {
+        "schema_version": 2,
+        "module_id": "module_1",
+        "module_title": "Entrada al Transformer",
+        "maximo": 15.0,
+        "duration_seconds": 20,
+        "answers": [],
+        "bloom": [],
+        "dimensions": [
+            {"id": "tokenizacion", "name": "Tokenización", "percentage": 80}
+        ],
+    }
+    results.save_result(
+        {
+            **common,
+            "assessment_type": "pre",
+            "instrument_version": 6,
+            "percentage": 40.0,
+        }
+    )
+    results.save_result(
+        {
+            **common,
+            "assessment_type": "post",
+            "instrument_version": 7,
+            "percentage": 80.0,
+        }
+    )
+
+    summary = course.moduleResults("module_1")
+    assert summary["comparable"] is False
+    assert summary["delta_percentage"] == 0.0
+    assert summary["relative_improvement"] == 0.0
+    assert summary["concepts"][0]["comparable"] is False
+    assert "Repite el pre-test" in summary["recommendation"]

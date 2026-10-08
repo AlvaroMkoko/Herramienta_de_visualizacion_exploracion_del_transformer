@@ -29,7 +29,7 @@ class ModuleQuestionBank:
     VALID_ASSESSMENTS = ("pre", "post")
     QUESTIONS_PER_ATTEMPT = 15
     QUESTIONS_PER_LEVEL = 5
-    INSTRUMENT_VERSION = 6
+    INSTRUMENT_VERSION = 7
 
     PEDAGOGICAL_TYPES = (
         "opcion_multiple",
@@ -489,6 +489,13 @@ class ModuleQuestionBank:
         value = str(answer).strip()
         candidates = [value]
 
+        # Las cantidades grandes se muestran con espacio de millares para
+        # facilitar su lectura (20 000), pero el estudiante puede escribirlas
+        # de forma compacta (20000). Ambas notaciones expresan el mismo valor.
+        compact_numbers = re.sub(r"(?<=\d)\s+(?=\d)", "", value)
+        if compact_numbers != value:
+            candidates.append(compact_numbers)
+
         if ":" in value:
             suffix = value.rsplit(":", 1)[1].strip()
             if suffix:
@@ -499,6 +506,13 @@ class ModuleQuestionBank:
             parts = [part.strip() for part in shapes[0].split(",")]
             if len(parts) > 1 and all(parts):
                 candidates.extend((" x ".join(parts), " por ".join(parts)))
+                compact_parts = [
+                    re.sub(r"(?<=\d)\s+(?=\d)", "", part) for part in parts
+                ]
+                if compact_parts != parts:
+                    candidates.extend(
+                        (" x ".join(compact_parts), " por ".join(compact_parts))
+                    )
 
         aliases = {
             "keys y values": ("K y V", "claves y valores"),

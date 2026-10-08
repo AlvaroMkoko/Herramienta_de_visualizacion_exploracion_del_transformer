@@ -177,7 +177,7 @@
         {"id": "ffn_encoder", "title": "Feed Forward Network", "description": "Transforma cada posición de forma independiente con expansión y no linealidad."},
         {"id": "segunda_residual", "title": "Segundo Add & Norm", "description": "Integra la actualización de FFN sin cambiar la forma del bloque."},
         {"id": "capas_encoder", "title": "Pila de capas", "description": "Pasa la salida contextualizada de una capa como entrada de la siguiente."},
-        {"id": "salida_encoder", "title": "Memoria del encoder", "description": "Representación final que alimenta las claves y valores de cross-attention."}
+        {"id": "salida_encoder", "title": "Memoria del encoder", "description": "Representación final con un vector contextualizado por token que el decoder consulta como memoria."}
       ],
       "guided_steps": [
         {"id": "m5_s1", "title": "Entrada de capa", "concept_id": "flujo_encoder", "input": "X o salida anterior", "operation": "Recibir [B,T,d_model]", "why": "Todas las capas comparten interfaz", "change": "Se identifica la profundidad", "output": "Entrada estable", "dimensions": "[B,T,d_model]", "next": "Self-attention"},
@@ -198,7 +198,7 @@
         {"id": "m5_a4", "concept_id": "layer_norm_encoder", "prompt": "¿Sobre qué eje conceptual opera LayerNorm en cada token?", "post_prompt": "Para [B,T,d_model], ¿qué conjunto normaliza LayerNorm por posición?", "options": ["Sus d_model características", "Todos los batches juntos", "Sólo el eje T", "El vocabulario completo"], "correct_index": 0},
         {"id": "m5_a5", "concept_id": "capas_encoder", "prompt": "Después de 6 capas encoder, ¿cambia necesariamente la forma [B,T,d_model]?", "post_prompt": "Si cada bloque conserva [B,T,d_model], ¿cambia la forma externa al apilar seis bloques?", "options": ["No; se conserva", "Sí; T se multiplica por 6", "Sí; d_model se divide por 6", "Se vuelve [B,V]"], "correct_index": 0},
         {"id": "m5_a6", "concept_id": "ffn_encoder", "prompt": "¿Por qué la FFN incluye una activación no lineal?", "post_prompt": "¿Qué capacidad faltaría si todo el bloque tras atención fueran sólo transformaciones lineales?", "options": ["Modelar transformaciones no lineales complejas", "Crear Token IDs", "Aplicar la máscara causal", "Ordenar el vocabulario"], "correct_index": 0},
-        {"id": "m5_a7", "concept_id": "salida_encoder", "prompt": "En cross-attention, ¿qué roles toma la memoria del encoder?", "post_prompt": "El decoder consulta la salida del encoder. ¿Qué tensores se proyectan desde esa memoria?", "options": ["Keys y Values", "Sólo Queries", "Token IDs y logits", "Máscara causal y temperatura"], "correct_index": 0},
+        {"id": "m5_a7", "concept_id": "salida_encoder", "prompt": "La entrada contiene 5 tokens reales. ¿Cuántos vectores contextualizados entrega la memoria final del encoder por ejemplo?", "post_prompt": "Si la memoria conserva la forma [B,T_src,d_model] y T_src=5, ¿cuántas filas por ejemplo puede consultar el decoder?", "options": ["5, una por token de entrada", "1, un único resumen de toda la frase", "d_model filas, una por característica", "Sólo las posiciones que ya generó el decoder"], "correct_index": 0},
         {"id": "m5_a8", "concept_id": "flujo_encoder", "prompt": "¿Cuál es el orden correcto dentro del encoder post-norm?", "post_prompt": "Elige la secuencia de subcapas fiel al bloque implementado.", "options": ["MHA→Add&Norm→FFN→Add&Norm", "FFN→MHA→Softmax", "MHA→FFN→Tokenización", "LayerNorm→Logits→MHA"], "correct_index": 0}
       ]
     },
@@ -272,7 +272,7 @@
       "theory_sequence": ["salida_final_decoder", "capa_linear_salida", "temperature", "top_k", "top_p", "softmax_final", "seleccion_token", "generacion_token_por_token"],
       "laboratory": {"title": "Mesa de muestreo", "description": "Modifica Temperature, Top-K y Top-P y observa distribución y token seleccionados reales.", "requires_model": true, "data_keys": ["logits", "probabilities", "filtered_candidates", "selected_token"]},
       "challenges": [
-        {"id": "m7_a1", "concept_id": "proyeccion_vocabulario", "prompt": "d_model=128 y |V|=20 000. ¿Qué forma tiene W_vocab en una Linear usual?", "post_prompt": "La proyección convierte 128 características en 20 000 logits. Elige la matriz de pesos.", "options": ["[20 000,128]", "[128,20 000,128]", "[20 000]", "[128,128]"], "correct_index": 0},
+        {"id": "m7_a1", "concept_id": "proyeccion_vocabulario", "prompt": "Dos ejemplos aportan un estado final de 128 características y |V|=20 000. ¿Qué forma tienen los logits después de la proyección?", "post_prompt": "La capa lineal proyecta dos estados de ancho 128 a un score por cada uno de los 20 000 tokens. Elige la forma de salida.", "options": ["[2,20 000]", "[20 000,128]", "[2,128]", "[20 000]"], "correct_index": 0},
         {"id": "m7_a2", "concept_id": "logits", "prompt": "Antes de softmax, los logits pueden ser negativos y no sumar 1. ¿Es válido?", "post_prompt": "Una salida lineal contiene valores negativos y no suma uno. ¿Es válido?", "options": ["Sí; son scores crudos y softmax los normaliza después", "No; deben ser probabilidades antes de softmax", "Sólo si Top-K=1", "Sólo durante entrenamiento"], "correct_index": 0},
         {"id": "m7_a3", "concept_id": "temperature", "prompt": "¿Qué efecto suele tener T<1 sobre una distribución?", "post_prompt": "Al dividir logits por 0.5, sus diferencias aumentan. ¿Cómo queda softmax?", "options": ["Más concentrada", "Más uniforme", "Sin cambios", "Con todos los tokens bloqueados"], "correct_index": 0},
         {"id": "m7_a4", "concept_id": "top_k", "prompt": "Top-K=5 aplicado a 30 000 logits deja ¿cuántos candidatos como máximo?", "post_prompt": "Tras filtrar con K=5, ¿cuántos tokens pueden conservar probabilidad no nula?", "options": ["5", "30 000", "25", "1"], "correct_index": 0},
@@ -288,7 +288,7 @@
       "title": "Transformer completo",
       "short_title": "Integración",
       "description": "Integra todos los componentes y sigue un ejemplo de extremo a extremo.",
-      "objectives": ["Reconstruir el flujo completo", "Rastrear dimensiones", "Relacionar entrenamiento e inferencia"],
+      "objectives": ["Reconstruir el flujo completo", "Rastrear dimensiones", "Explicar el ciclo causal y autoregresivo"],
       "concepts": [
         {"id": "flujo_texto_ids", "title": "Texto a IDs", "description": "Convierte entradas y prefijos en secuencias discretas con máscaras."},
         {"id": "flujo_embeddings", "title": "IDs a representaciones", "description": "Selecciona embeddings y suma posición para formar X."},
@@ -296,7 +296,7 @@
         {"id": "flujo_decoder_completo", "title": "Pila decoder", "description": "Combina prefijo causal y memoria del encoder mediante N bloques."},
         {"id": "flujo_salida", "title": "Proyección y selección", "description": "Convierte el último estado en probabilidades y un Token ID."},
         {"id": "dimensiones_completas", "title": "Rastreo de dimensiones", "description": "Verifica compatibilidad entre cada salida y la entrada siguiente."},
-        {"id": "entrenamiento_inferencia", "title": "Entrenamiento vs inferencia", "description": "En entrenamiento usa objetivos conocidos para calcular la pérdida; en inferencia realimenta sus propias predicciones."},
+        {"id": "entrenamiento_inferencia", "title": "Inferencia autoregresiva", "description": "En inferencia añade cada token seleccionado al prefijo y repite el ciclo sin consultar posiciones futuras."},
         {"id": "interpretacion_modelo", "title": "Interpretación integral", "description": "Relaciona mapas, activaciones y probabilidades sin confundir sus funciones."}
       ],
       "guided_steps": [
@@ -313,13 +313,13 @@
       "laboratory": {"title": "Traza completa del modelo", "description": "Sigue un texto real desde Token IDs hasta el token seleccionado, con formas y valores inspeccionables.", "requires_model": true, "data_keys": ["tokens", "embedding", "encoder", "decoder", "logits", "selected_token"]},
       "challenges": [
         {"id": "m8_a1", "concept_id": "dimensiones_completas", "prompt": "La capa de salida cambia el último eje de d_model a |V|. ¿Qué forma produce desde [B,T,d_model]?", "post_prompt": "La capa de salida recibe [B,T,d_model]. ¿Qué forma produce?", "options": ["El último eje: [B,T,|V|]", "El batch: [|V|,T,d_model]", "La secuencia: [B,|V|,d_model]", "Ninguno"], "correct_index": 0},
-        {"id": "m8_a2", "concept_id": "flujo_encoder_completo", "prompt": "¿Qué componente produce K y V para cross-attention?", "post_prompt": "En el enlace encoder→decoder, ¿qué información viaja como memoria consultable?", "options": ["La salida final del encoder", "Los logits finales", "La máscara causal", "Top-P"], "correct_index": 0},
-        {"id": "m8_a3", "concept_id": "entrenamiento_inferencia", "prompt": "¿Qué dato existe durante entrenamiento pero no al generar una respuesta nueva?", "post_prompt": "¿Qué permite calcular cross-entropy durante entrenamiento y falta en inferencia?", "options": ["La secuencia objetivo correcta", "El vocabulario", "Los pesos del modelo", "El positional encoding"], "correct_index": 0},
+        {"id": "m8_a2", "concept_id": "flujo_encoder_completo", "prompt": "¿Qué componente produce la memoria que el decoder consulta mediante cross-attention?", "post_prompt": "En el enlace encoder→decoder, ¿qué información viaja como memoria consultable?", "options": ["La salida final del encoder", "Los logits finales", "La máscara causal", "Top-P"], "correct_index": 0},
+        {"id": "m8_a3", "concept_id": "flujo_texto_ids", "prompt": "Al preparar fuente y destino, ¿qué combinación de máscaras conserva sólo información válida y evita mirar posiciones futuras?", "post_prompt": "La fuente contiene PAD y el destino debe respetar su prefijo. ¿Qué combinación de máscaras es coherente?", "options": ["Máscara de padding para la fuente y máscara causal para el destino", "Máscara causal para la fuente y ninguna para el destino", "Top-P para la fuente y Top-K para el destino", "La misma máscara de vocabulario para ambos lados"], "correct_index": 0},
         {"id": "m8_a4", "concept_id": "flujo_decoder_completo", "prompt": "¿Por qué el decoder combina dos atenciones distintas?", "post_prompt": "¿Qué dos fuentes de contexto necesita cada posición destino?", "options": ["El prefijo generado y la memoria de la fuente", "Dos vocabularios", "Dos temperaturas", "Padding y logits"], "correct_index": 0},
         {"id": "m8_a5", "concept_id": "flujo_embeddings", "prompt": "¿Cuál es la primera representación continua del flujo?", "post_prompt": "Después de IDs y antes del encoder, ¿qué tensor aparece?", "options": ["Embedding escalado más posición", "Máscara causal", "Logits", "Token seleccionado"], "correct_index": 0},
         {"id": "m8_a6", "concept_id": "interpretacion_modelo", "prompt": "Un peso de atención alto significa directamente una probabilidad alta del token de salida. ¿Es correcto?", "post_prompt": "¿Se pueden interpretar pesos de atención y probabilidad final como la misma magnitud?", "options": ["No; operan en espacios y etapas distintas", "Sí; siempre son idénticos", "Sí; si h=1", "No; porque atención no usa softmax"], "correct_index": 0},
         {"id": "m8_a7", "concept_id": "flujo_salida", "prompt": "¿Qué realimenta el siguiente paso autoregresivo?", "post_prompt": "Tras elegir un token, ¿qué entrada cambia en la próxima iteración?", "options": ["El prefijo del decoder", "Los parámetros WQ", "El vocabulario", "La salida fuente original"], "correct_index": 0},
-        {"id": "m8_a8", "concept_id": "dimensiones_completas", "prompt": "T_src=6 y T_tgt=4. ¿Qué forma tiene cross-attention por cabeza?", "post_prompt": "Cuatro posiciones destino consultan seis posiciones fuente. Elige la matriz de relaciones.", "options": ["[4,6]", "[6,4]", "[4,4]", "[6,6]"], "correct_index": 0}
+        {"id": "m8_a8", "concept_id": "dimensiones_completas", "prompt": "B=1, T_src=6 y d_model=128. ¿Qué forma tiene la memoria producida por el encoder?", "post_prompt": "El encoder contextualiza seis posiciones con vectores de 128 componentes para un ejemplo. ¿Qué tensor entrega al decoder?", "options": ["[1,6,128]", "[1,128,6]", "[6,6]", "[1,6,|V|]"], "correct_index": 0}
       ]
     }
   ]

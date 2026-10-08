@@ -203,6 +203,20 @@ def test_respuestas_de_dimensiones_aceptan_notaciones_equivalentes():
     assert calificar(output_question, {"texto": "[B,T,|V|]"})["puntaje"] == 1.0
 
 
+def test_dimensiones_con_millares_aceptan_escritura_sin_separador():
+    bank = ModuleQuestionBank(module_id="module_2", rng=random.Random(33))
+    embedding_shape = next(
+        item for item in bank.all_questions("pre") if item["id"].endswith("_a1")
+    )
+    assert calificar(embedding_shape, {"texto": "[10000, 256]"})["puntaje"] == 1.0
+
+    bank.set_module("module_7")
+    logits_shape = next(
+        item for item in bank.all_questions("post") if item["id"].endswith("_a1")
+    )
+    assert calificar(logits_shape, {"texto": "2 x 20000"})["puntaje"] == 1.0
+
+
 def test_reactivo_de_logits_mantiene_la_misma_logica_en_pre_y_post():
     bank = ModuleQuestionBank(module_id="module_7", rng=random.Random(37))
 

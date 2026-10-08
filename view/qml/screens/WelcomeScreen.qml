@@ -180,6 +180,11 @@ PagePrincipal {
 
     Component.onCompleted: botonRuta.forceActiveFocus()
 
+    FondoInicio {
+        anchors.fill: parent
+        intensidad: 0.72
+    }
+
     // ── Layout ───────────────────────────────────────────────────────
     // Flickable + barra superpuesta (no ScrollView): así el ancho útil no
     // depende de si aparece la barra, y el texto no re-envuelve en bucle.
@@ -223,54 +228,177 @@ PagePrincipal {
                 spacing: 0
 
                 // ── Encabezado ──────────────────────────────────────
-                ColumnLayout {
+                Rectangle {
                     id: encabezado
                     Layout.fillWidth: true
-                    spacing: 6
-                    opacity: 0
-                    NumberAnimation on opacity {
-                        to: 1
-                        duration: Style.Theme.movimientoReducido ? 0 : Style.Theme.duracionEntrada
-                        easing.type: Easing.OutCubic
+                    Layout.preferredHeight: 196
+                    radius: 24
+                    color: Style.Theme.surface
+                    border.width: 1
+                    border.color: Style.Theme.borde_medio
+                    AparicionSuave { objetivo: encabezado; orden: 0 }
+
+                    Rectangle {
+                        anchors.left: parent.left
+                        anchors.top: parent.top
+                        anchors.bottom: parent.bottom
+                        width: 6
+                        radius: 3
+                        color: Style.Theme.acento
                     }
 
-                    Text {
-                        Layout.fillWidth: true
-                        text: "VISUALIZADOR DE TRANSFORMERS"
-                        color: Style.Theme.acento_texto
-                        font.family: Style.Theme.fuente_interfaz
-                        font.pixelSize: 12
-                        font.bold: true
-                        font.letterSpacing: 1.6
-                        horizontalAlignment: Text.AlignHCenter
+                    Rectangle {
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        anchors.rightMargin: 24
+                        anchors.topMargin: -64
+                        width: 176
+                        height: 176
+                        radius: 88
+                        color: Style.Theme.acento_fondo
+                        opacity: Style.Theme.modoOscuro ? 0.18 : 0.42
+                        Accessible.ignored: true
                     }
 
-                    Text {
-                        Layout.fillWidth: true
-                        text: root.primerNombre.length > 0
-                              ? "Hola, " + root.primerNombre
-                              : "Te damos la bienvenida"
-                        color: Style.Theme.texto_primario
-                        font.family: Style.Theme.fuente_interfaz
-                        font.pixelSize: Math.max(28, Math.min(36, root.width * 0.026))
-                        font.bold: true
-                        horizontalAlignment: Text.AlignHCenter
-                        wrapMode: Text.WordWrap
-                        Accessible.role: Accessible.Heading
-                        Accessible.name: text
-                    }
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 34
+                        anchors.rightMargin: 26
+                        anchors.topMargin: 24
+                        anchors.bottomMargin: 24
+                        spacing: 30
 
-                    Text {
-                        id: subtitulo
-                        Layout.fillWidth: true
-                        Layout.maximumWidth: 640
-                        Layout.alignment: Qt.AlignHCenter
-                        color: Style.Theme.texto_secundario
-                        font.family: Style.Theme.fuente_interfaz
-                        font.pixelSize: Style.Theme.bodySize
-                        lineHeight: 1.25
-                        horizontalAlignment: Text.AlignHCenter
-                        wrapMode: Text.WordWrap
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            Layout.alignment: Qt.AlignVCenter
+                            spacing: 5
+
+                            RowLayout {
+                                spacing: 8
+                                Rectangle {
+                                    Layout.preferredWidth: 24
+                                    Layout.preferredHeight: 24
+                                    radius: 8
+                                    color: Style.Theme.acento
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: "T"
+                                        color: Style.Theme.texto_sobre_color
+                                        font.pixelSize: 12
+                                        font.bold: true
+                                    }
+                                }
+                                Text {
+                                    text: "TU ESPACIO DE APRENDIZAJE"
+                                    color: Style.Theme.acento_texto
+                                    font.family: Style.Theme.fuente_interfaz
+                                    font.pixelSize: 11
+                                    font.bold: true
+                                    font.letterSpacing: 1.4
+                                }
+                            }
+
+                            Text {
+                                Layout.fillWidth: true
+                                Layout.topMargin: 5
+                                text: root.primerNombre.length > 0
+                                      ? "Hola, " + root.primerNombre
+                                      : "Te damos la bienvenida"
+                                color: Style.Theme.texto_primario
+                                font.family: Style.Theme.fuente_interfaz
+                                font.pixelSize: Math.max(28, Math.min(38, root.width * 0.028))
+                                font.bold: true
+                                wrapMode: Text.WordWrap
+                                Accessible.role: Accessible.Heading
+                                Accessible.name: text
+                            }
+
+                            Text {
+                                id: subtitulo
+                                Layout.fillWidth: true
+                                Layout.maximumWidth: 650
+                                color: Style.Theme.texto_secundario
+                                font.family: Style.Theme.fuente_interfaz
+                                font.pixelSize: Style.Theme.bodySize
+                                lineHeight: 1.25
+                                wrapMode: Text.WordWrap
+                            }
+                        }
+
+                        Rectangle {
+                            Layout.preferredWidth: 230
+                            Layout.preferredHeight: 126
+                            Layout.alignment: Qt.AlignVCenter
+                            visible: contenido.width >= 760
+                            radius: 16
+                            color: Style.Theme.superficie_alterna
+                            border.width: 1
+                            border.color: Style.Theme.borde_suave
+
+                            ColumnLayout {
+                                anchors.fill: parent
+                                anchors.margins: 16
+                                spacing: 5
+
+                                Text {
+                                    text: "TU AVANCE"
+                                    color: Style.Theme.texto_terciario
+                                    font.pixelSize: 10
+                                    font.bold: true
+                                    font.letterSpacing: 1.2
+                                }
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 6
+                                    Text {
+                                        text: root.etapasCompletadas
+                                        color: Style.Theme.acento
+                                        font.pixelSize: 30
+                                        font.bold: true
+                                    }
+                                    Text {
+                                        Layout.alignment: Qt.AlignBottom
+                                        Layout.bottomMargin: 5
+                                        text: "de " + root.etapas.length + " etapas"
+                                        color: Style.Theme.texto_secundario_fuerte
+                                        font.pixelSize: 12
+                                        font.bold: true
+                                    }
+                                }
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 5
+                                    Repeater {
+                                        model: root.etapas
+                                        Rectangle {
+                                            required property int index
+                                            required property var modelData
+                                            Layout.fillWidth: true
+                                            Layout.preferredHeight: 6
+                                            radius: 3
+                                            color: modelData.completada
+                                                   ? Style.Theme.success
+                                                   : (index === root.etapaActual
+                                                      ? Style.Theme.acento
+                                                      : Style.Theme.divisor)
+                                        }
+                                    }
+                                }
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    Layout.topMargin: 3
+                                    text: root.etapaActual === -1
+                                          ? "Ruta completada · sigue explorando"
+                                          : "Ahora: " + root.etapas[root.etapaActual].nombre
+                                    color: Style.Theme.texto_secundario
+                                    font.pixelSize: 11
+                                    elide: Text.ElideRight
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -278,7 +406,7 @@ PagePrincipal {
                 GridLayout {
                     id: rejilla
                     Layout.fillWidth: true
-                    Layout.topMargin: 32
+                    Layout.topMargin: 24
                     columns: contenido.width < 820 ? 1 : 2
                     columnSpacing: 24
                     rowSpacing: 24
@@ -297,6 +425,7 @@ PagePrincipal {
                         retrasoEntrada: Style.Theme.escalonEntrada
 
                         glifo: "◆"
+                        acentoTarjeta: Style.Theme.acento
                         titulo: "Ruta de aprendizaje"
                         descripcion: "Recorre la arquitectura paso a paso, desde tu diagnóstico inicial hasta ver cuánto avanzaste."
 
@@ -391,6 +520,7 @@ PagePrincipal {
                         fuenteGlifo: root.labsUnlocked ? Style.Theme.fuente_simbolos : Style.Theme.fuente_emoji
                         glifoColor: Style.Theme.info_texto
                         glifoFondo: Style.Theme.info_fondo
+                        acentoTarjeta: Style.Theme.info
                         titulo: "Laboratorio"
                         descripcion: root.labsUnlocked
                                      ? "Experimenta por tu cuenta con modelos reales."
@@ -451,15 +581,24 @@ PagePrincipal {
                     readonly property bool enClase: cc ? cc.enClase : false
                     Layout.fillWidth: true
                     Layout.topMargin: 24
-                    implicitHeight: 64
-                    radius: 12
+                    implicitHeight: 72
+                    radius: 16
                     visible: cc !== null
                     color: Style.Theme.surface
                     border.color: Style.Theme.borde_suave
 
+                    Rectangle {
+                        anchors.left: parent.left
+                        anchors.top: parent.top
+                        anchors.bottom: parent.bottom
+                        width: 5
+                        radius: 3
+                        color: franjaClase.enClase ? Style.Theme.success : Style.Theme.info
+                    }
+
                     RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 18
+                        anchors.leftMargin: 22
                         anchors.rightMargin: 12
                         spacing: 12
                         Text {

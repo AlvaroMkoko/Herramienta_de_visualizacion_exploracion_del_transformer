@@ -305,13 +305,27 @@ class CourseController(QObject):
         if not pre and not post:
             return {"available": False, "module_id": module_id}
 
+        def instrument_version(result: dict[str, Any]) -> int:
+            try:
+                return int(result.get("instrument_version", 0))
+            except (TypeError, ValueError):
+                return 0
+
+        pre_version = instrument_version(pre)
+        post_version = instrument_version(post)
+        comparable = bool(
+            pre
+            and post
+            and pre_version > 0
+            and pre_version == post_version
+        )
         pre_pct = float(pre.get("percentage", 0))
         post_pct = float(post.get("percentage", 0))
-        delta = round(post_pct - pre_pct, 1) if pre and post else 0.0
+        delta = round(post_pct - pre_pct, 1) if comparable else 0.0
         relative = (
             round(delta * 100 / pre_pct, 1)
-            if pre and post and pre_pct > 0
-            else (100.0 if post_pct > 0 and pre and post else 0.0)
+            if comparable and pre_pct > 0
+            else (100.0 if post_pct > 0 and comparable else 0.0)
         )
         by_pre = {item.get("id"): item for item in pre.get("dimensions", [])}
         by_post = {item.get("id"): item for item in post.get("dimensions", [])}
@@ -329,9 +343,10 @@ class CourseController(QObject):
                         float(after.get("percentage", 0))
                         - float(before.get("percentage", 0)),
                         1,
-                    ),
+                    ) if comparable else 0.0,
                     "assessed_pre": bool(before),
                     "assessed_post": bool(after),
+                    "comparable": comparable and bool(before) and bool(after),
                 }
             )
         assessed_post = [row for row in concept_rows if row["assessed_post"]]
@@ -352,6 +367,9 @@ class CourseController(QObject):
             "module_title": self._catalog.get(module_id)["title"],
             "pre": pre,
             "post": post,
+            "comparable": comparable,
+            "instrument_version_pre": pre_version,
+            "instrument_version_post": post_version,
             "pre_percentage": pre_pct,
             "post_percentage": post_pct,
             "delta_percentage": delta,
@@ -367,9 +385,14 @@ class CourseController(QObject):
             "frequent_errors": frequent_errors,
             "difficulty": post.get("bloom", []),
             "recommendation": (
-                "Repasa " + ", ".join(reinforce[:3]) + " antes de continuar."
-                if reinforce
-                else "Puedes continuar: los conceptos evaluados muestran un dominio sólido."
+                "El instrumento cambió entre ambas evaluaciones. Repite el pre-test "
+                "para obtener una comparación válida con esta versión."
+                if pre and post and not comparable
+                else (
+                    "Repasa " + ", ".join(reinforce[:3]) + " antes de continuar."
+                    if reinforce
+                    else "Puedes continuar: los conceptos evaluados muestran un dominio sólido."
+                )
             ),
         }
 

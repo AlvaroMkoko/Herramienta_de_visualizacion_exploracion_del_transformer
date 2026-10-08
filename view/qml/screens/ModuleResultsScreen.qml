@@ -68,8 +68,8 @@ PagePrincipal {
                 model: [
                     { label: "PRE-TEST", value: (root.results.pre_percentage || 0) + "%", color: Style.Theme.info_fondo, textColor: Style.Theme.info_texto },
                     { label: "POST-TEST", value: (root.results.post_percentage || 0) + "%", color: Style.Theme.exito_fondo, textColor: Style.Theme.exito_texto },
-                    { label: "DIFERENCIA", value: ((root.results.delta_percentage || 0) >= 0 ? "+" : "") + (root.results.delta_percentage || 0) + " pts", color: Style.Theme.acento_fondo, textColor: Style.Theme.acento_fuerte },
-                    { label: "MEJORA RELATIVA", value: (root.results.relative_improvement || 0) + "%", color: Style.Theme.formula_fondo, textColor: Style.Theme.formula_texto }
+                    { label: "DIFERENCIA", value: root.results.comparable ? (((root.results.delta_percentage || 0) >= 0 ? "+" : "") + (root.results.delta_percentage || 0) + " pts") : "—", color: Style.Theme.acento_fondo, textColor: Style.Theme.acento_fuerte },
+                    { label: "MEJORA RELATIVA", value: root.results.comparable ? ((root.results.relative_improvement || 0) + "%") : "—", color: Style.Theme.formula_fondo, textColor: Style.Theme.formula_texto }
                 ]
                 delegate: Rectangle {
                     id: metricCard
@@ -127,7 +127,7 @@ PagePrincipal {
                                         Text { Layout.preferredWidth: 190 * root.sx; text: conceptRow.modelData.name; color: Style.Theme.texto_primario; font.pixelSize: 12 * root.sx; wrapMode: Text.WordWrap }
                                         ProgressBar { Layout.fillWidth: true; from: 0; to: 100; value: conceptRow.modelData.post_percentage }
                                         Text { Layout.preferredWidth: 52 * root.sx; text: conceptRow.modelData.assessed_post ? conceptRow.modelData.post_percentage + "%" : "—"; color: Style.Theme.acento_fuerte; font.bold: true; horizontalAlignment: Text.AlignRight; font.pixelSize: 12 * root.sx }
-                                        Text { Layout.preferredWidth: 58 * root.sx; text: conceptRow.modelData.assessed_pre && conceptRow.modelData.assessed_post ? ((conceptRow.modelData.delta_percentage >= 0 ? "+" : "") + conceptRow.modelData.delta_percentage) : "—"; color: conceptRow.modelData.delta_percentage >= 0 ? Style.Theme.exito_texto : Style.Theme.error_texto; horizontalAlignment: Text.AlignRight; font.pixelSize: 11 * root.sx }
+                                        Text { Layout.preferredWidth: 58 * root.sx; text: conceptRow.modelData.comparable ? ((conceptRow.modelData.delta_percentage >= 0 ? "+" : "") + conceptRow.modelData.delta_percentage) : "—"; color: conceptRow.modelData.delta_percentage >= 0 ? Style.Theme.exito_texto : Style.Theme.error_texto; horizontalAlignment: Text.AlignRight; font.pixelSize: 11 * root.sx }
                                     }
                                 }
                             }
