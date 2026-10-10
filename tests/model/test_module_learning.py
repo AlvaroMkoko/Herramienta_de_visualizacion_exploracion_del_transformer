@@ -40,6 +40,11 @@ def test_catalogo_declara_ocho_modulos_completos():
     assert all(len(module["guided_steps"]) == 8 for module in catalog.modules)
     assert all(len(module["theory_sequence"]) == 8 for module in catalog.modules)
     assert all(len(module["challenges"]) == 8 for module in catalog.modules)
+    assert all(
+        set(module["laboratory"]["modes"]) == {"training", "inference"}
+        for module in catalog.modules
+    )
+    assert all(module["laboratory"]["data_keys"] for module in catalog.modules)
 
 
 def test_cada_paso_guiado_apunta_a_teoria_existente():

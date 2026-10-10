@@ -42,6 +42,8 @@ class ConexionResidual(nn.Module):
             "antes_norma": suma[:, -1, :].detach(),
             "salida": salida[:, -1, :].detach(),
             "entrada_visual": x[:, inicio_visual:, :].detach(),
+            "actualizacion_visual": actualizacion[:, inicio_visual:, :].detach(),
+            "antes_norma_visual": suma[:, inicio_visual:, :].detach(),
             "salida_visual": salida[:, inicio_visual:, :].detach(),
             "inicio_posicion_visual": inicio_visual,
             "shape": tuple(salida.shape),

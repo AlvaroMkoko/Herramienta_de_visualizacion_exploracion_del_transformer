@@ -16,11 +16,12 @@ PagePrincipal {
     readonly property int moduleProgress: Number(moduleData.progress_percent || 0)
     readonly property int completedStages: Number(moduleData.completed_stages || 0)
     readonly property real pageMargin: Math.max(22, Math.min(34, width * 0.027))
+    readonly property real pageGap: Math.max(10, 12 * root.sy)
     readonly property real minimumJourneyWidth: 1110
     readonly property var stages: [
         { id: "pretest", number: "01", eyebrow: "DIAGNÓSTICO", title: "Pre-test", subtitle: "15 de 25 preguntas aleatorias", route: "EvaluationIntroScreen.qml" },
         { id: "guided", number: "02", eyebrow: "APRENDE", title: "Recorrido guiado", subtitle: "8 pasos breves y reproducibles", route: "ModuleGuidedTourScreen.qml" },
-        { id: "laboratory", number: "03", eyebrow: "PRÁCTICA", title: "Laboratorio", subtitle: "Datos reales del modelo activo", route: "ModuleLaboratoryScreen.qml" },
+        { id: "laboratory", number: "03", eyebrow: "PRÁCTICA", title: "Laboratorio especializado", subtitle: "Entrenamiento e inferencia del componente", route: "ModuleLaboratoryScreen.qml" },
         { id: "posttest", number: "04", eyebrow: "COMPRUEBA", title: "Post-test", subtitle: "15 reactivos equivalentes y distintos", route: "EvaluationIntroScreen.qml" },
         { id: "results", number: "05", eyebrow: "REFLEXIONA", title: "Resultados", subtitle: "Mejora, dominio y recomendaciones", route: "ModuleResultsScreen.qml" }
     ]
@@ -80,6 +81,7 @@ PagePrincipal {
 
     ScrollView {
         id: pageScroll
+        objectName: "modulePageScroll"
         anchors.fill: parent
         clip: true
         contentWidth: availableWidth
@@ -87,12 +89,14 @@ PagePrincipal {
         ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
         ColumnLayout {
+            id: pageContent
+            objectName: "modulePageContent"
             width: pageScroll.availableWidth
-            spacing: 16 * root.sy
+            spacing: root.pageGap
 
             Item {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 16 * root.sy
+                Layout.preferredHeight: root.pageGap
             }
 
             RowLayout {
@@ -493,10 +497,16 @@ PagePrincipal {
 
             ScrollView {
                 id: stageScroll
+                objectName: "moduleStageScroll"
                 Layout.fillWidth: true
                 Layout.leftMargin: root.pageMargin
                 Layout.rightMargin: root.pageMargin
-                Layout.preferredHeight: 272 * root.sy
+                // En pantallas panoramicas (y, en especial, con escalado de
+                // Windows), la tipografia crece con sx mas que la tarjeta con
+                // sy. El laboratorio usa dos lineas de titulo y subtitulo;
+                // este minimo evita que su boton salga por debajo del borde.
+                Layout.preferredHeight: Math.max(220, 272 * root.sy,
+                                                 250 * root.sx)
                 clip: true
                 contentWidth: Math.max(availableWidth, root.minimumJourneyWidth * root.sx)
                 contentHeight: availableHeight
@@ -513,6 +523,7 @@ PagePrincipal {
                         model: root.stages
                         delegate: Rectangle {
                             id: stageCard
+                            objectName: "moduleStageCard_" + stageCard.index
                             required property int index
                             required property var modelData
                             readonly property bool available: root.courseController.stageAvailable(root.moduleId, modelData.id)
@@ -568,6 +579,8 @@ PagePrincipal {
                             }
 
                             ColumnLayout {
+                                id: stageContent
+                                objectName: "moduleStageContent_" + stageCard.index
                                 anchors.fill: parent
                                 anchors.margins: 14 * root.sx
                                 anchors.topMargin: 17 * root.sy
@@ -673,6 +686,7 @@ PagePrincipal {
                                 Item { Layout.fillHeight: true }
 
                                 BotonPrincipal {
+                                    objectName: "moduleStageButton_" + stageCard.index
                                     Layout.fillWidth: true
                                     Layout.preferredHeight: 38 * root.sy
                                     enabled: stageCard.available

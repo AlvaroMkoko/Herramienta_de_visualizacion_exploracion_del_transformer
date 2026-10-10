@@ -839,6 +839,34 @@ def _detalle_forward(modelo, paso: dict) -> dict:
     }
 
 
+def construir_detalle_forward(
+    modelo,
+    traza_global: dict,
+    logits: torch.Tensor,
+    logits_lineales: torch.Tensor | None = None,
+) -> dict:
+    """Expone el detalle rico del forward para otras vistas especializadas.
+
+    El laboratorio modular y la pantalla de inferencia deben describir las
+    mismas operaciones con el mismo esquema.  Este envoltorio evita que el
+    primero tenga que conocer la forma interna del ``paso`` de generación y,
+    a la vez, mantiene en un solo lugar el recorte/QML-safety de las trazas.
+
+    Los tensores recibidos pertenecen al forward que se acaba de ejecutar;
+    el resultado no conserva referencias PyTorch ni modifica el modelo.
+    """
+    return _detalle_forward(
+        modelo,
+        {
+            "traza_global": dict(traza_global or {}),
+            "logits": logits,
+            "logits_lineales": (
+                logits if logits_lineales is None else logits_lineales
+            ),
+        },
+    )
+
+
 def resumir_paso_inferencia(
     modelo,
     tokenizer,

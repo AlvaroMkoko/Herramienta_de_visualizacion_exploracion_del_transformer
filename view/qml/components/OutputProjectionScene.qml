@@ -165,8 +165,11 @@ Item {
         spacing: 9 * root.sy
 
         RowLayout {
+            objectName: "outputProjectionHeader"
             Layout.fillWidth: true
+            Layout.minimumHeight: 50 * root.sy
             Layout.preferredHeight: 50 * root.sy
+            Layout.maximumHeight: 50 * root.sy
             spacing: 9 * root.sx
 
             ColumnLayout {
@@ -198,8 +201,11 @@ Item {
         }
 
         RowLayout {
+            objectName: "outputProjectionStages"
             Layout.fillWidth: true
+            Layout.minimumHeight: 83 * root.sy
             Layout.preferredHeight: 83 * root.sy
+            Layout.maximumHeight: 83 * root.sy
             spacing: 8 * root.sx
 
             PipelineCard {

@@ -42,6 +42,13 @@ Item {
         return labels[Math.max(0, Math.min(labels.length - 1,
                                            Number(branchIndex || 0)))]
     }
+    readonly property bool hasFocusedQuery: attentionData
+                                             && attentionData.query_seleccionada !== undefined
+    readonly property int focusedQueryIndex: hasFocusedQuery
+                                              ? Number(attentionData.query_seleccionada) : -1
+    readonly property string focusedQueryLabel: hasFocusedQuery
+                                                 ? "query q" + (focusedQueryIndex + 1)
+                                                 : "última query"
     readonly property string phaseTitle: {
         if (normalizedPhase === "qkv")
             return "Proyecciones Query, Key y Value"
@@ -67,10 +74,12 @@ Item {
             var qkvOrigin = branchIndex === 2
                     ? "Q procede del decoder; K y V, del encoder."
                     : "Todas las posiciones producen Q, K y V."
-            return qkvOrigin + " La escena amplía la última query y una key destacada; no limita el cálculo a esos dos vectores."
+            return qkvOrigin + " La escena amplía la " + focusedQueryLabel
+                    + " y una key destacada; no limita el cálculo a esos dos vectores."
         }
         if (normalizedPhase === "scores")
-            return "La escena amplía los scores de la última query. El modelo calcula una fila por cada query; aquí cada fila visible corresponde a una cabeza y todavía no contiene probabilidades."
+            return "La escena amplía los scores de la " + focusedQueryLabel
+                    + ". El modelo calcula una fila por cada query; aquí cada fila visible corresponde a una cabeza y todavía no contiene probabilidades."
         if (normalizedPhase === "mask")
             return "La máscara se aplica antes de Softmax. Las celdas bloqueadas pasan a −∞ para recibir probabilidad cero."
         return "Softmax produce los pesos A. Las contribuciones muestran ‖AᵢⱼVⱼ‖ y la salida por cabeza es el contexto Z de la query actual."
@@ -113,7 +122,7 @@ Item {
             return [
                 {
                     id: "q",
-                    title: "Q · PREGUNTA · última query",
+                    title: "Q · PREGUNTA · " + root.focusedQueryLabel,
                     subtitle: "Qué necesita encontrar la consulta actual",
                     matrix: safeMatrix(data.q),
                     mode: "diverging",
@@ -161,7 +170,7 @@ Item {
                 {
                     id: "scores",
                     title: "Q compara con cada K",
-                    subtitle: "Scores QKᵀ/√d_head de la última query",
+                    subtitle: "Scores QKᵀ/√d_head de la " + root.focusedQueryLabel,
                     matrix: safeMatrix(data.scores),
                     mode: "diverging",
                     local: true,
@@ -245,7 +254,7 @@ Item {
             {
                 id: "head_output",
                 title: "Contexto Z por cabeza",
-                subtitle: "Salida ponderada de la última query",
+                subtitle: "Salida ponderada de la " + root.focusedQueryLabel,
                 matrix: safeMatrix(data.salida_cabezas),
                 mode: "diverging",
                 local: true,
@@ -515,7 +524,7 @@ Item {
                                 columnOffset: Number(matrixCard.modelData.columnOffset || 0)
                                 valueLabel: matrixCard.modelData.valueLabel
                                 layerNumber: Number(root.layerIndex || 0) + 1
-                                queryLabel: "última query"
+                                queryLabel: root.focusedQueryLabel
                                 selectedRow: root.selectedHead
                                 rawScores: root.safeMatrix(root.attentionData ? root.attentionData.scores : [])
                                 maskMatrix: root.safeMatrix(root.attentionData ? root.attentionData.mascara : [])

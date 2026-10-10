@@ -173,24 +173,38 @@ Item {
         ScrollView {
             id: buildingScroll
             objectName: "layerSkyscraperScroll"
+            readonly property int floorCount: Math.max(1, root.floors.length)
+            readonly property real floorGap: 10 * root.sy
+            // Ajusta los tres pisos habituales al alto disponible. Si otra
+            // vista ofrece menos espacio que el mínimo legible, ScrollView
+            // conserva el desplazamiento vertical en vez de recortar datos.
+            readonly property real fittedFloorHeight: Math.min(
+                154 * root.sy,
+                Math.max(96 * root.sy,
+                         (availableHeight
+                          - Math.max(0, floorCount - 1) * floorGap)
+                         / floorCount))
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
             contentWidth: availableWidth
+            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+            ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
             ColumnLayout {
                 width: buildingScroll.availableWidth
-                spacing: 10 * root.sy
+                spacing: buildingScroll.floorGap
 
                 Repeater {
                     model: root.floors
                     delegate: Rectangle {
                         id: floorCard
+                        objectName: "layerFloorCard_" + floorCard.index
                         required property var modelData
                         required property int index
                         readonly property bool finalFloor: floorCard.index === root.floors.length - 1
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 154 * root.sy
+                        Layout.preferredHeight: buildingScroll.fittedFloorHeight
                         radius: 12 * root.sx
                         color: floorCard.finalFloor ? Style.Theme.exito_fondo : Style.Theme.superficie_alterna
                         border.color: floorCard.finalFloor
@@ -243,19 +257,24 @@ Item {
                             }
 
                             Rectangle {
+                                objectName: "layerScatterPanel_" + floorCard.index
                                 Layout.fillWidth: true
+                                Layout.minimumWidth: 80 * root.sx
                                 Layout.fillHeight: true
                                 radius: 9 * root.sx
                                 color: Style.Theme.surface
                                 border.color: Style.Theme.borde_medio
                                 Canvas {
                                     id: scatterCanvas
+                                    objectName: "layerScatterCanvas_" + floorCard.index
                                     anchors.fill: parent
                                     anchors.margins: 8 * root.sx
                                     property var points: floorCard.modelData.puntos || []
                                     property var sharedBounds: root.bounds()
+                                    property int highlightedToken: root.selectedToken
                                     onPointsChanged: requestPaint()
                                     onSharedBoundsChanged: requestPaint()
+                                    onHighlightedTokenChanged: requestPaint()
                                     onPaint: {
                                         var ctx = getContext("2d")
                                         ctx.reset()
@@ -275,7 +294,7 @@ Item {
                                                     / (sharedBounds.maxX - sharedBounds.minX) * plotW
                                             var y = pad + (1 - (root.pointY(points[i]) - sharedBounds.minY)
                                                     / (sharedBounds.maxY - sharedBounds.minY)) * plotH
-                                            if (i === root.selectedToken) {
+                                            if (i === highlightedToken) {
                                                 ctx.beginPath()
                                                 ctx.arc(x, y, 10 * root.sx, 0, Math.PI * 2)
                                                 ctx.fillStyle = Qt.alpha(Style.Theme.inferencia_foco, 0.20)
@@ -285,7 +304,7 @@ Item {
                                                 ctx.stroke()
                                             }
                                             ctx.beginPath()
-                                            ctx.arc(x, y, (i === root.selectedToken ? 5.5 : 4) * root.sx,
+                                            ctx.arc(x, y, (i === highlightedToken ? 5.5 : 4) * root.sx,
                                                     0, Math.PI * 2)
                                             ctx.fillStyle = root.tokenColor(i, points.length)
                                             ctx.fill()
@@ -298,7 +317,11 @@ Item {
                             }
 
                             ColumnLayout {
+                                objectName: "layerFloorDetail_" + floorCard.index
+                                Layout.fillWidth: false
                                 Layout.preferredWidth: 190 * root.sx
+                                Layout.minimumWidth: 190 * root.sx
+                                Layout.maximumWidth: 190 * root.sx
                                 Layout.fillHeight: true
                                 spacing: 4 * root.sy
                                 Text {

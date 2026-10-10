@@ -74,6 +74,7 @@ class LearningModuleCatalog:
             steps = module.get("guided_steps")
             theory_sequence = module.get("theory_sequence")
             challenges = module.get("challenges")
+            laboratory = module.get("laboratory")
             if not isinstance(concepts, list) or len(concepts) != self.REQUIRED_CONCEPTS:
                 raise LearningModuleError(
                     f"{module_id} debe declarar {self.REQUIRED_CONCEPTS} conceptos."
@@ -96,6 +97,28 @@ class LearningModuleCatalog:
             if not isinstance(challenges, list) or len(challenges) != self.REQUIRED_CHALLENGES:
                 raise LearningModuleError(
                     f"{module_id} debe declarar {self.REQUIRED_CHALLENGES} retos."
+                )
+            if not isinstance(laboratory, dict):
+                raise LearningModuleError(
+                    f"{module_id} debe declarar un laboratorio especializado."
+                )
+            modes = laboratory.get("modes")
+            if (
+                not isinstance(modes, list)
+                or len(modes) != 2
+                or set(modes) != {"training", "inference"}
+            ):
+                raise LearningModuleError(
+                    f"{module_id} debe ofrecer entrenamiento e inferencia."
+                )
+            data_keys = laboratory.get("data_keys")
+            if (
+                not isinstance(data_keys, list)
+                or not data_keys
+                or any(not isinstance(key, str) or not key.strip() for key in data_keys)
+            ):
+                raise LearningModuleError(
+                    f"{module_id} debe declarar tensores inspeccionables."
                 )
 
             concept_ids = {str(item.get("id", "")) for item in concepts}

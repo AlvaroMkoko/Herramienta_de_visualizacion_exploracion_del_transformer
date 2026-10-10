@@ -159,8 +159,11 @@ Item {
         spacing: 9 * root.sy
 
         RowLayout {
+            objectName: "tokenEmbeddingHeader"
             Layout.fillWidth: true
+            Layout.minimumHeight: 50 * root.sy
             Layout.preferredHeight: 50 * root.sy
+            Layout.maximumHeight: 50 * root.sy
             spacing: 9 * root.sx
 
             ColumnLayout {
@@ -190,8 +193,11 @@ Item {
         }
 
         RowLayout {
+            objectName: "tokenEmbeddingStages"
             Layout.fillWidth: true
+            Layout.minimumHeight: 78 * root.sy
             Layout.preferredHeight: 78 * root.sy
+            Layout.maximumHeight: 78 * root.sy
             spacing: 8 * root.sx
 
             StageCard {
@@ -565,8 +571,11 @@ Item {
         }
 
         Rectangle {
+            objectName: "tokenEmbeddingExactness"
             Layout.fillWidth: true
+            Layout.minimumHeight: 38 * root.sy
             Layout.preferredHeight: 38 * root.sy
+            Layout.maximumHeight: 38 * root.sy
             radius: 9 * root.sx
             color: Style.Theme.aviso_fondo
             border.color: Style.Theme.inferencia_foco
