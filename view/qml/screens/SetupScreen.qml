@@ -14,6 +14,11 @@ PagePrincipal {
     // La biblioteca usa esta pantalla solo para elegir datasets y
     // parametros de la nueva sesion, conservando arquitectura y pesos.
     property bool usarModeloActual: false
+    // Si la creación comenzó dentro de un laboratorio modular, este contexto
+    // viaja hasta Resultados para ofrecer un regreso directo al experimento.
+    property bool regresarAlLaboratorio: false
+    property string moduloRetornoLaboratorio: ""
+    property string modoRetornoLaboratorio: "inference"
 
     ListModel {
         id: datasetsSeleccionadosModel
@@ -153,7 +158,10 @@ PagePrincipal {
             "stackView": root.stackView,
             "epocasIniciales": root.epocas,
             "tasaAprendizajeInicial": root.tasaAprendizaje,
-            "batchSizeInicial": root.batchSize
+            "batchSizeInicial": root.batchSize,
+            "regresarAlLaboratorio": root.regresarAlLaboratorio,
+            "moduloRetornoLaboratorio": root.moduloRetornoLaboratorio,
+            "modoRetornoLaboratorio": root.modoRetornoLaboratorio
         })
     }
 

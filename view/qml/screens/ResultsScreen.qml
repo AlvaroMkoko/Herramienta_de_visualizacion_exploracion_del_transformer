@@ -6,6 +6,7 @@ import QtQuick.Layouts
 
 PagePrincipal {
     id: root
+    objectName: "resultsScreen"
     helpModalObjectName: "resultsTheoryModal"
     helpPanelObjectName: "resultsTheoryPanel"
 
@@ -18,6 +19,11 @@ PagePrincipal {
     property int pasosTotales: 0
     // true si el usuario detuvo el entrenamiento en vez de dejarlo terminar
     property bool fueCancelado: false
+    // Contexto opcional de navegación cuando el modelo se creó desde la
+    // prueba de un módulo. Evita retroceder por cada pantalla intermedia.
+    property bool regresarAlLaboratorio: false
+    property string moduloRetornoLaboratorio: ""
+    property string modoRetornoLaboratorio: "inference"
 
     property string mensajeError: ""
     property string mensajeGuardado: ""
@@ -77,6 +83,32 @@ PagePrincipal {
         } else {
             tc.guardarCheckpointConNombre(nombre)
         }
+    }
+
+    function buscarLaboratorioDeOrigen() {
+        if (!root.stackView)
+            return null
+        for (var index = root.stackView.depth - 2; index >= 0; --index) {
+            var candidate = root.stackView.get(index)
+            if (candidate
+                    && String(candidate.objectName) === "moduleLaboratoryScreen")
+                return candidate
+        }
+        return null
+    }
+
+    function volverAlLaboratorio() {
+        var origin = root.buscarLaboratorioDeOrigen()
+        if (origin) {
+            root.stackView.pop(origin)
+            return
+        }
+        // Respaldo para aperturas restauradas sin historial de StackView.
+        root.stackView.push("ModuleLaboratoryScreen.qml", {
+            "stackView": root.stackView,
+            "moduleId": root.moduloRetornoLaboratorio || "module_1",
+            "mode": root.modoRetornoLaboratorio || "inference"
+        })
     }
 
     background: Rectangle {
@@ -602,6 +634,16 @@ PagePrincipal {
                 }
 
                 BotonPrincipal {
+                    objectName: "resultsReturnToLaboratoryButton"
+                    visible: root.regresarAlLaboratorio
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: visible ? 45 * root.sy : 0
+                    text: "Volver a la prueba del laboratorio →"
+                    Accessible.name: "Volver directamente al laboratorio del módulo"
+                    onClicked: root.volverAlLaboratorio()
+                }
+
+                BotonPrincipal {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 45 * root.sy
                     text: "Probar el modelo →"
@@ -615,8 +657,9 @@ PagePrincipal {
                 Text {
                     Layout.fillWidth: true
                     wrapMode: Text.WordWrap
-                    text: "Genera texto con el modelo recién entrenado. No hace falta "
-                        + "guardarlo antes: sigue cargado en memoria."
+                    text: root.regresarAlLaboratorio
+                          ? "El modelo recién entrenado ya está activo. Puedes volver al mismo laboratorio o abrir la inferencia general; no hace falta guardarlo antes."
+                          : "Genera texto con el modelo recién entrenado. No hace falta guardarlo antes: sigue cargado en memoria."
                     color: Style.Theme.texto_terciario
                     font.pixelSize: 10 * root.sx
                 }

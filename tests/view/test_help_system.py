@@ -24,6 +24,8 @@ from PySide6.QtCore import (
 from PySide6.QtQml import QJSValue, QQmlComponent, QQmlEngine
 from PySide6.QtQuick import QQuickItem
 
+from model.motor_llm.config import ConfiguracionTransformer
+from model.motor_llm.transformer import Transformer
 from viewmodel.main_viewmodel import MainViewModel
 from viewmodel.theory_controller import TheoryController
 from viewmodel.visual_adapter import _CONCEPTO_POR_METRICA
@@ -52,6 +54,17 @@ class _DisplayManagerPrueba(QObject):
     def placeAuxiliaryWindow(self, _window, _maximize):  # noqa: N802
         self.placements += 1
         return True
+
+
+class _ReturnTokenizer:
+    tipo_encoding = 1
+    vocab_size = 40
+
+    def encode(self, _text):
+        return [1, 2]
+
+    def decode(self, _ids):
+        return "prueba"
 
 
 def _errors(component: QQmlComponent) -> str:
@@ -175,7 +188,6 @@ ApplicationWindow {{
     window = component.create()
     assert window is not None, _errors(component)
     qapp.processEvents()
-
     if screen_name == "ResultsScreen":
         notice = window.findChild(QQuickItem, "resultsSaveNotice")
         assert notice is not None
@@ -202,6 +214,199 @@ ApplicationWindow {{
         assert window.findChild(QObject, "comparisonGenerateButton") is not None
         assert window.findChild(QObject, "comparisonOpenExplorerButton") is not None
         assert window.findChild(QObject, "comparisonExplorationPanel") is not None
+
+    window.deleteLater()
+    engine.deleteLater()
+    qapp.processEvents()
+
+
+def test_resultados_regresa_de_un_salto_al_laboratorio_de_origen(qapp):
+    engine = QQmlEngine()
+    view_model = MainViewModel()
+    engine.rootContext().setContextProperty("mainViewModel", view_model)
+    component = QQmlComponent(engine)
+    component.setData(
+        b"""
+import QtQuick
+import QtQuick.Controls
+
+ApplicationWindow {
+    width: 1280
+    height: 820
+    visible: false
+
+    StackView {
+        id: navigation
+        objectName: "returnNavigation"
+        anchors.fill: parent
+        initialItem: Page {
+            objectName: "moduleLaboratoryScreen"
+            property string moduleId: "module_5"
+            property string mode: "training"
+        }
+    }
+
+    Component.onCompleted: navigation.push("screens/ResultsScreen.qml", {
+        "stackView": navigation,
+        "historialPerdidas": [2.0, 1.0],
+        "regresarAlLaboratorio": true,
+        "moduloRetornoLaboratorio": "module_5",
+        "modoRetornoLaboratorio": "training"
+    }, StackView.Immediate)
+}
+""",
+        QUrl.fromLocalFile(str(QML_ROOT / "ResultsReturnHost.qml")),
+    )
+    assert component.status() != QQmlComponent.Status.Error, _errors(component)
+    window = component.create()
+    assert window is not None, _errors(component)
+    qapp.processEvents()
+
+    navigation = window.findChild(QObject, "returnNavigation")
+    results = window.findChild(QObject, "resultsScreen")
+    return_button = window.findChild(QObject, "resultsReturnToLaboratoryButton")
+    assert navigation is not None
+    assert results is not None
+    assert return_button is not None
+    assert navigation.property("depth") == 2
+    assert return_button.property("visible") is True
+
+    _invoke_qml(results, "volverAlLaboratorio")
+    qapp.processEvents()
+
+    assert navigation.property("depth") == 1
+    current = navigation.property("currentItem")
+    assert current.objectName() == "moduleLaboratoryScreen"
+    assert current.property("moduleId") == "module_5"
+    assert current.property("mode") == "training"
+
+    window.deleteLater()
+    engine.deleteLater()
+    qapp.processEvents()
+
+
+def test_laboratorio_conserva_su_modulo_al_abrir_creacion_de_modelo(qapp):
+    engine = QQmlEngine()
+    view_model = MainViewModel()
+    engine.rootContext().setContextProperty("mainViewModel", view_model)
+    component = QQmlComponent(engine)
+    component.setData(
+        b"""
+import QtQuick
+import QtQuick.Controls
+
+ApplicationWindow {
+    width: 1280
+    height: 820
+    visible: false
+    StackView {
+        id: navigation
+        objectName: "laboratoryOriginNavigation"
+        anchors.fill: parent
+    }
+    Component.onCompleted: navigation.push(
+        "screens/ModuleLaboratoryScreen.qml", {
+            "stackView": navigation,
+            "moduleId": "module_5",
+            "mode": "training"
+        }, StackView.Immediate)
+}
+""",
+        QUrl.fromLocalFile(str(QML_ROOT / "LaboratoryOriginHost.qml")),
+    )
+    assert component.status() != QQmlComponent.Status.Error, _errors(component)
+    window = component.create()
+    assert window is not None, _errors(component)
+    qapp.processEvents()
+
+    navigation = window.findChild(QObject, "laboratoryOriginNavigation")
+    create_button = window.findChild(QObject, "moduleLaboratoryCreateModelButton")
+    assert navigation is not None
+    assert create_button is not None
+    assert create_button.property("visible") is True
+
+    _invoke_qml(create_button, "clicked")
+    qapp.processEvents()
+
+    setup = window.findChild(QObject, "setupScreen")
+    assert setup is not None
+    assert navigation.property("depth") == 2
+    assert setup.property("regresarAlLaboratorio") is True
+    assert setup.property("moduloRetornoLaboratorio") == "module_5"
+    assert setup.property("modoRetornoLaboratorio") == "training"
+
+    window.deleteLater()
+    engine.deleteLater()
+    qapp.processEvents()
+
+
+def test_modelo_creado_permite_volver_desde_entrenamiento_al_laboratorio(qapp):
+    engine = QQmlEngine()
+    view_model = MainViewModel()
+    config = ConfiguracionTransformer(
+        tamano_vocabulario=40,
+        dimension_modelo=16,
+        num_cabezas=4,
+        num_capas=1,
+        dimension_ff=32,
+        longitud_maxima_secuencia=12,
+        dropout=0.0,
+    )
+    view_model._instalar_modelo(Transformer(config), _ReturnTokenizer())
+    engine.rootContext().setContextProperty("mainViewModel", view_model)
+    component = QQmlComponent(engine)
+    component.setData(
+        b"""
+import QtQuick
+import QtQuick.Controls
+
+ApplicationWindow {
+    width: 1280
+    height: 820
+    visible: false
+
+    StackView {
+        id: navigation
+        objectName: "trainingReturnNavigation"
+        anchors.fill: parent
+        initialItem: Page {
+            objectName: "moduleLaboratoryScreen"
+            property string moduleId: "module_6"
+            property string mode: "inference"
+        }
+    }
+
+    Component.onCompleted: navigation.push("screens/TrainingScreen.qml", {
+        "stackView": navigation,
+        "regresarAlLaboratorio": true,
+        "moduloRetornoLaboratorio": "module_6",
+        "modoRetornoLaboratorio": "inference"
+    }, StackView.Immediate)
+}
+""",
+        QUrl.fromLocalFile(str(QML_ROOT / "TrainingReturnHost.qml")),
+    )
+    assert component.status() != QQmlComponent.Status.Error, _errors(component)
+    window = component.create()
+    assert window is not None, _errors(component)
+    qapp.processEvents()
+
+    navigation = window.findChild(QObject, "trainingReturnNavigation")
+    training = window.findChild(QObject, "trainingScreen")
+    return_button = window.findChild(QObject, "trainingReturnButton")
+    assert navigation is not None
+    assert training is not None
+    assert return_button is not None
+    assert "laboratorio" in str(return_button.property("text")).lower()
+
+    _invoke_qml(training, "volverDesdeEntrenamiento")
+    qapp.processEvents()
+
+    assert navigation.property("depth") == 1
+    current = navigation.property("currentItem")
+    assert current.objectName() == "moduleLaboratoryScreen"
+    assert current.property("moduleId") == "module_6"
+    assert current.property("mode") == "inference"
 
     window.deleteLater()
     engine.deleteLater()

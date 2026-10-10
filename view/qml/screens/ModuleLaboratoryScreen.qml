@@ -386,6 +386,7 @@ PagePrincipal {
                             onClicked: root.runAnalysis()
                         }
                         BotonPrincipal {
+                            objectName: "moduleLaboratoryCreateModelButton"
                             visible: !root.laboratoryController.modelReady
                             Layout.fillWidth: root.narrowControls
                             Layout.preferredWidth: root.narrowControls
@@ -393,7 +394,12 @@ PagePrincipal {
                             Layout.preferredHeight: 42 * root.uiScale
                             text: "Crear modelo"
                             onClicked: root.stackView.push(
-                                "SetupScreen.qml", { "stackView": root.stackView })
+                                "SetupScreen.qml", {
+                                    "stackView": root.stackView,
+                                    "regresarAlLaboratorio": true,
+                                    "moduloRetornoLaboratorio": root.moduleId,
+                                    "modoRetornoLaboratorio": root.mode
+                                })
                         }
                     }
 

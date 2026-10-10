@@ -33,6 +33,9 @@ PagePrincipal {
     property int epocasIniciales: 10
     property real tasaAprendizajeInicial: 0.0003
     property int batchSizeInicial: 16
+    property bool regresarAlLaboratorio: false
+    property string moduloRetornoLaboratorio: ""
+    property string modoRetornoLaboratorio: "inference"
 
     property int epocaActual: 0
     property int pasoGlobalActual: 0
@@ -73,6 +76,40 @@ PagePrincipal {
     property real perdidaFinalObtenida: 0
     property int epocasCompletadas: 0
     property int pasosFinales: 0
+
+    function buscarLaboratorioDeOrigen() {
+        if (!root.stackView)
+            return null
+        for (var index = root.stackView.depth - 2; index >= 0; --index) {
+            var candidate = root.stackView.get(index)
+            if (candidate
+                    && String(candidate.objectName) === "moduleLaboratoryScreen")
+                return candidate
+        }
+        return null
+    }
+
+    function volverAlLaboratorio() {
+        var origin = root.buscarLaboratorioDeOrigen()
+        if (origin) {
+            root.stackView.pop(origin)
+            return
+        }
+        root.stackView.push("ModuleLaboratoryScreen.qml", {
+            "stackView": root.stackView,
+            "moduleId": root.moduloRetornoLaboratorio || "module_1",
+            "mode": root.modoRetornoLaboratorio || "inference"
+        })
+    }
+
+    function volverDesdeEntrenamiento() {
+        if (root.regresarAlLaboratorio
+                && !root.trainingController.estaEntrenando) {
+            root.volverAlLaboratorio()
+            return
+        }
+        root.stackView.pop()
+    }
 
     readonly property var componenteActual: {
         if (localBridge.selectedId === "")
@@ -541,13 +578,19 @@ PagePrincipal {
         height: 52 * root.leftSy
 
         BotonPrincipal {
+            objectName: "trainingReturnButton"
             anchors.left: parent.left
             anchors.leftMargin: 22 * root.leftSx
             anchors.verticalCenter: parent.verticalCenter
-            width: 180 * root.leftSx
+            width: (root.regresarAlLaboratorio
+                    && !root.trainingController.estaEntrenando ? 230 : 180)
+                   * root.leftSx
             height: 36 * root.leftSy
-            text: "← Volver"
-            onClicked: root.stackView.pop()
+            text: root.regresarAlLaboratorio
+                  && !root.trainingController.estaEntrenando
+                  ? "← Volver al laboratorio" : "← Volver"
+            Accessible.name: text
+            onClicked: root.volverDesdeEntrenamiento()
         }
 
         Column {
@@ -1441,7 +1484,10 @@ PagePrincipal {
                             "perdidaFinal": root.perdidaFinalObtenida,
                             "epocasCompletadas": root.epocasCompletadas,
                             "pasosTotales": root.pasosFinales,
-                            "fueCancelado": root.fueCancelado
+                            "fueCancelado": root.fueCancelado,
+                            "regresarAlLaboratorio": root.regresarAlLaboratorio,
+                            "moduloRetornoLaboratorio": root.moduloRetornoLaboratorio,
+                            "modoRetornoLaboratorio": root.modoRetornoLaboratorio
                         })
                     }
                 }
