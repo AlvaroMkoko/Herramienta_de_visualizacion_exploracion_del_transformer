@@ -199,7 +199,7 @@ def _module_steps(module_id: str, mode: str) -> list[dict[str, Any]]:
             _step(
                 "position",
                 "Codificación posicional",
-                "PE(pos,2i)=sin(·); PE(pos,2i+1)=cos(·)",
+                "PE(pos,2i)=sin(pos/10000^{2i/d}); PE(pos,2i+1)=cos(pos/10000^{2i/d})",
                 "Seno y coseno aportan orden sin añadir parámetros entrenables.",
                 "Índice de posición",
                 "Vector PE fijo",

@@ -18,10 +18,34 @@ Item {
     property int selectedHead: 0
     property int selectedToken: 0
     property bool showContextChrome: true
+    // La escena principal muestra una sola idea. Los tensores completos se
+    // consultan desde la explicación técnica para evitar carga innecesaria.
+    property bool showInspectionTools: false
     property real sx: 1
     property real sy: 1
+    property real stageReveal: 1
 
     signal inspectRequested(var panel)
+
+    function replayStageTransition() {
+        stageTransition.stop()
+        stageReveal = Style.Theme.movimientoReducido ? 1 : 0.18
+        if (!Style.Theme.movimientoReducido)
+            stageTransition.start()
+    }
+
+    onStepIndexChanged: replayStageTransition()
+    onStepChanged: replayStageTransition()
+
+    NumberAnimation {
+        id: stageTransition
+        target: root
+        property: "stageReveal"
+        from: 0.18
+        to: 1
+        duration: 280
+        easing.type: Easing.OutCubic
+    }
 
     readonly property real uiSx: Math.max(0.78, Math.min(1.12, sx))
     readonly property real uiSy: Math.max(0.74, Math.min(1.08, sy))
@@ -60,6 +84,7 @@ Item {
                                                     ? analysis.training : ({})
     readonly property var metadata: normalizedMetadata()
     readonly property string visualId: normalizedVisualId()
+    readonly property string animationDescription: animationDescriptionForStep()
 
     function safeObject(value) {
         return value && typeof value === "object" ? value : ({})
@@ -304,6 +329,10 @@ Item {
 
     function attentionPhase() {
         var visual = visualId
+        // La máscara ya tiene su etapa propia. En "masked attention" la
+        // escena debe mostrar el resultado de usarla: pesos y contexto.
+        if (visual.indexOf("masked_attention") >= 0)
+            return "weighted"
         if (visual.indexOf("mask") >= 0 || visual.indexOf("mascara") >= 0)
             return "mask"
         if (visual.indexOf("score") >= 0 || visual.indexOf("scale") >= 0
@@ -428,12 +457,16 @@ Item {
         if (visual.indexOf("ffn") >= 0 || visual.indexOf("feed") >= 0)
             return 2
         if (visual.indexOf("residual") >= 0 || visual.indexOf("norm") >= 0
-                || visual.indexOf("add") >= 0)
+                || visual.indexOf("add") >= 0 || visual === "decoder_output")
             return 1
         if (visual.indexOf("layer") >= 0 || visual.indexOf("capa") >= 0
                 || visual.indexOf("stack") >= 0 || visual.indexOf("pila") >= 0)
             return 3
         return 0
+    }
+
+    function decoderResidualUsesFfn() {
+        return visualId.indexOf("ffn") >= 0 || visualId === "decoder_output"
     }
 
     function normalizedCandidates() {
@@ -509,9 +542,103 @@ Item {
             return 1
         if (visual.indexOf("logit") >= 0 || visual.indexOf("output") >= 0
                 || visual.indexOf("salida") >= 0 || visual.indexOf("softmax") >= 0
-                || visual.indexOf("select") >= 0 || visual.indexOf("seleccion") >= 0)
+                || visual.indexOf("select") >= 0 || visual.indexOf("seleccion") >= 0
+                || visual.indexOf("loss") >= 0 || visual.indexOf("backward") >= 0
+                || visual.indexOf("gradient") >= 0 || visual.indexOf("update") >= 0)
             return 2
         return Math.max(0, Math.min(2, Math.floor(Number(stepIndex) / 3)))
+    }
+
+    function isLearningSignalStep() {
+        return visualId.indexOf("gradient") >= 0
+                || visualId.indexOf("gradiente") >= 0
+                || visualId.indexOf("backward") >= 0
+                || visualId.indexOf("update") >= 0
+                || visualId.indexOf("actualizacion") >= 0
+    }
+
+    function usesSimpleStageOverride() {
+        if (isLearningSignalStep()
+                && ["module_2", "module_3", "module_4", "module_5", "module_6"]
+                   .indexOf(moduleId) >= 0)
+            return true
+        if (moduleId === "module_1")
+            return visualId.indexOf("data_pipeline") >= 0
+        if (moduleId === "module_2")
+            return visualId.indexOf("position_encoding") >= 0
+                    || visualId.indexOf("dropout") >= 0
+        if (moduleId === "module_3")
+            return visualId.indexOf("attention_input") >= 0
+                    || visualId.indexOf("qkv_weights") >= 0
+                    || visualId.indexOf("attention_output") >= 0
+        if (moduleId === "module_5")
+            return visualId === "encoder_input"
+                    || visualId === "encoder_attention"
+        if (moduleId === "module_6")
+            return visualId.indexOf("decoder_prefix") >= 0
+                    || visualId.indexOf("decoder_embedding") >= 0
+        if (moduleId === "module_8")
+            return visualId.indexOf("transformer_tokens") >= 0
+                    || visualId.indexOf("transformer_embedding") >= 0
+                    || visualId.indexOf("transformer_encoder") >= 0
+                    || visualId.indexOf("transformer_decoder") >= 0
+        return false
+    }
+
+    function animationDescriptionForStep() {
+        var input = textValue(step && step.input, "la entrada")
+        var title = textValue(step && step.title, "la operación")
+        var output = textValue(step && step.output, "la salida")
+        if (usesSimpleStageOverride())
+            return "La animación muestra tres tarjetas: «" + input + "» entra, «"
+                    + title + "» aplica la fórmula del paso y «" + output
+                    + "» sale. La barra inferior avanza cuando se completa la transformación."
+        if (moduleId === "module_1")
+            return "Arriba aparecen los tokens en orden. El panel grande representa «"
+                    + title + "» con la captura numérica asociada a «" + output + "»."
+        if (moduleId === "module_2") {
+            if (visualId.indexOf("sum") >= 0)
+                return "Cada flecha parte del embedding escalado y termina en el mismo token después de sumar su vector posicional."
+            return "La escena recorre token e ID, selecciona su fila de embedding y revela las coordenadas reales del vector escalado."
+        }
+        if (moduleId === "module_3") {
+            var phase = attentionPhase()
+            if (phase === "qkv")
+                return "La escena revela las matrices Q, K y V de la cabeza seleccionada; los colores separan preguntar, comparar y transportar contenido."
+            if (phase === "scores")
+                return "La matriz visible contiene compatibilidades QKᵀ/√d_head: cada celda aún es un score, no una probabilidad."
+            if (phase === "mask")
+                return "La escena compara scores, máscara y scores enmascarados; las posiciones bloqueadas pasan a −∞ antes de Softmax."
+            return "La escena muestra pesos Softmax, contribuciones AᵢⱼVⱼ y el contexto resultante para la query seleccionada."
+        }
+        if (moduleId === "module_4")
+            return "La animación conserva el recorrido multi-head completo. Para este paso, centra la lectura en «"
+                    + title + "»: proyección, separación, cabezas, concatenación y Wᴼ aparecen en ese orden."
+        if (moduleId === "module_5") {
+            var encoderIndex = encoderSceneIndex()
+            if (encoderIndex === 1)
+                return "La ruta superior conserva la entrada y la inferior aporta la actualización; ambas se suman antes de recorrer las fases de LayerNorm."
+            if (encoderIndex === 2)
+                return "Cada carril de token se expande de d_model a d_ff, aplica la activación y vuelve a d_model mediante W₂."
+            if (encoderIndex === 3)
+                return "Los pisos representan capas consecutivas del encoder y permiten seguir cómo cambia el mismo token hasta formar la memoria."
+            return "La escena abre el cálculo de self-attention de la capa seleccionada y muestra cómo se forma su actualización contextual."
+        }
+        if (moduleId === "module_6") {
+            var decoderIndex = decoderSceneIndex()
+            if (decoderIndex === 1)
+                return "La escena separa el atajo residual de la actualización y después recorre centrado, estandarización, γ y β."
+            if (decoderIndex === 2)
+                return "La FFN procesa cada token por separado: expansión, activación y proyección de regreso a d_model."
+            if (decoderIndex === 3)
+                return "Los pisos representan las capas del decoder y siguen el estado del prefijo hasta la salida final."
+            return attentionPhase() === "mask"
+                    ? "La escena muestra la máscara causal triangular y los scores bloqueados antes de Softmax."
+                    : "La escena muestra los pesos permitidos y el contexto producido por la atención causal o cruzada."
+        }
+        if (moduleId === "module_7" || moduleId === "module_8")
+            return "La escena presenta una transformación a la vez: entrada, operación y resultado. Cuando hay vocabulario, solo aparecen los cinco candidatos principales."
+        return "La animación representa «" + input + "» → «" + title + "» → «" + output + "»."
     }
 
     function transformerStages() {
@@ -550,6 +677,8 @@ Item {
     }
 
     function componentForModule() {
+        if (usesSimpleStageOverride())
+            return simpleStageComponent
         switch (moduleId) {
         case "module_2": return embeddingComponent
         case "module_3": return attentionComponent
@@ -701,6 +830,8 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
+            opacity: root.stageReveal
+            scale: 0.985 + 0.015 * root.stageReveal
             sourceComponent: root.componentForModule()
         }
 
@@ -716,6 +847,28 @@ Item {
                                                "delta_norm"], "—")
             sx: root.uiSx
             sy: root.uiSy
+        }
+    }
+
+    Component {
+        id: simpleStageComponent
+
+        Item {
+            objectName: "moduleLabSimpleStageView"
+            SimpleOutputStageScene {
+                anchors.fill: parent
+                step: root.step
+                candidates: root.normalizedCandidates()
+                selectedToken: root.analysis && root.analysis.selected_token
+                               ? root.analysis.selected_token
+                               : (root.inferenceSnapshot.token_elegido || ({}))
+                panel: root.panelFor(root.textValue(root.step.panel_key, ""))
+                training: root.trainingSnapshot
+                active: true
+                reducedMotion: Style.Theme.movimientoReducido
+                sx: root.uiSx
+                sy: root.uiSy
+            }
         }
     }
 
@@ -744,73 +897,33 @@ Item {
                         sy: root.uiSy
                     }
 
-                    GridLayout {
-                        Layout.fillWidth: true
-                        columns: tokenizationView.width >= 920 ? 4
-                                 : (tokenizationView.width >= 560 ? 2 : 1)
-                        columnSpacing: 8 * root.uiSx
-                        rowSpacing: 8 * root.uiSy
-
-                        PipelineTile {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 92 * root.uiSy
-                            number: "01"
-                            title: "Segmentar"
-                            detail: root.tokens.length + " piezas detectadas"
-                            accent: Style.Theme.inferencia_estructura
-                            sx: root.uiSx
-                            sy: root.uiSy
-                        }
-                        PipelineTile {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 92 * root.uiSy
-                            number: "02"
-                            title: "Asignar IDs"
-                            detail: root.shapeText(root.panelFor("token_ids"))
-                            accent: Style.Theme.inferencia_contexto
-                            sx: root.uiSx
-                            sy: root.uiSy
-                        }
-                        PipelineTile {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 92 * root.uiSy
-                            number: "03"
-                            title: root.trainingMode ? "Formar batch" : "Ajustar contexto"
-                            detail: root.trainingMode ? "padding + especiales" : "recorte al máximo"
-                            accent: Style.Theme.inferencia_transformacion
-                            sx: root.uiSx
-                            sy: root.uiSy
-                        }
-                        PipelineTile {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 92 * root.uiSy
-                            number: "04"
-                            title: "Construir máscara"
-                            detail: "1 visible · 0 bloqueado"
-                            accent: Style.Theme.inferencia_resultado
-                            sx: root.uiSx
-                            sy: root.uiSy
-                        }
-                    }
-
                     TensorMatrixCard {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: Math.max(205, 245 * root.uiSy)
-                        panel: root.panelFor("padding_mask")
-                        matrix: root.matrixForPanel("padding_mask")
-                        fallbackTitle: "Máscara de padding"
-                        fallbackDescription: "Distingue tokens reales de posiciones PAD antes de la atención."
-                        colorMode: "mask"
+                        Layout.fillHeight: true
+                        Layout.preferredHeight: Math.max(245, 315 * root.uiSy)
+                        panel: root.panelFor(root.textValue(root.step.panel_key,
+                                                            "token_ids"))
+                        matrix: root.matrixForPanel(root.textValue(root.step.panel_key,
+                                                                   "token_ids"))
+                        fallbackTitle: root.textValue(root.step.title,
+                                                       "Representación actual")
+                        fallbackDescription: root.textValue(
+                            root.step.explanation,
+                            "La animación muestra solo el resultado de esta operación.")
+                        colorMode: root.visualId.indexOf("mask") >= 0
+                                   ? "mask" : "sequential"
                         rowPrefix: "B"
-                        valueLabel: "visible"
+                        valueLabel: root.visualId.indexOf("mask") >= 0
+                                    ? "visible" : "valor"
                         sx: root.uiSx
                         sy: root.uiSy
                         onInspectRequested: function(panel) { root.inspectRequested(panel) }
                     }
 
                     InspectionStrip {
+                        visible: root.showInspectionTools
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 42 * root.uiSy
+                        Layout.preferredHeight: visible ? 42 * root.uiSy : 0
                         panels: root.panelsByKeys(["token_ids", "positions", "padding_mask"])
                         sx: root.uiSx
                         sy: root.uiSy
@@ -846,7 +959,7 @@ Item {
                         tensorData: root.tensorData("embedding", "embedding_encoder_escalado")
                         tokens: root.normalizedTokens()
                         active: StackLayout.isCurrentItem
-                        reducedMotion: false
+                        reducedMotion: Style.Theme.movimientoReducido
                         selectedRow: Math.max(0, Math.min(root.tokens.length - 1,
                                                           root.selectedToken))
                         sx: root.uiSx
@@ -857,15 +970,16 @@ Item {
                         projection: root.positionalProjection()
                         tokens: root.normalizedTokens()
                         active: StackLayout.isCurrentItem
-                        reducedMotion: false
+                        reducedMotion: Style.Theme.movimientoReducido
                         sx: root.uiSx
                         sy: root.uiSy
                     }
                 }
 
                 InspectionStrip {
+                    visible: root.showInspectionTools
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 42 * root.uiSy
+                    Layout.preferredHeight: visible ? 42 * root.uiSy : 0
                     panels: root.panelsByKeys(["embedding", "position",
                                                "embedding_plus_position"])
                     sx: root.uiSx
@@ -907,15 +1021,16 @@ Item {
                         headIndex: root.selectedHead
                         layerIndex: root.selectedLayer
                         active: true
-                        reducedMotion: false
+                        reducedMotion: Style.Theme.movimientoReducido
                         sx: root.uiSx
                         sy: root.uiSy
                     }
                 }
 
                 InspectionStrip {
+                    visible: root.showInspectionTools
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 42 * root.uiSy
+                    Layout.preferredHeight: visible ? 42 * root.uiSy : 0
                     panels: root.panelsByKeys(["q", "k", "v", "scores",
                                                "attention_weights", "attention_output"])
                     sx: root.uiSx
@@ -937,55 +1052,24 @@ Item {
                 anchors.fill: parent
                 spacing: 7 * root.uiSy
 
-                SplitView {
+                Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    orientation: multiHeadView.width >= 820
-                                 ? Qt.Horizontal : Qt.Vertical
-
-                    Item {
-                        SplitView.fillWidth: true
-                        SplitView.fillHeight: true
-                        SplitView.minimumWidth: multiHeadView.width >= 820 ? 470 : 0
-                        SplitView.minimumHeight: 210
-
-                        MultiHeadSplitScene {
-                            anchors.fill: parent
-                            metadata: root.metadata
-                            attentionData: root.attentionData(0)
-                            active: true
-                            reducedMotion: false
-                            sx: root.uiSx
-                            sy: root.uiSy
-                        }
-                    }
-
-                    TensorMatrixCard {
-                        SplitView.preferredWidth: multiHeadView.width >= 820
-                                                  ? Math.max(290, multiHeadView.width * 0.34)
-                                                  : multiHeadView.width
-                        SplitView.preferredHeight: multiHeadView.width >= 820
-                                                   ? multiHeadView.height
-                                                   : Math.max(210, multiHeadView.height * 0.42)
-                        SplitView.minimumWidth: multiHeadView.width >= 820 ? 260 : 0
-                        SplitView.minimumHeight: 190
-                        panel: root.panelFor("head_attention")
-                        matrix: root.headMatrix()
-                        fallbackTitle: "Mapa de la cabeza H"
-                                       + String(root.selectedHead + 1).padStart(2, "0")
-                        fallbackDescription: "Cada fila consulta las keys con una distribución distinta."
-                        colorMode: "sequential"
-                        rowPrefix: "Q"
-                        valueLabel: "atención"
+                    MultiHeadSplitScene {
+                        anchors.fill: parent
+                        metadata: root.metadata
+                        attentionData: root.attentionData(0)
+                        active: true
+                        reducedMotion: Style.Theme.movimientoReducido
                         sx: root.uiSx
                         sy: root.uiSy
-                        onInspectRequested: function(panel) { root.inspectRequested(panel) }
                     }
                 }
 
                 InspectionStrip {
+                    visible: root.showInspectionTools
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 42 * root.uiSy
+                    Layout.preferredHeight: visible ? 42 * root.uiSy : 0
                     panels: root.panelsByKeys(["head_attention", "head_output",
                                                "concatenated", "projected"])
                     sx: root.uiSx
@@ -1021,7 +1105,7 @@ Item {
                         headIndex: root.selectedHead
                         layerIndex: root.selectedLayer
                         active: StackLayout.isCurrentItem
-                        reducedMotion: false
+                        reducedMotion: Style.Theme.movimientoReducido
                         sx: root.uiSx
                         sy: root.uiSy
                     }
@@ -1031,7 +1115,7 @@ Item {
                         sublayerLabel: root.encoderResidualUsesFfn()
                                        ? "FFN" : "Self-attention"
                         active: StackLayout.isCurrentItem
-                        reducedMotion: false
+                        reducedMotion: Style.Theme.movimientoReducido
                         sx: root.uiSx
                         sy: root.uiSy
                     }
@@ -1040,7 +1124,7 @@ Item {
                         sceneData: root.ffnData(0)
                         tokens: root.normalizedTokens()
                         active: StackLayout.isCurrentItem
-                        reducedMotion: false
+                        reducedMotion: Style.Theme.movimientoReducido
                         sx: root.uiSx
                         sy: root.uiSy
                     }
@@ -1056,8 +1140,9 @@ Item {
                 }
 
                 InspectionStrip {
+                    visible: root.showInspectionTools
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 42 * root.uiSy
+                    Layout.preferredHeight: visible ? 42 * root.uiSy : 0
                     panels: root.panelsByKeys(["encoder_input", "attention_residual",
                                                "ffn_hidden", "encoder_output"])
                     sx: root.uiSx
@@ -1081,16 +1166,6 @@ Item {
                 anchors.fill: parent
                 spacing: 7 * root.uiSy
 
-                ModeDifferenceCard {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 46 * root.uiSy
-                    training: root.trainingMode
-                    trainingText: "Teacher forcing: procesa todas las posiciones conocidas sin revelar el futuro."
-                    inferenceText: "Prefijo autoregresivo: cada token elegido amplía el contexto del siguiente paso."
-                    sx: root.uiSx
-                    sy: root.uiSy
-                }
-
                 StackLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
@@ -1104,18 +1179,20 @@ Item {
                         headIndex: root.selectedHead
                         layerIndex: root.selectedLayer
                         active: StackLayout.isCurrentItem
-                        reducedMotion: false
+                        reducedMotion: Style.Theme.movimientoReducido
                         sx: root.uiSx
                         sy: root.uiSy
                     }
 
                     ResidualLayerNormScene {
                         sceneData: root.residualData(decoderView.branch,
-                                                     root.visualId.indexOf("ffn") >= 0)
-                        sublayerLabel: decoderView.branch === 2
-                                       ? "Cross-attention" : "Atención causal"
+                                                     root.decoderResidualUsesFfn())
+                        sublayerLabel: root.decoderResidualUsesFfn()
+                                       ? "Feed Forward"
+                                       : (decoderView.branch === 2
+                                          ? "Cross-attention" : "Atención causal")
                         active: StackLayout.isCurrentItem
-                        reducedMotion: false
+                        reducedMotion: Style.Theme.movimientoReducido
                         sx: root.uiSx
                         sy: root.uiSy
                     }
@@ -1124,7 +1201,7 @@ Item {
                         sceneData: root.ffnData(1)
                         tokens: root.normalizedTokens()
                         active: StackLayout.isCurrentItem
-                        reducedMotion: false
+                        reducedMotion: Style.Theme.movimientoReducido
                         sx: root.uiSx
                         sy: root.uiSy
                     }
@@ -1142,8 +1219,9 @@ Item {
                 }
 
                 InspectionStrip {
+                    visible: root.showInspectionTools
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 42 * root.uiSy
+                    Layout.preferredHeight: visible ? 42 * root.uiSy : 0
                     panels: root.panelsByKeys(["causal_mask", "masked_attention",
                                                "cross_attention", "decoder_output"])
                     sx: root.uiSx
@@ -1160,50 +1238,31 @@ Item {
         Item {
             id: outputView
             objectName: "moduleLabOutputView"
-            readonly property int sceneIndex: root.outputSceneIndex()
-
             ColumnLayout {
                 anchors.fill: parent
                 spacing: 7 * root.uiSy
 
-                StackLayout {
+                SimpleOutputStageScene {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    currentIndex: outputView.sceneIndex
-
-                    OutputProjectionScene {
-                        snapshot: root.outputSnapshot()
-                        logitsData: root.forwardDetail && root.forwardDetail.logits_lineales
-                                    ? root.forwardDetail.logits_lineales
-                                    : (root.forwardDetail.logits || ({}))
-                        hiddenData: root.detailGlobal && root.detailGlobal.salida_decoder
-                                    ? root.detailGlobal.salida_decoder
-                                    : root.tensorData("decoder_output", "")
-                        active: StackLayout.isCurrentItem
-                        reducedMotion: false
-                        sx: root.uiSx
-                        sy: root.uiSy
-                    }
-
-                    CandidateBoard {
-                        candidates: root.normalizedCandidates()
-                        selectedToken: root.analysis && root.analysis.selected_token
-                                       ? root.analysis.selected_token
-                                       : (root.inferenceSnapshot.token_elegido || ({}))
-                        sx: root.uiSx
-                        sy: root.uiSy
-                    }
-
-                    LearningSignalBoard {
-                        training: root.trainingSnapshot
-                        sx: root.uiSx
-                        sy: root.uiSy
-                    }
+                    step: root.step
+                    candidates: root.normalizedCandidates()
+                    selectedToken: root.analysis && root.analysis.selected_token
+                                   ? root.analysis.selected_token
+                                   : (root.inferenceSnapshot.token_elegido || ({}))
+                    panel: root.panelFor(root.textValue(root.step.panel_key,
+                                                        "logits"))
+                    training: root.trainingSnapshot
+                    active: true
+                    reducedMotion: Style.Theme.movimientoReducido
+                    sx: root.uiSx
+                    sy: root.uiSy
                 }
 
                 InspectionStrip {
+                    visible: root.showInspectionTools
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 42 * root.uiSy
+                    Layout.preferredHeight: visible ? 42 * root.uiSy : 0
                     panels: root.panelsByKeys(["logits", "probabilities",
                                                "filtered_candidates", "selected_token"])
                     sx: root.uiSx
@@ -1226,37 +1285,6 @@ Item {
                 anchors.fill: parent
                 spacing: 7 * root.uiSy
 
-                ListView {
-                    id: processRibbon
-                    objectName: "moduleLabTransformerProcess"
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 70 * root.uiSy
-                    orientation: ListView.Horizontal
-                    spacing: 7 * root.uiSx
-                    clip: true
-                    boundsBehavior: Flickable.StopAtBounds
-                    model: root.transformerStages()
-                    ScrollBar.horizontal: ScrollBar { policy: ScrollBar.AsNeeded }
-
-                    delegate: ProcessStageCard {
-                        required property var modelData
-                        required property int index
-                        height: processRibbon.height - 8 * root.uiSy
-                        width: Math.max(145 * root.uiSx,
-                                        (processRibbon.width - 28 * root.uiSx)
-                                        / Math.min(5, processRibbon.count))
-                        number: root.textValue(modelData.numero,
-                                               String(index + 1).padStart(2, "0"))
-                        title: root.textValue(modelData.titulo, "Etapa")
-                        detail: root.textValue(modelData.dato, "Datos reales")
-                        accent: modelData.color || Style.Theme.acento
-                        current: index === Math.max(0, Math.min(processRibbon.count - 1,
-                                                                root.stepIndex))
-                        sx: root.uiSx
-                        sy: root.uiSy
-                    }
-                }
-
                 StackLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
@@ -1266,7 +1294,7 @@ Item {
                         tensorData: root.tensorData("embedding", "entrada_encoder")
                         tokens: root.normalizedTokens()
                         active: StackLayout.isCurrentItem
-                        reducedMotion: false
+                        reducedMotion: Style.Theme.movimientoReducido
                         sx: root.uiSx
                         sy: root.uiSy
                     }
@@ -1281,29 +1309,31 @@ Item {
                         headIndex: root.selectedHead
                         layerIndex: root.selectedLayer
                         active: StackLayout.isCurrentItem
-                        reducedMotion: false
+                        reducedMotion: Style.Theme.movimientoReducido
                         sx: root.uiSx
                         sy: root.uiSy
                     }
 
-                    OutputProjectionScene {
-                        snapshot: root.outputSnapshot()
-                        logitsData: root.forwardDetail && root.forwardDetail.logits_lineales
-                                    ? root.forwardDetail.logits_lineales
-                                    : (root.forwardDetail.logits || ({}))
-                        hiddenData: root.detailGlobal && root.detailGlobal.salida_decoder
-                                    ? root.detailGlobal.salida_decoder
-                                    : root.tensorData("decoder", "")
+                    SimpleOutputStageScene {
+                        step: root.step
+                        candidates: root.normalizedCandidates()
+                        selectedToken: root.analysis && root.analysis.selected_token
+                                       ? root.analysis.selected_token
+                                       : (root.inferenceSnapshot.token_elegido || ({}))
+                        panel: root.panelFor(root.textValue(root.step.panel_key,
+                                                            "logits"))
+                        training: root.trainingSnapshot
                         active: StackLayout.isCurrentItem
-                        reducedMotion: false
+                        reducedMotion: Style.Theme.movimientoReducido
                         sx: root.uiSx
                         sy: root.uiSy
                     }
                 }
 
                 InspectionStrip {
+                    visible: root.showInspectionTools
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 42 * root.uiSy
+                    Layout.preferredHeight: visible ? 42 * root.uiSy : 0
                     panels: root.panelsByKeys(["tokens", "embedding", "encoder",
                                                "decoder", "logits", "selected_token"])
                     sx: root.uiSx

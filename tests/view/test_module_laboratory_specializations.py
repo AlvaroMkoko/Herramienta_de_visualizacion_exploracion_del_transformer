@@ -21,9 +21,11 @@ from PySide6.QtCore import QObject, QPointF, QRectF, QSizeF, QUrl
 from PySide6.QtQml import QQmlComponent, QQmlEngine
 from PySide6.QtQuick import QQuickItem
 
+from model.aprendizaje import ModuleProgressRepository
 from model.motor_llm.config import ConfiguracionTransformer
 from model.motor_llm.transformer import Transformer
 from viewmodel.main_viewmodel import MainViewModel
+from viewmodel.module_laboratory_controller import _module_steps
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -82,6 +84,28 @@ ApplicationWindow {
         anchors.fill: parent
         stackView: navigation
         moduleId: "module_3"
+    }
+}
+"""
+
+GUIDE_HOST = b"""\
+import QtQuick
+import QtQuick.Controls
+import "components" as Components
+
+ApplicationWindow {
+    width: 720
+    height: 900
+    visible: false
+
+    Components.LaboratoryAnimationGuide {
+        objectName: "laboratoryGuideUnderTest"
+        anchors.fill: parent
+        moduleId: "module_1"
+        mode: "inference"
+        steps: []
+        step: ({})
+        animationDescription: "Escena de prueba"
     }
 }
 """
@@ -162,6 +186,37 @@ def specialized_visual(qapp):
     engine.deleteLater()
 
 
+@pytest.fixture
+def laboratory_guide(qapp):
+    engine = QQmlEngine()
+    component = QQmlComponent(engine)
+    component.setData(
+        GUIDE_HOST,
+        QUrl.fromLocalFile(str(ROOT / "view" / "qml" / "LaboratoryGuideHost.qml")),
+    )
+    assert component.status() != QQmlComponent.Status.Error, _errors(component)
+    window = component.create()
+    assert window is not None, _errors(component)
+    qapp.processEvents()
+
+    guide = window.findChild(QObject, "laboratoryGuideUnderTest")
+    formula = window.findChild(QObject, "moduleLaboratoryGuideFormulaText")
+    formula_reading = window.findChild(
+        QObject, "moduleLaboratoryGuideFormulaReading"
+    )
+    observation = window.findChild(QObject, "moduleLaboratoryGuideObservation")
+    input_output = window.findChild(QObject, "moduleLaboratoryGuideInputOutput")
+    assert all(
+        item is not None
+        for item in (guide, formula, formula_reading, observation, input_output)
+    )
+
+    yield window, guide, formula, formula_reading, observation, input_output
+
+    window.deleteLater()
+    engine.deleteLater()
+
+
 @pytest.mark.parametrize(
     ("module_id", "kind", "child_name"),
     [
@@ -181,6 +236,174 @@ def test_cada_modulo_carga_su_visualizacion_especializada(
     loaded_item = loader.property("item")
     assert loaded_item is not None
     assert loaded_item.objectName() == child_name
+    if module_id == "module_7":
+        visual.setProperty(
+            "analysis",
+            {
+                "candidates": [
+                    {
+                        "text": f"token_{index}",
+                        "logit": 8 - index,
+                        "probability": (8 - index) / 36,
+                    }
+                    for index in range(8)
+                ]
+            },
+        )
+        visual.setProperty(
+            "step",
+            {
+                "title": "Logits del vocabulario",
+                "visual": "output_projection",
+                "panel_key": "logits",
+            },
+        )
+        qapp.processEvents()
+        simple_output = loaded_item.findChild(QObject, "simpleOutputStageScene")
+        assert simple_output is not None
+        assert len(simple_output.property("visibleCandidates").toVariant()) == 5
+        assert simple_output.property("definition").toVariant()["kind"] == "logits"
+    if module_id == "module_8":
+        visual.setProperty(
+            "stepIndex", 5
+        )
+        visual.setProperty(
+            "step",
+            {
+                "title": "Pérdida",
+                "visual": "transformer_loss",
+                "panel_key": "loss_per_position",
+            },
+        )
+        qapp.processEvents()
+        simple_output = loaded_item.findChild(QObject, "simpleOutputStageScene")
+        assert simple_output is not None
+        assert simple_output.property("active") is True
+        assert simple_output.property("definition").toVariant()["kind"] == "training"
+
+
+@pytest.mark.parametrize(
+    ("module_id", "mode", "step_id", "expected_kind"),
+    [
+        ("module_1", "inference", "no_grad", "process"),
+        ("module_2", "inference", "position", "process"),
+        ("module_2", "training", "dropout", "process"),
+        ("module_3", "inference", "attention_input", "process"),
+        ("module_3", "inference", "output", "process"),
+        ("module_3", "training", "backward", "training"),
+        ("module_5", "inference", "encoder_input", "process"),
+        ("module_5", "inference", "encoder_attention", "process"),
+        ("module_6", "inference", "decoder_prefix", "process"),
+        ("module_8", "inference", "full_encoder", "process"),
+    ],
+)
+def test_etapas_antes_ambiguas_usan_una_animacion_fiel_a_sus_datos(
+    qapp,
+    specialized_visual,
+    module_id,
+    mode,
+    step_id,
+    expected_kind,
+):
+    _window, visual, loader, _evidence = specialized_visual
+    steps = _module_steps(module_id, mode)
+    step = next(item for item in steps if item["id"] == step_id)
+
+    visual.setProperty("moduleId", module_id)
+    visual.setProperty("mode", mode)
+    visual.setProperty("step", step)
+    qapp.processEvents()
+
+    loaded_item = loader.property("item")
+    assert loaded_item is not None
+    assert loaded_item.objectName() == "moduleLabSimpleStageView"
+    simple_scene = loaded_item.findChild(QObject, "simpleOutputStageScene")
+    assert simple_scene is not None
+    definition = simple_scene.property("definition").toVariant()
+    assert definition["kind"] == expected_kind
+    if expected_kind == "process":
+        assert definition["first"] == step["input"]
+        assert definition["operation"] == step["title"]
+        assert definition["last"] == step["output"]
+
+
+def test_guia_explica_formula_entrada_salida_y_animacion_de_todas_las_etapas(
+    qapp, laboratory_guide
+):
+    (
+        _window,
+        guide,
+        formula,
+        formula_reading,
+        observation,
+        input_output,
+    ) = laboratory_guide
+
+    checked = 0
+    for module_number in range(1, 9):
+        module_id = f"module_{module_number}"
+        for mode in ("inference", "training"):
+            steps = _module_steps(module_id, mode)
+            guide.setProperty("moduleId", module_id)
+            guide.setProperty("mode", mode)
+            guide.setProperty("steps", steps)
+            for index, step in enumerate(steps):
+                scene_description = (
+                    f"Escena verificada {module_id} {mode} {step['id']}"
+                )
+                guide.setProperty("stepIndex", index)
+                guide.setProperty("step", step)
+                guide.setProperty("animationDescription", scene_description)
+                qapp.processEvents()
+
+                assert str(formula.property("text")) == step["formula"]
+                reading = str(formula_reading.property("text"))
+                assert reading.startswith("CÓMO LEERLA · ")
+                assert "Lee la expresión de izquierda a derecha" not in reading
+                assert scene_description in str(observation.property("body"))
+                flow = str(input_output.property("text"))
+                assert step["input"] in flow
+                assert step["output"] in flow
+                checked += 1
+
+    # Evita que una colección accidentalmente vacía haga pasar la revisión.
+    assert checked >= 100
+
+
+def test_decoder_y_filtros_completos_muestran_la_operacion_correcta(
+    qapp, specialized_visual
+):
+    _window, visual, loader, _evidence = specialized_visual
+
+    decoder_output = next(
+        step
+        for step in _module_steps("module_6", "inference")
+        if step["id"] == "decoder_output"
+    )
+    visual.setProperty("moduleId", "module_6")
+    visual.setProperty("stepIndex", 8)
+    visual.setProperty("step", decoder_output)
+    qapp.processEvents()
+    decoder_view = loader.property("item")
+    assert decoder_view.objectName() == "moduleLabDecoderView"
+    # Índice 1 es la escena residual + LayerNorm; antes regresaba a atención.
+    assert decoder_view.property("sceneIndex") == 1
+
+    full_filters = next(
+        step
+        for step in _module_steps("module_8", "inference")
+        if step["id"] == "full_filters"
+    )
+    visual.setProperty("moduleId", "module_8")
+    visual.setProperty("stepIndex", 5)
+    visual.setProperty("step", full_filters)
+    qapp.processEvents()
+    transformer_view = loader.property("item")
+    simple_scene = transformer_view.findChild(QObject, "simpleOutputStageScene")
+    definition = simple_scene.property("definition").toVariant()
+    assert definition["kind"] == "candidates"
+    assert definition["operation"] == "Temperatura → Top-K → Top-P"
+    assert definition["last"] == full_filters["output"]
 
 
 @pytest.mark.parametrize("mode", ["training", "inference"])
@@ -284,8 +507,14 @@ def test_rascacielos_reserva_espacio_para_graficas_y_muestra_tres_pisos(qapp):
     engine.deleteLater()
 
 
-def test_pantalla_especializada_reordena_paneles_sin_encimarlos(qapp):
+def test_pantalla_especializada_reordena_paneles_sin_encimarlos(qapp, tmp_path):
     view_model = MainViewModel()
+    # Aísla la persistencia: explorar el laboratorio emite señales reales de
+    # progreso y una prueba visual nunca debe cambiar la sesión del usuario.
+    progress_repository = ModuleProgressRepository(tmp_path / "progress.json")
+    view_model._course_controller._repository = progress_repository
+    view_model._course_controller._state = progress_repository.snapshot()
+    view_model._course_controller._current_module_id = "module_1"
     config = ConfiguracionTransformer(
         tamano_vocabulario=40,
         dimension_modelo=16,
@@ -324,8 +553,24 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(qapp):
     workspace = window.findChild(QQuickItem, "moduleLaboratoryWorkspace")
     step_pane = window.findChild(QQuickItem, "moduleLaboratoryStepPane")
     visual_pane = window.findChild(QQuickItem, "moduleLaboratoryVisualPane")
-    evidence_pane = window.findChild(QQuickItem, "moduleLaboratoryEvidencePane")
+    model_status = window.findChild(QQuickItem, "moduleLaboratoryModelStatus")
+    guide = window.findChild(QObject, "moduleLaboratoryAnimationGuide")
+    guide_context = window.findChild(QObject, "moduleLaboratoryGuideLocalContext")
+    guide_idea = window.findChild(QObject, "moduleLaboratoryGuideIdea")
+    guide_observation = window.findChild(
+        QObject, "moduleLaboratoryGuideObservation"
+    )
+    guide_formula = window.findChild(QObject, "moduleLaboratoryGuideFormula")
+    guide_formula_reading = window.findChild(
+        QObject, "moduleLaboratoryGuideFormulaReading"
+    )
+    guide_purpose = window.findChild(QObject, "moduleLaboratoryGuidePurpose")
+    guide_evidence = window.findChild(QObject, "moduleLaboratoryGuideEvidence")
     visualization = window.findChild(QObject, "moduleLaboratoryVisualization")
+    detach_button = window.findChild(QObject, "moduleLaboratoryDetachGuide")
+    detached_window = window.findChild(
+        QObject, "moduleLaboratoryDetachedGuideWindow"
+    )
     assert all(
         item is not None
         for item in (
@@ -333,58 +578,98 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(qapp):
             workspace,
             step_pane,
             visual_pane,
-            evidence_pane,
+            model_status,
+            guide,
+            guide_context,
+            guide_idea,
+            guide_observation,
+            guide_formula,
+            guide_formula_reading,
+            guide_purpose,
+            guide_evidence,
             visualization,
+            detach_button,
+            detached_window,
         )
     )
     assert visualization.property("specializationKind") == "attention"
+    assert guide.property("moduleId") == "module_3"
+    assert str(guide_idea.property("body")) == str(
+        view_model.moduleLaboratoryController.result["steps"][0]["explanation"]
+    )
+    assert str(guide_observation.property("body")).strip()
+    assert str(visualization.property("animationDescription")) in str(
+        guide_observation.property("body")
+    )
+    assert str(guide_formula_reading.property("text")).startswith("CÓMO LEERLA")
+    assert "Produce «" in str(guide_purpose.property("text"))
+    assert "Datos reales" in str(guide_evidence.property("body"))
 
-    wide = [
-        _rect_in(item, workspace) for item in (step_pane, visual_pane, evidence_pane)
+    # La vista abre con la explicación cerrada: los pasos y la animación usan
+    # todo el ancho disponible, sin una tercera columna permanente.
+    assert screen.property("guideDetached") is False
+    assert guide.property("visible") is False
+    wide_without_guide = [
+        _rect_in(item, workspace) for item in (step_pane, visual_pane)
     ]
     assert screen.property("compactLayout") is False, (
         screen.property("width"),
         window.width(),
         workspace.width(),
-        wide,
+        wide_without_guide,
     )
-    assert wide[0].right() <= wide[1].left() + 1
-    assert wide[1].right() <= wide[2].left() + 1
+    assert wide_without_guide[0].right() <= wide_without_guide[1].left() + 1
+    assert wide_without_guide[1].right() <= workspace.width() + 1
 
-    # A 1280 px, las barras laterales dejaban menos de 840 px al centro.
-    # La pantalla debe apilar aquí, no esperar hasta 1120 px.
+    # La explicación se abre en una ventana independiente, por lo que el ancho
+    # de la animación principal no cambia.
+    initial_visual_width = visual_pane.width()
+    screen.setProperty("guideDetached", True)
+    for _ in range(4):
+        qapp.processEvents()
+    assert detached_window.property("visible") is True
+    assert guide.property("visible") is True
+    assert abs(visual_pane.width() - initial_visual_width) <= 1
+
+    # A 1280 px, los pasos se colocan arriba y la escena conserva todo el ancho.
     window.setProperty("width", 1280)
     window.setProperty("height", 820)
     for _ in range(5):
         qapp.processEvents()
     assert screen.property("compactLayout") is True
-    medium = [
-        _rect_in(item, workspace) for item in (step_pane, visual_pane, evidence_pane)
-    ]
+    assert screen.property("mediumLayout") is True
+    assert screen.property("narrowLayout") is False
+    assert model_status.property("visible") is True
+    medium = [_rect_in(item, workspace) for item in (step_pane, visual_pane)]
     assert medium[0].bottom() <= medium[1].top() + 1
-    assert medium[1].bottom() <= medium[2].top() + 1
+    assert medium[1].width() >= workspace.width() - 2
+
+    screen.setProperty("guideDetached", False)
 
     window.setProperty("width", 900)
     window.setProperty("height", 900)
     for _ in range(5):
         qapp.processEvents()
     assert screen.property("compactLayout") is True
-    compact = [
-        _rect_in(item, workspace) for item in (step_pane, visual_pane, evidence_pane)
-    ]
+    assert screen.property("mediumLayout") is False
+    assert screen.property("narrowLayout") is True
+    assert model_status.property("visible") is False
+    compact = [_rect_in(item, workspace) for item in (step_pane, visual_pane)]
     assert compact[0].bottom() <= compact[1].top() + 1
-    assert compact[1].bottom() <= compact[2].top() + 1
     assert all(
         rect.left() >= -1 and rect.right() <= workspace.width() + 1 for rect in compact
     )
     # Las escenas de atención y del Transformer completo necesitan espacio
     # vertical adicional cuando los tres paneles se apilan. Una altura menor
-    # vuelve a superponer matrices, la tira de tensores y la evidencia.
+    # vuelve a superponer matrices y sus leyendas.
     assert compact[1].height() >= 680
     specialized_loader = window.findChild(QQuickItem, "moduleLabSpecializedLoader")
     assert specialized_loader is not None
     assert specialized_loader.property("clip") is True
     assert specialized_loader.height() >= 350
+
+    assert detached_window.property("visible") is False
+    assert screen.property("workspacePreferredHeight") < 1000
 
     window.deleteLater()
     engine.deleteLater()

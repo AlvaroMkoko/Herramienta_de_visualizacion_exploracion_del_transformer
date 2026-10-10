@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Window
 import "../styles" as Style
 import "../components"
 
@@ -21,11 +22,19 @@ PagePrincipal {
     readonly property real uiScale: Math.max(0.82, Math.min(1.08,
                                                            Math.min(root.sx,
                                                                     root.sy)))
-    // Los paneles laterales consumen cerca de 560 px. Mantener tres columnas
-    // antes de este umbral deja la visualización central por debajo de 840 px
-    // y comprime matrices y escenas aunque la ventana parezca "ancha".
-    readonly property bool compactLayout: root.width < 1460
+    // Tres modos evitan el salto brusco de tres columnas a una sola. En el
+    // modo medio, los pasos ocupan la primera fila y la visualización conserva
+    // todo el ancho. La explicación se mantiene en su propia ventana.
+    readonly property bool wideLayout: root.width >= 1460
+    readonly property bool mediumLayout: root.width >= 1120 && !root.wideLayout
+    readonly property bool narrowLayout: root.width < 1120
+    readonly property bool compactLayout: !root.wideLayout
     readonly property bool narrowControls: root.width < 760
+    readonly property real workspacePreferredHeight: root.wideLayout
+                                                    ? 590 * root.uiScale
+                                                    : (root.mediumLayout
+                                                       ? 772 * root.uiScale
+                                                       : 1062 * root.uiScale)
     readonly property int safeStepIndex: Math.max(
         0, Math.min(root.currentStepIndex, Math.max(0, root.steps.length - 1)))
     readonly property var currentStep: {
@@ -50,6 +59,8 @@ PagePrincipal {
     property var inspectedPanel: ({})
     property int valueOffset: 0
     property var pageValues: []
+    // La explicación vive aparte para que la animación nunca pierda espacio.
+    property bool guideDetached: false
 
     function panelForKey(key) {
         var panels = root.analysis.panels || []
@@ -110,6 +121,26 @@ PagePrincipal {
         root.playing = !root.playing
     }
 
+    function toggleGuide() {
+        if (root.guideDetached)
+            root.closeDetachedGuide()
+        else
+            root.detachGuide()
+    }
+
+    function detachGuide() {
+        root.guideDetached = true
+        root.playing = false
+        Qt.callLater(function() {
+            detachedGuideWindow.raise()
+            detachedGuideWindow.requestActivate()
+        })
+    }
+
+    function closeDetachedGuide() {
+        root.guideDetached = false
+    }
+
     function openValues(panel) {
         if (!panel || !panel.key)
             return
@@ -150,6 +181,7 @@ PagePrincipal {
     }
 
     Component.onCompleted: root.courseController.selectModule(root.moduleId)
+    onVisibleChanged: if (!visible && guideDetached) closeDetachedGuide()
 
     Connections {
         target: root.laboratoryController
@@ -195,7 +227,9 @@ PagePrincipal {
             RowLayout {
                 Layout.fillWidth: true
                 Layout.leftMargin: 24 * root.uiScale
-                Layout.rightMargin: 24 * root.uiScale
+                // La ventana principal mantiene los controles de vista dual
+                // y tema sobre la esquina superior derecha.
+                Layout.rightMargin: 250 * root.uiScale
                 spacing: 14 * root.uiScale
 
                 BotonPrincipal {
@@ -236,6 +270,8 @@ PagePrincipal {
                     }
                 }
                 Rectangle {
+                    objectName: "moduleLaboratoryModelStatus"
+                    visible: !root.narrowLayout
                     Layout.preferredWidth: 150 * root.uiScale
                     Layout.preferredHeight: 36 * root.uiScale
                     radius: height / 2
@@ -364,7 +400,7 @@ PagePrincipal {
                     GridLayout {
                         Layout.fillWidth: true
                         visible: root.moduleId !== "module_1"
-                        columns: root.compactLayout ? 2 : 5
+                        columns: root.narrowLayout ? 2 : 5
                         columnSpacing: 14 * root.uiScale
                         rowSpacing: 6 * root.uiScale
 
@@ -521,21 +557,26 @@ PagePrincipal {
                 Layout.fillWidth: true
                 Layout.leftMargin: 24 * root.uiScale
                 Layout.rightMargin: 24 * root.uiScale
-                // En una sola columna, las escenas científicas necesitan altura
-                // real para conservar matrices, leyendas y evidencia separadas.
-                Layout.preferredHeight: root.compactLayout
-                                        ? 1400 * root.uiScale : 590 * root.uiScale
-                columns: root.compactLayout ? 1 : 3
+                // El modo medio evita comprimir la escena: pasos arriba y la
+                // animación a todo el ancho debajo.
+                implicitHeight: root.workspacePreferredHeight
+                Layout.preferredHeight: root.workspacePreferredHeight
+                Layout.minimumHeight: root.workspacePreferredHeight
+                Layout.maximumHeight: root.workspacePreferredHeight
+                columns: root.wideLayout ? 2 : 1
                 columnSpacing: 12 * root.uiScale
                 rowSpacing: 12 * root.uiScale
 
                 RectanglePrincipal {
                     objectName: "moduleLaboratoryStepPane"
-                    Layout.fillWidth: root.compactLayout
-                    Layout.preferredWidth: root.compactLayout ? 0 : 220 * root.uiScale
-                    Layout.preferredHeight: root.compactLayout
-                                            ? 190 * root.uiScale : 590 * root.uiScale
-                    Layout.fillHeight: !root.compactLayout
+                    Layout.fillWidth: !root.wideLayout
+                    Layout.preferredWidth: root.wideLayout ? 220 * root.uiScale : 0
+                    Layout.preferredHeight: root.wideLayout
+                                            ? 590 * root.uiScale
+                                            : (root.mediumLayout
+                                               ? 170 * root.uiScale
+                                               : 190 * root.uiScale)
+                    Layout.fillHeight: root.wideLayout
                     sx: root.uiScale; sy: root.uiScale
                     ColumnLayout {
                         anchors.fill: parent
@@ -555,7 +596,7 @@ PagePrincipal {
                             boundsBehavior: Flickable.StopAtBounds
                             ScrollBar.horizontal: ScrollBar {
                                 policy: root.compactLayout
-                                        ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff
+                                        ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
                             }
                             ScrollBar.vertical: ScrollBar {
                                 policy: root.compactLayout
@@ -608,9 +649,9 @@ PagePrincipal {
                     objectName: "moduleLaboratoryVisualPane"
                     Layout.fillWidth: true
                     Layout.minimumWidth: 0
-                    Layout.preferredHeight: root.compactLayout
+                    Layout.preferredHeight: root.narrowLayout
                                             ? 860 * root.uiScale : 590 * root.uiScale
-                    Layout.fillHeight: !root.compactLayout
+                    Layout.fillHeight: !root.narrowLayout
                     sx: root.uiScale; sy: root.uiScale
                     ColumnLayout {
                         anchors.fill: parent
@@ -624,17 +665,34 @@ PagePrincipal {
                                 Layout.minimumWidth: 0
                                 spacing: 1
                                 Text { Layout.fillWidth: true; text: (root.safeStepIndex + 1) + " / " + root.steps.length + " · " + (root.currentStep.title || "Operación"); color: Style.Theme.texto_primario; font.bold: true; font.pixelSize: 15 * root.uiScale; elide: Text.ElideRight }
-                                Text { Layout.fillWidth: true; text: root.currentStep.formula || ""; color: Style.Theme.acento_fuerte; font.family: Style.Theme.fuente_mono; font.pixelSize: 10 * root.uiScale; elide: Text.ElideRight }
+                                Text {
+                                    objectName: "moduleLaboratoryCaptureSummary"
+                                    Layout.fillWidth: true
+                                    text: Boolean(root.currentPanel.key)
+                                          ? String(root.currentPanel.title || "Tensor real")
+                                            + " · forma ["
+                                            + (root.currentPanel.shape || []).join(" × ") + "]"
+                                          : String(root.currentStep.input || "Entrada")
+                                            + " → " + String(root.currentStep.output || "Salida")
+                                    color: Style.Theme.acento_fuerte
+                                    font.family: Style.Theme.fuente_mono
+                                    font.pixelSize: 10 * root.uiScale
+                                    elide: Text.ElideRight
+                                }
                             }
-                            Rectangle {
-                                Layout.preferredWidth: 96 * root.uiScale
-                                Layout.preferredHeight: 28 * root.uiScale
-                                radius: height / 2
-                                color: root.mode === "training" ? Style.Theme.aviso_fondo : Style.Theme.info_fondo
-                                Text { anchors.centerIn: parent; text: root.mode === "training" ? "ENTRENA" : "INFIERE"; color: root.mode === "training" ? Style.Theme.aviso_texto : Style.Theme.info_texto; font.bold: true; font.pixelSize: 9 * root.uiScale }
+                            BotonSecundario {
+                                objectName: "moduleLaboratoryDetachGuide"
+                                Layout.preferredWidth: 148 * root.uiScale
+                                Layout.preferredHeight: 32 * root.uiScale
+                                sx: root.uiScale; sy: root.uiScale
+                                text: root.guideDetached
+                                      ? "Cerrar explicación"
+                                      : "Explicación aparte ↗"
+                                onClicked: root.toggleGuide()
                             }
                         }
                         ModuleLaboratoryVisualization {
+                            id: visualization
                             objectName: "moduleLaboratoryVisualization"
                             Layout.fillWidth: true
                             Layout.fillHeight: true
@@ -646,10 +704,9 @@ PagePrincipal {
                             selectedLayer: Math.round(layerSlider.value)
                             selectedHead: Math.round(headSlider.value)
                             selectedToken: Math.round(tokenSlider.value)
-                            // El encabezado y el panel de evidencia de esta
-                            // pantalla ya muestran paso, entrada/salida y
-                            // gradientes. Evitamos repetirlos dentro de la
-                            // escena para reservar el alto a los datos reales.
+                            // El encabezado y la ventana de explicación ya
+                            // muestran paso, entrada/salida y gradientes.
+                            // Evitamos repetirlos dentro de la escena.
                             showContextChrome: false
                             sx: root.uiScale; sy: root.uiScale
                             onInspectRequested: function(panel) { root.openValues(panel) }
@@ -657,97 +714,63 @@ PagePrincipal {
                     }
                 }
 
-                RectanglePrincipal {
-                    objectName: "moduleLaboratoryEvidencePane"
-                    Layout.fillWidth: root.compactLayout
-                    Layout.preferredWidth: root.compactLayout ? 0 : 270 * root.uiScale
-                    Layout.preferredHeight: root.compactLayout
-                                            ? 320 * root.uiScale : 590 * root.uiScale
-                    Layout.fillHeight: !root.compactLayout
-                    sx: root.uiScale; sy: root.uiScale
-                    ScrollView {
-                        anchors.fill: parent
-                        anchors.margins: 12 * root.uiScale
-                        clip: true
-                        contentWidth: availableWidth
-                        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-                        ColumnLayout {
-                            width: parent.width
-                            spacing: 10 * root.uiScale
-                            Text { Layout.fillWidth: true; text: "QUÉ OCURRE AQUÍ"; color: Style.Theme.acento_fuerte; font.bold: true; font.pixelSize: 9 * root.uiScale; font.letterSpacing: 0.6 }
-                            Text { Layout.fillWidth: true; text: root.currentStep.explanation || ""; color: Style.Theme.texto_secundario_fuerte; font.pixelSize: 11 * root.uiScale; wrapMode: Text.WordWrap }
-                            StepFact { Layout.fillWidth: true; label: "RECIBE"; value: String(root.currentStep.input || "—"); accent: Style.Theme.inferencia_estructura; sx: root.uiScale; sy: root.uiScale }
-                            StepFact { Layout.fillWidth: true; label: "PRODUCE"; value: String(root.currentStep.output || "—"); accent: Style.Theme.inferencia_resultado; sx: root.uiScale; sy: root.uiScale }
-                            Rectangle {
-                                objectName: root.mode === "training" ? "moduleLaboratoryTrainingEvidence" : "moduleLaboratoryInferenceEvidence"
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: modeColumn.implicitHeight + 20 * root.uiScale
-                                radius: 10 * root.uiScale
-                                color: root.mode === "training" ? Style.Theme.aviso_fondo : Style.Theme.info_fondo
-                                border.color: root.mode === "training" ? Style.Theme.warning : Style.Theme.inferencia_estructura
-                                ColumnLayout {
-                                    id: modeColumn
-                                    anchors.fill: parent
-                                    anchors.margins: 10 * root.uiScale
-                                    spacing: 5 * root.uiScale
-                                    Text { Layout.fillWidth: true; text: root.mode === "training" ? "SEÑAL DE APRENDIZAJE" : "USO EN INFERENCIA"; color: root.mode === "training" ? Style.Theme.aviso_texto : Style.Theme.info_texto; font.bold: true; font.pixelSize: 9 * root.uiScale }
-                                    Text {
-                                        Layout.fillWidth: true
-                                        text: root.mode === "training"
-                                              ? ((root.analysis.training || {}).trainable === false
-                                                 ? String((root.analysis.behavior || {}).training || "Este componente prepara datos y no tiene pesos entrenables.")
-                                                   + " " + String((root.analysis.experiment || {}).didactic_note || "")
-                                                 : String((root.analysis.behavior || {}).training || "")
-                                                   + " Loss " + Number((root.analysis.training || {}).loss || 0).toFixed(4)
-                                                   + " · la actualización mostrada no se aplica al modelo. "
-                                                   + String((root.analysis.experiment || {}).didactic_note || ""))
-                                              : String((root.analysis.behavior || {}).inference || "Los parámetros permanecen fijos durante este cálculo.")
-                                        color: Style.Theme.texto_secundario_fuerte
-                                        font.pixelSize: 10 * root.uiScale
-                                        wrapMode: Text.WordWrap
-                                    }
-                                }
-                            }
-                            ColumnLayout {
-                                visible: root.mode === "training" && ((root.analysis.training || {}).gradients || []).length > 0
-                                Layout.fillWidth: true
-                                spacing: 5 * root.uiScale
-                                Text { text: "Gradientes del componente"; color: Style.Theme.texto_primario; font.bold: true; font.pixelSize: 10 * root.uiScale }
-                                Repeater {
-                                    model: ((root.analysis.training || {}).gradients || []).slice(0, 4)
-                                    delegate: RowLayout {
-                                        id: gradientRow
-                                        required property var modelData
-                                        Layout.fillWidth: true
-                                        Text { Layout.fillWidth: true; text: gradientRow.modelData.label || gradientRow.modelData.name; color: Style.Theme.texto_secundario; font.pixelSize: 9 * root.uiScale; elide: Text.ElideMiddle }
-                                        Text { text: "L2 " + Number(gradientRow.modelData.norm_l2 || 0).toExponential(2); color: Style.Theme.aviso_texto; font.family: Style.Theme.fuente_mono; font.pixelSize: 8 * root.uiScale }
-                                    }
-                                }
-                            }
-                            Rectangle {
-                                visible: Boolean(root.currentPanel.key)
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: tensorInfo.implicitHeight + 18 * root.uiScale
-                                radius: 9 * root.uiScale
-                                color: Style.Theme.superficie_alterna
-                                border.color: Style.Theme.borde_suave
-                                ColumnLayout {
-                                    id: tensorInfo
-                                    anchors.fill: parent
-                                    anchors.margins: 9 * root.uiScale
-                                    spacing: 4 * root.uiScale
-                                    Text { Layout.fillWidth: true; text: root.currentPanel.title || "Tensor real"; color: Style.Theme.texto_primario; font.bold: true; font.pixelSize: 10 * root.uiScale; elide: Text.ElideRight }
-                                    Text { Layout.fillWidth: true; text: "Forma [" + (root.currentPanel.shape || []).join(" × ") + "] · " + (root.currentPanel.full_length || 0) + " valores"; color: Style.Theme.acento_fuerte; font.family: Style.Theme.fuente_mono; font.pixelSize: 9 * root.uiScale; wrapMode: Text.WordWrap }
-                                    BotonSecundario { Layout.fillWidth: true; Layout.preferredHeight: 32 * root.uiScale; sx: root.uiScale; sy: root.uiScale; text: "Inspeccionar valores"; onClicked: root.openValues(root.currentPanel) }
-                                }
-                            }
-                        }
-                    }
-                }
             }
 
             Item { Layout.fillWidth: true; Layout.preferredHeight: 18 * root.uiScale }
         }
+    }
+
+    Window {
+        id: detachedGuideWindow
+        objectName: "moduleLaboratoryDetachedGuideWindow"
+        visible: root.guideDetached
+        transientParent: root.Window.window
+        modality: Qt.NonModal
+        minimumWidth: 430
+        minimumHeight: 520
+        width: Math.max(minimumWidth, Math.min(700, root.width * 0.46))
+        height: Math.max(minimumHeight, Math.min(860, root.height * 0.90))
+        title: "Explicación · " + String(root.currentStep.title || "Etapa")
+        color: Style.Theme.superficie_alterna
+
+        Component.onCompleted: {
+            if (typeof displayManager !== "undefined" && displayManager)
+                displayManager.registerAuxiliaryWindow(detachedGuideWindow, true)
+        }
+        onVisibleChanged: {
+            if (visible
+                    && typeof displayManager !== "undefined"
+                    && displayManager
+                    && displayManager.hasSecondaryScreen)
+                displayManager.placeAuxiliaryWindow(detachedGuideWindow, true)
+        }
+        onClosing: function(close) {
+            if (root.guideDetached)
+                root.closeDetachedGuide()
+            close.accepted = true
+        }
+    }
+
+    LaboratoryAnimationGuide {
+        id: animationGuide
+        objectName: "moduleLaboratoryAnimationGuide"
+        parent: detachedGuideWindow.contentItem
+        anchors.fill: parent
+        anchors.margins: 10
+        visible: root.guideDetached
+        moduleId: root.moduleId
+        mode: root.mode
+        steps: root.steps
+        step: root.currentStep
+        panel: root.currentPanel
+        analysis: root.analysis
+        stepIndex: root.safeStepIndex
+        animationDescription: visualization.animationDescription
+        sx: Math.max(0.88, Math.min(1.05,
+                                   detachedGuideWindow.width / 620))
+        sy: Math.max(0.88, Math.min(1.05,
+                                   detachedGuideWindow.height / 760))
+        onInspectRequested: function(panel) { root.openValues(panel) }
     }
 
     Dialog {
@@ -830,24 +853,4 @@ PagePrincipal {
         }
     }
 
-    component StepFact: Rectangle {
-        id: fact
-        property string label: ""
-        property string value: ""
-        property color accent: Style.Theme.acento
-        property real sx: 1
-        property real sy: 1
-        implicitHeight: factContent.implicitHeight + 16 * sy
-        radius: 9 * sx
-        color: Qt.alpha(accent, 0.08)
-        border.color: Qt.alpha(accent, 0.34)
-        ColumnLayout {
-            id: factContent
-            anchors.fill: parent
-            anchors.margins: 8 * fact.sx
-            spacing: 2
-            Text { Layout.fillWidth: true; text: fact.label; color: fact.accent; font.bold: true; font.pixelSize: 8 * fact.sx }
-            Text { Layout.fillWidth: true; text: fact.value; color: Style.Theme.texto_secundario_fuerte; font.pixelSize: 10 * fact.sx; wrapMode: Text.WordWrap }
-        }
-    }
 }
