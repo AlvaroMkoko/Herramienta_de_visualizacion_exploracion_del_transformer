@@ -401,13 +401,13 @@ Item {
                     color: root.accent
                     font.bold: true
                     font.letterSpacing: 0.5
-                    font.pixelSize: Math.max(10, 10 * root.sx)
+                    font.pixelSize: Math.max(11, 12 * root.sx)
                 }
                 Text {
                     text: "Operación " + (root.stepIndex + 1) + " de " + root.steps.length
                     color: Style.Theme.texto_secundario_fuerte
                     font.bold: true
-                    font.pixelSize: Math.max(10, 10 * root.sx)
+                    font.pixelSize: Math.max(11, 12 * root.sx)
                 }
             }
 
@@ -417,7 +417,7 @@ Item {
                 color: Style.Theme.texto_primario
                 font.bold: true
                 wrapMode: Text.WordWrap
-                font.pixelSize: Math.max(18, 20 * root.sx)
+                font.pixelSize: Math.max(22, 25 * root.sx)
             }
 
             Rectangle {
@@ -440,7 +440,7 @@ Item {
                         text: "HILO DEL CÁLCULO"
                         color: Style.Theme.texto_secundario_fuerte
                         font.bold: true
-                        font.pixelSize: Math.max(9, 9 * root.sx)
+                        font.pixelSize: Math.max(10, 11 * root.sx)
                     }
                     RowLayout {
                         Layout.fillWidth: true
@@ -479,7 +479,7 @@ Item {
                         color: Style.Theme.texto_secundario_fuerte
                         font.bold: true
                         wrapMode: Text.WordWrap
-                        font.pixelSize: Math.max(10, 11 * root.sx)
+                        font.pixelSize: Math.max(12, 14 * root.sx)
                     }
                 }
             }
@@ -527,7 +527,7 @@ Item {
                         text: "FÓRMULA CLAVE DE ESTE PASO"
                         color: root.accent
                         font.bold: true
-                        font.pixelSize: Math.max(9, 9 * root.sx)
+                        font.pixelSize: Math.max(10, 11 * root.sx)
                     }
                     Text {
                         objectName: "moduleLaboratoryGuideFormulaText"
@@ -536,7 +536,7 @@ Item {
                         color: Style.Theme.texto_primario
                         font.family: "Cambria Math"
                         font.weight: Font.DemiBold
-                        font.pixelSize: Math.max(15, 16 * root.sx)
+                        font.pixelSize: Math.max(21, 23 * root.sx)
                         horizontalAlignment: Text.AlignHCenter
                         wrapMode: Text.Wrap
                     }
@@ -547,14 +547,14 @@ Item {
                         color: Style.Theme.texto_secundario_fuerte
                         wrapMode: Text.WordWrap
                         lineHeight: 1.18
-                        font.pixelSize: Math.max(10, 11 * root.sx)
+                        font.pixelSize: Math.max(12, 14 * root.sx)
                     }
                     Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Qt.alpha(root.accent, 0.28) }
                     Text {
                         text: "POR QUÉ IMPORTA AQUÍ"
                         color: root.accent
                         font.bold: true
-                        font.pixelSize: Math.max(9, 9 * root.sx)
+                        font.pixelSize: Math.max(10, 11 * root.sx)
                     }
                     Text {
                         objectName: "moduleLaboratoryGuidePurpose"
@@ -562,7 +562,7 @@ Item {
                         text: root.purposeText()
                         color: Style.Theme.texto_secundario_fuerte
                         wrapMode: Text.WordWrap
-                        font.pixelSize: Math.max(10, 11 * root.sx)
+                        font.pixelSize: Math.max(12, 14 * root.sx)
                     }
                 }
             }
@@ -585,7 +585,7 @@ Item {
                 Layout.preferredHeight: Math.max(36, 40 * root.sy)
                 text: root.detailsExpanded ? "Ocultar datos técnicos  ▴" : "Ver datos técnicos  ▾"
                 font.bold: true
-                font.pixelSize: Math.max(10, 11 * root.sx)
+                font.pixelSize: Math.max(12, 14 * root.sx)
                 onClicked: root.detailsExpanded = !root.detailsExpanded
             }
 
@@ -647,7 +647,7 @@ Item {
                     color: Style.Theme.aviso_texto
                     wrapMode: Text.WordWrap
                     lineHeight: 1.18
-                    font.pixelSize: Math.max(10, 11 * root.sx)
+                    font.pixelSize: Math.max(12, 14 * root.sx)
                 }
             }
         }
@@ -676,7 +676,7 @@ Item {
                 text: contextCell.eyebrow
                 color: contextCell.accent
                 font.bold: true
-                font.pixelSize: Math.max(8, 8 * contextCell.sx)
+                font.pixelSize: Math.max(9, 10 * contextCell.sx)
             }
             Text {
                 width: parent.width
@@ -686,7 +686,7 @@ Item {
                 wrapMode: Text.WordWrap
                 maximumLineCount: 2
                 elide: Text.ElideRight
-                font.pixelSize: Math.max(8, 9 * contextCell.sx)
+                font.pixelSize: Math.max(10, 11 * contextCell.sx)
             }
         }
     }
@@ -718,7 +718,7 @@ Item {
                 text: guideCard.eyebrow
                 color: guideCard.accent
                 font.bold: true
-                font.pixelSize: Math.max(9, 9 * guideCard.sx)
+                font.pixelSize: Math.max(10, 11 * guideCard.sx)
             }
             Text {
                 Layout.fillWidth: true
@@ -726,7 +726,7 @@ Item {
                 color: Style.Theme.texto_secundario_fuerte
                 wrapMode: Text.WordWrap
                 lineHeight: 1.20
-                font.pixelSize: Math.max(10, 11 * guideCard.sx)
+                font.pixelSize: Math.max(12, 14 * guideCard.sx)
             }
             Text {
                 visible: guideCard.footer.length > 0
@@ -735,7 +735,7 @@ Item {
                 color: guideCard.accent
                 font.bold: true
                 wrapMode: Text.WordWrap
-                font.pixelSize: Math.max(9, 10 * guideCard.sx)
+                font.pixelSize: Math.max(10, 12 * guideCard.sx)
             }
         }
     }

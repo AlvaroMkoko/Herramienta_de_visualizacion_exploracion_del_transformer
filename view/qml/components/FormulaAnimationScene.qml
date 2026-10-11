@@ -15,6 +15,12 @@ Item {
 
     property var demo: ({})
     property var step: ({})
+    // La pantalla enlaza estas dos explicaciones especializadas con la misma
+    // guía pedagógica que acompaña a la animación principal. Así la fórmula
+    // deja de ser una leyenda aislada: el estudiante puede leer qué operación
+    // se ejecuta y cómo reconocerla en pantalla sin abrir otra ventana.
+    property string formulaExplanation: ""
+    property string animationDescription: ""
     property bool reducedMotion: false
     property real sx: 1
     property real sy: 1
@@ -305,8 +311,9 @@ Item {
                 color: Style.Theme.texto_primario
                 font.family: "Cambria Math"
                 font.weight: Font.DemiBold
-                font.pixelSize: Math.max(14, 17 * root.u)
-                elide: Text.ElideRight
+                font.pixelSize: Math.max(20, 23 * root.u)
+                wrapMode: Text.Wrap
+                maximumLineCount: 2
             }
             BotonSecundario {
                 objectName: "formulaAnimationReplay"
@@ -345,8 +352,9 @@ Item {
             color: Style.Theme.acento_fuerte
             font.family: Style.Theme.fuente_mono
             font.bold: true
-            font.pixelSize: Math.max(10, 12 * root.u)
-            elide: Text.ElideRight
+            font.pixelSize: Math.max(13, 15 * root.u)
+            wrapMode: Text.WordWrap
+            maximumLineCount: 2
         }
 
         Rectangle {
@@ -390,7 +398,7 @@ Item {
                         color: phaseChip.active ? Style.Theme.texto_sobre_acento
                                                 : (phaseChip.done ? Style.Theme.acento_texto : Style.Theme.chip_texto)
                         font.bold: phaseChip.active
-                        font.pixelSize: Math.max(9, 9.5 * root.u)
+                        font.pixelSize: Math.max(10, 11 * root.u)
                     }
                 }
             }
@@ -409,15 +417,76 @@ Item {
             }
         }
 
-        Text {
-            objectName: "formulaAnimationCaption"
+        Rectangle {
+            objectName: "formulaAnimationExplanationPanel"
             Layout.fillWidth: true
-            text: String(root.demo && root.demo.caption || "")
-            color: Style.Theme.texto_secundario_fuerte
-            wrapMode: Text.WordWrap
-            maximumLineCount: 2
-            elide: Text.ElideRight
-            font.pixelSize: Math.max(10, 11 * root.u)
+            implicitHeight: explanationGrid.implicitHeight + 18 * root.u
+            radius: 9 * root.u
+            color: Style.Theme.info_fondo
+            border.color: Style.Theme.inferencia_estructura
+
+            GridLayout {
+                id: explanationGrid
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.margins: 9 * root.u
+                columns: root.width >= 980 * root.u ? 2 : 1
+                columnSpacing: 18 * root.u
+                rowSpacing: 8 * root.u
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 0
+                    spacing: 3 * root.u
+
+                    Text {
+                        text: "QUÉ SE CALCULA"
+                        color: Style.Theme.inferencia_estructura
+                        font.bold: true
+                        font.pixelSize: Math.max(10, 11 * root.u)
+                    }
+                    Text {
+                        objectName: "formulaAnimationExplanation"
+                        Layout.fillWidth: true
+                        text: root.formulaExplanation.length
+                              ? root.formulaExplanation
+                              : String(root.step && root.step.explanation || "La fórmula transforma la entrada del paso en su salida.")
+                        color: Style.Theme.texto_primario
+                        wrapMode: Text.WordWrap
+                        lineHeight: 1.18
+                        font.pixelSize: Math.max(12, 14 * root.u)
+                    }
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 0
+                    spacing: 3 * root.u
+
+                    Text {
+                        text: "QUÉ MUESTRA LA ANIMACIÓN"
+                        color: Style.Theme.inferencia_contexto
+                        font.bold: true
+                        font.pixelSize: Math.max(10, 11 * root.u)
+                    }
+                    Text {
+                        objectName: "formulaAnimationCaption"
+                        Layout.fillWidth: true
+                        text: {
+                            var visual = root.animationDescription
+                            var numeric = String(root.demo && root.demo.caption || "")
+                            if (visual.length && numeric.length)
+                                return visual + " " + numeric
+                            return visual.length ? visual : numeric
+                        }
+                        color: Style.Theme.texto_secundario_fuerte
+                        wrapMode: Text.WordWrap
+                        lineHeight: 1.18
+                        font.pixelSize: Math.max(12, 14 * root.u)
+                    }
+                }
+            }
         }
     }
 
@@ -434,7 +503,7 @@ Item {
         property int digits: 3
 
         implicitWidth: 60 * root.u
-        implicitHeight: 24 * root.u
+        implicitHeight: 28 * root.u
         radius: 5 * root.u
         opacity: reveal
         color: useFill ? fill : root.divColor(value, maxAbs)
@@ -448,7 +517,7 @@ Item {
             color: root.inkOn(cell.color)
             font.family: Style.Theme.fuente_mono
             font.bold: cell.emphasized
-            font.pixelSize: Math.max(8, Math.min(10.5 * root.u, cell.height * 0.45))
+            font.pixelSize: Math.max(10, Math.min(12 * root.u, cell.height * 0.48))
             elide: Text.ElideRight
         }
     }
@@ -463,7 +532,7 @@ Item {
         property real fontScale: 1
 
         implicitWidth: Math.max(40 * root.u, chipLabel.implicitWidth + 16 * root.u)
-        implicitHeight: (caption.length ? 40 : 28) * root.u
+        implicitHeight: (caption.length ? 46 : 32) * root.u
         radius: 7 * root.u
         color: fill
         border.color: edge
@@ -477,7 +546,7 @@ Item {
                 color: chip.ink
                 font.family: Style.Theme.fuente_mono
                 font.bold: true
-                font.pixelSize: Math.max(9, 11 * root.u * chip.fontScale)
+                font.pixelSize: Math.max(11, 13 * root.u * chip.fontScale)
             }
             Text {
                 visible: chip.caption.length > 0
@@ -485,7 +554,7 @@ Item {
                 text: chip.caption
                 color: chip.ink
                 opacity: 0.8
-                font.pixelSize: Math.max(8, 9 * root.u)
+                font.pixelSize: Math.max(9, 10.5 * root.u)
             }
         }
     }
@@ -505,7 +574,7 @@ Item {
             text: strip.title
             color: strip.accent
             font.bold: true
-            font.pixelSize: Math.max(9, 10 * root.u)
+            font.pixelSize: Math.max(10, 12 * root.u)
         }
         Row {
             anchors.fill: parent
@@ -526,7 +595,7 @@ Item {
     component Tag: Text {
         color: Style.Theme.texto_secundario_fuerte
         font.bold: true
-        font.pixelSize: Math.max(9, 10 * root.u)
+        font.pixelSize: Math.max(10, 12 * root.u)
     }
 
     component Equation: Rectangle {
@@ -535,7 +604,7 @@ Item {
         property color accent: Style.Theme.acento
         property real reveal: 1
         implicitWidth: equationText.implicitWidth + 18 * root.u
-        implicitHeight: 28 * root.u
+        implicitHeight: 34 * root.u
         radius: 7 * root.u
         opacity: reveal
         color: Qt.alpha(accent, 0.12)
@@ -547,7 +616,7 @@ Item {
             color: Style.Theme.texto_primario
             font.family: Style.Theme.fuente_mono
             font.bold: true
-            font.pixelSize: Math.max(10, 11.5 * root.u)
+            font.pixelSize: Math.max(12, 13.5 * root.u)
         }
     }
 

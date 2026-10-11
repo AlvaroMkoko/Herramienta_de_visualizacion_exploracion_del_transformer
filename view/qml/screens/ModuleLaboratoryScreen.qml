@@ -593,7 +593,7 @@ PagePrincipal {
                 RectanglePrincipal {
                     objectName: "moduleLaboratoryStepPane"
                     Layout.fillWidth: !root.wideLayout
-                    Layout.preferredWidth: root.wideLayout ? 220 * root.uiScale : 0
+                    Layout.preferredWidth: root.wideLayout ? 255 * root.uiScale : 0
                     Layout.preferredHeight: root.wideLayout
                                             ? 590 * root.uiScale
                                             : (root.mediumLayout
@@ -630,7 +630,7 @@ PagePrincipal {
                                 required property int index
                                 required property var modelData
                                 width: root.compactLayout ? 170 * root.uiScale : ListView.view.width
-                                height: root.compactLayout ? ListView.view.height - 8 * root.uiScale : 58 * root.uiScale
+                                height: root.compactLayout ? ListView.view.height - 8 * root.uiScale : 68 * root.uiScale
                                 radius: 9 * root.uiScale
                                 color: stepDelegate.index === root.safeStepIndex ? Style.Theme.acento_fondo : Style.Theme.superficie_alterna
                                 border.width: stepDelegate.index === root.safeStepIndex ? 2 : 1
@@ -650,8 +650,8 @@ PagePrincipal {
                                         Layout.fillWidth: true
                                         Layout.minimumWidth: 0
                                         spacing: 1
-                                        Text { Layout.fillWidth: true; text: stepDelegate.modelData.title || "Paso"; color: Style.Theme.texto_primario; font.bold: true; font.pixelSize: 10 * root.uiScale; maximumLineCount: 2; elide: Text.ElideRight; wrapMode: Text.WordWrap }
-                                        Text { Layout.fillWidth: true; visible: !root.compactLayout; text: stepDelegate.modelData.formula || ""; color: Style.Theme.texto_terciario; font.family: Style.Theme.fuente_mono; font.pixelSize: 8 * root.uiScale; elide: Text.ElideRight }
+                                        Text { Layout.fillWidth: true; text: stepDelegate.modelData.title || "Paso"; color: Style.Theme.texto_primario; font.bold: true; font.pixelSize: Math.max(11, 12 * root.uiScale); maximumLineCount: 2; elide: Text.ElideRight; wrapMode: Text.WordWrap }
+                                        Text { Layout.fillWidth: true; visible: !root.compactLayout; text: stepDelegate.modelData.formula || ""; color: Style.Theme.texto_terciario; font.family: Style.Theme.fuente_mono; font.pixelSize: Math.max(9, 10 * root.uiScale); elide: Text.ElideRight }
                                     }
                                 }
                                 MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: { root.playing = false; root.currentStepIndex = stepDelegate.index } }
@@ -713,12 +713,12 @@ PagePrincipal {
                             }
                             BotonSecundario {
                                 objectName: "moduleLaboratoryDetachGuide"
-                                Layout.preferredWidth: 148 * root.uiScale
+                                Layout.preferredWidth: 190 * root.uiScale
                                 Layout.preferredHeight: 32 * root.uiScale
                                 sx: root.uiScale; sy: root.uiScale
                                 text: root.guideDetached
                                       ? "Cerrar explicación"
-                                      : "Explicación aparte ↗"
+                                      : "Explicación detallada ↗"
                                 onClicked: root.toggleGuide()
                             }
                         }
@@ -754,7 +754,10 @@ PagePrincipal {
                 Layout.fillWidth: true
                 Layout.leftMargin: 24 * root.uiScale
                 Layout.rightMargin: 24 * root.uiScale
-                Layout.preferredHeight: (root.narrowLayout ? 450 : 410) * root.uiScale
+                // La explicación especializada forma parte de la fórmula en
+                // acción. Reservamos altura para leerla sin comprimir la
+                // animación numérica.
+                Layout.preferredHeight: (root.narrowLayout ? 650 : 560) * root.uiScale
                 sx: root.uiScale; sy: root.uiScale
 
                 FormulaAnimationScene {
@@ -764,6 +767,8 @@ PagePrincipal {
                     anchors.margins: 12 * root.uiScale
                     step: root.currentStep
                     demo: root.currentFormulaDemo
+                    formulaExplanation: animationGuide.formulaReadingText
+                    animationDescription: visualization.animationDescription
                     reducedMotion: Style.Theme.movimientoReducido
                     sx: root.uiScale; sy: root.uiScale
                 }
@@ -779,10 +784,10 @@ PagePrincipal {
         visible: root.guideDetached
         transientParent: root.Window.window
         modality: Qt.NonModal
-        minimumWidth: 430
-        minimumHeight: 520
-        width: Math.max(minimumWidth, Math.min(700, root.width * 0.46))
-        height: Math.max(minimumHeight, Math.min(860, root.height * 0.90))
+        minimumWidth: 560
+        minimumHeight: 640
+        width: Math.max(minimumWidth, Math.min(820, root.width * 0.52))
+        height: Math.max(minimumHeight, Math.min(920, root.height * 0.92))
         title: "Explicación · " + String(root.currentStep.title || "Etapa")
         color: Style.Theme.superficie_alterna
 
@@ -819,10 +824,10 @@ PagePrincipal {
         analysis: root.analysis
         stepIndex: root.safeStepIndex
         animationDescription: visualization.animationDescription
-        sx: Math.max(0.88, Math.min(1.05,
-                                   detachedGuideWindow.width / 620))
-        sy: Math.max(0.88, Math.min(1.05,
-                                   detachedGuideWindow.height / 760))
+        sx: Math.max(0.96, Math.min(1.16,
+                                   detachedGuideWindow.width / 700))
+        sy: Math.max(0.96, Math.min(1.16,
+                                   detachedGuideWindow.height / 820))
         onInspectRequested: function(panel) { root.openValues(panel) }
     }
 

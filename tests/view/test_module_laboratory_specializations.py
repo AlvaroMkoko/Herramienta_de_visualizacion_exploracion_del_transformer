@@ -567,6 +567,12 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(qapp, tmp_path):
     guide_purpose = window.findChild(QObject, "moduleLaboratoryGuidePurpose")
     guide_evidence = window.findChild(QObject, "moduleLaboratoryGuideEvidence")
     visualization = window.findChild(QObject, "moduleLaboratoryVisualization")
+    formula_scene = window.findChild(QObject, "moduleLaboratoryFormulaScene")
+    formula_explanation_panel = window.findChild(
+        QObject, "formulaAnimationExplanationPanel"
+    )
+    formula_explanation = window.findChild(QObject, "formulaAnimationExplanation")
+    formula_caption = window.findChild(QObject, "formulaAnimationCaption")
     detach_button = window.findChild(QObject, "moduleLaboratoryDetachGuide")
     detached_window = window.findChild(
         QObject, "moduleLaboratoryDetachedGuideWindow"
@@ -588,6 +594,10 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(qapp, tmp_path):
             guide_purpose,
             guide_evidence,
             visualization,
+            formula_scene,
+            formula_explanation_panel,
+            formula_explanation,
+            formula_caption,
             detach_button,
             detached_window,
         )
@@ -600,6 +610,15 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(qapp, tmp_path):
     assert str(guide_observation.property("body")).strip()
     assert str(visualization.property("animationDescription")) in str(
         guide_observation.property("body")
+    )
+    # La ayuda especializada también queda visible junto a la fórmula y no
+    # depende de que el estudiante abra la ventana separada.
+    assert str(formula_scene.property("formulaExplanation")).strip()
+    assert str(formula_explanation.property("text")) == str(
+        formula_scene.property("formulaExplanation")
+    )
+    assert str(visualization.property("animationDescription")) in str(
+        formula_caption.property("text")
     )
     assert str(guide_formula_reading.property("text")).startswith("CÓMO LEERLA")
     assert "Produce «" in str(guide_purpose.property("text"))
