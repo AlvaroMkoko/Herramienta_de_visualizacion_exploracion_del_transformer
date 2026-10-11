@@ -21,6 +21,7 @@ Item {
     // se ejecuta y cómo reconocerla en pantalla sin abrir otra ventana.
     property string formulaExplanation: ""
     property string animationDescription: ""
+    property int explanationSection: 0
     property bool reducedMotion: false
     property real sx: 1
     property real sy: 1
@@ -96,6 +97,24 @@ Item {
         return value !== null && value !== undefined && isFinite(Number(value))
     }
     function num(value) { return isNum(value) ? Number(value) : 0 }
+
+    function readableFormula() {
+        var source = String(root.step && root.step.formula
+                            || root.demo.formula || "")
+        // Las expresiones con varios cálculos se separan por cláusulas. Esto
+        // evita reducir la fuente o cortar las fórmulas largas.
+        return source.replace(/;\s*/g, ";\n")
+    }
+
+    function formulaFontSize() {
+        var length = String(root.step && root.step.formula
+                            || root.demo.formula || "").length
+        if (length > 62)
+            return Math.max(18, 19 * root.u)
+        if (length > 40)
+            return Math.max(19, 21 * root.u)
+        return Math.max(21, 24 * root.u)
+    }
 
     function fmt(value, digits) {
         if (!isNum(value))
@@ -303,18 +322,7 @@ Item {
                     font.pixelSize: Math.max(9, 10 * root.u)
                 }
             }
-            Text {
-                objectName: "formulaAnimationFormula"
-                Layout.fillWidth: true
-                Layout.minimumWidth: 0
-                text: String(root.step && root.step.formula || root.demo.formula || "")
-                color: Style.Theme.texto_primario
-                font.family: "Cambria Math"
-                font.weight: Font.DemiBold
-                font.pixelSize: Math.max(20, 23 * root.u)
-                wrapMode: Text.Wrap
-                maximumLineCount: 2
-            }
+            Item { Layout.fillWidth: true }
             BotonSecundario {
                 objectName: "formulaAnimationReplay"
                 Layout.preferredWidth: 38 * root.u
@@ -344,13 +352,40 @@ Item {
             }
         }
 
+        Rectangle {
+            objectName: "formulaAnimationFormulaCard"
+            Layout.fillWidth: true
+            implicitHeight: formulaText.implicitHeight + 24 * root.u
+            radius: 11 * root.u
+            color: Style.Theme.formula_fondo
+            border.color: Style.Theme.formula_texto
+            border.width: 2
+
+            Text {
+                id: formulaText
+                objectName: "formulaAnimationFormula"
+                anchors.fill: parent
+                anchors.margins: 12 * root.u
+                text: root.readableFormula()
+                color: Style.Theme.formula_texto
+                font.family: "Cambria Math"
+                font.weight: Font.DemiBold
+                font.pixelSize: root.formulaFontSize()
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+                wrapMode: Text.Wrap
+                lineHeight: 1.12
+                Accessible.name: "Fórmula del paso"
+                Accessible.description: String(root.formulaExplanation)
+            }
+        }
+
         Text {
             objectName: "formulaAnimationTitle"
             Layout.fillWidth: true
             visible: text.length > 0
             text: String(root.demo && root.demo.title || "")
-            color: Style.Theme.acento_fuerte
-            font.family: Style.Theme.fuente_mono
+            color: Style.Theme.texto_primario
             font.bold: true
             font.pixelSize: Math.max(13, 15 * root.u)
             wrapMode: Text.WordWrap
@@ -420,70 +455,98 @@ Item {
         Rectangle {
             objectName: "formulaAnimationExplanationPanel"
             Layout.fillWidth: true
-            implicitHeight: explanationGrid.implicitHeight + 18 * root.u
+            implicitHeight: explanationColumn.implicitHeight + 18 * root.u
             radius: 9 * root.u
-            color: Style.Theme.info_fondo
-            border.color: Style.Theme.inferencia_estructura
+            color: Style.Theme.surface
+            border.color: root.explanationSection === 0
+                          ? Style.Theme.formula_texto
+                          : Style.Theme.inferencia_contexto
 
-            GridLayout {
-                id: explanationGrid
+            ColumnLayout {
+                id: explanationColumn
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.top: parent.top
                 anchors.margins: 9 * root.u
-                columns: root.width >= 980 * root.u ? 2 : 1
-                columnSpacing: 18 * root.u
-                rowSpacing: 8 * root.u
+                spacing: 7 * root.u
 
-                ColumnLayout {
+                TabBar {
+                    id: formulaExplanationTabs
+                    objectName: "formulaAnimationExplanationTabs"
                     Layout.fillWidth: true
-                    Layout.minimumWidth: 0
-                    spacing: 3 * root.u
+                    Layout.preferredHeight: 38 * root.u
+                    currentIndex: root.explanationSection
+                    spacing: 4 * root.u
+                    onCurrentIndexChanged: root.explanationSection = currentIndex
 
-                    Text {
-                        text: "QUÉ SE CALCULA"
-                        color: Style.Theme.inferencia_estructura
-                        font.bold: true
-                        font.pixelSize: Math.max(10, 11 * root.u)
+                    background: Rectangle {
+                        radius: 8 * root.u
+                        color: Style.Theme.superficie_alterna
+                        border.color: Style.Theme.borde_suave
                     }
-                    Text {
-                        objectName: "formulaAnimationExplanation"
-                        Layout.fillWidth: true
-                        text: root.formulaExplanation.length
-                              ? root.formulaExplanation
-                              : String(root.step && root.step.explanation || "La fórmula transforma la entrada del paso en su salida.")
-                        color: Style.Theme.texto_primario
-                        wrapMode: Text.WordWrap
-                        lineHeight: 1.18
-                        font.pixelSize: Math.max(12, 14 * root.u)
+
+                    PestanaAccesible {
+                        text: "Qué se calcula"
+                        font.pixelSize: Math.max(11, 12 * root.u)
+                    }
+                    PestanaAccesible {
+                        text: "Cómo leer la animación"
+                        font.pixelSize: Math.max(11, 12 * root.u)
                     }
                 }
 
-                ColumnLayout {
+                Text {
+                    objectName: "formulaAnimationExplanation"
+                    visible: root.explanationSection === 0
                     Layout.fillWidth: true
-                    Layout.minimumWidth: 0
-                    spacing: 3 * root.u
+                    text: root.formulaExplanation.length
+                          ? root.formulaExplanation
+                          : String(root.step && root.step.explanation || "La fórmula transforma la entrada del paso en su salida.")
+                    color: Style.Theme.texto_primario
+                    wrapMode: Text.WordWrap
+                    lineHeight: 1.22
+                    font.pixelSize: Math.max(13, 15 * root.u)
+                }
+
+                Text {
+                    objectName: "formulaAnimationCaption"
+                    visible: root.explanationSection === 1
+                    Layout.fillWidth: true
+                    text: {
+                        var visual = root.animationDescription
+                        var numeric = String(root.demo && root.demo.caption || "")
+                        if (visual.length && numeric.length)
+                            return visual + " " + numeric
+                        return visual.length ? visual : numeric
+                    }
+                    color: Style.Theme.texto_primario
+                    wrapMode: Text.WordWrap
+                    lineHeight: 1.22
+                    font.pixelSize: Math.max(13, 15 * root.u)
+                }
+
+                Rectangle {
+                    objectName: "formulaAnimationResultCard"
+                    Layout.fillWidth: true
+                    implicitHeight: formulaResultText.implicitHeight + 16 * root.u
+                    radius: 7 * root.u
+                    color: Style.Theme.proceso_fondo
+                    border.color: Style.Theme.inferencia_resultado
 
                     Text {
-                        text: "QUÉ MUESTRA LA ANIMACIÓN"
-                        color: Style.Theme.inferencia_contexto
+                        id: formulaResultText
+                        objectName: "formulaAnimationResult"
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        anchors.margins: 8 * root.u
+                        text: "RESULTADO CLAVE  ·  "
+                              + String(root.step && root.step.output || "salida del paso")
+                        color: Style.Theme.proceso_texto
                         font.bold: true
-                        font.pixelSize: Math.max(10, 11 * root.u)
-                    }
-                    Text {
-                        objectName: "formulaAnimationCaption"
-                        Layout.fillWidth: true
-                        text: {
-                            var visual = root.animationDescription
-                            var numeric = String(root.demo && root.demo.caption || "")
-                            if (visual.length && numeric.length)
-                                return visual + " " + numeric
-                            return visual.length ? visual : numeric
-                        }
-                        color: Style.Theme.texto_secundario_fuerte
                         wrapMode: Text.WordWrap
-                        lineHeight: 1.18
-                        font.pixelSize: Math.max(12, 14 * root.u)
+                        lineHeight: 1.16
+                        font.pixelSize: Math.max(11, 13 * root.u)
                     }
                 }
             }

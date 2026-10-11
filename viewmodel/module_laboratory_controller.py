@@ -200,7 +200,7 @@ def _module_steps(module_id: str, mode: str) -> list[dict[str, Any]]:
             _step(
                 "position",
                 "Codificación posicional",
-                "PE(pos,2i)=sin(pos/10000^{2i/d}); PE(pos,2i+1)=cos(pos/10000^{2i/d})",
+                "PE(pos, 2i) = sin(pos / 10000^(2i/d_model)); PE(pos, 2i+1) = cos(pos / 10000^(2i/d_model))",
                 "Seno y coseno aportan orden sin añadir parámetros entrenables.",
                 "Índice de posición",
                 "Vector PE fijo",
@@ -267,7 +267,7 @@ def _module_steps(module_id: str, mode: str) -> list[dict[str, Any]]:
             _step(
                 "weights",
                 "Pesos WQ, WK y WV",
-                "WQ,WK,WV ∈ ℝᵈˣᵈ",
+                "WQ, WK, WV ∈ ℝᵈˣᵈ",
                 "Son parámetros aprendidos; cada cabeza utiliza un bloque de sus columnas de salida.",
                 "Parámetros de la capa",
                 "Tres proyecciones",
@@ -279,7 +279,7 @@ def _module_steps(module_id: str, mode: str) -> list[dict[str, Any]]:
             _step(
                 "qkv",
                 "Proyecciones Q, K y V",
-                "Q=XWQ; K=XWK; V=XWV",
+                "Q = XWQ; K = XWK; V = XWV",
                 "Queries preguntan, Keys describen compatibilidad y Values transportan contenido.",
                 "X y WQ/WK/WV",
                 "Q, K y V",
@@ -341,7 +341,7 @@ def _module_steps(module_id: str, mode: str) -> list[dict[str, Any]]:
             _step(
                 "output",
                 "Salida de atención",
-                "Y = Concat(C₁…Cₕ)WO",
+                "Y = Concat(C₁, …, Cₕ) Wᴼ",
                 "La proyección final devuelve d_model y entrega el resultado a Add & Norm.",
                 "Contextos",
                 "Representación atendida",
@@ -378,7 +378,7 @@ def _module_steps(module_id: str, mode: str) -> list[dict[str, Any]]:
             _step(
                 "project",
                 "Proyección conjunta",
-                "Q,K,V: B×T×d_model",
+                "Q, K, V: B × T × d_model",
                 "Las proyecciones producen todas las dimensiones de las cabezas.",
                 "X",
                 "Q/K/V completos",
@@ -390,7 +390,7 @@ def _module_steps(module_id: str, mode: str) -> list[dict[str, Any]]:
             _step(
                 "split",
                 "Separación en cabezas",
-                "B×T×d → B×h×T×d_head",
+                "B × T × d → B × h × T × d_head",
                 "Un reshape organiza la información en subespacios independientes.",
                 "Q/K/V completos",
                 "Q/K/V por cabeza",
@@ -400,7 +400,7 @@ def _module_steps(module_id: str, mode: str) -> list[dict[str, Any]]:
             _step(
                 "maps",
                 "Atención independiente",
-                "A_h = softmax(Q_hK_hᵀ/√d_head)",
+                "A_h = softmax(Q_h K_hᵀ / √d_head)",
                 "Cada cabeza genera su propio mapa sobre los mismos tokens.",
                 "Cabeza seleccionada",
                 "Mapa T×T",
@@ -410,7 +410,7 @@ def _module_steps(module_id: str, mode: str) -> list[dict[str, Any]]:
             _step(
                 "contexts",
                 "Contexto por cabeza",
-                "C_h = A_hV_h",
+                "C_h = A_h V_h",
                 "Cada mapa combina Values dentro de su subespacio.",
                 "A_h y V_h",
                 "C_h",
@@ -430,7 +430,7 @@ def _module_steps(module_id: str, mode: str) -> list[dict[str, Any]]:
             _step(
                 "wo",
                 "Proyección WO",
-                "Y = CWO",
+                "Y = C Wᴼ",
                 "WO aprende cómo mezclar la información de todas las cabezas.",
                 "C y WO",
                 "Salida proyectada",
@@ -468,7 +468,7 @@ def _module_steps(module_id: str, mode: str) -> list[dict[str, Any]]:
             _step(
                 "encoder_input",
                 "Entrada de la capa",
-                "X_l",
+                "Xₗ",
                 "La capa seleccionada recibe la salida de la capa anterior.",
                 "Representaciones",
                 "X_l",
@@ -478,7 +478,7 @@ def _module_steps(module_id: str, mode: str) -> list[dict[str, Any]]:
             _step(
                 "encoder_attention",
                 "Self-attention",
-                "MHA(X_l)",
+                "MHA(Xₗ)",
                 "Cada token incorpora información de toda la secuencia visible.",
                 "X_l",
                 "Actualización contextual",
@@ -488,7 +488,7 @@ def _module_steps(module_id: str, mode: str) -> list[dict[str, Any]]:
             _step(
                 "residual_1",
                 "Primera conexión residual",
-                "R₁ = X_l + MHA(X_l)",
+                "R₁ = Xₗ + MHA(Xₗ)",
                 "El atajo conserva información mientras añade contexto.",
                 "X_l y MHA",
                 "Suma residual",
@@ -498,7 +498,7 @@ def _module_steps(module_id: str, mode: str) -> list[dict[str, Any]]:
             _step(
                 "norm_1",
                 "Primera LayerNorm",
-                "N₁ = γ(R₁−μ)/√(σ²+ε)+β",
+                "N₁ = γ · (R₁ − μ) / √(σ² + ε) + β",
                 "Normaliza cada token y aplica γ y β entrenables.",
                 "R₁",
                 "N₁",
@@ -508,7 +508,7 @@ def _module_steps(module_id: str, mode: str) -> list[dict[str, Any]]:
             _step(
                 "ffn_expand",
                 "Expansión FFN",
-                "H = N₁W₁+b₁",
+                "H = N₁W₁ + b₁",
                 "Cada posición se proyecta de d_model a d_ff de forma independiente.",
                 "N₁",
                 "Preactivación d_ff",
@@ -528,7 +528,7 @@ def _module_steps(module_id: str, mode: str) -> list[dict[str, Any]]:
             _step(
                 "ffn_project",
                 "Proyección FFN",
-                "F = AW₂+b₂",
+                "F = AW₂ + b₂",
                 "La red regresa a d_model para poder usar otro residual.",
                 "A",
                 "F",
@@ -538,7 +538,7 @@ def _module_steps(module_id: str, mode: str) -> list[dict[str, Any]]:
             _step(
                 "norm_2",
                 "Segunda Add & Norm",
-                "X_{l+1}=LN(N₁+F)",
+                "Xₗ₊₁ = LN(N₁ + F)",
                 "La salida queda lista para la siguiente capa o para el decoder.",
                 "N₁ y F",
                 "X_{l+1}",
@@ -548,7 +548,7 @@ def _module_steps(module_id: str, mode: str) -> list[dict[str, Any]]:
             _step(
                 "stack",
                 "Pila de encoder",
-                "X_N = Encoder_N(…Encoder₁(X₀))",
+                "Xₙ = Encoderₙ(… Encoder₁(X₀))",
                 "La misma estructura se repite con parámetros distintos en cada capa.",
                 "Salida de capa",
                 "Memoria del encoder",
@@ -561,7 +561,7 @@ def _module_steps(module_id: str, mode: str) -> list[dict[str, Any]]:
                 _step(
                     "backward",
                     "Backward de la capa",
-                    "∂L/∂θ_l",
+                    "∂L / ∂θₗ",
                     "Atención, FFN, γ y β reciben gradientes del error global.",
                     "Pérdida",
                     "Gradientes de la capa",
@@ -571,7 +571,7 @@ def _module_steps(module_id: str, mode: str) -> list[dict[str, Any]]:
                 _step(
                     "update",
                     "Actualización hipotética",
-                    "θ_l′ = θ_l − ηg_l",
+                    "θₗ′ = θₗ − ηgₗ",
                     "El cambio se calcula y se deja sin aplicar.",
                     "θ_l y g_l",
                     "θ_l′ simulado",
@@ -621,7 +621,7 @@ def _module_steps(module_id: str, mode: str) -> list[dict[str, Any]]:
             _step(
                 "masked_attention",
                 "Masked self-attention",
-                "A_self = Attention(Z,Z,Z,M)",
+                "A_self = Attention(Z, Z, Z, M)",
                 "Cada posición integra únicamente el prefijo permitido.",
                 "Z y M",
                 "Contexto causal",
@@ -641,7 +641,7 @@ def _module_steps(module_id: str, mode: str) -> list[dict[str, Any]]:
             _step(
                 "cross_attention",
                 "Cross-attention",
-                "Q=N₁WQ; K,V=Memoria_encoder·WK/WV",
+                "Q = N₁WQ; K = Memoria·WK; V = Memoria·WV",
                 "Las queries del decoder consultan la secuencia fuente codificada.",
                 "N₁ y memoria",
                 "Contexto de fuente",
@@ -661,7 +661,7 @@ def _module_steps(module_id: str, mode: str) -> list[dict[str, Any]]:
             _step(
                 "decoder_ffn",
                 "Feed Forward",
-                "F = W₂φ(W₁N₂+b₁)+b₂",
+                "F = W₂ φ(W₁N₂ + b₁) + b₂",
                 "Procesa cada posición después de mezclar ambos contextos.",
                 "N₂",
                 "F",
@@ -671,7 +671,7 @@ def _module_steps(module_id: str, mode: str) -> list[dict[str, Any]]:
             _step(
                 "decoder_output",
                 "Tercera Add & Norm",
-                "Z_{l+1}=LN(N₂+F)",
+                "Zₗ₊₁ = LN(N₂ + F)",
                 "Produce la representación que avanza por la pila.",
                 "N₂ y F",
                 "Salida de la capa",
@@ -681,7 +681,7 @@ def _module_steps(module_id: str, mode: str) -> list[dict[str, Any]]:
             _step(
                 "decoder_layers",
                 "Pila del decoder",
-                "Z_N = Decoder_N(…Decoder₁(Z₀))",
+                "Zₙ = Decoderₙ(… Decoder₁(Z₀))",
                 "Las capas refinan el estado antes de la proyección al vocabulario.",
                 "Salida de capa",
                 "Estado final",
@@ -694,7 +694,7 @@ def _module_steps(module_id: str, mode: str) -> list[dict[str, Any]]:
                 _step(
                     "backward",
                     "Backward del decoder",
-                    "∂L/∂θ_decoder",
+                    "∂L / ∂θ_decoder",
                     "La pérdida retrocede por FFN, cross-attention y atención causal.",
                     "Pérdida",
                     "Gradientes reales",
@@ -729,7 +729,7 @@ def _module_steps(module_id: str, mode: str) -> list[dict[str, Any]]:
                 _step(
                     "linear",
                     "Proyección al vocabulario",
-                    "z = h_tW_vocabᵀ+b",
+                    "z = h_t W_vocabᵀ + b",
                     "Se produce un logit por cada token posible.",
                     "h_t y W_vocab",
                     "Logits",
@@ -791,7 +791,7 @@ def _module_steps(module_id: str, mode: str) -> list[dict[str, Any]]:
             _step(
                 "linear",
                 "Logits del vocabulario",
-                "z = h_tW_vocabᵀ+b",
+                "z = h_t W_vocabᵀ + b",
                 "Cada token recibe un score sin normalizar.",
                 "h_t",
                 "Logits",
@@ -906,7 +906,7 @@ def _module_steps(module_id: str, mode: str) -> list[dict[str, Any]]:
             _step(
                 "full_logits",
                 "Proyección final",
-                "Z = HW_vocabᵀ+b",
+                "Z = H W_vocabᵀ + b",
                 "Cada posición produce scores para todo el vocabulario.",
                 "H",
                 "Logits",

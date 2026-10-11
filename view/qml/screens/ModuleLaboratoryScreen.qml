@@ -713,12 +713,12 @@ PagePrincipal {
                             }
                             BotonSecundario {
                                 objectName: "moduleLaboratoryDetachGuide"
-                                Layout.preferredWidth: 190 * root.uiScale
+                                Layout.preferredWidth: 225 * root.uiScale
                                 Layout.preferredHeight: 32 * root.uiScale
                                 sx: root.uiScale; sy: root.uiScale
                                 text: root.guideDetached
                                       ? "Cerrar explicación"
-                                      : "Explicación detallada ↗"
+                                      : "Explicación por pestañas ↗"
                                 onClicked: root.toggleGuide()
                             }
                         }

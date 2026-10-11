@@ -20,6 +20,10 @@ Item {
     property real sx: 1
     property real sy: 1
     property bool detailsExpanded: false
+    // Una sola categoría visible reduce la cantidad de información que el
+    // estudiante debe procesar a la vez. La selección se conserva al cambiar
+    // de operación para poder comparar, por ejemplo, solo las fórmulas.
+    property int selectedSection: 0
 
     signal inspectRequested(var panel)
 
@@ -113,6 +117,20 @@ Item {
         if (absolute !== 0 && (absolute >= 1000 || absolute < 0.001))
             return number.toExponential(2)
         return number.toFixed(absolute >= 10 ? 2 : 4)
+    }
+
+    function displayedFormula() {
+        return valueOr(step && step.formula,
+                       "entrada → transformación → salida").replace(/;\s*/g, ";\n")
+    }
+
+    function formulaPointSize() {
+        var length = valueOr(step && step.formula, "").length
+        if (length > 62)
+            return Math.max(18, 19 * sx)
+        if (length > 40)
+            return Math.max(19, 21 * sx)
+        return Math.max(21, 23 * sx)
     }
 
     function captureText() {
@@ -215,7 +233,7 @@ Item {
         if (moduleId === "module_2") {
             if (sid === "lookup") return "E[idᵢ] selecciona exactamente la fila de la tabla aprendida E asociada con el ID del token i."
             if (sid === "scale") return "El vector eᵢ se multiplica coordenada a coordenada por el escalar √d_model para ajustar su magnitud."
-            if (sid === "position") return "pos es la posición, i identifica el par de dimensiones y d es d_model; dividir entre 10000^{2i/d} asigna una frecuencia distinta a cada par seno/coseno."
+            if (sid === "position") return "pos es la posición, i identifica el par de dimensiones y d_model es el ancho del vector. El exponente asigna una frecuencia distinta a cada par seno/coseno."
             if (sid === "sum") return "La suma es coordenada a coordenada: ẽᵢ aporta contenido y PEᵢ aporta orden, ambos con ancho d_model."
             if (sid === "dropout") return trainingMode
                     ? "Dropout anula aleatoriamente algunas coordenadas y reescala las restantes solo durante entrenamiento."
@@ -250,9 +268,9 @@ Item {
         }
 
         if (moduleId === "module_5") {
-            if (sid === "encoder_input") return "X_l es la representación que entra a la capa l; para l>0 proviene de la capa anterior."
-            if (sid === "encoder_attention") return "MHA aplica atención multi-head a X_l y produce una actualización contextual del mismo ancho."
-            if (sid === "residual_1") return "La suma es coordenada a coordenada entre X_l y la actualización MHA(X_l); no es concatenación."
+            if (sid === "encoder_input") return "Xₗ es la representación que entra a la capa l; para l>0 proviene de la capa anterior."
+            if (sid === "encoder_attention") return "MHA aplica atención multi-head a Xₗ y produce una actualización contextual del mismo ancho."
+            if (sid === "residual_1") return "La suma es coordenada a coordenada entre Xₗ y la actualización MHA(Xₗ); no es concatenación."
             if (sid === "norm_1") return "LayerNorm calcula μ y σ² sobre las coordenadas de cada token, normaliza y después aplica γ y β aprendidos."
             if (sid === "ffn_expand") return "W₁ proyecta cada token de d_model a d_ff y b₁ desplaza la preactivación H."
             if (sid === "ffn_activation") return "φ se aplica elemento a elemento sobre H e introduce la no linealidad que una sola proyección no tendría."
@@ -378,8 +396,6 @@ Item {
         return lines.join("\n")
     }
 
-    onStepIndexChanged: detailsExpanded = false
-
     ScrollView {
         id: guideScroll
         anchors.fill: parent
@@ -420,8 +436,62 @@ Item {
                 font.pixelSize: Math.max(22, 25 * root.sx)
             }
 
+            TabBar {
+                id: explanationTabs
+                objectName: "moduleLaboratoryGuideTabs"
+                Layout.fillWidth: true
+                Layout.preferredHeight: Math.max(44, 48 * root.sy)
+                currentIndex: root.selectedSection
+                spacing: 4 * root.sx
+                Accessible.name: "Categorías de la explicación"
+                Accessible.description: "Muestra una categoría a la vez"
+                onCurrentIndexChanged: root.selectedSection = currentIndex
+
+                background: Rectangle {
+                    radius: 10 * root.sx
+                    color: Style.Theme.surface
+                    border.color: Style.Theme.borde_suave
+                }
+
+                PestanaAccesible {
+                    objectName: "moduleLaboratoryGuideIdeaTab"
+                    text: "Idea clave"
+                    font.pixelSize: Math.max(11, 13 * root.sx)
+                }
+                PestanaAccesible {
+                    objectName: "moduleLaboratoryGuideFormulaTab"
+                    text: "Fórmula"
+                    font.pixelSize: Math.max(11, 13 * root.sx)
+                }
+                PestanaAccesible {
+                    objectName: "moduleLaboratoryGuideAnimationTab"
+                    text: "Animación"
+                    font.pixelSize: Math.max(11, 13 * root.sx)
+                }
+                PestanaAccesible {
+                    objectName: "moduleLaboratoryGuideDataTab"
+                    text: "Datos"
+                    font.pixelSize: Math.max(11, 13 * root.sx)
+                }
+            }
+
+            Text {
+                Layout.fillWidth: true
+                text: root.selectedSection === 0
+                      ? "Comprende el propósito y el lugar de esta operación."
+                      : (root.selectedSection === 1
+                         ? "Lee la fórmula, sus símbolos y el resultado que produce."
+                         : (root.selectedSection === 2
+                            ? "Concéntrate únicamente en lo que cambia dentro de la animación."
+                            : "Consulta las dimensiones, estadísticas y valores reales capturados."))
+                color: Style.Theme.texto_secundario_fuerte
+                wrapMode: Text.WordWrap
+                font.pixelSize: Math.max(11, 13 * root.sx)
+            }
+
             Rectangle {
                 objectName: "moduleLaboratoryGuideLocalContext"
+                visible: root.selectedSection === 0
                 Layout.fillWidth: true
                 implicitHeight: localContextColumn.implicitHeight + 20 * root.sy
                 radius: 10 * root.sx
@@ -486,16 +556,21 @@ Item {
 
             GuideCard {
                 objectName: "moduleLaboratoryGuideIdea"
+                visible: root.selectedSection === 0
                 Layout.fillWidth: true
                 eyebrow: "IDEA CLAVE"
                 body: root.valueOr(root.step && root.step.explanation,
                                    "Este paso transforma la entrada y prepara la siguiente operación.")
+                footer: "QUÉ DEBES RECORDAR · "
+                        + root.valueOr(root.step && root.step.output,
+                                       "resultado del paso")
                 accent: root.accent
                 sx: root.sx; sy: root.sy
             }
 
             GuideCard {
                 objectName: "moduleLaboratoryGuideObservation"
+                visible: root.selectedSection === 2
                 Layout.fillWidth: true
                 eyebrow: "QUÉ OBSERVAR AHORA"
                 body: root.observationText()
@@ -508,11 +583,12 @@ Item {
 
             Rectangle {
                 objectName: "moduleLaboratoryGuideFormula"
+                visible: root.selectedSection === 1
                 Layout.fillWidth: true
                 implicitHeight: formulaColumn.implicitHeight + 24 * root.sy
                 radius: 11 * root.sx
-                color: Qt.alpha(root.accent, 0.08)
-                border.color: root.accent
+                color: Style.Theme.formula_fondo
+                border.color: Style.Theme.formula_texto
                 border.width: 2
 
                 ColumnLayout {
@@ -525,34 +601,36 @@ Item {
 
                     Text {
                         text: "FÓRMULA CLAVE DE ESTE PASO"
-                        color: root.accent
+                        color: Style.Theme.formula_texto
                         font.bold: true
+                        font.letterSpacing: 0.5
                         font.pixelSize: Math.max(10, 11 * root.sx)
                     }
                     Text {
                         objectName: "moduleLaboratoryGuideFormulaText"
                         Layout.fillWidth: true
-                        text: root.valueOr(root.step && root.step.formula, "entrada → transformación → salida")
-                        color: Style.Theme.texto_primario
+                        text: root.displayedFormula()
+                        color: Style.Theme.formula_texto
                         font.family: "Cambria Math"
                         font.weight: Font.DemiBold
-                        font.pixelSize: Math.max(21, 23 * root.sx)
+                        font.pixelSize: root.formulaPointSize()
                         horizontalAlignment: Text.AlignHCenter
                         wrapMode: Text.Wrap
+                        lineHeight: 1.14
                     }
                     Text {
                         objectName: "moduleLaboratoryGuideFormulaReading"
                         Layout.fillWidth: true
-                        text: "CÓMO LEERLA · " + root.formulaReadingText
-                        color: Style.Theme.texto_secundario_fuerte
+                        text: "CÓMO LEERLA  ·  " + root.formulaReadingText
+                        color: Style.Theme.texto_primario
                         wrapMode: Text.WordWrap
-                        lineHeight: 1.18
-                        font.pixelSize: Math.max(12, 14 * root.sx)
+                        lineHeight: 1.22
+                        font.pixelSize: Math.max(13, 15 * root.sx)
                     }
-                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Qt.alpha(root.accent, 0.28) }
+                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Qt.alpha(Style.Theme.formula_texto, 0.42) }
                     Text {
                         text: "POR QUÉ IMPORTA AQUÍ"
-                        color: root.accent
+                        color: Style.Theme.formula_texto
                         font.bold: true
                         font.pixelSize: Math.max(10, 11 * root.sx)
                     }
@@ -560,14 +638,39 @@ Item {
                         objectName: "moduleLaboratoryGuidePurpose"
                         Layout.fillWidth: true
                         text: root.purposeText()
-                        color: Style.Theme.texto_secundario_fuerte
+                        color: Style.Theme.texto_primario
                         wrapMode: Text.WordWrap
-                        font.pixelSize: Math.max(12, 14 * root.sx)
+                        lineHeight: 1.22
+                        font.pixelSize: Math.max(13, 15 * root.sx)
+                    }
+                    Rectangle {
+                        Layout.fillWidth: true
+                        implicitHeight: guideFormulaResult.implicitHeight + 16 * root.sy
+                        radius: 7 * root.sx
+                        color: Style.Theme.proceso_fondo
+                        border.color: Style.Theme.inferencia_resultado
+
+                        Text {
+                            id: guideFormulaResult
+                            objectName: "moduleLaboratoryGuideFormulaResult"
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.top: parent.top
+                            anchors.margins: 8 * root.sx
+                            text: "RESULTADO CLAVE  ·  "
+                                  + root.valueOr(root.step && root.step.output,
+                                                 "salida del paso")
+                            color: Style.Theme.proceso_texto
+                            font.bold: true
+                            wrapMode: Text.WordWrap
+                            font.pixelSize: Math.max(11, 13 * root.sx)
+                        }
                     }
                 }
             }
 
             GuideCard {
+                visible: root.selectedSection === 3
                 Layout.fillWidth: true
                 eyebrow: root.trainingMode ? "SEÑAL DE APRENDIZAJE" : "USO EN INFERENCIA"
                 body: root.modeEvidenceText()
@@ -581,6 +684,7 @@ Item {
 
             BotonAccesible {
                 objectName: "moduleLaboratoryGuideDetailsToggle"
+                visible: false
                 Layout.fillWidth: true
                 Layout.preferredHeight: Math.max(36, 40 * root.sy)
                 text: root.detailsExpanded ? "Ocultar datos técnicos  ▴" : "Ver datos técnicos  ▾"
@@ -592,7 +696,7 @@ Item {
             ColumnLayout {
                 objectName: "moduleLaboratoryGuideTechnicalDetails"
                 Layout.fillWidth: true
-                visible: root.detailsExpanded
+                visible: root.selectedSection === 3
                 spacing: 9 * root.sy
 
                 GuideCard {
@@ -631,6 +735,7 @@ Item {
             }
 
             Rectangle {
+                visible: root.selectedSection === 0
                 Layout.fillWidth: true
                 implicitHeight: caveatText.implicitHeight + 20 * root.sy
                 radius: 9 * root.sx

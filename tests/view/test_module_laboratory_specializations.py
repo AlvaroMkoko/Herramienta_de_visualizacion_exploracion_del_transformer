@@ -356,9 +356,10 @@ def test_guia_explica_formula_entrada_salida_y_animacion_de_todas_las_etapas(
                 guide.setProperty("animationDescription", scene_description)
                 qapp.processEvents()
 
-                assert str(formula.property("text")) == step["formula"]
+                displayed_formula = str(formula.property("text")).replace(";\n", "; ")
+                assert displayed_formula == step["formula"]
                 reading = str(formula_reading.property("text"))
-                assert reading.startswith("CÓMO LEERLA · ")
+                assert reading.startswith("CÓMO LEERLA")
                 assert "Lee la expresión de izquierda a derecha" not in reading
                 assert scene_description in str(observation.property("body"))
                 flow = str(input_output.property("text"))
@@ -368,6 +369,37 @@ def test_guia_explica_formula_entrada_salida_y_animacion_de_todas_las_etapas(
 
     # Evita que una colección accidentalmente vacía haga pasar la revisión.
     assert checked >= 100
+
+
+def test_guia_separa_la_explicacion_en_pestanas_elegibles(
+    qapp, laboratory_guide
+):
+    window, guide, _formula, _reading, _observation, _flow = laboratory_guide
+    tabs = window.findChild(QObject, "moduleLaboratoryGuideTabs")
+    idea = window.findChild(QObject, "moduleLaboratoryGuideIdea")
+    formula = window.findChild(QObject, "moduleLaboratoryGuideFormula")
+    animation = window.findChild(QObject, "moduleLaboratoryGuideObservation")
+    data = window.findChild(QObject, "moduleLaboratoryGuideTechnicalDetails")
+    assert all(item is not None for item in (tabs, idea, formula, animation, data))
+
+    expected_visibility = {
+        0: (True, False, False, False),
+        1: (False, True, False, False),
+        2: (False, False, True, False),
+        3: (False, False, False, True),
+    }
+    for section, expected in expected_visibility.items():
+        guide.setProperty("selectedSection", section)
+        qapp.processEvents()
+        assert int(tabs.property("currentIndex")) == section
+        assert tuple(
+            bool(item.property("visible")) for item in (idea, formula, animation, data)
+        ) == expected
+
+    # La categoría elegida se conserva cuando el usuario cambia de operación.
+    guide.setProperty("stepIndex", 1)
+    qapp.processEvents()
+    assert int(guide.property("selectedSection")) == 3
 
 
 def test_decoder_y_filtros_completos_muestran_la_operacion_correcta(
@@ -698,11 +730,21 @@ FORMULA_HOST = b"""\
 import QtQuick
 import QtQuick.Controls
 import "components" as Components
+import "styles" as Style
 
 ApplicationWindow {
     width: 1300
-    height: 420
+    height: 600
     visible: true
+
+    property bool requestedDarkMode: Style.Theme.modoOscuro
+    readonly property bool themeIsDark: Style.Theme.modoOscuro
+    readonly property color formulaSurface: Style.Theme.formula_fondo
+    readonly property color formulaInk: Style.Theme.formula_texto
+    readonly property color resultSurface: Style.Theme.proceso_fondo
+    readonly property color resultInk: Style.Theme.proceso_texto
+
+    onRequestedDarkModeChanged: Style.Theme.modoOscuro = requestedDarkMode
 
     Components.FormulaAnimationScene {
         objectName: "formulaSceneUnderTest"
@@ -752,7 +794,34 @@ def test_formula_en_accion_anima_cada_paso_de_los_ocho_modulos(qapp):
         scene = window.findChild(QObject, "formulaSceneUnderTest")
         loader = window.findChild(QObject, "formulaAnimationLoader")
         title = window.findChild(QObject, "formulaAnimationTitle")
-        assert scene is not None and loader is not None and title is not None
+        formula_card = window.findChild(QObject, "formulaAnimationFormulaCard")
+        formula_text = window.findChild(QObject, "formulaAnimationFormula")
+        explanation_tabs = window.findChild(
+            QObject, "formulaAnimationExplanationTabs"
+        )
+        explanation = window.findChild(QObject, "formulaAnimationExplanation")
+        caption = window.findChild(QObject, "formulaAnimationCaption")
+        result_card = window.findChild(QObject, "formulaAnimationResultCard")
+        result_text = window.findChild(QObject, "formulaAnimationResult")
+        assert all(
+            item is not None
+            for item in (
+                scene,
+                loader,
+                title,
+                formula_card,
+                formula_text,
+                explanation_tabs,
+                explanation,
+                caption,
+                result_card,
+                result_text,
+            )
+        )
+        assert formula_card.property("color") == window.property("formulaSurface")
+        assert formula_text.property("color") == window.property("formulaInk")
+        assert result_card.property("color") == window.property("resultSurface")
+        assert result_text.property("color") == window.property("resultInk")
 
         kinds: set[str] = set()
         for module_id in SPECIALIZATIONS:
@@ -774,7 +843,36 @@ def test_formula_en_accion_anima_cada_paso_de_los_ocho_modulos(qapp):
                     assert scene.property("kind") == demo["kind"]
                     assert loader.property("item") is not None, (module_id, step["id"])
                     assert str(title.property("text")) == demo["title"]
+                    displayed_formula = str(formula_text.property("text")).replace(
+                        ";\n", "; "
+                    )
+                    assert displayed_formula == step["formula"]
+                    assert formula_text.property("font").pixelSize() >= 18
+                    assert not bool(formula_text.property("truncated"))
+                    assert formula_text.property("width") <= formula_card.property("width")
+                    assert step["output"] in str(result_text.property("text"))
                     assert not warnings, (module_id, mode, step["id"], warnings)
+
+        scene.setProperty("formulaExplanation", "Explicación del cálculo")
+        scene.setProperty("animationDescription", "Lectura visual")
+        for section, expected in ((0, (True, False)), (1, (False, True))):
+            scene.setProperty("explanationSection", section)
+            qapp.processEvents()
+            assert int(explanation_tabs.property("currentIndex")) == section
+            assert (
+                bool(explanation.property("visible")),
+                bool(caption.property("visible")),
+            ) == expected
+
+        initial_mode = bool(window.property("themeIsDark"))
+        window.setProperty("requestedDarkMode", not initial_mode)
+        qapp.processEvents()
+        assert formula_card.property("color") == window.property("formulaSurface")
+        assert formula_text.property("color") == window.property("formulaInk")
+        assert result_card.property("color") == window.property("resultSurface")
+        assert result_text.property("color") == window.property("resultInk")
+        window.setProperty("requestedDarkMode", initial_mode)
+        qapp.processEvents()
         # Las fórmulas se representan con animaciones distintas, no con una
         # plantilla genérica repetida.
         assert len(kinds) >= 25, kinds
