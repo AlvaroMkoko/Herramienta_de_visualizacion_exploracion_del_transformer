@@ -49,6 +49,11 @@ PagePrincipal {
         1, Number((mainViewModel.modeloActualInfo || {}).num_capas || 1))
     readonly property int modelHeadCount: Math.max(
         1, Number((mainViewModel.modeloActualInfo || {}).num_cabezas || 1))
+    readonly property var currentFormulaDemo: {
+        var demos = root.analysis.formula_demos || ({})
+        var demo = demos[String(root.currentStep.id || "")]
+        return demo && typeof demo === "object" ? demo : ({})
+    }
 
     property string mode: "inference"
     property int currentStepIndex: 0
@@ -119,6 +124,15 @@ PagePrincipal {
         if (root.currentStepIndex >= root.steps.length - 1)
             root.currentStepIndex = 0
         root.playing = !root.playing
+    }
+
+    function showFormulaPane() {
+        var flick = pageScroll.contentItem
+        if (!flick || flick.contentHeight === undefined)
+            return
+        var target = formulaPane.y - 12 * root.uiScale
+        flick.contentY = Math.max(0, Math.min(target, flick.contentHeight - flick.height))
+        formulaScene.replay()
     }
 
     function toggleGuide() {
@@ -198,7 +212,10 @@ PagePrincipal {
     }
 
     Timer {
-        interval: 1700
+        // En reproducción automática cada paso espera a que termine su
+        // animación de fórmula para que se alcance a leer el cálculo.
+        interval: formulaPane.visible
+                  ? Math.max(1700, formulaScene.cycleDuration + 900) : 1700
         repeat: true
         running: root.playing
         onTriggered: {
@@ -687,6 +704,14 @@ PagePrincipal {
                                 }
                             }
                             BotonSecundario {
+                                objectName: "moduleLaboratoryShowFormula"
+                                Layout.preferredWidth: 150 * root.uiScale
+                                Layout.preferredHeight: 32 * root.uiScale
+                                sx: root.uiScale; sy: root.uiScale
+                                text: "ƒ Fórmula en acción ↓"
+                                onClicked: root.showFormulaPane()
+                            }
+                            BotonSecundario {
                                 objectName: "moduleLaboratoryDetachGuide"
                                 Layout.preferredWidth: 148 * root.uiScale
                                 Layout.preferredHeight: 32 * root.uiScale
@@ -720,6 +745,28 @@ PagePrincipal {
                     }
                 }
 
+            }
+
+            RectanglePrincipal {
+                id: formulaPane
+                objectName: "moduleLaboratoryFormulaPane"
+                visible: root.analysis.module_id === root.moduleId
+                Layout.fillWidth: true
+                Layout.leftMargin: 24 * root.uiScale
+                Layout.rightMargin: 24 * root.uiScale
+                Layout.preferredHeight: (root.narrowLayout ? 450 : 410) * root.uiScale
+                sx: root.uiScale; sy: root.uiScale
+
+                FormulaAnimationScene {
+                    id: formulaScene
+                    objectName: "moduleLaboratoryFormulaScene"
+                    anchors.fill: parent
+                    anchors.margins: 12 * root.uiScale
+                    step: root.currentStep
+                    demo: root.currentFormulaDemo
+                    reducedMotion: Style.Theme.movimientoReducido
+                    sx: root.uiScale; sy: root.uiScale
+                }
             }
 
             Item { Layout.fillWidth: true; Layout.preferredHeight: 18 * root.uiScale }

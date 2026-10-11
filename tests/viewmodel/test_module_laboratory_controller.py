@@ -289,3 +289,92 @@ def test_no_compite_con_otro_hilo_que_usa_el_mismo_modelo(active_controller):
     assert controller.result == {}
     assert messages
     assert "Pausa" in messages[0]
+
+
+def _close(value, expected, tolerance=1e-3):
+    return abs(float(value) - float(expected)) <= tolerance
+
+
+@pytest.mark.parametrize("mode", ["training", "inference"])
+def test_cada_paso_trae_una_formula_animable_con_cuentas_exactas(
+    specialized_laboratory, mode
+):
+    """La animación de cada fórmula reproduce el resultado real del modelo."""
+    controller, _model = specialized_laboratory
+
+    for module_id in EXPECTED_REAL_PANELS:
+        result = _run_exploration(controller, module_id, mode, token=2)
+        demos = result["formula_demos"]
+        for step in result["steps"]:
+            demo = demos.get(step["id"])
+            assert demo, (module_id, mode, step["id"])
+            assert demo["kind"] != "unavailable", (module_id, step["id"], demo)
+            assert demo["formula"] == step["formula"]
+            assert demo["title"] and demo["caption"]
+
+            kind = demo["kind"]
+            if kind == "projection":
+                for output in demo["outputs"]:
+                    total = sum(output["products"]) + output["hidden_sum"]
+                    total += output["bias"] or 0.0
+                    if output["divisor"]:
+                        total /= output["divisor"]
+                    assert _close(total, output["result"]), (module_id, step["id"])
+                    if output["vector"]:
+                        assert _close(
+                            output["vector"][output["highlight"]], output["result"]
+                        ), (module_id, step["id"])
+            elif kind == "sum":
+                for a, b, c in zip(demo["a"], demo["b"], demo["c"]):
+                    assert _close(a + b, c), (module_id, step["id"])
+            elif kind == "layernorm":
+                values = zip(
+                    demo["normalized"], demo["gamma"], demo["beta"], demo["output"]
+                )
+                for normalized, gamma, beta, output in values:
+                    assert _close(normalized * gamma + beta, output), (
+                        module_id,
+                        step["id"],
+                    )
+            elif kind == "softmax":
+                assert _close(
+                    sum(demo["probs"]) + demo["rest_prob"], 1.0, 1e-3
+                ), (module_id, step["id"])
+                for exp, prob, allowed in zip(
+                    demo["exps"], demo["probs"], demo["allowed"]
+                ):
+                    expected = exp / demo["total"] if allowed else 0.0
+                    assert _close(prob, expected), (module_id, step["id"])
+            elif kind == "weighted_sum":
+                for dim, value in enumerate(demo["result"]):
+                    total = sum(
+                        weight * vector[dim]
+                        for weight, vector in zip(demo["weights"], demo["vectors"])
+                    )
+                    assert _close(total, value), (module_id, step["id"])
+            elif kind == "cross_entropy":
+                assert _close(
+                    -math.log(demo["target"]["prob"]), demo["loss"]
+                ), (module_id, step["id"])
+            elif kind == "update":
+                for theta, gradient, updated in zip(
+                    demo["theta"], demo["gradient"], demo["updated"]
+                ):
+                    assert _close(
+                        theta - demo["learning_rate"] * gradient, updated, 1e-5
+                    ), (module_id, step["id"])
+
+
+def test_mascara_causal_animada_muestra_futuro_bloqueado_en_inferencia(
+    specialized_laboratory,
+):
+    controller, _model = specialized_laboratory
+
+    result = _run_exploration(controller, "module_6", "inference", token=2)
+    demo = result["formula_demos"]["masked_attention"]
+
+    assert demo["kind"] == "softmax"
+    assert False in demo["allowed"]
+    for allowed, probability in zip(demo["allowed"], demo["probs"]):
+        if not allowed:
+            assert probability == 0.0

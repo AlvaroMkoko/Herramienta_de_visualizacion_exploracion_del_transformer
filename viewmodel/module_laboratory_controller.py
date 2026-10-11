@@ -16,6 +16,7 @@ import torch
 import torch.nn.functional as F
 
 from model.motor_llm.muestreo import aplicar_temperatura, filtrar_top_k, filtrar_top_p
+from .formula_demos import build_formula_demos
 from .visual_adapter import construir_detalle_forward, resumir_paso_inferencia
 
 
@@ -2341,6 +2342,44 @@ class ModuleLaboratoryController(QObject):
             }
             for index, token_id in enumerate(prepared["source_ids"])
         ]
+        steps = _module_steps(module_id, mode)
+        filtered = (
+            filtrar_top_p(after_k, max(0.01, min(float(top_p), 1.0)))
+            if mode == "inference"
+            else raw_logits
+        )
+        # Números exactos de cada fórmula para la animación "Fórmula en
+        # acción"; se calculan antes de filtrar paneles heredados.
+        formula_demos = build_formula_demos(
+            module_id,
+            steps,
+            {
+                "model": model,
+                "tokenizer": tokenizer,
+                "mode": mode,
+                "text": text,
+                "prepared": prepared,
+                "trace": trace,
+                "logits": logits.detach(),
+                "raw_logits": raw_logits,
+                "adjusted": adjusted.detach(),
+                "after_k": after_k.detach(),
+                "filtered": filtered.detach(),
+                "probabilities": probabilities.detach(),
+                "selected_id": selected_id,
+                "candidates": candidates,
+                "layer": layer,
+                "head": head,
+                "selected_token": selected_token,
+                "temperature": temperature,
+                "top_k": top_k,
+                "top_p": top_p,
+                "causal_mask": causal_mask,
+                "panels": {panel["key"]: panel for panel in panels},
+                "training_snapshot": training_snapshot,
+            },
+            self._token_text,
+        )
         if legacy:
             allowed = set(_LEGACY_PANEL_KEYS[module_id])
             panels = [panel for panel in panels if panel["key"] in allowed]
@@ -2362,7 +2401,8 @@ class ModuleLaboratoryController(QObject):
             "real_data": True,
             "tokens": tokens,
             "panels": panels,
-            "steps": _module_steps(module_id, mode),
+            "steps": steps,
+            "formula_demos": formula_demos,
             "selected_layer": layer,
             "selected_head": head,
             "selected_token_index": selected_token,

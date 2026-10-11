@@ -17,7 +17,7 @@ os.environ.setdefault("QSG_RHI_BACKEND", "software")
 os.environ.setdefault("QT_QUICK_CONTROLS_STYLE", "Basic")
 
 import pytest
-from PySide6.QtCore import QObject, QPointF, QRectF, QSizeF, QUrl
+from PySide6.QtCore import QObject, QPointF, QRectF, QSizeF, QUrl, qInstallMessageHandler
 from PySide6.QtQml import QQmlComponent, QQmlEngine
 from PySide6.QtQuick import QQuickItem
 
@@ -670,6 +670,143 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(qapp, tmp_path):
 
     assert detached_window.property("visible") is False
     assert screen.property("workspacePreferredHeight") < 1000
+
+    window.deleteLater()
+    engine.deleteLater()
+
+
+FORMULA_HOST = b"""\
+import QtQuick
+import QtQuick.Controls
+import "components" as Components
+
+ApplicationWindow {
+    width: 1300
+    height: 420
+    visible: true
+
+    Components.FormulaAnimationScene {
+        objectName: "formulaSceneUnderTest"
+        anchors.fill: parent
+        reducedMotion: true
+    }
+}
+"""
+
+
+def _formula_laboratory():
+    config = ConfiguracionTransformer(
+        tamano_vocabulario=40,
+        dimension_modelo=16,
+        num_cabezas=4,
+        num_capas=2,
+        dimension_ff=32,
+        longitud_maxima_secuencia=12,
+        dropout=0.1,
+        id_token_relleno=0,
+    )
+    view_model = MainViewModel()
+    controller = view_model.moduleLaboratoryController
+    controller.set_model(Transformer(config), _ScreenTokenizer())
+    return view_model, controller
+
+
+def test_formula_en_accion_anima_cada_paso_de_los_ocho_modulos(qapp):
+    view_model, controller = _formula_laboratory()
+    warnings: list[str] = []
+
+    def capture(_mode, _context, message):
+        if "FormulaAnimationScene" in message:
+            warnings.append(message)
+
+    previous = qInstallMessageHandler(capture)
+    engine = QQmlEngine()
+    try:
+        component = QQmlComponent(engine)
+        component.setData(
+            FORMULA_HOST,
+            QUrl.fromLocalFile(str(ROOT / "view" / "qml" / "FormulaHost.qml")),
+        )
+        assert component.status() != QQmlComponent.Status.Error, _errors(component)
+        window = component.create()
+        assert window is not None, _errors(component)
+        scene = window.findChild(QObject, "formulaSceneUnderTest")
+        loader = window.findChild(QObject, "formulaAnimationLoader")
+        title = window.findChild(QObject, "formulaAnimationTitle")
+        assert scene is not None and loader is not None and title is not None
+
+        kinds: set[str] = set()
+        for module_id in SPECIALIZATIONS:
+            for mode in ("inference", "training"):
+                controller.explore(
+                    module_id, "texto", mode, 1, 2, 2, 0.8, 5, 0.9, True
+                )
+                result = controller.result
+                for step in result["steps"]:
+                    demo = result["formula_demos"][step["id"]]
+                    scene.setProperty("step", step)
+                    scene.setProperty("demo", demo)
+                    qapp.processEvents()
+                    # Mitad de la animación y estado final: ambos deben dibujarse.
+                    for progress in (0.5, 1.0):
+                        scene.setProperty("t", progress)
+                        qapp.processEvents()
+                    kinds.add(demo["kind"])
+                    assert scene.property("kind") == demo["kind"]
+                    assert loader.property("item") is not None, (module_id, step["id"])
+                    assert str(title.property("text")) == demo["title"]
+                    assert not warnings, (module_id, mode, step["id"], warnings)
+        # Las fórmulas se representan con animaciones distintas, no con una
+        # plantilla genérica repetida.
+        assert len(kinds) >= 25, kinds
+        window.deleteLater()
+    finally:
+        qInstallMessageHandler(previous)
+        engine.deleteLater()
+        view_model.deleteLater()
+
+
+def test_pantalla_sincroniza_formula_en_accion_con_el_paso_actual(qapp, tmp_path):
+    view_model, controller = _formula_laboratory()
+    progress_repository = ModuleProgressRepository(tmp_path / "progress.json")
+    view_model._course_controller._repository = progress_repository
+    view_model._course_controller._state = progress_repository.snapshot()
+    view_model._course_controller._current_module_id = "module_3"
+    view_model._modelo_actual_info = {"num_capas": 2, "num_cabezas": 4}
+    controller.explore("module_3", "texto", "inference", 0, 1, 1, 0.8, 5, 0.9, True)
+
+    engine = QQmlEngine()
+    engine.rootContext().setContextProperty("mainViewModel", view_model)
+    component = QQmlComponent(engine)
+    component.setData(
+        SCREEN_HOST,
+        QUrl.fromLocalFile(str(ROOT / "view" / "qml" / "ModuleLabScreenHost.qml")),
+    )
+    assert component.status() != QQmlComponent.Status.Error, _errors(component)
+    window = component.create()
+    assert window is not None, _errors(component)
+    for _ in range(4):
+        qapp.processEvents()
+
+    screen = window.findChild(QObject, "moduleLaboratoryScreen")
+    pane = window.findChild(QQuickItem, "moduleLaboratoryFormulaPane")
+    workspace = window.findChild(QQuickItem, "moduleLaboratoryWorkspace")
+    scene = window.findChild(QObject, "moduleLaboratoryFormulaScene")
+    assert screen is not None and pane is not None and scene is not None
+    assert pane.property("visible") is True
+    # El panel de fórmula queda debajo del área de trabajo, sin encimarse.
+    assert pane.mapToItem(workspace, QPointF(0, 0)).y() >= workspace.height() - 1
+
+    title = window.findChild(QObject, "formulaAnimationTitle")
+    assert title is not None
+    steps = controller.result["steps"]
+    demos = controller.result["formula_demos"]
+    for index in (0, 3, 6):
+        screen.setProperty("currentStepIndex", index)
+        qapp.processEvents()
+        expected = demos[steps[index]["id"]]
+        assert scene.property("kind") == expected["kind"]
+        assert str(title.property("text")) == expected["title"]
 
     window.deleteLater()
     engine.deleteLater()
