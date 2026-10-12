@@ -16,6 +16,7 @@ Item {
     property var step: ({})
     property var panel: ({})
     property var analysis: ({})
+    property var demo: ({})
     property int stepIndex: 0
     property string animationDescription: ""
     property real sx: 1
@@ -219,9 +220,12 @@ Item {
     }
 
     function observationText() {
-        var description = valueOr(panel && panel.description, "")
-        var lead = valueOr(animationDescription, observationLead())
-        return description.length ? lead + " " + description : lead
+        var lead = valueOr(demo && demo.animation_explanation,
+                           valueOr(animationDescription, observationLead()))
+        var caption = valueOr(demo && demo.caption, "")
+        if (caption.length && lead.indexOf(caption) < 0)
+            return lead + " " + caption
+        return lead
     }
 
     function formulaReading() {

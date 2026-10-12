@@ -36,6 +36,60 @@ def _without_data(demo: dict[str, Any]) -> bool:
     return bool(data) and all(len(value) == 0 for value in data)
 
 
+def _animation_explanation(demo: dict[str, Any], step: dict[str, Any]) -> str:
+    """Describe la animación numérica, no la vista-resumen del laboratorio."""
+    kind = str(demo.get("kind", ""))
+    explanations = {
+        "split_text": "Sigue el barrido de izquierda a derecha: cada fragmento aparece en el orden exacto en que el tokenizador recorre el texto.",
+        "lookup_ids": "Observa cómo cada token se empareja con su índice y cómo esos índices se reúnen, en el mismo orden, en el tensor de IDs.",
+        "specials": "Mira cómo BOS se inserta al principio, EOS al final y la secuencia resultante queda alineada con la entrada del decoder.",
+        "padding": "Compara las longitudes y sigue las celdas PAD que aparecen únicamente hasta completar la matriz rectangular B × T.",
+        "mask_compare": "La animación compara cada ID con PAD: las posiciones válidas permanecen activas y las de relleno cambian a bloqueadas.",
+        "no_grad": "Sigue la señal de backward hasta el límite del tokenizador; el símbolo ∅ marca que no existen parámetros diferenciables que actualizar.",
+        "lookup_row": "Observa cómo el ID señala una fila concreta de la tabla E y cómo esa fila se copia como vector del token.",
+        "map": "Lee cada coordenada de entrada y su salida correspondiente; el cambio se aplica elemento a elemento sin mezclar posiciones.",
+        "positional": "Sigue frecuencia, ángulo y seno/coseno para una coordenada; al final las coordenadas calculadas forman el vector PE.",
+        "sum": "Mira una coordenada a la vez: aparece el primer sumando, se añade el segundo y se revela la coordenada resultante.",
+        "matrix_rows": "Cada token aporta una fila a la matriz; el resaltado final identifica la fila del token seleccionado.",
+        "heatmaps": "La animación revela WQ, WK y WV por separado; compara signo y magnitud mediante la misma escala de color.",
+        "projection": "Sigue los productos de una salida: cada entrada se multiplica por su peso, los términos se acumulan, se añade el sesgo y aparece el resultado.",
+        "mask_row": "Compara cada score con la máscara; los permitidos se conservan y los bloqueados se sustituyen antes de Softmax.",
+        "softmax": "Sigue una fila completa: los scores se exponencian, se suman y después cada término se divide por el total para obtener pesos.",
+        "weighted_sum": "Observa cómo cada peso escala su vector Value y cómo las contribuciones se acumulan coordenada a coordenada hasta formar el contexto.",
+        "multi_softmax": "Las filas se normalizan cabeza por cabeza; el foco final permite comparar dónde concentra su peso cada cabeza.",
+        "layernorm": "Sigue la suma residual, el cálculo de μ, el centrado, la división por σ y, al final, la transformación aprendida con γ y β.",
+        "activation": "Compara cada preactivación con su salida después de φ; el recorrido resalta dónde la función conserva, atenúa o anula valores.",
+        "ffn": "Sigue el vector al expandirse con W₁, atravesar la no linealidad y comprimirse con W₂ hasta recuperar d_model.",
+        "stack": "El mismo token asciende capa por capa; cada nivel sustituye su vector anterior y el último se marca como salida final.",
+        "cross_entropy": "Sigue los logits hasta Softmax, localiza la probabilidad del token objetivo y observa cómo −log(p) produce la pérdida.",
+        "argmax": "La animación recorre las probabilidades, conserva temporalmente el mayor valor y resalta el token ganador al final.",
+        "append": "Mira cómo el token elegido se anexa al extremo del prefijo y cómo esa nueva secuencia queda lista para otra iteración.",
+        "backward": "La señal parte de la pérdida y avanza en sentido inverso; las barras finales muestran la magnitud del gradiente recibido por cada parámetro.",
+        "update": "Compara θ con el término η·g y observa la resta coordenada a coordenada que produciría θ′ sin escribirla en el modelo.",
+        "vector": "Las coordenadas se revelan en conjunto y la marca final resume la magnitud del vector mediante su norma.",
+        "causal_mask": "La animación recorre cada celda (i,j): permite j ≤ i y bloquea el futuro hasta completar el triángulo causal.",
+        "unavailable": "La animación no dispone de datos numéricos para este paso; revisa el mensaje mostrado en el área central.",
+    }
+    if kind == "heads":
+        mode = str(demo.get("mode", ""))
+        if mode == "split":
+            return "Sigue cómo el vector d_model se divide en h bloques consecutivos; cada bloque termina en la fila de una cabeza distinta."
+        if mode == "concat":
+            return "Observa cómo los contextos de las cabezas se alinean y se unen sin promediarse hasta reconstruir un vector d_model."
+        return "Sigue la concatenación de las cabezas y la mezcla posterior con Wᴼ; el último vector es la salida multi-head."
+    if kind == "shift":
+        if bool(demo.get("training")):
+            return "Compara objetivo y entrada desplazada: BOS abre la entrada y cada posición queda emparejada con el token que debe predecir."
+        return "Sigue el prefijo ya generado y observa la posición vacía al final, que es donde el decoder debe producir el siguiente token."
+    if kind == "sampling":
+        return "Sigue los candidatos a través de cada filtro activo: cambian sus logits o desaparecen hasta quedar el conjunto que participará en la elección."
+    return explanations.get(
+        kind,
+        "Sigue las fases de la barra inferior y relaciona cada cambio numérico con la salida «"
+        + str(step.get("output", "del paso")) + "».",
+    )
+
+
 def _flat(tensor: torch.Tensor) -> torch.Tensor:
     return tensor.detach().float().cpu().reshape(-1)
 
@@ -332,6 +386,7 @@ class FormulaDemoBuilder:
                                    f"«{identifier}» no produjo datos que animar."}
             if demo is not None:
                 demo.setdefault("formula", step.get("formula", ""))
+                demo.setdefault("animation_explanation", _animation_explanation(demo, step))
                 demos[identifier] = demo
         return demos
 

@@ -521,7 +521,8 @@ Item {
                     visible: root.explanationSection === 1
                     Layout.fillWidth: true
                     text: {
-                        var visual = root.animationDescription
+                        var visual = String(root.demo && root.demo.animation_explanation
+                                            || root.animationDescription || "")
                         var numeric = String(root.demo && root.demo.caption || "")
                         if (visual.length && numeric.length)
                             return visual + " " + numeric

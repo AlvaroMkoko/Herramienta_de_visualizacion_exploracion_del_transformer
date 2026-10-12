@@ -105,7 +105,10 @@ ApplicationWindow {
         mode: "inference"
         steps: []
         step: ({})
-        animationDescription: "Escena de prueba"
+        demo: ({
+            animation_explanation: "Animacion numerica de prueba",
+            caption: "Los valores cambian fase por fase."
+        })
     }
 }
 """
@@ -353,7 +356,13 @@ def test_guia_explica_formula_entrada_salida_y_animacion_de_todas_las_etapas(
                 )
                 guide.setProperty("stepIndex", index)
                 guide.setProperty("step", step)
-                guide.setProperty("animationDescription", scene_description)
+                guide.setProperty(
+                    "demo",
+                    {
+                        "animation_explanation": scene_description,
+                        "caption": "Los números corresponden a esta fórmula.",
+                    },
+                )
                 qapp.processEvents()
 
                 displayed_formula = str(formula.property("text")).replace(";\n", "; ")
@@ -640,18 +649,21 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(qapp, tmp_path):
         view_model.moduleLaboratoryController.result["steps"][0]["explanation"]
     )
     assert str(guide_observation.property("body")).strip()
-    assert str(visualization.property("animationDescription")) in str(
-        guide_observation.property("body")
-    )
+    first_step = view_model.moduleLaboratoryController.result["steps"][0]
+    first_demo = view_model.moduleLaboratoryController.result["formula_demos"][
+        first_step["id"]
+    ]
+    expected_animation = first_demo["animation_explanation"]
+    assert expected_animation in str(guide_observation.property("body"))
+    assert "tres tarjetas" not in str(guide_observation.property("body")).lower()
     # La ayuda especializada también queda visible junto a la fórmula y no
     # depende de que el estudiante abra la ventana separada.
     assert str(formula_scene.property("formulaExplanation")).strip()
     assert str(formula_explanation.property("text")) == str(
         formula_scene.property("formulaExplanation")
     )
-    assert str(visualization.property("animationDescription")) in str(
-        formula_caption.property("text")
-    )
+    assert expected_animation in str(formula_caption.property("text"))
+    assert "tres tarjetas" not in str(formula_caption.property("text")).lower()
     assert str(guide_formula_reading.property("text")).startswith("CÓMO LEERLA")
     assert "Produce «" in str(guide_purpose.property("text"))
     assert "Datos reales" in str(guide_evidence.property("body"))
@@ -854,7 +866,7 @@ def test_formula_en_accion_anima_cada_paso_de_los_ocho_modulos(qapp):
                     assert not warnings, (module_id, mode, step["id"], warnings)
 
         scene.setProperty("formulaExplanation", "Explicación del cálculo")
-        scene.setProperty("animationDescription", "Lectura visual")
+        scene.setProperty("animationDescription", "Resumen de tres tarjetas")
         for section, expected in ((0, (True, False)), (1, (False, True))):
             scene.setProperty("explanationSection", section)
             qapp.processEvents()
@@ -863,6 +875,7 @@ def test_formula_en_accion_anima_cada_paso_de_los_ocho_modulos(qapp):
                 bool(explanation.property("visible")),
                 bool(caption.property("visible")),
             ) == expected
+        assert "tres tarjetas" not in str(caption.property("text")).lower()
 
         initial_mode = bool(window.property("themeIsDark"))
         window.setProperty("requestedDarkMode", not initial_mode)

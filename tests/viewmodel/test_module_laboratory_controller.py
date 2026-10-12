@@ -316,6 +316,11 @@ def test_cada_paso_trae_una_formula_animable_con_cuentas_exactas(
             assert demo["kind"] != "unavailable", (module_id, step["id"], demo)
             assert demo["formula"] == step["formula"]
             assert demo["title"] and demo["caption"]
+            assert demo["animation_explanation"], (module_id, mode, step["id"])
+            assert "tres tarjetas" not in demo["animation_explanation"].lower()
+            assert not demo["animation_explanation"].startswith(
+                "Sigue las fases de la barra inferior"
+            ), (module_id, mode, step["id"], demo["kind"])
 
             kind = demo["kind"]
             if kind == "projection":

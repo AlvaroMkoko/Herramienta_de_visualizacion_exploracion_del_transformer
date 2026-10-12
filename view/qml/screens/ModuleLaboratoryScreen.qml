@@ -818,7 +818,6 @@ PagePrincipal {
                     step: root.currentStep
                     demo: root.currentFormulaDemo
                     formulaExplanation: animationGuide.formulaReadingText
-                    animationDescription: visualization.animationDescription
                     reducedMotion: Style.Theme.movimientoReducido
                     sx: root.uiScale; sy: root.uiScale
                 }
@@ -872,8 +871,8 @@ PagePrincipal {
         step: root.currentStep
         panel: root.currentPanel
         analysis: root.analysis
+        demo: root.currentFormulaDemo
         stepIndex: root.safeStepIndex
-        animationDescription: visualization.animationDescription
         sx: Math.max(0.96, Math.min(1.16,
                                    detachedGuideWindow.width / 700))
         sy: Math.max(0.96, Math.min(1.16,
