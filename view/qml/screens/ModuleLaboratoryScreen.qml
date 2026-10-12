@@ -14,6 +14,19 @@ PagePrincipal {
     property string moduleId: "module_1"
     readonly property var courseController: mainViewModel.courseController
     readonly property var laboratoryController: mainViewModel.moduleLaboratoryController
+    readonly property var modelLibraryController: mainViewModel.modelLibraryController
+    // Solo cuenta modelos que la biblioteca puede cargar: si todos son
+    // incompatibles, ofrecer «usar uno guardado» llevaría a tarjetas con los
+    // botones deshabilitados, que es otro callejón sin salida.
+    readonly property bool hasSavedModels: {
+        var models = root.modelLibraryController
+                     ? (root.modelLibraryController.modelos || []) : []
+        for (var i = 0; i < models.length; ++i) {
+            if (models[i] && models[i].compatible !== false)
+                return true
+        }
+        return false
+    }
     readonly property var moduleData: courseController.currentModule
     readonly property var laboratory: moduleData.laboratory || ({})
     readonly property var analysis: laboratoryController.result || ({})
@@ -194,7 +207,14 @@ PagePrincipal {
         return numeric.toFixed(Number.isInteger(numeric) ? 0 : 6)
     }
 
-    Component.onCompleted: root.courseController.selectModule(root.moduleId)
+    Component.onCompleted: {
+        root.courseController.selectModule(root.moduleId)
+        // El catálogo pudo cambiar desde que se construyó el controlador; sin
+        // releerlo, el botón de modelos guardados podría quedar oculto aunque
+        // existan, que es justo el síntoma que este botón resuelve.
+        if (root.modelLibraryController)
+            root.modelLibraryController.refrescar()
+    }
     onVisibleChanged: if (!visible && guideDetached) closeDetachedGuide()
 
     Connections {
@@ -418,6 +438,25 @@ PagePrincipal {
                                     "modoRetornoLaboratorio": root.mode
                                 })
                         }
+                        BotonPrincipal {
+                            objectName: "moduleLaboratoryLoadModelButton"
+                            // Sin modelos guardados la biblioteca estaría vacía:
+                            // se oculta en vez de llevar a una pantalla sin salida.
+                            visible: !root.laboratoryController.modelReady
+                                     && root.hasSavedModels
+                            Layout.fillWidth: root.narrowControls
+                            Layout.preferredWidth: root.narrowControls
+                                                   ? 0 : 185 * root.uiScale
+                            Layout.preferredHeight: 42 * root.uiScale
+                            text: "Usar modelo guardado"
+                            onClicked: root.stackView.push(
+                                "ModelLibraryScreen.qml", {
+                                    "stackView": root.stackView,
+                                    "regresarAlLaboratorio": true,
+                                    "moduloRetornoLaboratorio": root.moduleId,
+                                    "modoRetornoLaboratorio": root.mode
+                                })
+                        }
                     }
 
                     GridLayout {
@@ -553,7 +592,9 @@ PagePrincipal {
                         Layout.fillWidth: true
                         text: root.laboratoryController.modelReady
                               ? "Explora este componente con datos reales"
-                              : "Primero crea o carga un modelo"
+                              : (root.hasSavedModels
+                                 ? "Primero crea o carga un modelo"
+                                 : "Primero crea un modelo")
                         color: Style.Theme.texto_primario
                         font.pixelSize: 20 * root.uiScale
                         font.bold: true

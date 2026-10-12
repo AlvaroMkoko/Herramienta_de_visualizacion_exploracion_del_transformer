@@ -20,6 +20,12 @@ PagePrincipal {
     property bool mensajeEsError: false
     property string accionTrasCarga: ""
     property var modelosVisibles: []
+    // Mismo protocolo de retorno que Setup, Training y Results: si la
+    // biblioteca se abrió desde un laboratorio modular, el modelo elegido debe
+    // devolver al usuario a ese módulo y modo, no a inferencia ni a Setup.
+    property bool regresarAlLaboratorio: false
+    property string moduloRetornoLaboratorio: ""
+    property string modoRetornoLaboratorio: "inference"
     readonly property real escalaTexto: Math.min(root.sx, root.sy)
     readonly property real tamanoTituloModelo: Math.max(18, 21 * root.escalaTexto)
     readonly property real tamanoMetricaDestacada: Math.max(14, 14 * root.escalaTexto)
@@ -265,6 +271,32 @@ PagePrincipal {
         dialogoExportar.open()
     }
 
+    function buscarLaboratorioDeOrigen() {
+        if (!root.stackView)
+            return null
+        for (var index = root.stackView.depth - 2; index >= 0; --index) {
+            var candidate = root.stackView.get(index)
+            if (candidate
+                    && String(candidate.objectName) === "moduleLaboratoryScreen")
+                return candidate
+        }
+        return null
+    }
+
+    function volverAlLaboratorio() {
+        var origen = root.buscarLaboratorioDeOrigen()
+        if (origen) {
+            root.stackView.pop(origen)
+            return
+        }
+        // Respaldo para aperturas sin el laboratorio en la pila.
+        root.stackView.push("ModuleLaboratoryScreen.qml", {
+            "stackView": root.stackView,
+            "moduleId": root.moduloRetornoLaboratorio || "module_1",
+            "mode": root.modoRetornoLaboratorio || "inference"
+        })
+    }
+
     function cargarPara(item, accion) {
         var rutaModelo = ruta(item)
         if (rutaModelo === "") {
@@ -276,6 +308,11 @@ PagePrincipal {
             root.stackView.push("InferenceScreen.qml", {
                 "stackView": root.stackView
             })
+            return
+        }
+        if (accion === "laboratorio" && root.esActivo(item)
+                && mainViewModel.modeloListo) {
+            root.volverAlLaboratorio()
             return
         }
         accionTrasCarga = accion
@@ -352,6 +389,8 @@ PagePrincipal {
                     "stackView": root.stackView,
                     "usarModeloActual": true
                 })
+            } else if (accion === "laboratorio") {
+                root.volverAlLaboratorio()
             }
         }
     }
@@ -405,7 +444,7 @@ PagePrincipal {
         BotonPrincipal {
             Layout.preferredWidth: 210 * root.sx
             Layout.preferredHeight: 44 * root.sy
-            text: "↶ Volver al inicio"
+            text: root.regresarAlLaboratorio ? "← Laboratorio" : "↶ Volver al inicio"
             size_text: 0.27
             minimum_text_size: 12
             onClicked: root.stackView.pop()
@@ -897,7 +936,25 @@ PagePrincipal {
                     }
 
                     BotonPrincipal {
+                        objectName: "modelLibraryLaboratoryButton"
+                        // Abierta desde un laboratorio, la acción principal de la
+                        // tarjeta es volver a él con el modelo; ocupa el lugar de
+                        // «Abrir en inferencia» para no apretar la fila.
+                        visible: root.regresarAlLaboratorio
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 39 * root.sy
+                        text: "Usar en laboratorio"
+                        size_text: 0.21
+                        minimum_text_size: 12
+                        enabled: tarjeta.compatible && root.controller && !root.operacionModeloEnCurso
+                        ToolTip.visible: hovered
+                        ToolTip.text: "Cargar los pesos y volver al laboratorio del módulo"
+                        onClicked: root.cargarPara(tarjeta.info, "laboratorio")
+                    }
+
+                    BotonPrincipal {
                         objectName: "modelLibraryInferenceButton"
+                        visible: !root.regresarAlLaboratorio
                         Layout.fillWidth: true
                         Layout.preferredHeight: 39 * root.sy
                         text: "Abrir en inferencia"
