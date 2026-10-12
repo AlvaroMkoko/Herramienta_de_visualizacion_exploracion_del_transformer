@@ -394,8 +394,11 @@ PagePrincipal {
 
                     GridLayout {
                         Layout.fillWidth: true
+                        // Una columna por control visible: los ocultos no ocupan
+                        // celda, y con una de menos el último botón baja de fila.
                         columns: root.narrowControls
-                                 ? 1 : (root.laboratoryController.modelReady ? 2 : 3)
+                                 ? 1 : (root.laboratoryController.modelReady
+                                        ? 2 : (root.hasSavedModels ? 4 : 3))
                         columnSpacing: 10 * root.uiScale
                         rowSpacing: 10 * root.uiScale
                         CampoTextoPrincipal {

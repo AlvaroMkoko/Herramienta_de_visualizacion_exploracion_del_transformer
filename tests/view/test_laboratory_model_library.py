@@ -236,6 +236,9 @@ def test_laboratorio_usa_modelo_guardado_y_vuelve_con_modelo_activo(entorno, qtb
     assert crear.property("visible") is True
     assert usar.property("visible") is True
     assert str(usar.property("text")) != str(crear.property("text"))
+    # Junto a «Crear modelo», no en una fila aparte bajo el campo de texto.
+    qtbot.waitUntil(lambda: usar.property("y") == crear.property("y"), timeout=3000)
+    assert usar.property("x") > crear.property("x")
 
     _clic(usar)
     qtbot.waitUntil(lambda: navigation.property("depth") == 2, timeout=3000)
