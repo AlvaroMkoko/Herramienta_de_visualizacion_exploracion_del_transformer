@@ -204,9 +204,15 @@ Item {
             return []
         if (candidate.matrix !== undefined)
             candidate = candidate.matrix
-        if (candidate && candidate.valores !== undefined)
+        // Solo se desenvuelve un objeto {valores}/{values}. Un arreglo hereda
+        // Array.prototype.values, una función de length 0: sin esta guarda
+        // toda matriz que llega como lista se volvía [] y el Módulo 1, que
+        // depende solo de los paneles, se dibujaba en blanco.
+        if (candidate && candidate.length === undefined
+                && candidate.valores !== undefined)
             candidate = candidate.valores
-        if (candidate && candidate.values !== undefined)
+        if (candidate && candidate.length === undefined
+                && candidate.values !== undefined)
             candidate = candidate.values
         if (!candidate || candidate.length === undefined || candidate.length === 0)
             return []
@@ -833,6 +839,31 @@ Item {
             opacity: root.stageReveal
             scale: 0.985 + 0.015 * root.stageReveal
             sourceComponent: root.componentForModule()
+
+            // Un Loader sin componente, o cuyo componente falla al crearse,
+            // queda vacío sin aviso. Lo hacemos visible para que el próximo
+            // fallo de este tipo se diagnostique sin abrir la consola.
+            // Riesgo aceptado: este aviso no tiene prueba. Hoy no se alcanza,
+            // porque componentForModule() siempre devuelve un Component
+            // declarado; un módulo sin `case` propio no llega aquí, cae en
+            // `default` y dibuja la vista de tokenización. Solo aparece si una
+            // rama nueva deja de devolver un Component o si uno falla al
+            // crearse.
+            Text {
+                objectName: "moduleLabLoaderUnavailable"
+                anchors.centerIn: parent
+                width: parent.width - 32 * root.uiSx
+                visible: specializedLoader.status === Loader.Error
+                         || specializedLoader.sourceComponent === null
+                         || (specializedLoader.status === Loader.Ready
+                             && specializedLoader.item === null)
+                text: "No se pudo dibujar la vista de este paso («"
+                      + root.visualId + "»). Revisa la consola para ver el error."
+                color: Style.Theme.texto_secundario
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.WordWrap
+                font.pixelSize: Math.max(11, 12 * root.uiSx)
+            }
         }
 
         TrainingEvidenceBar {
@@ -898,6 +929,7 @@ Item {
                     }
 
                     TensorMatrixCard {
+                        objectName: "moduleLabTokenizationMatrix"
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         Layout.preferredHeight: Math.max(245, 315 * root.uiSy)
@@ -1572,10 +1604,16 @@ Item {
                 }
 
                 Text {
+                    objectName: "moduleLabMatrixMissing"
                     anchors.centerIn: parent
                     width: parent.width - 24 * matrixCard.sx
                     visible: matrixCard.matrix.length === 0
-                    text: "Ejecuta el paso para cargar esta matriz real."
+                    // Si el panel sí llegó pero no trae una matriz legible, se
+                    // dice: pedir "ejecuta el paso" ocultaba un fallo de lectura.
+                    text: String(matrixCard.panel.key || "").length > 0
+                          ? "El tensor «" + matrixCard.panel.key
+                            + "» llegó sin una matriz que se pueda dibujar."
+                          : "Ejecuta el paso para cargar esta matriz real."
                     color: Style.Theme.texto_secundario
                     horizontalAlignment: Text.AlignHCenter
                     wrapMode: Text.WordWrap

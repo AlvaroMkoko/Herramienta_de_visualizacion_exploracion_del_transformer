@@ -93,6 +93,14 @@ Item {
     function ease(x) { return x * x * (3 - 2 * x) }
     function lerp(a, b, f) { return a + (b - a) * f }
     function list(value) { return value && value.length !== undefined ? value : [] }
+    // `values` es clave de datos de varios demos, pero en un arreglo es
+    // Array.prototype.values: una función de length 0 que list() dejaría
+    // pasar. Solo se lee de un objeto que no sea arreglo (el mismo fallo
+    // dejó en blanco el Módulo 1 en ModuleLaboratoryVisualization.qml).
+    function valuesOf(item) {
+        return item && typeof item === "object" && item.length === undefined
+                ? list(item.values) : []
+    }
     function isNum(value) {
         return value !== null && value !== undefined && isFinite(Number(value))
     }
@@ -1304,7 +1312,7 @@ Item {
                                     }
                                 }
                                 Repeater {
-                                    model: root.list(tableRow.modelData.values)
+                                    model: root.valuesOf(tableRow.modelData)
                                     delegate: Cell {
                                         required property var modelData
                                         width: 50 * root.u
@@ -2512,13 +2520,13 @@ Item {
                     Tag { width: 186 * root.u; text: String(root.demo.extra ? root.demo.extra.label : ""); elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter; color: Style.Theme.inferencia_transformacion }
                     Item { width: wsView.dims * (wsView.cw + 4 * root.u) + 14 * root.u; height: 1 }
                     Repeater {
-                        model: root.list(root.demo.extra ? root.demo.extra.values : [])
+                        model: root.valuesOf(root.demo.extra)
                         delegate: Cell {
                             required property var modelData
                             width: wsView.cw
                             height: wsView.rowH
                             value: modelData
-                            maxAbs: Math.max(root.maxAbsOf(root.demo.extra.values), 1e-6)
+                            maxAbs: Math.max(root.maxAbsOf(root.valuesOf(root.demo.extra)), 1e-6)
                         }
                     }
                 }
@@ -3116,8 +3124,8 @@ Item {
             readonly property int floors: layers.length
             readonly property real floorH: Math.max(20 * root.u, Math.min(34 * root.u, (height - 10 * root.u) / Math.max(1, floors) - 5 * root.u))
             readonly property real climb: root.ease(root.seg(0.08, 0.88)) * Math.max(0, floors - 1)
-            readonly property real maxAbs: Math.max(root.maxAbsOf(layers.map(function(layer) { return layer.values })), 1e-6)
-            readonly property real cw: root.cellWidth(root.list(layers.length ? layers[0].values : []).length, width - 330 * root.u, 62)
+            readonly property real maxAbs: Math.max(root.maxAbsOf(layers.map(function(layer) { return root.valuesOf(layer) })), 1e-6)
+            readonly property real cw: root.cellWidth(root.valuesOf(layers.length ? layers[0] : null).length, width - 330 * root.u, 62)
             Repeater {
                 model: stackView.layers
                 delegate: Item {
@@ -3149,7 +3157,7 @@ Item {
                             font.pixelSize: Math.max(11, 13 * root.u)
                         }
                         Repeater {
-                            model: root.list(floorItem.modelData.values)
+                            model: root.valuesOf(floorItem.modelData)
                             delegate: Cell {
                                 required property var modelData
                                 width: stackView.cw
@@ -4055,7 +4063,7 @@ Item {
         id: vectorComponent
         Item {
             id: vecView
-            readonly property var values: root.list(root.demo.values)
+            readonly property var values: root.valuesOf(root.demo)
             readonly property real maxAbs: Math.max(root.maxAbsOf(values), 1e-6)
             readonly property real chartH: Math.max(60 * root.u, height - 60 * root.u)
             readonly property real bw: Math.max(6 * root.u, Math.min(36 * root.u, width / Math.max(1, values.length) - 3 * root.u))

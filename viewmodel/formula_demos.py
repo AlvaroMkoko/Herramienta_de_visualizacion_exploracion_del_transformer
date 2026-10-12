@@ -30,6 +30,12 @@ def _num(value: Any) -> float | None:
     return round(numeric, 6)
 
 
+def _without_data(demo: dict[str, Any]) -> bool:
+    """Indica si todos los campos de datos (listas y dicts) del demo están vacíos."""
+    data = [value for value in demo.values() if isinstance(value, (list, tuple, dict))]
+    return bool(data) and all(len(value) == 0 for value in data)
+
+
 def _flat(tensor: torch.Tensor) -> torch.Tensor:
     return tensor.detach().float().cpu().reshape(-1)
 
@@ -312,6 +318,14 @@ class FormulaDemoBuilder:
                         "caption": f"No se pudo preparar la animación: {exc}"}
             if demo is None:
                 demo = self._training_demo(identifier)
+            if demo is not None and _without_data(demo):
+                # Una animación sin un solo dato se dibujaría como un marco
+                # vacío. Algunos campos son opcionales y vacíos con razón
+                # (``dropped``, ``extra``), por eso solo se descarta cuando
+                # todos lo están.
+                demo = {"kind": "unavailable", "title": step.get("formula", ""),
+                        "caption": "No se pudo preparar la animación: el paso "
+                                   f"«{identifier}» no produjo datos que animar."}
             if demo is not None:
                 demo.setdefault("formula", step.get("formula", ""))
                 demos[identifier] = demo

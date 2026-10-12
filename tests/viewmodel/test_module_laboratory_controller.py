@@ -10,6 +10,7 @@ import torch
 
 from model.motor_llm.config import ConfiguracionTransformer
 from model.motor_llm.transformer import Transformer
+from viewmodel.formula_demos import FormulaDemoBuilder, _without_data
 from viewmodel.module_laboratory_controller import ModuleLaboratoryController
 
 
@@ -378,3 +379,40 @@ def test_mascara_causal_animada_muestra_futuro_bloqueado_en_inferencia(
     for allowed, probability in zip(demo["allowed"], demo["probs"]):
         if not allowed:
             assert probability == 0.0
+
+
+@pytest.mark.parametrize(
+    ("demo", "esperado"),
+    [
+        # Todos los campos de datos vacíos: no hay nada que animar.
+        ({"kind": "backward", "title": "g", "gradient": [], "parameters": []}, True),
+        ({"kind": "weighted_sum", "labels": [], "extra": {}}, True),
+        # Un solo campo con datos basta; los opcionales vacíos son legítimos.
+        ({"kind": "map", "inputs": [1.0], "labels": [], "dropped": []}, False),
+        ({"kind": "weighted_sum", "labels": [], "extra": {"values": [0.5]}}, False),
+        # Sin campos de datos (solo escalares) no se puede juzgar: se conserva.
+        ({"kind": "no_grad", "title": "sin gradiente", "loss": None}, False),
+    ],
+)
+def test_without_data_solo_marca_demos_sin_ningun_dato(demo, esperado):
+    assert _without_data(demo) is esperado
+
+
+def test_build_convierte_un_demo_sin_datos_en_unavailable():
+    class _ConstructorDePrueba(FormulaDemoBuilder):
+        def __init__(self):  # build() no usa el contexto del modelo
+            pass
+
+        def _module_prueba(self, identifier):
+            if identifier == "vacio":
+                return {"kind": "backward", "gradient": [], "parameters": []}
+            return {"kind": "map", "inputs": [1.0], "dropped": []}
+
+    demos = _ConstructorDePrueba().build(
+        "module_prueba",
+        [{"id": "vacio", "formula": "g = ∂L/∂θ"}, {"id": "lleno", "formula": "y = f(x)"}],
+    )
+    assert demos["vacio"]["kind"] == "unavailable"
+    assert "vacio" in demos["vacio"]["caption"]
+    assert demos["vacio"]["formula"] == "g = ∂L/∂θ"
+    assert demos["lleno"]["kind"] == "map"

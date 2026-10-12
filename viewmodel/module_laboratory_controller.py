@@ -2294,6 +2294,11 @@ class ModuleLaboratoryController(QObject):
                 selected_token,
             )
             panels.extend(training_panels)
+        elif mode == "training":
+            # Sin pérdida no hay gradientes: seguir dejaría la evidencia de
+            # entrenamiento en blanco. _dispatch convierte esto en un error
+            # visible en la pantalla.
+            raise RuntimeError("el forward de entrenamiento no produjo pérdida")
 
         inference_snapshot: dict[str, Any] = {}
         if mode == "inference":
