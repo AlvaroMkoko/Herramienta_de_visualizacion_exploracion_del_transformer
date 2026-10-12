@@ -2,12 +2,16 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import "../styles" as Style
+import "ValueKinds.js" as ValueKinds
 
 Item {
     id: root
 
     property var matrix: []
     property string colorMode: "sequential" // sequential, diverging, mask
+    // value_kind del panel (ValueKinds.js): decide si hay escala de color y
+    // cómo se escriben los números.
+    property string valueKind: ValueKinds.CONTINUOUS
     property bool localScale: false
     property real globalMinimum: colorMode === "sequential" ? 0 : -1
     property real globalMaximum: 1
@@ -30,6 +34,25 @@ Item {
     readonly property int columns: rows > 0 && matrix[0] ? matrix[0].length : 0
     readonly property real dataMinimum: calculateMinimum()
     readonly property real dataMaximum: calculateMaximum()
+    // Con mín == máx el gradiente no codifica nada: una matriz constante (o
+    // de una sola celda) se pinta en un color neutro y con el valor escrito.
+    // La máscara queda fuera porque su color es categórico, no una escala.
+    readonly property bool constantValues: colorMode !== "mask"
+                                           && rows > 0 && columns > 0
+                                           && dataMinimum === dataMaximum
+    // Un valor categórico (un id) tampoco admite gradiente: el color
+    // sugeriría un orden que no existe. Se escribe el número en la celda.
+    readonly property bool discreteValues: colorMode !== "mask"
+                                           && ValueKinds.isDiscrete(valueKind)
+    readonly property bool withoutColorScale: constantValues || discreteValues
+    // Sin escala de color, el número es el único portador del dato. Si la
+    // celda es demasiado estrecha para escribirlo, la nota lo dice: una celda
+    // neutra y muda no transmitiría nada.
+    readonly property real minimumWrittenCellWidth: 28
+    readonly property real minimumWrittenCellHeight: 14
+    readonly property bool valuesFitInCells: columns > 0 && rows > 0
+                                             && canvas.width / columns >= minimumWrittenCellWidth
+                                             && canvas.height / rows >= minimumWrittenCellHeight
 
     signal cellSelected(int row, int column, real value)
 
@@ -56,6 +79,8 @@ Item {
     function colorFor(value) {
         if (root.colorMode === "mask")
             return Number(value) > 0 ? Style.Theme.surface : Style.Theme.borde_suave
+        if (root.withoutColorScale)
+            return Style.Theme.superficie_alterna
 
         var minimum = root.localScale ? root.dataMinimum : root.globalMinimum
         var maximum = root.localScale ? root.dataMaximum : root.globalMaximum
@@ -104,6 +129,16 @@ Item {
         return Number(auxiliary[selectedRow][selectedColumn]).toFixed(6)
     }
 
+    // Un id se escribe como entero; un valor continuo conserva sus decimales
+    // aunque sea un entero exacto: «1.000000» dice que es una medida.
+    function valueText(value) {
+        var number = Number(value)
+        if (!isFinite(number))
+            return "—"
+        return root.discreteValues && Number.isInteger(number)
+                ? String(number) : number.toFixed(6)
+    }
+
     onMatrixChanged: canvas.requestPaint()
     onLocalScaleChanged: canvas.requestPaint()
     onColorModeChanged: canvas.requestPaint()
@@ -150,6 +185,15 @@ Item {
                     ctx.fillStyle = root.colorFor(value)
                     ctx.fillRect(x, y, cellWidth + 0.4, cellHeight + 0.4)
 
+                    // Sin escala de color, el número es el único portador
+                    // del dato: se escribe en cada celda que lo admita.
+                    if (root.withoutColorScale && root.valuesFitInCells) {
+                        ctx.fillStyle = Style.Theme.texto_primario
+                        ctx.textAlign = "center"
+                        ctx.fillText(root.valueText(value), x + cellWidth / 2,
+                                     y + cellHeight / 2)
+                        ctx.textAlign = "right"
+                    }
                     if (root.colorMode === "mask" && value <= 0) {
                         ctx.strokeStyle = Style.Theme.texto_secundario
                         ctx.lineWidth = 0.7
@@ -174,6 +218,25 @@ Item {
             for (var col = 0; col < root.columns; col += labelStep)
                 ctx.fillText(String(root.columnOffset + col),
                              col * cellWidth + cellWidth / 2, height + 4)
+        }
+
+        Text {
+            objectName: "scientificMatrixConstantNote"
+            visible: root.withoutColorScale
+            anchors.top: parent.top
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.topMargin: 4
+            width: parent.width
+            horizontalAlignment: Text.AlignHCenter
+            wrapMode: Text.WordWrap
+            text: (root.discreteValues
+                   ? "Identificadores · sin escala de color"
+                   : "Valor constante " + root.valueText(root.dataMinimum)
+                     + " · sin escala de color")
+                  + (root.valuesFitInCells
+                     ? "" : " · los valores no caben: pasa el puntero por la celda")
+            color: Style.Theme.texto_secundario
+            font.pixelSize: 10
         }
 
         MouseArea {
@@ -219,7 +282,7 @@ Item {
                   + (root.columnOffset + root.selectedColumn)
                   + "\n" + root.valueLabel + ": "
                   + (root.rows && root.columns
-                     ? Number(root.matrix[root.selectedRow][root.selectedColumn]).toFixed(6)
+                     ? root.valueText(root.matrix[root.selectedRow][root.selectedColumn])
                      : "—")
                   + (root.rawScores.length ? "\nscore: " + root.auxiliaryValue(root.rawScores, "—") : "")
                   + (root.maskMatrix.length ? "\npermitido: " + (root.auxiliaryValue(root.maskMatrix, "1") !== "0.000000") : "")

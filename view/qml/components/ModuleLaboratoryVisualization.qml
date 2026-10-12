@@ -4,6 +4,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import "../styles" as Style
+import "ValueKinds.js" as ValueKinds
 
 Item {
     id: root
@@ -241,23 +242,32 @@ Item {
         var stats = panel && panel.stats ? panel.stats
                                          : (panel && panel.statistics
                                             ? panel.statistics : ({}))
+        var kind = ValueKinds.of(panel)
+        // La media o el mínimo de unos ids no significan nada: son etiquetas.
+        if (ValueKinds.isTokenIds(kind))
+            return "ids de token: categóricos, sin media ni escala"
         var mean = stats.media !== undefined ? stats.media : stats.mean
         var minimum = stats.minimo !== undefined ? stats.minimo : stats.min
         var maximum = stats.maximo !== undefined ? stats.maximo : stats.max
         var parts = []
         if (mean !== undefined)
-            parts.push("μ " + formatNumber(mean))
+            parts.push("μ " + formatNumber(mean, kind))
         if (minimum !== undefined)
-            parts.push("mín " + formatNumber(minimum))
+            parts.push("mín " + formatNumber(minimum, kind))
         if (maximum !== undefined)
-            parts.push("máx " + formatNumber(maximum))
+            parts.push("máx " + formatNumber(maximum, kind))
         return parts.length ? parts.join(" · ") : "Valores de la captura activa"
     }
 
-    function formatNumber(value) {
+    // `kind` es el value_kind del dato (ValueKinds.js). Un id se escribe como
+    // entero (100278, no 1.00e+5); un valor continuo conserva sus decimales
+    // aunque sea un entero exacto, porque los decimales dicen que es medida.
+    function formatNumber(value, kind) {
         var number = Number(value)
         if (!Number.isFinite(number))
             return "—"
+        if (ValueKinds.isDiscrete(kind) && Number.isInteger(number))
+            return String(number)
         var absolute = Math.abs(number)
         if (absolute !== 0 && (absolute >= 1000 || absolute < 0.001))
             return number.toExponential(2)
@@ -1536,6 +1546,13 @@ Item {
         property string valueLabel: "valor"
         property real sx: 1
         property real sy: 1
+        // Los ids de token se leen como fichas «texto · id», igual que la
+        // fila TEXTO → TOKENS: en un mapa de calor el color mentiría un orden.
+        readonly property bool tokenIds: ValueKinds.isTokenIds(
+                                             ValueKinds.of(matrixCard.panel))
+        readonly property var tokenLabels: matrixCard.panel
+                                           && matrixCard.panel.token_labels
+                                           ? matrixCard.panel.token_labels : []
 
         signal inspectRequested(var panel)
 
@@ -1589,10 +1606,87 @@ Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
 
-                ScientificMatrix {
+                Flickable {
+                    objectName: "moduleLabTokenIdGrid"
                     anchors.fill: parent
-                    visible: matrixCard.matrix.length > 0
+                    visible: matrixCard.tokenIds && matrixCard.matrix.length > 0
+                    clip: true
+                    contentWidth: width
+                    contentHeight: tokenRows.implicitHeight
+                    boundsBehavior: Flickable.StopAtBounds
+
+                    Column {
+                        id: tokenRows
+                        width: parent.width
+                        spacing: 8 * matrixCard.sy
+
+                        Repeater {
+                            model: matrixCard.tokenIds ? matrixCard.matrix : []
+
+                            delegate: Row {
+                                id: tokenRow
+                                required property var modelData
+                                required property int index
+                                width: tokenRows.width
+                                spacing: 8 * matrixCard.sx
+
+                                Text {
+                                    width: 30 * matrixCard.sx
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: matrixCard.rowPrefix + (tokenRow.index + 1)
+                                    color: Style.Theme.texto_secundario
+                                    font.family: Style.Theme.fuente_mono
+                                    font.pixelSize: Math.max(9, 10 * matrixCard.sx)
+                                }
+
+                                Flow {
+                                    width: tokenRow.width - 38 * matrixCard.sx
+                                    spacing: 6 * matrixCard.sx
+
+                                    Repeater {
+                                        model: tokenRow.modelData
+
+                                        delegate: Rectangle {
+                                            id: idChip
+                                            objectName: "moduleLabTokenIdChip"
+                                            required property var modelData
+                                            required property int index
+                                            readonly property string label: {
+                                                var row = matrixCard.tokenLabels[tokenRow.index]
+                                                return row && row[idChip.index] !== undefined
+                                                        ? String(row[idChip.index]) : "?"
+                                            }
+                                            readonly property string chipText: idChip.label
+                                                                               + " · " + String(idChip.modelData)
+                                            width: Math.max(54 * matrixCard.sx,
+                                                            idText.implicitWidth + 16 * matrixCard.sx)
+                                            height: 30 * matrixCard.sy
+                                            radius: 8 * matrixCard.sx
+                                            color: Style.Theme.chip_fondo
+                                            border.color: Style.Theme.chip_borde
+
+                                            Text {
+                                                id: idText
+                                                anchors.centerIn: parent
+                                                text: idChip.chipText
+                                                color: Style.Theme.chip_texto
+                                                font.family: Style.Theme.fuente_mono
+                                                font.pixelSize: Math.max(9, 10 * matrixCard.sx)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                ScientificMatrix {
+                    objectName: "moduleLabTensorMatrix"
+                    anchors.fill: parent
+                    visible: !matrixCard.tokenIds && matrixCard.matrix.length > 0
                     matrix: matrixCard.matrix
+                    valueKind: ValueKinds.of(matrixCard.panel)
                     colorMode: matrixCard.colorMode
                     localScale: matrixCard.colorMode === "diverging"
                     rowPrefix: matrixCard.rowPrefix

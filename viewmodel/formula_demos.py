@@ -79,6 +79,10 @@ def _dot_output(
     b = _flat(weights)
     products = a * b
     shown = min(VISIBLE, products.numel())
+    # El sesgo puede ser un parámetro del modelo con requires_grad; sin
+    # detach() PyTorch avisa en cada ejecución y ensucia la consola.
+    if isinstance(bias, torch.Tensor):
+        bias = bias.detach()
     bias_value = None if bias is None else float(bias)
     total = float(products.sum().item()) + (bias_value or 0.0)
     if divisor:

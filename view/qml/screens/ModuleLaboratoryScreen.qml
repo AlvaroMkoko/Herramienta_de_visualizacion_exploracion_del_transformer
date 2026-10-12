@@ -6,6 +6,7 @@ import QtQuick.Layouts
 import QtQuick.Window
 import "../styles" as Style
 import "../components"
+import "../components/ValueKinds.js" as ValueKinds
 
 PagePrincipal {
     id: root
@@ -195,16 +196,21 @@ PagePrincipal {
         return "Índice " + absoluteIndex
     }
 
-    function formattedValue(value) {
+    // `kind` es el value_kind del panel (ValueKinds.js). Un id va como entero
+    // y antes que la notación científica (si no, 100278 salía 1.0028e+5); un
+    // valor continuo conserva sus decimales aunque sea un entero exacto.
+    function formattedValue(value, kind) {
         if (typeof value === "boolean")
             return value ? "True" : "False"
         var numeric = Number(value)
         if (!Number.isFinite(numeric))
             return String(value)
+        if (ValueKinds.isDiscrete(kind) && Number.isInteger(numeric))
+            return String(numeric)
         var absolute = Math.abs(numeric)
         if (absolute !== 0 && (absolute >= 1000 || absolute < 0.0001))
             return numeric.toExponential(4)
-        return numeric.toFixed(Number.isInteger(numeric) ? 0 : 6)
+        return numeric.toFixed(6)
     }
 
     Component.onCompleted: {
@@ -899,7 +905,7 @@ PagePrincipal {
                 radius: 9 * root.uiScale
                 color: Style.Theme.superficie_alterna
                 border.color: Style.Theme.borde_suave
-                ScientificMatrix { anchors.fill: parent; anchors.margins: 10 * root.uiScale; matrix: root.inspectedPanel.matrix || []; colorMode: root.inspectedPanel.color_mode || "diverging"; localScale: true; alternativeText: "Vista matricial de " + root.inspectedTitle }
+                ScientificMatrix { anchors.fill: parent; anchors.margins: 10 * root.uiScale; matrix: root.inspectedPanel.matrix || []; valueKind: ValueKinds.of(root.inspectedPanel); colorMode: root.inspectedPanel.color_mode || "diverging"; localScale: true; alternativeText: "Vista matricial de " + root.inspectedTitle }
             }
             GridView {
                 id: valueGrid
@@ -936,7 +942,8 @@ PagePrincipal {
                         }
                         Text {
                             width: parent.width
-                            text: root.formattedValue(valueCell.modelData)
+                            text: root.formattedValue(valueCell.modelData,
+                                                      ValueKinds.of(root.inspectedPanel))
                             color: Style.Theme.texto_primario
                             font.family: Style.Theme.fuente_mono
                             font.bold: true

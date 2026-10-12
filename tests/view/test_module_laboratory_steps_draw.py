@@ -237,3 +237,43 @@ def test_tarjeta_explica_un_panel_que_llega_sin_matriz_dibujable(laboratorio, qa
     )
     _item, texto = mensaje()
     assert not texto.isVisible()
+
+
+def _items_visuales(raiz: QQuickItem, nombre: str) -> list[QQuickItem]:
+    # Los items de un Repeater cuelgan del árbol visual (childItems), no
+    # siempre del árbol de QObject: findChildren no los encuentra.
+    encontrados = []
+    pendientes = [raiz]
+    while pendientes:
+        actual = pendientes.pop()
+        if actual.objectName() == nombre:
+            encontrados.append(actual)
+        pendientes.extend(actual.childItems())
+    return encontrados
+
+
+@pytest.mark.parametrize("mode", ["inference", "training"])
+def test_modulo_1_dibuja_ids_como_fichas_y_no_como_mapa_de_calor(laboratorio, qapp, mode):
+    # El paso «Tokens especiales» era un rectángulo azul liso: [[BOS]] como
+    # mapa de calor de una celda. Los ids se leen como fichas «texto · id».
+    controller, window = laboratorio
+    controller.explore("module_1", "texto", mode, 0, 0, 0, 0.8, 5, 0.9, True)
+    result = controller.result
+    visual = window.findChild(QObject, "stepsVisualizationUnderTest")
+    visual.setProperty("moduleId", "module_1")
+    visual.setProperty("mode", mode)
+    visual.setProperty("analysis", result)
+    specials = next(step for step in result["steps"] if step["id"] == "specials")
+    visual.setProperty("step", specials)
+    qapp.processEvents()
+
+    loader = window.findChild(QQuickItem, "moduleLabSpecializedLoader")
+    item = loader.property("item")
+    assert item is not None
+    grid = item.findChild(QQuickItem, "moduleLabTokenIdGrid")
+    assert grid is not None and grid.isVisible()
+    chips = _items_visuales(grid, "moduleLabTokenIdChip")
+    textos = [chip.property("chipText") for chip in chips]
+    assert any(texto.startswith("BOS · ") for texto in textos), textos
+    heatmap = item.findChild(QQuickItem, "moduleLabTensorMatrix")
+    assert heatmap is not None and not heatmap.isVisible()

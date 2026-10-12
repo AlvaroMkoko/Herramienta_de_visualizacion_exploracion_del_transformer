@@ -11,7 +11,11 @@ import torch
 from model.motor_llm.config import ConfiguracionTransformer
 from model.motor_llm.transformer import Transformer
 from viewmodel.formula_demos import FormulaDemoBuilder, _without_data
-from viewmodel.module_laboratory_controller import ModuleLaboratoryController
+from viewmodel.module_laboratory_controller import (
+    VALUE_KIND_CONTINUOUS,
+    VALUE_KIND_TOKEN_IDS,
+    ModuleLaboratoryController,
+)
 
 
 class TokenizerStub:
@@ -416,3 +420,130 @@ def test_build_convierte_un_demo_sin_datos_en_unavailable():
     assert "vacio" in demos["vacio"]["caption"]
     assert demos["vacio"]["formula"] == "g = ∂L/∂θ"
     assert demos["lleno"]["kind"] == "map"
+
+
+def _panels_by_key(result):
+    return {panel["key"]: panel for panel in result["panels"]}
+
+
+def test_paneles_de_ids_declaran_su_tipo_y_traen_fichas(specialized_laboratory):
+    # Un id de token es categórico: la vista lo dibuja como ficha «texto · id»
+    # en vez de mapa de calor. Para eso el panel lo declara y trae el texto.
+    controller, _model = specialized_laboratory
+    controller.explore("module_1", "texto", "training", 0, 0, 0, 0.8, 5, 0.9, True)
+    panels = _panels_by_key(controller.result)
+
+    token_ids = panels["token_ids"]
+    assert token_ids["value_kind"] == VALUE_KIND_TOKEN_IDS
+    assert [len(row) for row in token_ids["token_labels"]] == [
+        len(row) for row in token_ids["matrix"]
+    ]
+    assert token_ids["token_labels"][0] == ["t3", "t7", "t9"]
+    # La fila didáctica truncada se rellena con PAD, que se nombra.
+    assert "PAD" in token_ids["token_labels"][1]
+
+    decoder = panels["decoder_tokens"]
+    assert decoder["value_kind"] == VALUE_KIND_TOKEN_IDS
+    assert decoder["token_labels"][0][0] == "BOS"
+
+    # Las posiciones son ordinales y serán el siguiente tipo discreto; hoy
+    # siguen como continuas a propósito.
+    assert panels["positions"]["value_kind"] == VALUE_KIND_CONTINUOUS
+    assert "token_labels" not in panels["positions"]
+    assert panels["padding_mask"]["value_kind"] == VALUE_KIND_CONTINUOUS
+
+
+@pytest.mark.parametrize(
+    ("module_id", "mode", "key"),
+    [
+        ("module_6", "inference", "decoder_tokens"),
+        ("module_7", "inference", "selected_token"),
+        ("module_7", "training", "training_targets"),
+        ("module_8", "inference", "tokens"),
+        ("module_8", "inference", "selected_token"),
+    ],
+)
+def test_los_demas_paneles_de_ids_tambien_se_declaran(
+    specialized_laboratory, module_id, mode, key
+):
+    controller, _model = specialized_laboratory
+    controller.explore(module_id, "texto", mode, 0, 0, 0, 0.8, 5, 0.9, True)
+    panel = _panels_by_key(controller.result)[key]
+    assert panel["value_kind"] == VALUE_KIND_TOKEN_IDS
+    assert panel["token_labels"] and panel["token_labels"][0]
+
+
+def test_los_paneles_continuos_no_traen_fichas(specialized_laboratory):
+    controller, _model = specialized_laboratory
+    controller.explore("module_3", "texto", "inference", 0, 0, 0, 0.8, 5, 0.9, True)
+    for panel in controller.result["panels"]:
+        assert panel["value_kind"] == VALUE_KIND_CONTINUOUS, panel["key"]
+        assert "token_labels" not in panel
+
+
+def test_value_kind_desconocido_se_rechaza(specialized_laboratory):
+    # Un tipo que la vista no conoce caería en "continuo" sin avisar.
+    controller, _model = specialized_laboratory
+    with pytest.raises(ValueError):
+        controller._panel("x", "X", "", torch.zeros(2, 2), value_kind="positions")
+
+
+def test_pad_se_rotula_por_posicion_aunque_su_id_sea_un_token_real():
+    # El PAD de este modelo (7) es también un token que produce el
+    # tokenizador. Rotular por valor llamaría «PAD» al token real t7 y
+    # enseñaría algo falso: el rol sale de cómo se construyó cada fila.
+    config = ConfiguracionTransformer(
+        tamano_vocabulario=40,
+        dimension_modelo=16,
+        num_cabezas=4,
+        num_capas=2,
+        dimension_ff=32,
+        longitud_maxima_secuencia=12,
+        dropout=0.0,
+        id_token_relleno=7,
+    )
+    controller = ModuleLaboratoryController()
+    controller.set_model(Transformer(config), TokenizerStub())
+    controller.explore("module_1", "texto", "training", 0, 0, 0, 0.8, 5, 0.9, True)
+    panels = _panels_by_key(controller.result)
+
+    token_ids = panels["token_ids"]
+    assert token_ids["matrix"][0] == [3, 7, 9]
+    assert token_ids["token_labels"][0] == ["t3", "t7", "t9"]
+    # La fila truncada sí tiene relleno, con el mismo id 7, y ahí es PAD.
+    assert token_ids["matrix"][1] == [3, 7, 7]
+    assert token_ids["token_labels"][1] == ["t3", "PAD", "PAD"]
+
+    decoder = panels["decoder_tokens"]
+    assert decoder["token_labels"][0] == ["BOS", "t3", "t7", "t9"]
+    assert decoder["token_labels"][1][:2] == ["BOS", "t3"]
+    assert set(decoder["token_labels"][1][2:]) == {"PAD"}
+
+    # EOS también por posición: se añadió al final del objetivo.
+    controller.explore("module_7", "texto", "training", 0, 0, 0, 0.8, 5, 0.9, True)
+    targets = _panels_by_key(controller.result)["training_targets"]
+    assert targets["token_labels"][0] == ["t3", "t7", "t9", "EOS"]
+
+
+def test_prefijo_de_inferencia_conserva_un_token_real_con_el_id_de_pad():
+    # En inferencia el objetivo nunca se rellena, así que no hay PAD que
+    # quitar. Un filtro por id borraría el token real t7 del prefijo.
+    config = ConfiguracionTransformer(
+        tamano_vocabulario=40,
+        dimension_modelo=16,
+        num_cabezas=4,
+        num_capas=2,
+        dimension_ff=32,
+        longitud_maxima_secuencia=12,
+        dropout=0.0,
+        id_token_relleno=7,
+    )
+    controller = ModuleLaboratoryController()
+    controller.set_model(Transformer(config), TokenizerStub())
+    # token_index=2 → prefijo del decoder [BOS, 3, 7].
+    controller.explore("module_7", "texto", "inference", 0, 0, 2, 0.8, 5, 0.9, True)
+    snapshot = controller.result["inference_snapshot"]
+
+    salida = [token["token_id"] for token in snapshot["tokens_salida"]]
+    assert salida[:2] == [3, 7]
+    assert snapshot["tokens_salida_total"] == 3

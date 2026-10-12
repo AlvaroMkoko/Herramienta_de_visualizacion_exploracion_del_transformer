@@ -20,6 +20,17 @@ from .formula_demos import build_formula_demos
 from .visual_adapter import construir_detalle_forward, resumir_paso_inferencia
 
 
+# Qué representan los valores de un panel. La vista decide con esto cómo
+# dibujarlo y cómo escribir sus números: un id de token es categórico (el
+# 8921 no es "menos" que el 81641), así que no admite escala de color y se
+# escribe como entero; un valor continuo conserva sus decimales aunque caiga
+# en un entero exacto. Las posiciones son el siguiente candidato (son
+# ordinales); añadir un tipo exige también enseñárselo a ValueKinds.js.
+VALUE_KIND_CONTINUOUS = "continuous"
+VALUE_KIND_TOKEN_IDS = "token_ids"
+VALUE_KINDS = (VALUE_KIND_CONTINUOUS, VALUE_KIND_TOKEN_IDS)
+
+
 _LEGACY_PANEL_KEYS: dict[str, tuple[str, ...]] = {
     "module_1": ("token_ids", "padding_mask"),
     "module_2": ("embedding", "position", "embedding_plus_position"),
@@ -1042,6 +1053,11 @@ class ModuleLaboratoryController(QObject):
         self._tokenizer = None
         self._result: dict[str, Any] = {}
         self._full_values: dict[str, list[float | int | bool]] = {}
+        # Especiales cuyo id queda fuera del vocabulario del tokenizador: ahí
+        # el id no puede ser un token real, así que nombrarlo por valor es
+        # seguro. Solo sirve de respaldo cuando no hay rol por posición (el
+        # token elegido); se fija en cada exploración.
+        self._special_ids_outside_vocabulary: dict[int, str] = {}
 
     def set_model(self, model, tokenizer) -> None:
         self._model = model
@@ -1107,7 +1123,11 @@ class ModuleLaboratoryController(QObject):
         *,
         color_mode: str = "diverging",
         preview_limit: int = 12,
+        value_kind: str = VALUE_KIND_CONTINUOUS,
+        token_roles: list[list[str | None]] | None = None,
     ) -> dict[str, Any]:
+        if value_kind not in VALUE_KINDS:
+            raise ValueError(f"value_kind desconocido: {value_kind!r}")
         detached = tensor.detach().cpu()
         values = detached.reshape(-1).tolist()
         normalized = [self._normalized_scalar(value) for value in values]
@@ -1124,7 +1144,26 @@ class ModuleLaboratoryController(QObject):
             else {}
         )
         matrix = self._matrix_preview(detached)
+        extra: dict[str, Any] = {}
+        if value_kind == VALUE_KIND_TOKEN_IDS:
+            # Texto paralelo a la matriz: la vista dibuja fichas «texto · id»
+            # en vez de un mapa de calor, como la fila TEXTO → TOKENS.
+            # `token_roles` (de _prepare_inputs) nombra BOS/EOS/PAD por la
+            # posición en que se insertaron, no por su id.
+            roles = token_roles or []
+            extra["token_labels"] = [
+                [
+                    self._token_label(
+                        cell,
+                        roles[r][c] if r < len(roles) and c < len(roles[r]) else None,
+                    )
+                    for c, cell in enumerate(row)
+                ]
+                for r, row in enumerate(matrix)
+            ]
         return {
+            **extra,
+            "value_kind": value_kind,
             "key": key,
             "title": title,
             "description": description,
@@ -1158,6 +1197,15 @@ class ModuleLaboratoryController(QObject):
         except Exception:  # noqa: BLE001 - algunos especiales no decodifican
             return f"<{token_id}>"
         return str(text).replace("\n", "↵").replace("\t", "⇥") or "∅"
+
+    def _token_label(self, token_id: Any, role: str | None = None) -> str:
+        if role is not None:
+            return role
+        identifier = int(token_id)
+        special = self._special_ids_outside_vocabulary.get(identifier)
+        if special is not None:
+            return special
+        return self._token_text(self._tokenizer, identifier)
 
     @staticmethod
     def _special_ids(tokenizer, config) -> tuple[int, int | None, int | None]:
@@ -1218,25 +1266,43 @@ class ModuleLaboratoryController(QObject):
             else torch.tensor(source_rows, dtype=torch.long, device=device)
         )
 
+        # Rol de cada posición según cómo se construyó la fila, no según su
+        # id: si el PAD del modelo coincide con un token real, comparar ids
+        # rotularía ese token como «PAD» y enseñaría algo falso. None = token
+        # de contenido.
+        source_roles = self._padded_roles(
+            [[None] * len(row) for row in source_rows], source.size(1)
+        )
+        objective_roles: list[list[str | None]] | None = None
         if mode == "training":
             target_inputs: list[list[int]] = []
             objectives: list[list[int]] = []
+            target_role_rows: list[list[str | None]] = []
+            objective_role_rows: list[list[str | None]] = []
             for row in source_rows:
                 objective = list(row)
+                roles: list[str | None] = [None] * len(row)
                 if eos is not None and len(objective) < maximum:
                     objective.append(eos)
+                    roles.append("EOS")
                 objective = objective[:maximum]
+                roles = roles[:maximum]
                 decoder_input = ([bos] + objective[:-1])[:maximum]
                 target_inputs.append(decoder_input)
                 objectives.append(objective)
+                target_role_rows.append((["BOS"] + roles[:-1])[:maximum])
+                objective_role_rows.append(roles)
             target_pad = int(pad) if pad is not None else 0
             target = self._pad_rows(target_inputs, target_pad, device)
             objective = self._pad_rows(objectives, target_pad, device)
+            target_roles = self._padded_roles(target_role_rows, target.size(1))
+            objective_roles = self._padded_roles(objective_role_rows, objective.size(1))
         else:
             prefix_count = max(0, min(int(selected_token), len(source_ids)))
             prefix = ([bos] + source_ids[:prefix_count])[:maximum]
             target = torch.tensor([prefix], dtype=torch.long, device=device)
             objective = None
+            target_roles = [(["BOS"] + [None] * prefix_count)[:maximum]]
 
         encoder_mask, _ = model.crear_mascaras(source, target)
         length = target.size(1)
@@ -1254,7 +1320,17 @@ class ModuleLaboratoryController(QObject):
             "bos": bos,
             "eos": eos,
             "pad": pad,
+            "source_roles": source_roles,
+            "target_roles": target_roles,
+            "objective_roles": objective_roles,
         }
+
+    @staticmethod
+    def _padded_roles(
+        rows: list[list[str | None]], width: int
+    ) -> list[list[str | None]]:
+        """Completa cada fila de roles con «PAD» hasta el ancho del tensor."""
+        return [list(row) + ["PAD"] * (width - len(row)) for row in rows]
 
     @staticmethod
     def _component_parameters(
@@ -1572,6 +1648,8 @@ class ModuleLaboratoryController(QObject):
                         batch_description,
                         source,
                         color_mode="sequential",
+                        value_kind=VALUE_KIND_TOKEN_IDS,
+                        token_roles=prepared["source_roles"],
                     ),
                     self._panel(
                         "positions",
@@ -1586,6 +1664,8 @@ class ModuleLaboratoryController(QObject):
                         "Entrada real que recibe el decoder en este experimento.",
                         target,
                         color_mode="sequential",
+                        value_kind=VALUE_KIND_TOKEN_IDS,
+                        token_roles=prepared["target_roles"],
                     ),
                     self._panel(
                         "padding_mask",
@@ -1839,6 +1919,8 @@ class ModuleLaboratoryController(QObject):
                         "IDs que entran realmente al decoder.",
                         target,
                         color_mode="sequential",
+                        value_kind=VALUE_KIND_TOKEN_IDS,
+                        token_roles=prepared["target_roles"],
                     ),
                     self._panel(
                         "decoder_input",
@@ -1939,6 +2021,7 @@ class ModuleLaboratoryController(QObject):
                         "ID elegido por la distribución mostrada.",
                         torch.tensor([selected_id], device=raw.device),
                         color_mode="sequential",
+                        value_kind=VALUE_KIND_TOKEN_IDS,
                     ),
                 ]
             )
@@ -1959,6 +2042,8 @@ class ModuleLaboratoryController(QObject):
                             "Respuesta esperada por posición.",
                             objective,
                             color_mode="sequential",
+                            value_kind=VALUE_KIND_TOKEN_IDS,
+                            token_roles=prepared["objective_roles"],
                         ),
                         self._panel(
                             "loss_per_position",
@@ -1980,6 +2065,8 @@ class ModuleLaboratoryController(QObject):
                     "Inicio discreto de la traza completa.",
                     source,
                     color_mode="sequential",
+                    value_kind=VALUE_KIND_TOKEN_IDS,
+                    token_roles=prepared["source_roles"],
                 ),
                 self._panel(
                     "embedding",
@@ -2025,6 +2112,7 @@ class ModuleLaboratoryController(QObject):
                     "Salida que se realimentaría al decoder.",
                     torch.tensor([selected_id], device=raw.device),
                     color_mode="sequential",
+                    value_kind=VALUE_KIND_TOKEN_IDS,
                 ),
             ]
         )
@@ -2196,6 +2284,20 @@ class ModuleLaboratoryController(QObject):
         layer = max(0, min(layer_index, int(config.num_capas) - 1))
         head = max(0, min(head_index, int(config.num_cabezas) - 1))
         prepared = self._prepare_inputs(module_id, text, mode, token_index)
+        vocabulary = getattr(tokenizer, "vocab_size", None)
+        if callable(vocabulary):
+            vocabulary = vocabulary()
+        self._special_ids_outside_vocabulary = {
+            int(identifier): label
+            for label, identifier in (
+                ("PAD", prepared["pad"]),
+                ("EOS", prepared["eos"]),
+                ("BOS", prepared["bos"]),
+            )
+            if identifier is not None
+            and isinstance(vocabulary, int)
+            and int(identifier) >= vocabulary
+        }
         source = prepared["source"]
         target = prepared["target"]
         objective = prepared["objective"]
@@ -2302,10 +2404,12 @@ class ModuleLaboratoryController(QObject):
 
         inference_snapshot: dict[str, Any] = {}
         if mode == "inference":
+            # Sin filtro de PAD a propósito: en inferencia el objetivo es una
+            # sola fila [BOS] + prefijo que _prepare_inputs nunca rellena. Un
+            # filtro por id no podría quitar relleno (no lo hay) y sí borraría
+            # un token real cuyo id coincida con el de PAD. No lo repongas.
             generated_prefix = [
-                int(value)
-                for value in target[0, 1:].detach().cpu().tolist()
-                if prepared["pad"] is None or int(value) != int(prepared["pad"])
+                int(value) for value in target[0, 1:].detach().cpu().tolist()
             ]
             step_data = {
                 "paso": 0,

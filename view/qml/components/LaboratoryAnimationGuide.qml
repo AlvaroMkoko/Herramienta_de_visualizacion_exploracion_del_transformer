@@ -4,6 +4,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import "../styles" as Style
+import "ValueKinds.js" as ValueKinds
 
 Item {
     id: root
@@ -109,10 +110,14 @@ Item {
         return valueOr(shape, "—")
     }
 
-    function numberText(value) {
+    // `kind` es el value_kind del dato (ValueKinds.js): solo un id se escribe
+    // como entero; un valor continuo conserva sus decimales.
+    function numberText(value, kind) {
         var number = Number(value)
         if (!Number.isFinite(number))
             return "—"
+        if (ValueKinds.isDiscrete(kind) && Number.isInteger(number))
+            return String(number)
         var absolute = Math.abs(number)
         if (absolute !== 0 && (absolute >= 1000 || absolute < 0.001))
             return number.toExponential(2)
@@ -140,10 +145,14 @@ Item {
                 + "\nforma " + shapeText()
                 + " · " + Number(panel.full_length || 0) + " valores"
         var stats = panel.stats || ({})
-        if (stats.mean !== undefined || stats.min !== undefined || stats.max !== undefined)
-            result += "\nmedia " + numberText(stats.mean)
-                    + " · mín. " + numberText(stats.min)
-                    + " · máx. " + numberText(stats.max)
+        var kind = ValueKinds.of(panel)
+        // La media de unos ids no significa nada: son etiquetas, no medidas.
+        if (ValueKinds.isTokenIds(kind))
+            result += "\nids de token: categóricos, sin media ni escala"
+        else if (stats.mean !== undefined || stats.min !== undefined || stats.max !== undefined)
+            result += "\nmedia " + numberText(stats.mean, kind)
+                    + " · mín. " + numberText(stats.min, kind)
+                    + " · máx. " + numberText(stats.max, kind)
         if (Boolean(panel.matrix_truncated))
             result += "\nLa matriz visible es una muestra; el cálculo usa el tensor completo."
         return result
