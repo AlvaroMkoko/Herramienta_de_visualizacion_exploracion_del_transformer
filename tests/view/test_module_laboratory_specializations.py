@@ -615,9 +615,32 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(qapp, tmp_path):
     formula_explanation = window.findChild(QObject, "formulaAnimationExplanation")
     formula_caption = window.findChild(QObject, "formulaAnimationCaption")
     detach_button = window.findChild(QObject, "moduleLaboratoryDetachGuide")
+    workspace_tabs = window.findChild(QObject, "moduleLaboratoryWorkspaceTabs")
+    level_tabs = window.findChild(QQuickItem, "moduleLaboratoryLearningLevelTabs")
+    level_summary = window.findChild(
+        QQuickItem, "moduleLaboratoryLearningLevelSummary"
+    )
+    level_summary_card = window.findChild(
+        QQuickItem, "moduleLaboratoryLearningLevelSummaryCard"
+    )
+    mode_summary = window.findChild(QObject, "moduleLaboratoryModeSummary")
+    essential_step = window.findChild(
+        QObject, "moduleLaboratoryEssentialStepCard"
+    )
     detached_window = window.findChild(
         QObject, "moduleLaboratoryDetachedGuideWindow"
     )
+    detached_guide = window.findChild(
+        QObject, "moduleLaboratoryDetachedAnimationGuide"
+    )
+    step_list = window.findChild(QObject, "moduleLaboratoryStepList")
+    advanced_controls = window.findChild(
+        QObject, "moduleLaboratoryAdvancedControls"
+    )
+    guide_data_tab = window.findChild(QObject, "moduleLaboratoryGuideDataTab")
+    guide_input = window.findChild(QObject, "moduleLaboratoryGuideInput")
+    progress = window.findChild(QObject, "moduleLaboratoryProgress")
+    overview_map = window.findChild(QObject, "moduleLaboratoryOverviewMap")
     assert all(
         item is not None
         for item in (
@@ -640,7 +663,20 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(qapp, tmp_path):
             formula_explanation,
             formula_caption,
             detach_button,
+            workspace_tabs,
+            level_tabs,
+            level_summary,
+            level_summary_card,
+            mode_summary,
+            essential_step,
             detached_window,
+            detached_guide,
+            step_list,
+            advanced_controls,
+            guide_data_tab,
+            guide_input,
+            progress,
+            overview_map,
         )
     )
     assert visualization.property("specializationKind") == "attention"
@@ -659,19 +695,34 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(qapp, tmp_path):
     # La ayuda especializada también queda visible junto a la fórmula y no
     # depende de que el estudiante abra la ventana separada.
     assert str(formula_scene.property("formulaExplanation")).strip()
-    assert str(formula_explanation.property("text")) == str(
-        formula_scene.property("formulaExplanation")
-    )
+    assert str(formula_explanation.property("text")) == str(first_step["explanation"])
     assert expected_animation in str(formula_caption.property("text"))
     assert "tres tarjetas" not in str(formula_caption.property("text")).lower()
     assert str(guide_formula_reading.property("text")).startswith("CÓMO LEERLA")
     assert "Produce «" in str(guide_purpose.property("text"))
     assert "Datos reales" in str(guide_evidence.property("body"))
 
-    # La vista abre con la explicación cerrada: los pasos y la animación usan
-    # todo el ancho disponible, sin una tercera columna permanente.
+    # La vista abre en nivel Esencial y muestra una sola fuente de atención.
+    assert screen.property("learningLevel") == "essential"
+    assert bool(level_summary.property("truncated")) is False
+    assert bool(mode_summary.property("truncated")) is False
+    assert level_tabs.y() + level_tabs.height() <= level_summary_card.y() + 1
+    assert int(workspace_tabs.property("currentIndex")) == 1
+    assert bool(essential_step.property("visible")) is True
+    assert bool(step_list.property("visible")) is False
+    assert bool(advanced_controls.property("visible")) is False
+    assert bool(detach_button.property("visible")) is False
+    assert 0 < float(progress.property("value")) <= 1
     assert screen.property("guideDetached") is False
     assert guide.property("visible") is False
+
+    screen.setProperty("workspaceSection", 2)
+    qapp.processEvents()
+    assert bool(guide.property("visible")) is True
+    assert bool(guide_input.property("visible")) is True
+    assert bool(guide_context.property("visible")) is False
+    assert bool(guide_data_tab.property("visible")) is False
+    screen.setProperty("workspaceSection", 0)
     wide_without_guide = [
         _rect_in(item, workspace) for item in (step_pane, visual_pane)
     ]
@@ -684,14 +735,24 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(qapp, tmp_path):
     assert wide_without_guide[0].right() <= wide_without_guide[1].left() + 1
     assert wide_without_guide[1].right() <= workspace.width() + 1
 
-    # La explicación se abre en una ventana independiente, por lo que el ancho
-    # de la animación principal no cambia.
+    # Avanzado recupera la ventana separada, los datos y todos los controles.
     initial_visual_width = visual_pane.width()
+    screen.setProperty("learningLevel", "advanced")
+    qapp.processEvents()
+    assert bool(step_list.property("visible")) is True
+    assert bool(advanced_controls.property("visible")) is True
+    assert bool(detach_button.property("visible")) is True
+    assert bool(level_summary.property("truncated")) is False
+    assert bool(mode_summary.property("truncated")) is False
+    screen.setProperty("workspaceSection", 2)
+    qapp.processEvents()
+    assert bool(guide_data_tab.property("visible")) is True
+    screen.setProperty("workspaceSection", 0)
     screen.setProperty("guideDetached", True)
     for _ in range(4):
         qapp.processEvents()
     assert detached_window.property("visible") is True
-    assert guide.property("visible") is True
+    assert detached_guide.property("visible") is True
     assert abs(visual_pane.width() - initial_visual_width) <= 1
 
     # A 1280 px, los pasos se colocan arriba y la escena conserva todo el ancho.
@@ -703,6 +764,8 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(qapp, tmp_path):
     assert screen.property("mediumLayout") is True
     assert screen.property("narrowLayout") is False
     assert model_status.property("visible") is True
+    assert bool(level_summary.property("truncated")) is False
+    assert level_tabs.y() + level_tabs.height() <= level_summary_card.y() + 1
     medium = [_rect_in(item, workspace) for item in (step_pane, visual_pane)]
     assert medium[0].bottom() <= medium[1].top() + 1
     assert medium[1].width() >= workspace.width() - 2
@@ -717,6 +780,8 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(qapp, tmp_path):
     assert screen.property("mediumLayout") is False
     assert screen.property("narrowLayout") is True
     assert model_status.property("visible") is False
+    assert bool(level_summary.property("truncated")) is False
+    assert level_tabs.y() + level_tabs.height() <= level_summary_card.y() + 1
     compact = [_rect_in(item, workspace) for item in (step_pane, visual_pane)]
     assert compact[0].bottom() <= compact[1].top() + 1
     assert all(
@@ -733,6 +798,61 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(qapp, tmp_path):
 
     assert detached_window.property("visible") is False
     assert screen.property("workspacePreferredHeight") < 1000
+
+    # Decoder abre primero un mapa general por bloques y permite saltar a cada
+    # parte sin mezclar todas sus operaciones en una sola explicación.
+    view_model._course_controller.selectModule("module_6")
+    view_model.moduleLaboratoryController.explore(
+        "module_6", "texto", "inference", 0, 0, 1, 1.0, 5, 0.9, True
+    )
+    screen.setProperty("moduleId", "module_6")
+    screen.setProperty("learningLevel", "essential")
+    for _ in range(4):
+        qapp.processEvents()
+    assert bool(overview_map.property("visible")) is True
+    assert screen.property("activeGroupId") == "prepare"
+    screen.setProperty("currentStepIndex", 2)
+    qapp.processEvents()
+    assert screen.property("activeGroupId") == "causal"
+
+    view_model._course_controller.selectModule("module_8")
+    screen.setProperty("moduleId", "module_8")
+    view_model.moduleLaboratoryController.explore(
+        "module_8", "texto", "inference", 0, 0, 1, 1.0, 5, 0.9, True
+    )
+    for _ in range(4):
+        qapp.processEvents()
+    assert bool(overview_map.property("visible")) is True
+    assert screen.property("activeGroupId") == "prepare"
+    screen.setProperty("currentStepIndex", 2)
+    qapp.processEvents()
+    assert screen.property("activeGroupId") == "encode"
+    screen.setProperty("currentStepIndex", 4)
+    qapp.processEvents()
+    assert screen.property("activeGroupId") == "generate"
+
+    # La fila que antes se cortaba conserva ambas descripciones completas y
+    # el módulo 8 usa tarjetas temáticas, no sliders nativos sin jerarquía.
+    window.setProperty("width", 1900)
+    window.setProperty("height", 900)
+    screen.setProperty("learningLevel", "advanced")
+    for _ in range(5):
+        qapp.processEvents()
+    assert bool(level_summary.property("truncated")) is False
+    assert bool(mode_summary.property("truncated")) is False
+    control_names = (
+        "moduleLaboratoryLayerControl",
+        "moduleLaboratoryHeadControl",
+        "moduleLaboratoryTokenControl",
+        "moduleLaboratoryCausalControl",
+        "moduleLaboratoryTemperatureControl",
+        "moduleLaboratoryTopKControl",
+        "moduleLaboratoryTopPControl",
+    )
+    controls = [window.findChild(QQuickItem, name) for name in control_names]
+    assert all(control is not None for control in controls)
+    assert all(bool(control.property("visible")) for control in controls)
+    assert all(control.height() >= 70 for control in controls)
 
     window.deleteLater()
     engine.deleteLater()
@@ -808,8 +928,12 @@ def test_formula_en_accion_anima_cada_paso_de_los_ocho_modulos(qapp):
         title = window.findChild(QObject, "formulaAnimationTitle")
         formula_card = window.findChild(QObject, "formulaAnimationFormulaCard")
         formula_text = window.findChild(QObject, "formulaAnimationFormula")
-        explanation_tabs = window.findChild(
-            QObject, "formulaAnimationExplanationTabs"
+        content_tabs = window.findChild(QObject, "formulaAnimationContentTabs")
+        phase_guidance = window.findChild(
+            QObject, "formulaAnimationPhaseGuidance"
+        )
+        explanation_panel = window.findChild(
+            QObject, "formulaAnimationExplanationPanel"
         )
         explanation = window.findChild(QObject, "formulaAnimationExplanation")
         caption = window.findChild(QObject, "formulaAnimationCaption")
@@ -823,7 +947,9 @@ def test_formula_en_accion_anima_cada_paso_de_los_ocho_modulos(qapp):
                 title,
                 formula_card,
                 formula_text,
-                explanation_tabs,
+                    content_tabs,
+                    phase_guidance,
+                    explanation_panel,
                 explanation,
                 caption,
                 result_card,
@@ -868,13 +994,15 @@ def test_formula_en_accion_anima_cada_paso_de_los_ocho_modulos(qapp):
         scene.setProperty("formulaExplanation", "Explicación del cálculo")
         scene.setProperty("animationDescription", "Resumen de tres tarjetas")
         for section, expected in ((0, (True, False)), (1, (False, True))):
-            scene.setProperty("explanationSection", section)
+            scene.setProperty("contentSection", section)
             qapp.processEvents()
-            assert int(explanation_tabs.property("currentIndex")) == section
+            assert int(content_tabs.property("currentIndex")) == section
             assert (
-                bool(explanation.property("visible")),
-                bool(caption.property("visible")),
+                bool(loader.property("visible")),
+                bool(explanation_panel.property("visible")),
             ) == expected
+        assert bool(explanation.property("visible")) is True
+        assert bool(caption.property("visible")) is True
         assert "tres tarjetas" not in str(caption.property("text")).lower()
 
         initial_mode = bool(window.property("themeIsDark"))
@@ -919,13 +1047,21 @@ def test_pantalla_sincroniza_formula_en_accion_con_el_paso_actual(qapp, tmp_path
         qapp.processEvents()
 
     screen = window.findChild(QObject, "moduleLaboratoryScreen")
-    pane = window.findChild(QQuickItem, "moduleLaboratoryFormulaPane")
     workspace = window.findChild(QQuickItem, "moduleLaboratoryWorkspace")
+    visual_pane = window.findChild(QQuickItem, "moduleLaboratoryVisualPane")
+    focus_stack = window.findChild(QQuickItem, "moduleLaboratoryFocusStack")
+    workspace_tabs = window.findChild(QObject, "moduleLaboratoryWorkspaceTabs")
     scene = window.findChild(QObject, "moduleLaboratoryFormulaScene")
-    assert screen is not None and pane is not None and scene is not None
-    assert pane.property("visible") is True
-    # El panel de fórmula queda debajo del área de trabajo, sin encimarse.
-    assert pane.mapToItem(workspace, QPointF(0, 0)).y() >= workspace.height() - 1
+    assert all(
+        item is not None
+        for item in (screen, workspace, visual_pane, focus_stack, workspace_tabs, scene)
+    )
+    # La fórmula comparte el área principal y se abre como una vista exclusiva.
+    screen.setProperty("workspaceSection", 1)
+    qapp.processEvents()
+    assert int(workspace_tabs.property("currentIndex")) == 1
+    assert bool(scene.property("visible")) is True
+    assert focus_stack.mapToItem(visual_pane, QPointF(0, 0)).y() >= 0
 
     title = window.findChild(QObject, "formulaAnimationTitle")
     assert title is not None

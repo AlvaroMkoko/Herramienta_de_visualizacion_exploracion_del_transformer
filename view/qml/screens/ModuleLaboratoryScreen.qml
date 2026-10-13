@@ -47,8 +47,8 @@ PagePrincipal {
     readonly property real workspacePreferredHeight: root.wideLayout
                                                     ? 590 * root.uiScale
                                                     : (root.mediumLayout
-                                                       ? 772 * root.uiScale
-                                                       : 1062 * root.uiScale)
+                                                       ? 832 * root.uiScale
+                                                       : 1112 * root.uiScale)
     readonly property int safeStepIndex: Math.max(
         0, Math.min(root.currentStepIndex, Math.max(0, root.steps.length - 1)))
     readonly property var currentStep: {
@@ -68,8 +68,24 @@ PagePrincipal {
         var demo = demos[String(root.currentStep.id || "")]
         return demo && typeof demo === "object" ? demo : ({})
     }
+    readonly property bool advancedMode: root.learningLevel === "advanced"
+    readonly property real laboratoryProgress: root.steps.length > 0
+                                               ? (root.safeStepIndex + 1) / root.steps.length
+                                               : 0
+    readonly property int minutesPerOperation: root.advancedMode ? 3 : 2
+    readonly property int estimatedMinutes: Math.max(
+        1, root.steps.length * root.minutesPerOperation)
+    readonly property int remainingMinutes: Math.max(
+        0, (root.steps.length - root.safeStepIndex - 1) * root.minutesPerOperation)
+    readonly property var overviewGroups: root.groupsForModule()
+    readonly property string activeGroupId: root.groupForStep(
+                                                       String(root.currentStep.id || ""))
 
     property string mode: "inference"
+    property string learningLevel: "essential"
+    // Una sola fuente de atención por vez: vista del componente, fórmula
+    // animada o explicación. El contenido completo sigue disponible.
+    property int workspaceSection: 1
     property int currentStepIndex: 0
     property bool playing: false
     property string errorMessage: ""
@@ -97,6 +113,7 @@ PagePrincipal {
         root.errorMessage = ""
         root.playing = false
         root.currentStepIndex = 0
+        root.workspaceSection = 1
         root.laboratoryController.explore(
             root.moduleId, inputText.text, root.mode,
             Math.round(layerSlider.value), Math.round(headSlider.value),
@@ -110,6 +127,7 @@ PagePrincipal {
             return
         root.mode = nextMode
         root.currentStepIndex = 0
+        root.workspaceSection = 1
         root.playing = false
         if (root.laboratoryController.modelReady
                 && inputText.text.trim().length > 0)
@@ -141,12 +159,59 @@ PagePrincipal {
     }
 
     function showFormulaPane() {
-        var flick = pageScroll.contentItem
-        if (!flick || flick.contentHeight === undefined)
-            return
-        var target = formulaPane.y - 12 * root.uiScale
-        flick.contentY = Math.max(0, Math.min(target, flick.contentHeight - flick.height))
+        root.workspaceSection = 1
         formulaScene.replay()
+    }
+
+    function chooseLearningLevel(level) {
+        root.learningLevel = level === "advanced" ? "advanced" : "essential"
+        if (!root.advancedMode) {
+            if (animationGuide.selectedSection === 3)
+                animationGuide.selectedSection = 0
+            if (root.guideDetached)
+                root.closeDetachedGuide()
+        }
+    }
+
+    function groupsForModule() {
+        if (root.moduleId === "module_6")
+            return [
+                { id: "prepare", label: "Preparar prefijo", steps: ["decoder_prefix", "decoder_embedding"] },
+                { id: "causal", label: "Atención causal", steps: ["causal_mask", "masked_attention", "decoder_residual_1"] },
+                { id: "source", label: "Consultar encoder", steps: ["cross_attention", "decoder_residual_2"] },
+                { id: "transform", label: "Transformar salida", steps: ["decoder_ffn", "decoder_output", "decoder_layers"] },
+                { id: "learn", label: "Aprender", steps: ["backward", "update"] }
+            ]
+        if (root.moduleId === "module_8")
+            return [
+                { id: "prepare", label: "Preparar entrada", steps: ["full_tokens", "full_batch", "full_embedding"] },
+                { id: "encode", label: "Codificar", steps: ["full_encoder"] },
+                { id: "decode", label: "Decodificar", steps: ["full_decoder"] },
+                { id: "generate", label: "Generar", steps: ["full_logits", "full_filters", "full_select", "full_feedback"] },
+                { id: "learn", label: "Aprender", steps: ["full_loss", "full_backward", "full_update"] }
+            ]
+        return []
+    }
+
+    function groupForStep(stepId) {
+        for (var groupIndex = 0; groupIndex < root.overviewGroups.length; ++groupIndex) {
+            var group = root.overviewGroups[groupIndex]
+            if ((group.steps || []).indexOf(stepId) !== -1)
+                return String(group.id)
+        }
+        return ""
+    }
+
+    function goToGroup(group) {
+        var ids = group && group.steps ? group.steps : []
+        for (var index = 0; index < root.steps.length; ++index) {
+            if (ids.indexOf(String(root.steps[index].id || "")) !== -1) {
+                root.playing = false
+                root.currentStepIndex = index
+                root.workspaceSection = 1
+                return
+            }
+        }
     }
 
     function toggleGuide() {
@@ -240,7 +305,7 @@ PagePrincipal {
     Timer {
         // En reproducción automática cada paso espera a que termine su
         // animación de fórmula para que se alcance a leer el cálculo.
-        interval: formulaPane.visible
+        interval: root.workspaceSection === 1
                   ? Math.max(1700, formulaScene.cycleDuration + 900) : 1700
         repeat: true
         running: root.playing
@@ -348,6 +413,73 @@ PagePrincipal {
                     anchors.margins: 12 * root.uiScale
                     spacing: 10 * root.uiScale
 
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 8 * root.uiScale
+
+                        TabBar {
+                            id: learningLevelTabs
+                            objectName: "moduleLaboratoryLearningLevelTabs"
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 0
+                            Layout.preferredHeight: 44 * root.uiScale
+                            currentIndex: root.advancedMode ? 1 : 0
+                            spacing: 4 * root.uiScale
+                            Accessible.name: "Nivel de detalle del laboratorio"
+                            background: Rectangle {
+                                radius: 9 * root.uiScale
+                                color: Style.Theme.superficie_alterna
+                                border.color: Style.Theme.borde_suave
+                            }
+                            PestanaAccesible {
+                                objectName: "moduleLaboratoryEssentialLevel"
+                                text: "Esencial para clase"
+                                onClicked: root.chooseLearningLevel("essential")
+                            }
+                            PestanaAccesible {
+                                objectName: "moduleLaboratoryAdvancedLevel"
+                                text: "Exploración avanzada"
+                                onClicked: root.chooseLearningLevel("advanced")
+                            }
+                        }
+
+                        Rectangle {
+                            objectName: "moduleLaboratoryLearningLevelSummaryCard"
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 0
+                            Layout.preferredHeight: Math.max(
+                                                        44 * root.uiScale,
+                                                        learningLevelSummary.implicitHeight
+                                                        + 16 * root.uiScale)
+                            radius: 9 * root.uiScale
+                            color: root.advancedMode
+                                   ? Style.Theme.formula_fondo
+                                   : Style.Theme.exito_fondo
+                            border.color: root.advancedMode
+                                          ? Style.Theme.formula_texto
+                                          : Style.Theme.success
+                            Text {
+                                id: learningLevelSummary
+                                objectName: "moduleLaboratoryLearningLevelSummary"
+                                anchors.fill: parent
+                                anchors.margins: 8 * root.uiScale
+                                text: root.advancedMode
+                                      ? "Todos los controles, matrices y gradientes · ~"
+                                        + root.estimatedMinutes + " min"
+                                      : "Ruta guiada con una operación a la vez · ~"
+                                        + root.estimatedMinutes + " min"
+                                color: root.advancedMode
+                                       ? Style.Theme.formula_texto
+                                       : Style.Theme.exito_texto
+                                font.pixelSize: Math.max(10, 11 * root.uiScale)
+                                font.bold: true
+                                verticalAlignment: Text.AlignVCenter
+                                horizontalAlignment: Text.AlignHCenter
+                                wrapMode: Text.WordWrap
+                            }
+                        }
+                    }
+
                     GridLayout {
                         Layout.fillWidth: true
                         columns: root.narrowControls ? 1 : 2
@@ -359,7 +491,8 @@ PagePrincipal {
                             Layout.fillWidth: root.narrowControls
                             Layout.preferredWidth: root.narrowControls
                                                    ? 0 : 330 * root.uiScale
-                            Layout.preferredHeight: 38 * root.uiScale
+                            Layout.preferredHeight: 42 * root.uiScale
+                            Layout.fillHeight: true
                             currentIndex: root.mode === "training" ? 0 : 1
                             background: Rectangle {
                                 radius: 9 * root.uiScale
@@ -377,11 +510,17 @@ PagePrincipal {
                         }
                         Rectangle {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 38 * root.uiScale
+                            Layout.minimumWidth: 0
+                            Layout.preferredHeight: Math.max(
+                                                        42 * root.uiScale,
+                                                        modeSummary.implicitHeight
+                                                        + 16 * root.uiScale)
                             radius: 9 * root.uiScale
                             color: root.mode === "training"
                                    ? Style.Theme.aviso_fondo : Style.Theme.info_fondo
                             Text {
+                                id: modeSummary
+                                objectName: "moduleLaboratoryModeSummary"
                                 anchors.fill: parent
                                 anchors.margins: 8 * root.uiScale
                                 text: root.mode === "training"
@@ -393,7 +532,7 @@ PagePrincipal {
                                 font.bold: true
                                 verticalAlignment: Text.AlignVCenter
                                 horizontalAlignment: Text.AlignHCenter
-                                elide: Text.ElideRight
+                                wrapMode: Text.WordWrap
                             }
                         }
                     }
@@ -469,57 +608,118 @@ PagePrincipal {
                     }
 
                     GridLayout {
+                        objectName: "moduleLaboratoryAdvancedControls"
                         Layout.fillWidth: true
-                        visible: root.moduleId !== "module_1"
+                        visible: root.advancedMode && root.moduleId !== "module_1"
                         columns: root.narrowLayout ? 2 : 5
                         columnSpacing: 14 * root.uiScale
                         rowSpacing: 6 * root.uiScale
 
-                        ColumnLayout {
+                        LaboratorySlider {
+                            id: layerSlider
+                            objectName: "moduleLaboratoryLayerControl"
                             visible: ["module_3", "module_4", "module_5", "module_6", "module_8"]
                                      .indexOf(root.moduleId) !== -1
                             Layout.fillWidth: true
-                            Text { text: "Capa " + (Math.round(layerSlider.value) + 1); color: Style.Theme.texto_secundario_fuerte; font.pixelSize: 10 * root.uiScale }
-                            Slider { id: layerSlider; Layout.fillWidth: true; from: 0; to: root.modelLayerCount - 1; stepSize: 1; value: 0 }
+                            Layout.minimumWidth: 0
+                            title: "Capa"
+                            from: 0
+                            to: root.modelLayerCount - 1
+                            stepSize: 1
+                            value: 0
+                            displayOffset: 1
+                            accent: Style.Theme.inferencia_contexto
+                            sx: root.uiScale; sy: root.uiScale
                         }
-                        ColumnLayout {
+                        LaboratorySlider {
+                            id: headSlider
+                            objectName: "moduleLaboratoryHeadControl"
                             visible: ["module_3", "module_4", "module_6", "module_8"]
                                      .indexOf(root.moduleId) !== -1
                             Layout.fillWidth: true
-                            Text { text: "Cabeza " + (Math.round(headSlider.value) + 1); color: Style.Theme.texto_secundario_fuerte; font.pixelSize: 10 * root.uiScale }
-                            Slider { id: headSlider; Layout.fillWidth: true; from: 0; to: root.modelHeadCount - 1; stepSize: 1; value: 0 }
+                            Layout.minimumWidth: 0
+                            title: "Cabeza"
+                            from: 0
+                            to: root.modelHeadCount - 1
+                            stepSize: 1
+                            value: 0
+                            displayOffset: 1
+                            accent: Style.Theme.matriz_query
+                            sx: root.uiScale; sy: root.uiScale
                         }
-                        ColumnLayout {
+                        LaboratorySlider {
+                            id: tokenSlider
+                            objectName: "moduleLaboratoryTokenControl"
                             visible: ["module_2", "module_3", "module_4", "module_5",
                                       "module_6", "module_7", "module_8"]
                                      .indexOf(root.moduleId) !== -1
                             Layout.fillWidth: true
-                            Text { text: (root.moduleId === "module_7" ? "Posición " : "Token ") + (Math.round(tokenSlider.value) + 1); color: Style.Theme.texto_secundario_fuerte; font.pixelSize: 10 * root.uiScale }
-                            Slider { id: tokenSlider; Layout.fillWidth: true; from: 0; to: Math.max(0, root.tokens.length - 1); stepSize: 1; value: 0 }
+                            Layout.minimumWidth: 0
+                            title: root.moduleId === "module_7" ? "Posición" : "Token"
+                            from: 0
+                            to: Math.max(0, root.tokens.length - 1)
+                            stepSize: 1
+                            value: 0
+                            displayOffset: 1
+                            accent: Style.Theme.inferencia_foco
+                            sx: root.uiScale; sy: root.uiScale
                         }
-                        RowLayout {
+                        LaboratoryToggle {
+                            id: causalSwitch
+                            objectName: "moduleLaboratoryCausalControl"
                             visible: ["module_6", "module_8"].indexOf(root.moduleId) !== -1
                             Layout.fillWidth: true
-                            Text { text: "Máscara causal"; color: Style.Theme.texto_secundario_fuerte; font.pixelSize: 10 * root.uiScale }
-                            Switch { id: causalSwitch; checked: true }
+                            Layout.minimumWidth: 0
+                            title: "Máscara causal"
+                            checked: true
+                            checkedText: "Futuro bloqueado"
+                            uncheckedText: "Contraste sin máscara"
+                            accent: Style.Theme.inferencia_error
+                            sx: root.uiScale; sy: root.uiScale
                         }
-                        ColumnLayout {
+                        LaboratorySlider {
+                            id: temperatureSlider
+                            objectName: "moduleLaboratoryTemperatureControl"
                             visible: ["module_7", "module_8"].indexOf(root.moduleId) !== -1
                             Layout.fillWidth: true
-                            Text { text: "Temperatura " + temperatureSlider.value.toFixed(2); color: Style.Theme.texto_secundario_fuerte; font.pixelSize: 10 * root.uiScale }
-                            Slider { id: temperatureSlider; Layout.fillWidth: true; from: 0.1; to: 2.0; value: 1.0; stepSize: 0.05 }
+                            Layout.minimumWidth: 0
+                            title: "Temperatura"
+                            from: 0.1
+                            to: 2.0
+                            value: 1.0
+                            stepSize: 0.05
+                            decimals: 2
+                            accent: Style.Theme.inferencia_transformacion
+                            sx: root.uiScale; sy: root.uiScale
                         }
-                        ColumnLayout {
+                        LaboratorySlider {
+                            id: topKSlider
+                            objectName: "moduleLaboratoryTopKControl"
                             visible: ["module_7", "module_8"].indexOf(root.moduleId) !== -1
                             Layout.fillWidth: true
-                            Text { text: "Top-K " + Math.round(topKSlider.value); color: Style.Theme.texto_secundario_fuerte; font.pixelSize: 10 * root.uiScale }
-                            Slider { id: topKSlider; Layout.fillWidth: true; from: 1; to: 100; value: 20; stepSize: 1 }
+                            Layout.minimumWidth: 0
+                            title: "Top-K"
+                            from: 1
+                            to: 100
+                            value: 20
+                            stepSize: 1
+                            accent: Style.Theme.inferencia_contexto
+                            sx: root.uiScale; sy: root.uiScale
                         }
-                        ColumnLayout {
+                        LaboratorySlider {
+                            id: topPSlider
+                            objectName: "moduleLaboratoryTopPControl"
                             visible: ["module_7", "module_8"].indexOf(root.moduleId) !== -1
                             Layout.fillWidth: true
-                            Text { text: "Top-P " + topPSlider.value.toFixed(2); color: Style.Theme.texto_secundario_fuerte; font.pixelSize: 10 * root.uiScale }
-                            Slider { id: topPSlider; Layout.fillWidth: true; from: 0.05; to: 1.0; value: 0.9; stepSize: 0.01 }
+                            Layout.minimumWidth: 0
+                            title: "Top-P"
+                            from: 0.05
+                            to: 1.0
+                            value: 0.9
+                            stepSize: 0.01
+                            decimals: 2
+                            accent: Style.Theme.inferencia_resultado
+                            sx: root.uiScale; sy: root.uiScale
                         }
                     }
                 }
@@ -539,7 +739,7 @@ PagePrincipal {
             ListView {
                 id: tokenStrip
                 objectName: "moduleLaboratoryTokenStrip"
-                visible: root.tokens.length > 0
+                visible: root.advancedMode && root.tokens.length > 0
                 Layout.fillWidth: true
                 Layout.leftMargin: 24 * root.uiScale
                 Layout.rightMargin: 24 * root.uiScale
@@ -623,6 +823,110 @@ PagePrincipal {
                 }
             }
 
+            RectanglePrincipal {
+                objectName: "moduleLaboratoryProgressCard"
+                visible: root.analysis.module_id === root.moduleId
+                Layout.fillWidth: true
+                Layout.leftMargin: 24 * root.uiScale
+                Layout.rightMargin: 24 * root.uiScale
+                Layout.preferredHeight: progressColumn.implicitHeight + 18 * root.uiScale
+                sx: root.uiScale
+                sy: root.uiScale
+
+                ColumnLayout {
+                    id: progressColumn
+                    anchors.fill: parent
+                    anchors.margins: 9 * root.uiScale
+                    spacing: 6 * root.uiScale
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 10 * root.uiScale
+                        Text {
+                            Layout.fillWidth: true
+                            text: "OPERACIÓN " + (root.safeStepIndex + 1) + " DE "
+                                  + root.steps.length + "  ·  "
+                                  + String(root.currentStep.title || "Paso actual")
+                            color: Style.Theme.texto_primario
+                            font.bold: true
+                            font.pixelSize: Math.max(11, 12 * root.uiScale)
+                            elide: Text.ElideRight
+                        }
+                        Text {
+                            text: root.remainingMinutes > 0
+                                  ? "~" + root.remainingMinutes + " min restantes"
+                                  : "Última operación"
+                            color: Style.Theme.acento_fuerte
+                            font.bold: true
+                            font.pixelSize: Math.max(10, 11 * root.uiScale)
+                        }
+                    }
+
+                    ProgressBar {
+                        objectName: "moduleLaboratoryProgress"
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 7 * root.uiScale
+                        from: 0
+                        to: 1
+                        value: root.laboratoryProgress
+                        Accessible.name: "Progreso del laboratorio"
+                        Accessible.description: Math.round(root.laboratoryProgress * 100)
+                                                + " por ciento"
+                    }
+
+                    Flickable {
+                        objectName: "moduleLaboratoryOverviewMap"
+                        visible: !root.advancedMode && root.overviewGroups.length > 0
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: visible ? 34 * root.uiScale : 0
+                        contentWidth: overviewRow.implicitWidth
+                        contentHeight: height
+                        clip: true
+                        boundsBehavior: Flickable.StopAtBounds
+
+                        Row {
+                            id: overviewRow
+                            spacing: 6 * root.uiScale
+                            Repeater {
+                                model: root.overviewGroups
+                                delegate: Rectangle {
+                                    id: groupChip
+                                    required property int index
+                                    required property var modelData
+                                    readonly property bool active: String(modelData.id)
+                                                                           === root.activeGroupId
+                                    width: groupLabel.implicitWidth + 22 * root.uiScale
+                                    height: 30 * root.uiScale
+                                    radius: height / 2
+                                    color: active ? Style.Theme.acento_fondo
+                                                  : Style.Theme.chip_fondo
+                                    border.width: active ? 2 : 1
+                                    border.color: active ? Style.Theme.acento
+                                                        : Style.Theme.chip_borde
+                                    opacity: active ? 1 : 0.62
+                                    Text {
+                                        id: groupLabel
+                                        anchors.centerIn: parent
+                                        text: (groupChip.index + 1) + " · "
+                                              + String(groupChip.modelData.label)
+                                        color: groupChip.active
+                                               ? Style.Theme.acento_texto
+                                               : Style.Theme.chip_texto
+                                        font.bold: groupChip.active
+                                        font.pixelSize: Math.max(10, 11 * root.uiScale)
+                                    }
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: root.goToGroup(groupChip.modelData)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             GridLayout {
                 id: workspace
                 visible: root.analysis.module_id === root.moduleId
@@ -647,18 +951,97 @@ PagePrincipal {
                     Layout.preferredHeight: root.wideLayout
                                             ? 590 * root.uiScale
                                             : (root.mediumLayout
-                                               ? 170 * root.uiScale
-                                               : 190 * root.uiScale)
+                                               ? 230 * root.uiScale
+                                               : 240 * root.uiScale)
                     Layout.fillHeight: root.wideLayout
                     sx: root.uiScale; sy: root.uiScale
                     ColumnLayout {
                         anchors.fill: parent
                         anchors.margins: 12 * root.uiScale
                         spacing: 8 * root.uiScale
-                        Text { Layout.fillWidth: true; text: "OPERACIONES DEL MÓDULO"; color: Style.Theme.acento_fuerte; font.bold: true; font.pixelSize: 9 * root.uiScale; font.letterSpacing: 0.6 }
+                        Text {
+                            Layout.fillWidth: true
+                            text: root.advancedMode
+                                  ? "OPERACIONES DEL MÓDULO"
+                                  : "UNA OPERACIÓN A LA VEZ"
+                            color: Style.Theme.acento_fuerte
+                            font.bold: true
+                            font.pixelSize: 9 * root.uiScale
+                            font.letterSpacing: 0.6
+                        }
+
+                        Rectangle {
+                            objectName: "moduleLaboratoryEssentialStepCard"
+                            visible: !root.advancedMode
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            radius: 10 * root.uiScale
+                            color: Style.Theme.superficie_alterna
+                            border.color: Style.Theme.acento
+                            border.width: 2
+
+                            ColumnLayout {
+                                anchors.fill: parent
+                                anchors.margins: 12 * root.uiScale
+                                spacing: 8 * root.uiScale
+
+                                Text {
+                                    visible: root.activeGroupId.length > 0
+                                    Layout.fillWidth: true
+                                    text: "BLOQUE ACTUAL  ·  " + root.activeGroupId.toUpperCase()
+                                    color: Style.Theme.acento_fuerte
+                                    font.bold: true
+                                    font.pixelSize: Math.max(9, 10 * root.uiScale)
+                                    wrapMode: Text.WordWrap
+                                }
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: String(root.currentStep.title || "Operación")
+                                    color: Style.Theme.texto_primario
+                                    font.bold: true
+                                    font.pixelSize: Math.max(16, 19 * root.uiScale)
+                                    wrapMode: Text.WordWrap
+                                }
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: "ENTRA  ·  "
+                                          + String(root.currentStep.input || "Datos del paso anterior")
+                                    color: Style.Theme.inferencia_estructura
+                                    font.bold: true
+                                    font.pixelSize: Math.max(11, 12 * root.uiScale)
+                                    wrapMode: Text.WordWrap
+                                }
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 1
+                                    color: Style.Theme.divisor
+                                }
+                                Text {
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    text: String(root.currentStep.explanation
+                                                 || "Observa la transformación del paso actual.")
+                                    color: Style.Theme.texto_secundario_fuerte
+                                    font.pixelSize: Math.max(12, 14 * root.uiScale)
+                                    lineHeight: 1.2
+                                    wrapMode: Text.WordWrap
+                                    verticalAlignment: Text.AlignTop
+                                }
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: "SALE  ·  "
+                                          + String(root.currentStep.output || "Resultado")
+                                    color: Style.Theme.inferencia_resultado
+                                    font.bold: true
+                                    font.pixelSize: Math.max(11, 12 * root.uiScale)
+                                    wrapMode: Text.WordWrap
+                                }
+                            }
+                        }
                         ListView {
                             id: stepList
                             objectName: "moduleLaboratoryStepList"
+                            visible: root.advancedMode
                             Layout.fillWidth: true
                             Layout.fillHeight: true
                             orientation: root.compactLayout
@@ -754,73 +1137,110 @@ PagePrincipal {
                                 }
                             }
                             BotonSecundario {
-                                objectName: "moduleLaboratoryShowFormula"
-                                Layout.preferredWidth: 150 * root.uiScale
-                                Layout.preferredHeight: 32 * root.uiScale
-                                sx: root.uiScale; sy: root.uiScale
-                                text: "ƒ Fórmula en acción ↓"
-                                onClicked: root.showFormulaPane()
-                            }
-                            BotonSecundario {
                                 objectName: "moduleLaboratoryDetachGuide"
-                                Layout.preferredWidth: 225 * root.uiScale
+                                visible: root.advancedMode
+                                Layout.preferredWidth: 180 * root.uiScale
                                 Layout.preferredHeight: 32 * root.uiScale
                                 sx: root.uiScale; sy: root.uiScale
                                 text: root.guideDetached
                                       ? "Cerrar explicación"
-                                      : "Explicación por pestañas ↗"
+                                      : "Separar explicación ↗"
                                 onClicked: root.toggleGuide()
                             }
                         }
-                        ModuleLaboratoryVisualization {
-                            id: visualization
-                            objectName: "moduleLaboratoryVisualization"
+
+                        TabBar {
+                            id: workspaceTabs
+                            objectName: "moduleLaboratoryWorkspaceTabs"
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 42 * root.uiScale
+                            currentIndex: root.workspaceSection
+                            spacing: 4 * root.uiScale
+                            Accessible.name: "Contenido de la operación actual"
+                            Accessible.description: "Muestra una vista a la vez"
+                            onCurrentIndexChanged: {
+                                root.workspaceSection = currentIndex
+                                if (currentIndex === 1)
+                                    formulaScene.replay()
+                            }
+                            background: Rectangle {
+                                radius: 9 * root.uiScale
+                                color: Style.Theme.superficie_alterna
+                                border.color: Style.Theme.borde_suave
+                            }
+                            PestanaAccesible {
+                                objectName: "moduleLaboratoryAnimationTab"
+                                text: "Vista general"
+                            }
+                            PestanaAccesible {
+                                objectName: "moduleLaboratoryFormulaTab"
+                                text: "Animación detallada"
+                            }
+                            PestanaAccesible {
+                                objectName: "moduleLaboratoryExplanationTab"
+                                text: "Explicación"
+                            }
+                        }
+
+                        StackLayout {
+                            objectName: "moduleLaboratoryFocusStack"
                             Layout.fillWidth: true
                             Layout.fillHeight: true
-                            moduleId: root.moduleId
-                            analysis: root.analysis
-                            step: root.currentStep
-                            stepIndex: root.safeStepIndex
-                            mode: root.mode
-                            selectedLayer: Math.round(layerSlider.value)
-                            selectedHead: Math.round(headSlider.value)
-                            selectedToken: Math.round(tokenSlider.value)
-                            // El encabezado y la ventana de explicación ya
-                            // muestran paso, entrada/salida y gradientes.
-                            // Evitamos repetirlos dentro de la escena.
-                            showContextChrome: false
-                            sx: root.uiScale; sy: root.uiScale
-                            onInspectRequested: function(panel) { root.openValues(panel) }
+                            currentIndex: root.workspaceSection
+
+                            ModuleLaboratoryVisualization {
+                                id: visualization
+                                objectName: "moduleLaboratoryVisualization"
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                moduleId: root.moduleId
+                                analysis: root.analysis
+                                step: root.currentStep
+                                stepIndex: root.safeStepIndex
+                                mode: root.mode
+                                selectedLayer: Math.round(layerSlider.value)
+                                selectedHead: Math.round(headSlider.value)
+                                selectedToken: Math.round(tokenSlider.value)
+                                showContextChrome: false
+                                sx: root.uiScale; sy: root.uiScale
+                                onInspectRequested: function(panel) { root.openValues(panel) }
+                            }
+
+                            FormulaAnimationScene {
+                                id: formulaScene
+                                objectName: "moduleLaboratoryFormulaScene"
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                step: root.currentStep
+                                demo: root.currentFormulaDemo
+                                formulaExplanation: animationGuide.formulaReadingText
+                                essentialMode: !root.advancedMode
+                                reducedMotion: Style.Theme.movimientoReducido
+                                sx: root.uiScale; sy: root.uiScale
+                            }
+
+                            LaboratoryAnimationGuide {
+                                id: animationGuide
+                                objectName: "moduleLaboratoryAnimationGuide"
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                moduleId: root.moduleId
+                                mode: root.mode
+                                steps: root.steps
+                                step: root.currentStep
+                                panel: root.currentPanel
+                                analysis: root.analysis
+                                demo: root.currentFormulaDemo
+                                stepIndex: root.safeStepIndex
+                                essentialMode: !root.advancedMode
+                                sx: root.uiScale
+                                sy: root.uiScale
+                                onInspectRequested: function(panel) { root.openValues(panel) }
+                            }
                         }
                     }
                 }
 
-            }
-
-            RectanglePrincipal {
-                id: formulaPane
-                objectName: "moduleLaboratoryFormulaPane"
-                visible: root.analysis.module_id === root.moduleId
-                Layout.fillWidth: true
-                Layout.leftMargin: 24 * root.uiScale
-                Layout.rightMargin: 24 * root.uiScale
-                // La explicación especializada forma parte de la fórmula en
-                // acción. Reservamos altura para leerla sin comprimir la
-                // animación numérica.
-                Layout.preferredHeight: (root.narrowLayout ? 650 : 560) * root.uiScale
-                sx: root.uiScale; sy: root.uiScale
-
-                FormulaAnimationScene {
-                    id: formulaScene
-                    objectName: "moduleLaboratoryFormulaScene"
-                    anchors.fill: parent
-                    anchors.margins: 12 * root.uiScale
-                    step: root.currentStep
-                    demo: root.currentFormulaDemo
-                    formulaExplanation: animationGuide.formulaReadingText
-                    reducedMotion: Style.Theme.movimientoReducido
-                    sx: root.uiScale; sy: root.uiScale
-                }
             }
 
             Item { Layout.fillWidth: true; Layout.preferredHeight: 18 * root.uiScale }
@@ -859,8 +1279,8 @@ PagePrincipal {
     }
 
     LaboratoryAnimationGuide {
-        id: animationGuide
-        objectName: "moduleLaboratoryAnimationGuide"
+        id: detachedAnimationGuide
+        objectName: "moduleLaboratoryDetachedAnimationGuide"
         parent: detachedGuideWindow.contentItem
         anchors.fill: parent
         anchors.margins: 10
@@ -873,6 +1293,7 @@ PagePrincipal {
         analysis: root.analysis
         demo: root.currentFormulaDemo
         stepIndex: root.safeStepIndex
+        essentialMode: false
         sx: Math.max(0.96, Math.min(1.16,
                                    detachedGuideWindow.width / 700))
         sy: Math.max(0.96, Math.min(1.16,

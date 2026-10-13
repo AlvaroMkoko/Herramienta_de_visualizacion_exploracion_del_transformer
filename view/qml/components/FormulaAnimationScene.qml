@@ -22,6 +22,8 @@ Item {
     property string formulaExplanation: ""
     property string animationDescription: ""
     property int explanationSection: 0
+    property int contentSection: 0
+    property bool essentialMode: true
     property bool reducedMotion: false
     property real sx: 1
     property real sy: 1
@@ -41,6 +43,7 @@ Item {
                 current = index
         return current
     }
+    readonly property string currentPhaseGuidance: phaseGuidance(root.phaseIndex)
 
     // ------------------------------------------------------------ control
     function replay() {
@@ -75,7 +78,27 @@ Item {
         }
     }
 
-    onDemoChanged: Qt.callLater(root.replay)
+    function jumpToPhase(index) {
+        if (index < 0 || index >= root.phases.length)
+            return
+        driver.stop()
+        root.t = Math.min(1, Number(root.phases[index][1]) + 0.001)
+    }
+
+    function phaseGuidance(index) {
+        var guidance = root.list(root.demo && root.demo.phase_explanations)
+        if (index >= 0 && index < guidance.length && String(guidance[index]).length)
+            return String(guidance[index])
+        var phase = index >= 0 && index < root.phases.length
+                    ? String(root.phases[index][0]) : "Resultado"
+        return "Ahora concéntrate en «" + phase
+                + "». Los demás elementos permanecen atenuados para conservar el contexto."
+    }
+
+    onDemoChanged: {
+        root.contentSection = 0
+        Qt.callLater(root.replay)
+    }
     onReducedMotionChanged: if (reducedMotion) { driver.stop(); t = 1 }
 
     NumberAnimation {
@@ -242,7 +265,9 @@ Item {
                              ? [["Cabezas", 0], ["Alinear", 0.3], ["Concatenar", 0.65]]
                              : [["Cabezas", 0], ["Concatenar", 0.25], ["Mezclar con Wᴼ", 0.62]])
         case "multi_softmax": return [["Scores por cabeza", 0], ["Softmax", 0.15], ["Foco de cada cabeza", 0.85]]
-        case "layernorm": return [["Suma", 0], ["Media μ", 0.2], ["Centrar", 0.36], ["÷ σ", 0.56], ["γ y β", 0.76]]
+        case "layernorm": return [[root.list(root.demo.a).length ? "Suma residual" : "Entrada", 0],
+                                   ["Media μ", 0.2], ["Centrar", 0.36],
+                                   ["÷ √(σ²+ε)", 0.56], ["γ y β", 0.76]]
         case "activation": return [["Preactivación", 0], ["Aplicar φ", 0.15], ["Salida", 0.88]]
         case "ffn": return [["Entrada", 0], ["W₁ expande", 0.18], ["φ recorta", 0.48], ["W₂ comprime", 0.7]]
         case "stack": return [["Capa 0", 0], ["Subir por capas", 0.12], ["Salida final", 0.88]]
@@ -400,9 +425,38 @@ Item {
             maximumLineCount: 2
         }
 
-        Rectangle {
+        TabBar {
+            id: formulaContentTabs
+            objectName: "formulaAnimationContentTabs"
             Layout.fillWidth: true
-            Layout.fillHeight: true
+            Layout.preferredHeight: 38 * root.u
+            currentIndex: root.contentSection
+            spacing: 4 * root.u
+            Accessible.name: "Vista de la fórmula animada"
+            Accessible.description: "Separa el cálculo visual de su explicación"
+            onCurrentIndexChanged: root.contentSection = currentIndex
+
+            background: Rectangle {
+                radius: 8 * root.u
+                color: Style.Theme.superficie_alterna
+                border.color: Style.Theme.borde_suave
+            }
+            PestanaAccesible {
+                objectName: "formulaAnimationCalculationTab"
+                text: "Cálculo paso a paso"
+                font.pixelSize: Math.max(11, 12 * root.u)
+            }
+            PestanaAccesible {
+                objectName: "formulaAnimationBriefTab"
+                text: "Explicación breve"
+                font.pixelSize: Math.max(11, 12 * root.u)
+            }
+        }
+
+        Rectangle {
+            visible: root.contentSection === 0
+            Layout.fillWidth: true
+            Layout.fillHeight: visible
             radius: 10 * root.u
             color: Style.Theme.superficie_alterna
             border.color: Style.Theme.borde_suave
@@ -418,6 +472,7 @@ Item {
         }
 
         RowLayout {
+            visible: root.contentSection === 0
             Layout.fillWidth: true
             spacing: 6 * root.u
 
@@ -432,8 +487,9 @@ Item {
                     Layout.preferredHeight: 22 * root.u
                     Layout.preferredWidth: phaseText.implicitWidth + 18 * root.u
                     radius: height / 2
-                    color: active ? Style.Theme.acento : (done ? Style.Theme.acento_fondo : Style.Theme.chip_fondo)
-                    border.color: active || done ? Style.Theme.acento : Style.Theme.chip_borde
+                    color: active ? Style.Theme.acento : Style.Theme.chip_fondo
+                    border.color: active ? Style.Theme.acento : Style.Theme.chip_borde
+                    opacity: active ? 1 : 0.48
                     Text {
                         id: phaseText
                         anchors.centerIn: parent
@@ -443,9 +499,15 @@ Item {
                         font.bold: phaseChip.active
                         font.pixelSize: Math.max(10, 11 * root.u)
                     }
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        Accessible.name: "Ir a la fase " + phaseChip.modelData[0]
+                        onClicked: root.jumpToPhase(phaseChip.index)
+                    }
                 }
             }
-            Slider {
+            SliderPrincipal {
                 id: scrubber
                 objectName: "formulaAnimationScrubber"
                 Layout.fillWidth: true
@@ -453,6 +515,10 @@ Item {
                 from: 0
                 to: 1
                 value: root.t
+                colorRelleno: Style.Theme.inferencia_transformacion
+                sx: root.u
+                sy: root.u
+                Accessible.name: "Progreso de la animación"
                 onMoved: {
                     driver.stop()
                     root.t = value
@@ -461,101 +527,110 @@ Item {
         }
 
         Rectangle {
-            objectName: "formulaAnimationExplanationPanel"
+            objectName: "formulaAnimationPhaseGuidance"
+            visible: root.contentSection === 0
             Layout.fillWidth: true
-            implicitHeight: explanationColumn.implicitHeight + 18 * root.u
-            radius: 9 * root.u
-            color: Style.Theme.surface
-            border.color: root.explanationSection === 0
-                          ? Style.Theme.formula_texto
-                          : Style.Theme.inferencia_contexto
+            implicitHeight: phaseGuidanceText.implicitHeight + 16 * root.u
+            radius: 8 * root.u
+            color: Style.Theme.info_fondo
+            border.color: Style.Theme.inferencia_estructura
 
-            ColumnLayout {
-                id: explanationColumn
+            Text {
+                id: phaseGuidanceText
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.top: parent.top
+                anchors.margins: 8 * root.u
+                text: "EN FOCO  ·  " + root.currentPhaseGuidance
+                color: Style.Theme.info_texto
+                font.bold: true
+                wrapMode: Text.WordWrap
+                lineHeight: 1.16
+                font.pixelSize: Math.max(11, 12 * root.u)
+            }
+        }
+
+        Rectangle {
+            objectName: "formulaAnimationExplanationPanel"
+            visible: root.contentSection === 1
+            Layout.fillWidth: true
+            Layout.fillHeight: visible
+            radius: 9 * root.u
+            color: Style.Theme.surface
+            border.color: Style.Theme.inferencia_contexto
+
+            ScrollView {
+                anchors.fill: parent
                 anchors.margins: 9 * root.u
-                spacing: 7 * root.u
+                contentWidth: availableWidth
+                clip: true
+                ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
-                TabBar {
-                    id: formulaExplanationTabs
-                    objectName: "formulaAnimationExplanationTabs"
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 38 * root.u
-                    currentIndex: root.explanationSection
-                    spacing: 4 * root.u
-                    onCurrentIndexChanged: root.explanationSection = currentIndex
+                ColumnLayout {
+                    id: explanationColumn
+                    width: parent.width
+                    spacing: 8 * root.u
 
-                    background: Rectangle {
-                        radius: 8 * root.u
-                        color: Style.Theme.superficie_alterna
-                        border.color: Style.Theme.borde_suave
+                    BriefCard {
+                        Layout.fillWidth: true
+                        eyebrow: "QUÉ ENTRA"
+                        body: String(root.step && root.step.input
+                                     || "Datos producidos por la operación anterior.")
+                        accent: Style.Theme.inferencia_estructura
+                        fillColor: Style.Theme.info_fondo
                     }
 
-                    PestanaAccesible {
-                        text: "Qué se calcula"
-                        font.pixelSize: Math.max(11, 12 * root.u)
+                    BriefCard {
+                        Layout.fillWidth: true
+                        eyebrow: "QUÉ CAMBIA"
+                        body: String(root.step && root.step.explanation
+                                     || "La entrada se transforma con la fórmula mostrada.")
+                              + (!root.essentialMode && root.formulaExplanation.length
+                                 ? " " + root.formulaExplanation : "")
+                        accent: Style.Theme.formula_texto
+                        fillColor: Style.Theme.formula_fondo
+                        contentObjectName: "formulaAnimationExplanation"
                     }
-                    PestanaAccesible {
-                        text: "Cómo leer la animación"
-                        font.pixelSize: Math.max(11, 12 * root.u)
+
+                    BriefCard {
+                        Layout.fillWidth: true
+                        eyebrow: "QUÉ DEBES OBSERVAR"
+                        body: {
+                            var visual = String(root.demo && root.demo.animation_explanation
+                                                || root.animationDescription || "")
+                            var numeric = String(root.demo && root.demo.caption || "")
+                            if (!root.essentialMode && visual.length && numeric.length)
+                                return visual + " " + numeric
+                            return visual.length ? visual : numeric
+                        }
+                        accent: Style.Theme.inferencia_contexto
+                        fillColor: Style.Theme.exito_fondo
+                        contentObjectName: "formulaAnimationCaption"
                     }
-                }
 
-                Text {
-                    objectName: "formulaAnimationExplanation"
-                    visible: root.explanationSection === 0
-                    Layout.fillWidth: true
-                    text: root.formulaExplanation.length
-                          ? root.formulaExplanation
-                          : String(root.step && root.step.explanation || "La fórmula transforma la entrada del paso en su salida.")
-                    color: Style.Theme.texto_primario
-                    wrapMode: Text.WordWrap
-                    lineHeight: 1.22
-                    font.pixelSize: Math.max(13, 15 * root.u)
-                }
+                    Rectangle {
+                        objectName: "formulaAnimationResultCard"
+                        Layout.fillWidth: true
+                        implicitHeight: formulaResultText.implicitHeight + 16 * root.u
+                        radius: 7 * root.u
+                        color: Style.Theme.proceso_fondo
+                        border.color: Style.Theme.inferencia_resultado
 
-                Text {
-                    objectName: "formulaAnimationCaption"
-                    visible: root.explanationSection === 1
-                    Layout.fillWidth: true
-                    text: {
-                        var visual = String(root.demo && root.demo.animation_explanation
-                                            || root.animationDescription || "")
-                        var numeric = String(root.demo && root.demo.caption || "")
-                        if (visual.length && numeric.length)
-                            return visual + " " + numeric
-                        return visual.length ? visual : numeric
-                    }
-                    color: Style.Theme.texto_primario
-                    wrapMode: Text.WordWrap
-                    lineHeight: 1.22
-                    font.pixelSize: Math.max(13, 15 * root.u)
-                }
-
-                Rectangle {
-                    objectName: "formulaAnimationResultCard"
-                    Layout.fillWidth: true
-                    implicitHeight: formulaResultText.implicitHeight + 16 * root.u
-                    radius: 7 * root.u
-                    color: Style.Theme.proceso_fondo
-                    border.color: Style.Theme.inferencia_resultado
-
-                    Text {
-                        id: formulaResultText
-                        objectName: "formulaAnimationResult"
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.top: parent.top
-                        anchors.margins: 8 * root.u
-                        text: "RESULTADO CLAVE  ·  "
-                              + String(root.step && root.step.output || "salida del paso")
-                        color: Style.Theme.proceso_texto
-                        font.bold: true
-                        wrapMode: Text.WordWrap
-                        lineHeight: 1.16
-                        font.pixelSize: Math.max(11, 13 * root.u)
+                        Text {
+                            id: formulaResultText
+                            objectName: "formulaAnimationResult"
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.top: parent.top
+                            anchors.margins: 8 * root.u
+                            text: "AL FINAL DEBES VER  ·  "
+                                  + String(root.step && root.step.output || "salida del paso")
+                            color: Style.Theme.proceso_texto
+                            font.bold: true
+                            wrapMode: Text.WordWrap
+                            lineHeight: 1.16
+                            font.pixelSize: Math.max(11, 13 * root.u)
+                        }
                     }
                 }
             }
@@ -563,6 +638,47 @@ Item {
     }
 
     // ---------------------------------------------------- piezas comunes
+    component BriefCard: Rectangle {
+        id: briefCard
+        property string eyebrow: ""
+        property string body: ""
+        property string contentObjectName: ""
+        property color accent: Style.Theme.acento
+        property color fillColor: Style.Theme.surface
+
+        implicitHeight: briefColumn.implicitHeight + 18 * root.u
+        radius: 8 * root.u
+        color: fillColor
+        border.color: accent
+
+        ColumnLayout {
+            id: briefColumn
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: 9 * root.u
+            spacing: 4 * root.u
+
+            Text {
+                Layout.fillWidth: true
+                text: briefCard.eyebrow
+                color: briefCard.accent
+                font.bold: true
+                font.letterSpacing: 0.4
+                font.pixelSize: Math.max(10, 11 * root.u)
+            }
+            Text {
+                objectName: briefCard.contentObjectName
+                Layout.fillWidth: true
+                text: briefCard.body
+                color: Style.Theme.texto_primario
+                wrapMode: Text.WordWrap
+                lineHeight: 1.2
+                font.pixelSize: Math.max(12, 14 * root.u)
+            }
+        }
+    }
+
     component Cell: Rectangle {
         id: cell
         property var value: 0
@@ -675,10 +791,11 @@ Item {
         property string text: ""
         property color accent: Style.Theme.acento
         property real reveal: 1
+        property int focusPhase: -1
         implicitWidth: equationText.implicitWidth + 18 * root.u
         implicitHeight: 34 * root.u
         radius: 7 * root.u
-        opacity: reveal
+        opacity: reveal * (focusPhase < 0 || focusPhase === root.phaseIndex ? 1 : 0.28)
         color: Qt.alpha(accent, 0.12)
         border.color: accent
         Text {
@@ -2308,17 +2425,20 @@ Item {
                 Tag { text: "query «" + root.demo.query_label + "»" }
                 Equation {
                     reveal: root.seg(0.27, 0.35)
+                    focusPhase: 1
                     accent: Style.Theme.inferencia_foco
                     text: (Number(root.demo.shift || 0) !== 0 ? "e^(s − " + root.fmt(root.demo.shift, 2) + ")" : "eˢ")
                           + (softView.allowed.indexOf(false) >= 0 ? "   (e^−∞ = 0)" : "")
                 }
                 Equation {
                     reveal: root.seg(0.5, 0.6)
+                    focusPhase: 2
                     accent: Style.Theme.inferencia_transformacion
                     text: "Σ eˢ = " + root.fmt(root.demo.total, 4)
                 }
                 Equation {
                     reveal: root.seg(0.7, 0.8)
+                    focusPhase: 3
                     accent: Style.Theme.inferencia_resultado
                     text: "pⱼ = eˢʲ / " + root.fmt(root.demo.total, 3)
                 }
@@ -2863,26 +2983,31 @@ Item {
                 Equation {
                     visible: lnView.hasAddends
                     reveal: root.seg(0.02, 0.12)
+                    focusPhase: 0
                     accent: Style.Theme.inferencia_estructura
                     text: "x = " + root.demo.a_label + " + " + root.demo.b_label + "  →  x[0] = " + root.fmt(lnView.a[0], 3) + " " + root.signed(lnView.b[0], 3) + " = " + root.fmt(lnView.xs[0], 3)
                 }
                 Equation {
                     reveal: root.seg(0.2, 0.3)
+                    focusPhase: 1
                     accent: Style.Theme.inferencia_foco
                     text: "μ = (1/" + root.demo.size + ") Σ x = " + root.fmt(lnView.mean, 4)
                 }
                 Equation {
                     reveal: root.seg(0.5, 0.6)
+                    focusPhase: 3
                     accent: Style.Theme.inferencia_transformacion
                     text: "σ = √(" + root.fmt(root.demo.variance, 4) + " + ε) = " + root.fmt(lnView.std, 4)
                 }
                 Equation {
                     reveal: root.seg(0.74, 0.82)
+                    focusPhase: 3
                     accent: Style.Theme.inferencia_resultado
                     text: "x̂[0] = (" + root.fmt(lnView.xs[0], 3) + " − " + root.fmt(lnView.mean, 3) + ") / " + root.fmt(lnView.std, 3) + " = " + root.fmt(lnView.normalized[0], 3)
                 }
                 Equation {
                     reveal: root.seg(0.84, 0.94)
+                    focusPhase: 4
                     accent: Style.Theme.inferencia_resultado
                     text: "y[0] = " + root.fmt(lnView.gamma[0], 3) + "·" + root.fmt(lnView.normalized[0], 3) + " " + root.signed(lnView.beta[0], 3) + " = " + root.fmt(lnView.output[0], 3)
                 }

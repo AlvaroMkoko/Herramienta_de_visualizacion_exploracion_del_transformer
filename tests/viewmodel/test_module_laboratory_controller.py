@@ -321,8 +321,26 @@ def test_cada_paso_trae_una_formula_animable_con_cuentas_exactas(
             assert not demo["animation_explanation"].startswith(
                 "Sigue las fases de la barra inferior"
             ), (module_id, mode, step["id"], demo["kind"])
+            assert "phase_explanations" in demo
 
             kind = demo["kind"]
+            if kind in {
+                "positional",
+                "projection",
+                "mask_row",
+                "softmax",
+                "weighted_sum",
+                "multi_softmax",
+                "layernorm",
+                "ffn",
+                "cross_entropy",
+                "causal_mask",
+                "sampling",
+            }:
+                assert demo["phase_explanations"], (module_id, step["id"], kind)
+            if kind == "softmax":
+                assert len(demo["phase_explanations"]) == 4
+                assert "sum" in demo["phase_explanations"][-1].lower()
             if kind == "projection":
                 for output in demo["outputs"]:
                     total = sum(output["products"]) + output["hidden_sum"]
@@ -373,6 +391,41 @@ def test_cada_paso_trae_una_formula_animable_con_cuentas_exactas(
                     assert _close(
                         theta - demo["learning_rate"] * gradient, updated, 1e-5
                     ), (module_id, step["id"])
+
+
+def test_las_explicaciones_describen_la_variante_que_realmente_se_anima(
+    specialized_laboratory,
+):
+    """No se reutiliza texto de padding, sesgo o residual cuando no aplica."""
+    controller, _model = specialized_laboratory
+
+    training = _run_exploration(controller, "module_1", "training")
+    training_batch = training["formula_demos"]["batch"]["animation_explanation"]
+    assert "PAD" in training_batch
+    assert "matriz rectangular" in training_batch
+
+    inference = _run_exploration(controller, "module_1", "inference")
+    inference_batch = inference["formula_demos"]["batch"]["animation_explanation"]
+    assert "Tmax" in inference_batch
+    assert "fuera del contexto" in inference_batch
+    assert "completa" not in inference_batch
+
+    attention = _run_exploration(controller, "module_3", "inference")
+    assert "sesgo" in attention["formula_demos"]["qkv"]["animation_explanation"]
+    assert "sesgo" not in attention["formula_demos"]["dot"]["animation_explanation"]
+
+    encoder = _run_exploration(controller, "module_5", "inference")
+    norm_without_sum = encoder["formula_demos"]["norm_1"]
+    norm_with_sum = encoder["formula_demos"]["norm_2"]
+    assert "ya entra a LayerNorm" in norm_without_sum["animation_explanation"]
+    assert norm_without_sum["phase_explanations"][0].startswith("Lee el vector")
+    assert "suma residual" in norm_with_sum["animation_explanation"]
+    assert norm_with_sum["phase_explanations"][0].startswith("Suma el atajo")
+
+    activation = encoder["formula_demos"]["ffn_activation"]
+    assert activation["name"] == "ReLU"
+    assert "valores positivos" in activation["animation_explanation"]
+    assert "negativos a cero" in activation["animation_explanation"]
 
 
 def test_mascara_causal_animada_muestra_futuro_bloqueado_en_inferencia(

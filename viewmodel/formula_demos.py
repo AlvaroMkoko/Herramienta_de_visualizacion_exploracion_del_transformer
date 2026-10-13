@@ -39,11 +39,59 @@ def _without_data(demo: dict[str, Any]) -> bool:
 def _animation_explanation(demo: dict[str, Any], step: dict[str, Any]) -> str:
     """Describe la animación numérica, no la vista-resumen del laboratorio."""
     kind = str(demo.get("kind", ""))
+    if kind == "padding":
+        if bool(demo.get("training")):
+            return (
+                "Compara las longitudes y observa cómo PAD completa únicamente "
+                "las posiciones vacías hasta formar la matriz rectangular B × T."
+            )
+        return (
+            "Sigue la secuencia hasta el límite Tmax: se conservan las primeras "
+            "posiciones y se aparta cualquier token que quede fuera del contexto."
+        )
+    if kind == "projection":
+        outputs = [item for item in demo.get("outputs", []) if isinstance(item, dict)]
+        has_bias = any(item.get("bias") is not None for item in outputs)
+        has_divisor = any(item.get("divisor") is not None for item in outputs)
+        operations = "multiplica cada entrada por su peso y suma todos los productos"
+        if has_bias:
+            operations += ", después añade el sesgo"
+        if has_divisor:
+            operations += " y divide por el factor mostrado"
+        return (
+            "Sigue una coordenada de salida: " + operations
+            + ". El último valor es el resultado de esa coordenada."
+        )
+    if kind == "layernorm":
+        beginning = (
+            "Sigue primero la suma residual; "
+            if demo.get("a") else
+            "Parte del vector que ya entra a LayerNorm; "
+        )
+        return (
+            beginning
+            + "después observa el cálculo de μ, el centrado, la división por "
+              "√(σ² + ε) y la transformación aprendida con γ y β."
+        )
+    if kind == "activation":
+        name = str(demo.get("name", "activación"))
+        lowered = name.lower()
+        if "relu" in lowered:
+            change = "ReLU conserva los valores positivos y lleva los negativos a cero"
+        elif "gelu" in lowered:
+            change = "GELU modula cada valor con una transición suave"
+        elif "silu" in lowered or "swish" in lowered:
+            change = "SiLU modula cada valor al multiplicarlo por su sigmoide"
+        else:
+            change = name + " transforma cada valor de manera no lineal"
+        return (
+            "Compara cada preactivación H con su salida A: " + change
+            + ", siempre coordenada a coordenada."
+        )
     explanations = {
         "split_text": "Sigue el barrido de izquierda a derecha: cada fragmento aparece en el orden exacto en que el tokenizador recorre el texto.",
         "lookup_ids": "Observa cómo cada token se empareja con su índice y cómo esos índices se reúnen, en el mismo orden, en el tensor de IDs.",
         "specials": "Mira cómo BOS se inserta al principio, EOS al final y la secuencia resultante queda alineada con la entrada del decoder.",
-        "padding": "Compara las longitudes y sigue las celdas PAD que aparecen únicamente hasta completar la matriz rectangular B × T.",
         "mask_compare": "La animación compara cada ID con PAD: las posiciones válidas permanecen activas y las de relleno cambian a bloqueadas.",
         "no_grad": "Sigue la señal de backward hasta el límite del tokenizador; el símbolo ∅ marca que no existen parámetros diferenciables que actualizar.",
         "lookup_row": "Observa cómo el ID señala una fila concreta de la tabla E y cómo esa fila se copia como vector del token.",
@@ -52,13 +100,10 @@ def _animation_explanation(demo: dict[str, Any], step: dict[str, Any]) -> str:
         "sum": "Mira una coordenada a la vez: aparece el primer sumando, se añade el segundo y se revela la coordenada resultante.",
         "matrix_rows": "Cada token aporta una fila a la matriz; el resaltado final identifica la fila del token seleccionado.",
         "heatmaps": "La animación revela WQ, WK y WV por separado; compara signo y magnitud mediante la misma escala de color.",
-        "projection": "Sigue los productos de una salida: cada entrada se multiplica por su peso, los términos se acumulan, se añade el sesgo y aparece el resultado.",
         "mask_row": "Compara cada score con la máscara; los permitidos se conservan y los bloqueados se sustituyen antes de Softmax.",
         "softmax": "Sigue una fila completa: los scores se exponencian, se suman y después cada término se divide por el total para obtener pesos.",
         "weighted_sum": "Observa cómo cada peso escala su vector Value y cómo las contribuciones se acumulan coordenada a coordenada hasta formar el contexto.",
         "multi_softmax": "Las filas se normalizan cabeza por cabeza; el foco final permite comparar dónde concentra su peso cada cabeza.",
-        "layernorm": "Sigue la suma residual, el cálculo de μ, el centrado, la división por σ y, al final, la transformación aprendida con γ y β.",
-        "activation": "Compara cada preactivación con su salida después de φ; el recorrido resalta dónde la función conserva, atenúa o anula valores.",
         "ffn": "Sigue el vector al expandirse con W₁, atravesar la no linealidad y comprimirse con W₂ hasta recuperar d_model.",
         "stack": "El mismo token asciende capa por capa; cada nivel sustituye su vector anterior y el último se marca como salida final.",
         "cross_entropy": "Sigue los logits hasta Softmax, localiza la probabilidad del token objetivo y observa cómo −log(p) produce la pérdida.",
@@ -88,6 +133,94 @@ def _animation_explanation(demo: dict[str, Any], step: dict[str, Any]) -> str:
         "Sigue las fases de la barra inferior y relaciona cada cambio numérico con la salida «"
         + str(step.get("output", "del paso")) + "».",
     )
+
+
+def _animation_phase_explanations(demo: dict[str, Any]) -> list[str]:
+    """Microexplicaciones para que una operación compleja se lea por partes."""
+    kind = str(demo.get("kind", ""))
+    explanations = {
+        "positional": [
+            "Identifica la frecuencia asignada a esta pareja de coordenadas.",
+            "Combina la posición con esa frecuencia para obtener el ángulo.",
+            "Aplica seno a la coordenada par y coseno a la impar.",
+            "Reúne las coordenadas calculadas en el vector posicional PE.",
+        ],
+        "mask_row": [
+            "Lee los scores crudos de una sola consulta.",
+            "Compara cada posición con la máscara activa.",
+            "Conserva los scores permitidos y bloquea los demás antes de Softmax.",
+        ],
+        "softmax": [
+            "Parte de una fila de scores; todavía no son probabilidades.",
+            "Exponencia cada score para obtener cantidades positivas.",
+            "Suma todas las cantidades exponenciadas para formar el denominador.",
+            "Divide cada término entre el total y verifica que los pesos sumen 1.",
+        ],
+        "weighted_sum": [
+            "Lee el peso asignado a cada vector Value.",
+            "Multiplica cada Value por su peso de atención.",
+            "Suma las contribuciones coordenada a coordenada.",
+            "Comprueba el vector de contexto resultante.",
+        ],
+        "multi_softmax": [
+            "Compara los scores sin normalizar de cada cabeza.",
+            "Aplica Softmax de manera independiente en cada cabeza.",
+            "Observa qué posiciones concentran el peso de cada cabeza.",
+        ],
+        "ffn": [
+            "Lee el vector de entrada con ancho d_model.",
+            "W₁ expande el vector al espacio intermedio d_ff.",
+            "La activación introduce la no linealidad componente a componente.",
+            "W₂ comprime el resultado y recupera el ancho d_model.",
+        ],
+        "cross_entropy": [
+            "Lee los logits producidos para el vocabulario.",
+            "Softmax los convierte en una distribución de probabilidades.",
+            "Localiza la probabilidad asignada al token objetivo.",
+            "Aplica −log(p) para obtener la pérdida de esa predicción.",
+        ],
+        "causal_mask": [
+            "Selecciona una fila i, que representa una posición del prefijo.",
+            "Compara cada columna j y permite únicamente j ≤ i.",
+            "Comprueba el triángulo final: el futuro queda bloqueado.",
+        ],
+    }
+    if kind == "projection":
+        outputs = [item for item in demo.get("outputs", []) if isinstance(item, dict)]
+        has_bias = any(item.get("bias") is not None for item in outputs)
+        has_divisor = any(item.get("divisor") is not None for item in outputs)
+        accumulation = "Acumula todos los productos"
+        if has_bias:
+            accumulation += " y añade el sesgo"
+        if has_divisor:
+            accumulation += "; después divide por el factor indicado"
+        return [
+            "Multiplica cada componente de entrada por el peso que le corresponde.",
+            accumulation + ".",
+            "Comprueba el valor final antes de pasar a la siguiente salida.",
+        ]
+    if kind == "layernorm":
+        first = (
+            "Suma el atajo residual y la actualización del bloque."
+            if demo.get("a") else
+            "Lee el vector completo que entra a LayerNorm."
+        )
+        return [
+            first,
+            "Calcula la media de las coordenadas del token.",
+            "Resta la media para centrar el vector.",
+            "Divide por √(σ² + ε) para controlar su escala.",
+            "Aplica γ y β, los parámetros aprendidos de LayerNorm.",
+        ]
+    if kind == "sampling":
+        labels = {
+            "temperature": "La temperatura reescala diferencias entre logits.",
+            "top_k": "Top-K conserva únicamente los K candidatos con mayor logit.",
+            "top_p": "Top-P conserva el conjunto mínimo que alcanza la masa P.",
+        }
+        return [labels.get(str(stage), "Aplica el filtro al conjunto de candidatos.")
+                for stage in demo.get("stages", [])]
+    return explanations.get(kind, [])
 
 
 def _flat(tensor: torch.Tensor) -> torch.Tensor:
@@ -387,6 +520,7 @@ class FormulaDemoBuilder:
             if demo is not None:
                 demo.setdefault("formula", step.get("formula", ""))
                 demo.setdefault("animation_explanation", _animation_explanation(demo, step))
+                demo.setdefault("phase_explanations", _animation_phase_explanations(demo))
                 demos[identifier] = demo
         return demos
 
@@ -795,7 +929,7 @@ class FormulaDemoBuilder:
                 ))
             return _projection(
                 f"[q{hs} | k{hs} | v{hs}] = x{hs} · [W_Q | W_K | W_V]",
-                "Una sola proyección produce todas las coordenadas de todas las cabezas (colores = cabezas).",
+                "Las tres proyecciones producen todas las coordenadas de todas las cabezas; los colores separan cada cabeza.",
                 f"x{hs} («{labels[i]}»)", data["x"][i], outputs,
             )
         if identifier == "split":
@@ -930,7 +1064,7 @@ class FormulaDemoBuilder:
             return {
                 "kind": "activation",
                 "title": f"A = {activation}(H)",
-                "caption": "La activación se aplica a cada coordenada por separado y dobla la recta: ahí está la no linealidad.",
+                "caption": "La activación transforma cada coordenada por separado; esa curva introduce la no linealidad.",
                 "name": activation,
                 "inputs": _vec(pre, 12),
                 "outputs": _vec(act, 12),
@@ -1070,7 +1204,7 @@ class FormulaDemoBuilder:
             return {
                 "kind": "ffn",
                 "title": f"F = W₂ {ff.activacion.__class__.__name__}(W₁N₂ + b₁) + b₂",
-                "caption": "Expansión a d_ff, no linealidad que recorta valores y compresión de vuelta a d_model.",
+                "caption": "Expansión a d_ff, transformación no lineal y compresión de vuelta a d_model.",
                 "name": ff.activacion.__class__.__name__,
                 "input": _vec(n2, WIDE),
                 "pre": _vec(pre, WIDE * 2),

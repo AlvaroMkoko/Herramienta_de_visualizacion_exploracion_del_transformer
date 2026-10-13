@@ -21,11 +21,15 @@ Item {
     property string animationDescription: ""
     property real sx: 1
     property real sy: 1
+    property bool essentialMode: true
     property bool detailsExpanded: false
     // Una sola categoría visible reduce la cantidad de información que el
     // estudiante debe procesar a la vez. La selección se conserva al cambiar
     // de operación para poder comparar, por ejemplo, solo las fórmulas.
     property int selectedSection: 0
+
+    onEssentialModeChanged: if (essentialMode && selectedSection === 3)
+                                selectedSection = 0
 
     signal inspectRequested(var panel)
 
@@ -483,6 +487,7 @@ Item {
                 }
                 PestanaAccesible {
                     objectName: "moduleLaboratoryGuideDataTab"
+                    visible: !root.essentialMode
                     text: "Datos"
                     font.pixelSize: Math.max(11, 13 * root.sx)
                 }
@@ -504,7 +509,7 @@ Item {
 
             Rectangle {
                 objectName: "moduleLaboratoryGuideLocalContext"
-                visible: root.selectedSection === 0
+                visible: root.selectedSection === 0 && !root.essentialMode
                 Layout.fillWidth: true
                 implicitHeight: localContextColumn.implicitHeight + 20 * root.sy
                 radius: 10 * root.sx
@@ -568,10 +573,22 @@ Item {
             }
 
             GuideCard {
+                objectName: "moduleLaboratoryGuideInput"
+                visible: root.selectedSection === 0 && root.essentialMode
+                Layout.fillWidth: true
+                eyebrow: "QUÉ ENTRA"
+                body: root.valueOr(root.step && root.step.input,
+                                   "Datos producidos por la operación anterior.")
+                accent: Style.Theme.inferencia_estructura
+                fillColor: Style.Theme.info_fondo
+                sx: root.sx; sy: root.sy
+            }
+
+            GuideCard {
                 objectName: "moduleLaboratoryGuideIdea"
                 visible: root.selectedSection === 0
                 Layout.fillWidth: true
-                eyebrow: "IDEA CLAVE"
+                eyebrow: root.essentialMode ? "QUÉ CAMBIA" : "IDEA CLAVE"
                 body: root.valueOr(root.step && root.step.explanation,
                                    "Este paso transforma la entrada y prepara la siguiente operación.")
                 footer: "QUÉ DEBES RECORDAR · "
@@ -748,7 +765,7 @@ Item {
             }
 
             Rectangle {
-                visible: root.selectedSection === 0
+                visible: root.selectedSection === 0 && !root.essentialMode
                 Layout.fillWidth: true
                 implicitHeight: caveatText.implicitHeight + 20 * root.sy
                 radius: 9 * root.sx
