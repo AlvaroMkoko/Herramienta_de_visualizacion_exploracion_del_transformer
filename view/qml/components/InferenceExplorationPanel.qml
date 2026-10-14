@@ -24,7 +24,11 @@ Item {
     property int layerIndex: Math.max(0, Number(metadata.num_layers || 1) - 1)
     property int headIndex: 0
     property bool residualUsesFfn: false
-    property bool reducedMotion: false
+    // Movimiento reducido es una preferencia de la aplicación, no del panel:
+    // se lee del tema para que el laboratorio y el explorador obedezcan la
+    // misma. La casilla de este panel escribe en el tema y nunca aquí; si la
+    // escribiera aquí, la primera pulsación destruiría este enlace.
+    property bool reducedMotion: Style.Theme.movimientoReducido
     property bool sequencePlaying: false
     property bool detailsExpanded: false
     // La transformacion abre como protagonista. La explicacion y su minimapa
@@ -880,10 +884,14 @@ Item {
                     Layout.minimumWidth: visible ? 122 : 0
                     Layout.maximumWidth: visible ? 158 : 0
                     text: "Reducir movimiento"
-                    checked: root.reducedMotion
+                    // Es el interruptor global: ninguna otra pantalla escribe
+                    // Style.Theme.movimientoReducido, y el tema lo recuerda
+                    // entre sesiones. Quitarlo dejaría la preferencia
+                    // inalcanzable.
+                    checked: Style.Theme.movimientoReducido
                     font.pixelSize: Math.max(11, 11 * root.sx)
-                    onToggled: root.reducedMotion = checked
-                    Accessible.description: "Detiene las transiciones decorativas de las escenas"
+                    onToggled: Style.Theme.movimientoReducido = checked
+                    Accessible.description: "Detiene las transiciones decorativas en toda la aplicación"
                 }
                 ActionPill {
                     objectName: "inferenceGuideToggle"

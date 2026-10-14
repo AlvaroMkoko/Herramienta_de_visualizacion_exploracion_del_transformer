@@ -9,7 +9,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("QSG_RHI_BACKEND", "software")
 os.environ.setdefault("QT_QUICK_CONTROLS_STYLE", "Basic")
 
-from PySide6.QtCore import QObject, QPointF, QUrl
+from PySide6.QtCore import Q_ARG, Q_RETURN_ARG, QMetaObject, QObject, QPointF, Qt, QUrl
 from PySide6.QtGui import QColor
 from PySide6.QtQml import QJSValue, QQmlComponent, QQmlEngine
 from PySide6.QtQuick import QQuickItem
@@ -36,6 +36,8 @@ ApplicationWindow {
     property bool requestedDarkMode: false
     onRequestedDarkModeChanged: Style.Theme.modoOscuro = requestedDarkMode
     Component.onCompleted: Style.Theme.modoOscuro = requestedDarkMode
+    function setGlobalReducedMotion(value) { Style.Theme.movimientoReducido = value }
+    function globalReducedMotion() { return Style.Theme.movimientoReducido }
 
     Components.InferenceExplorationPanel {
         anchors.fill: parent
@@ -1043,6 +1045,52 @@ def test_layernorm_explica_sus_cuatro_fases_y_simbolos(qapp):
         explanations.append(pedagogical_text)
 
     assert len(set(explanations)) == 4
+
+    window.deleteLater()
+    engine.deleteLater()
+    qapp.processEvents()
+
+
+def _tema_reducido(window) -> bool:
+    return bool(
+        _como_python(
+            QMetaObject.invokeMethod(window, "globalReducedMotion", Q_RETURN_ARG("QVariant"))
+        )
+    )
+
+
+def test_movimiento_reducido_sigue_la_preferencia_global_y_la_casilla_la_escribe(qapp):
+    """La preferencia global gobierna el explorador, y su casilla es esa preferencia.
+
+    Antes el panel solo obedecía a su casilla local: con el tema en
+    movimiento reducido las escenas seguían animando la transición.
+    """
+    engine = QQmlEngine()
+    _, window, panel = _crear_panel(engine, qapp)
+    casilla = window.findChild(QObject, "inferenceReducedMotionToggle")
+    assert casilla is not None
+
+    QMetaObject.invokeMethod(window, "setGlobalReducedMotion", Q_ARG("QVariant", True))
+    qapp.processEvents()
+    assert panel.property("reducedMotion") is True
+    assert window.findChild(QObject, "tokenEmbeddingScene").property("reducedMotion") is True
+    assert casilla.property("checked") is True
+
+    # Pulsar la casilla escribe en el tema, no en una copia local. Clic real:
+    # es lo que haría el estudiante, y lo que rompería un enlace de `checked`.
+    centro = casilla.mapToScene(QPointF(casilla.width() / 2, casilla.height() / 2))
+    QTest.mouseClick(window, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier,
+                     centro.toPoint())
+    qapp.processEvents()
+    assert _tema_reducido(window) is False
+    assert panel.property("reducedMotion") is False
+
+    # Tras la pulsación, la casilla y el panel siguen al tema: ningún
+    # enlace se rompió al escribir.
+    QMetaObject.invokeMethod(window, "setGlobalReducedMotion", Q_ARG("QVariant", True))
+    qapp.processEvents()
+    assert casilla.property("checked") is True
+    assert panel.property("reducedMotion") is True
 
     window.deleteLater()
     engine.deleteLater()
