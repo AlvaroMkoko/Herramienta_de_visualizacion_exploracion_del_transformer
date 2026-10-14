@@ -1,5 +1,54 @@
 # Arquitectura del Sistema (MVVM)
 
+## Panorama
+
+App de escritorio educativa: **Python 3.14 + PyTorch + PySide6 + QML**, patrón **MVVM estricto**.
+Es el Trabajo Terminal de un equipo de tres personas que trabajan sobre el mismo `main`. Dos
+consecuencias mandan sobre todo lo demás:
+
+1. **La aplicación mide aprendizaje.** Varias decisiones de interfaz que parecen mejoras obvias
+   invalidan la medición del pre-test y el post-test. Ver [medicion.md](medicion.md).
+2. **`data/resultados/` y `data/progreso/` son datos, no caché.** Guardan los resultados de
+   estudiantes reales y su avance; borrarlos o reescribirlos para «limpiar estado» destruye
+   datos de la tesis. Ver *Rutas y datos*, abajo.
+
+Otros documentos: [trampas.md](trampas.md) (trampas de PySide6 y QML que no producen error),
+[red_aula.md](red_aula.md) y [uso_aula.md](uso_aula.md) (aula conectada), y el `README.md`
+(flujo funcional, perfiles estudiante/profesor y contrato de datasets).
+
+## Capas y regla de dependencias
+
+```
+view/  (QML)        ──usa──>  viewmodel/  (PySide6)  ──usa──>  model/  (PyTorch)
+                                                      \
+core/  (sin Qt)  <──────────── lo usan todas ──────────/
+```
+
+| Capa | Líneas | Regla dura |
+|---|---|---|
+| `core/` | ~370 | `rutas.py` y `constants.py` no importan Qt **ni torch**. `config.py` sí importa torch. |
+| `model/` | ~8 800 | **Cero Qt.** Ningún archivo importa PySide6. Si agregas uno, lo rompes. |
+| `viewmodel/` | ~17 000 | Única capa que conoce Qt y el Modelo a la vez. **Nunca importa de `view/`.** |
+| `view/` | ~55 000 | Solo QML + `canvas/`. Todo el estado llega por `mainViewModel.*`. |
+| `tests/` | ~14 800 | 48 archivos de prueba en `tests/`, `tests/model`, `tests/viewmodel` y `tests/view`. |
+
+Las cifras de líneas son aproximadas y envejecen; las reglas, no.
+
+## Rutas y datos
+
+**`recurso()` vs `dato()`** (`core/rutas.py`). `recurso()` es solo-lectura y viaja dentro del
+paquete PyInstaller; `dato()` es escribible y vive junto al ejecutable. Usar la equivocada no da
+error: el trabajo del usuario simplemente desaparece al empaquetar.
+
+**Toda ruta de escritura pasa por `core.rutas`**: `dato()` o una constante `DIR_*` de ese módulo,
+nunca una ruta armada con `__file__` ni con `Path("data")`. De eso depende que las pruebas no
+toquen los datos de quien las corre: `tests/conftest.py` redirige `DIR_DATOS` y los `DIR_*` a un
+temporal antes de que se importe el proyecto, y al arrancar **detiene la suite** si algún `DIR_*`
+sigue apuntando a `data/`. Si agregas una carpeta de escritura, declárala como `DIR_*` en
+`core/rutas.py` y agrégala a la redirección del conftest; la guarda avisa si se olvida. Una ruta
+de escritura que no pase por `core.rutas` no la detecta nada: la suite volvería a escribir en
+`data/` real sin avisar.
+
 ## Curso modular progresivo
 
 La ruta educativa principal ya no evalúa todo el Transformer como una sola
@@ -153,9 +202,10 @@ Motor Transformer encoder-decoder, fiel al diagrama de *Attention Is All You Nee
 
 Única capa que conoce Qt y el Modelo a la vez.
 
-- `main_viewmodel.py` — orquestador raíz, el **único** objeto registrado en el
-  contexto QML (`mainViewModel`). Expone los demás controladores como
-  propiedades. `setupController`, `datasetController` y `theoryController`
+- `main_viewmodel.py` — orquestador raíz, registrado en el contexto QML como
+  `mainViewModel`. Expone los demás controladores como propiedades. No es el
+  único objeto del contexto: `main.py` registra también `displayManager`
+  (el docstring de `main.py` todavía dice que es el único). `setupController`, `datasetController` y `theoryController`
   existen desde el arranque; también crea `learningController` para conservar
   el avance educativo. `trainingController` e `inferenceController` aparecen
   recién cuando `SetupController` crea un modelo.
@@ -192,15 +242,41 @@ Motor Transformer encoder-decoder, fiel al diagrama de *Attention Is All You Nee
 
 ### Convenciones obligatorias del ViewModel
 
+Romper cualquiera **no produce error**: solo una propiedad `undefined` o un
+botón muerto.
+
 1. **`@Slot` es obligatorio** para que QML pueda invocar un método. Un método
    público sin decorador **no** es visible desde QML.
 2. **`@Slot()` vacío declara cero argumentos.** Un método con parámetros
    necesita los tipos: `@Slot(float)`, `@Slot(int, float, int)`.
 3. **`@property` de Python no es visible desde QML.** Para exponer estado
    reactivo hace falta `@Property(tipo, notify=señal)`.
-4. **Los tensores nunca cruzan a QML.** Todo pasa por `visual_adapter`.
+4. **Los tensores nunca cruzan a QML.** Todo pasa por `visual_adapter`, una
+   capa delgada sobre `model/simulacion_numerica/tensor_to_array.py`.
 5. **`Dataset` de PyTorch no se puede pasar desde QML.** De ahí el par
    `establecer_dataset()` (Python) / `iniciar_entrenamiento_ui()` (QML).
+   Patrón general: **los Slots que QML invoca llevan sufijo `_ui`**, y su
+   gemelo sin sufijo es la API Python que recibe objetos no convertibles.
+
+### Separación de señales
+
+Una señal que se emite en cada tecla no puede cargar propiedades costosas:
+provoca un ciclo de enlaces en QML. `viewmodel/evaluation_controller.py:88-95`
+es el ejemplo canónico: `stateChanged` (cada interacción, 2 propiedades) frente
+a `questionChanged` (cambio de reactivo, 34 propiedades). Nombre: sufijo
+**`Cambio`** del lado español, **`Changed`** del inglés.
+
+### Concurrencia: tres mecanismos distintos, no uno
+
+- `GestorConcurrencia` (`viewmodel/concurrency_manager.py`) para tareas largas
+  observables: la tarea es un generador (ver *Flujo de datos*) y el gestor
+  revisa también la velocidad entre pasos. Solo lo usan `training` e
+  `inference`.
+- `threading.Thread` daemon con nombre para I/O de un solo tiro, con
+  `Lock`/`RLock` y **señales privadas con prefijo `_`** para devolver el
+  resultado al hilo de la UI.
+- Sin hilos, event loop puro, en `viewmodel/aula/`: los sockets de QtNetwork
+  son asíncronos. Lo periódico va con `QTimer`.
 
 ## View (`view/`)
 
@@ -232,10 +308,68 @@ Motor Transformer encoder-decoder, fiel al diagrama de *Attention Is All You Nee
 3. **Todo se accede vía `mainViewModel.*`** — no hay controladores sueltos en
    el contexto QML.
 
+Además:
+
+- **`pragma ComponentBehavior: Bound` como primera línea** en todo archivo nuevo
+  (está en 72 de 119). Obliga a `required property var modelData` /
+  `required property int index` en los delegates, y a cualificar el acceso con
+  el `id` del delegate (`opcion.modelData.id`, nunca `modelData.id` suelto).
+- **Escalado `sx`/`sy`**: nacen una sola vez en
+  `view/qml/components/PagePrincipal.qml:21-26` como `width / 1280` y
+  `height / 820`. Toda medida literal se multiplica: `48 * root.sy`,
+  `font.pixelSize: 22 * root.sx`. Cada componente reutilizable redeclara
+  `property real sx: 1` con valor neutro y el padre lo pasa explícito. Los
+  componentes *inline* no heredan el `sx` del archivo que los contiene: hay que
+  redeclararlo.
+- **Tema**: `view/qml/styles/Theme.qml` es un singleton. Se importa por carpeta
+  con prefijo obligatorio — `import "../styles" as Style` → `Style.Theme.fondo`.
+  Una sola propiedad mutable (`modoOscuro`) y todo lo demás derivado. **Nunca
+  escribas un color literal**; usa el token semántico. Igual con las
+  duraciones: `Style.Theme.duracionCorta/Media/Entrada`, no `110`.
+- **`objectName`** siempre en inglés camelCase, con prefijo de pantalla y
+  sufijo de rol (`evaluationNextButton`, `moduleLaboratoryWorkspace`). Es la API
+  que consumen las pruebas, y en algunos casos la producción: `TrainingScreen`
+  y `ResultsScreen` buscan pantallas en la pila comparando `objectName`.
+  Cambiar uno rompe pruebas y navegación en silencio.
+- **Movimiento reducido es contrato, no un extra.** Toda animación decorativa
+  respeta `Style.Theme.movimientoReducido` (en las escenas llega como
+  `reducedMotion`). Tres efectos: duración 0, salto al estado final, y driver
+  que no arranca.
+- **Animación como función del progreso.** Una sola `NumberAnimation` escribe
+  una propiedad escalar (`t`, `progress`, `stageReveal`) y **todo el dibujo es
+  función pura de ella**. Así la animación se puede pausar y recorrer con un
+  deslizador sin que los números y los gráficos se desincronicen. Referencia:
+  `FormulaAnimationScene.qml:8-11, 74-88`.
+- **Guarda para pruebas**:
+  `typeof mainViewModel !== "undefined" && mainViewModel ? ... : null`, para que
+  el componente cargue sin contexto.
+
+### Revisar QML sin ejecutar la app
+
+Un error de compilación en QML no rompe una línea: deja de cargar el archivo
+completo, y la app arranca con una pantalla en blanco. `qmllint` lo detecta sin
+ejecutar nada:
+
+```powershell
+pyside6-qmllint -I view\qml view\qml\screens\EvaluationScreen.qml
+```
+
+**La caché de QML sirve archivos viejos.** Qt compila cada `.qml` a `.qmlc`
+fuera del proyecto y la invalida por fecha; copiar archivos conservando su
+fecha la deja obsoleta. Durante el desarrollo:
+
+```powershell
+$env:QML_DISABLE_DISK_CACHE = 1
+python main.py
+```
+
 ## Core (`core/`)
-Utilidades transversales: `config.py` (rutas, semilla, detección CPU/CUDA),
-`constants.py` (rangos que **deben** coincidir con los de la Vista),
-`logger.py`.
+Utilidades transversales: `rutas.py` (ver *Rutas y datos*), `config.py`
+(reexporta las rutas de `rutas.py`, semilla, detección CPU/CUDA; **importa
+torch**), `constants.py` (rangos que
+**deben** coincidir con los de la Vista). Solo `rutas.py` y `constants.py`
+están libres de Qt y de torch. `logger.py` está vacío (ver *Archivos vacíos o
+sin uso*).
 
 ## Scripts de línea de comandos
 - `main.py` — punto de entrada de la aplicación.
@@ -264,3 +398,121 @@ Vista (re-render)
 Las tareas de fondo son **generadores**: cada `yield` es un paso observable.
 `GestorConcurrencia` revisa cancelación y pausa entre pasos, así que las
 tareas no necesitan implementar esa lógica.
+
+## Convenciones de código
+
+### Idioma de los identificadores
+
+Regla base: **español**. `obtener_*`, `establecer_*`, `AtencionMultiCabeza`,
+`SesionClase`. Los nombres de archivo son mayoritariamente ingleses incluso en
+paquetes españoles (`dataset_loader.py`, `model_storage.py`), así que **el
+nombre del archivo no predice el idioma de su contenido**.
+
+La excepción en inglés no está dispersa: es el subsistema del curso modular,
+añadido después.
+
+| Español | Inglés |
+|---|---|
+| `core/`, `model/motor_llm`, `model/aula`, `model/gestor_de_datos`, `model/persistencia`, `model/simulacion_numerica` | `model/aprendizaje`, `model/evaluacion` |
+| `viewmodel/`: `setup`, `training`, `inference`, `comparison`, `dataset`, `model_library`, `theory`, `progress`, `visual_adapter`, `concurrency_manager`, `aula/` | `viewmodel/`: `course`, `evaluation`, `module_*`, `learning`, `display`, `transformer_bridge`, `formula_demos` |
+
+**Dos inversiones dentro de la excepción**, que son las que confunden:
+
+- `model/evaluacion/scorers.py` es un archivo inglés en paquete inglés con
+  **API pública en español**: `calificar()`, `es_respuesta_completa()`,
+  `normalizar_texto()`, `TIPOS_SOPORTADOS`.
+- Las **claves de datos de los reactivos son españolas** (`tipo`,
+  `presentacion`, `subtipo`, `destinos`, `elementos`, `respuestas_aceptadas`,
+  `puntaje_maximo`) y conviven con claves inglesas (`bloom_level`,
+  `concept_id`, `difficulty`, `pedagogical_type`, `explanation`).
+
+En QML: español para el dominio propio (`pregunta`, `respuestaCambiada`,
+`restaurar()`, `texto_primario`), inglés para lo que toca Qt o el dominio
+Transformer (`active`, `progress`, `reducedMotion`, `moduleId`,
+`attentionData`), y `objectName` siempre en inglés camelCase (ver
+*Convenciones obligatorias de la Vista*). Los comentarios son íntegramente en
+español.
+
+Regla práctica: **imita el archivo que estás editando.** No mezcles idiomas
+dentro de un archivo. Esto aplica a los **identificadores de producción**. En
+`tests/` la mezcla es la convención correcta: la maquinaria de pytest y Qt va
+en inglés (`qapp`, `controller`, `window`, `loader`, `SCREEN_HOST`) y los
+términos del dominio en español (`test_cada_paso_…`, `_errores`,
+`TokenizerDePrueba`), como en los archivos vecinos. Imita al vecino, no
+traduzcas.
+
+### Comentar el por qué, no el qué
+
+Se documenta en el código la razón de una decisión no obvia, sobre todo si
+evita un fallo silencioso o protege la validez de la medición. Los comentarios
+que explican las entradas de [trampas.md](trampas.md) son el ejemplo a imitar.
+En español.
+
+## Pruebas
+
+La suite está toda en verde y sin pruebas intermitentes conocidas. No se
+anota aquí cuántas son: crece con casi cada cambio y la cifra quedaría vieja.
+
+- **`python -m pytest`, siempre desde la raíz del repositorio.** No hay
+  `pythonpath` configurado; la forma con `-m` pone la raíz del proyecto en
+  `sys.path` por sí misma.
+- `tests/conftest.py` fija las variables de Qt (`QT_QPA_PLATFORM=offscreen`,
+  `QSG_RHI_BACKEND=software`, `QT_QUICK_CONTROLS_STYLE=Basic`) con
+  `setdefault` antes de cualquier importación. Sin ellas, construir el `qapp`
+  **sin pantalla** (CI, SSH, una sesión sin escritorio) aborta el intérprete
+  con `Fatal Python error: Aborted`: no falla, se cae. En Windows con sesión
+  gráfica no se reproduce. Fijarlas desde fuera es idempotente y seguro.
+- El conftest también aísla los datos: ver *Rutas y datos*.
+
+```powershell
+python -m pytest -q                       # suite completa — ~50 s
+python -m pytest -q tests/model           # bucle rápido — ~5 s, sin Qt
+python -m pytest -q --ignore=tests/view   # todo sin QML — ~25 s
+python -m pytest -q tests/view            # solo QML — ~27 s
+python -m pytest -q tests/viewmodel/test_module_course.py   # un archivo
+```
+
+**`PySide6-Addons` es dependencia obligatoria y no está declarada en
+`requirements.txt`.** `viewmodel/aula/servidor_lan.py` necesita
+`QtWebSockets`. Sin ese paquete, las pruebas del aula (un centenar) no se
+recolectan y la suite sale verde con menos pruebas, sin decir que falta algo.
+Compruébalo directamente en vez de fiarte del conteo:
+`python -c "import PySide6.QtWebSockets"` tiene que terminar sin error.
+
+```powershell
+pip install PySide6-Addons
+```
+
+La suite **no** necesita GPU, red ni el paquete `datasets`, aunque
+`requirements.txt` lo pida: el tokenizador se sustituye por un doble para no
+descargar el BPE, y el dispositivo se fuerza a CPU donde importa.
+
+**Fragilidad latente**: `tests/viewmodel/test_classroom_network.py` abre
+sockets UDP y WebSocket reales en `127.0.0.1`, y su fixture `puerto_udp` elige
+un puerto al azar **sin comprobar que esté libre**. Es el único candidato
+plausible a prueba intermitente. Si falla una vez y pasa a la siguiente, es
+eso.
+
+## Archivos vacíos o sin uso
+
+Parecen implementados por su nombre y no lo están:
+
+- `core/logger.py` (6 líneas, solo un TODO) y
+  `model/gestor_de_datos/tensor_prep.py` (7 líneas, solo un TODO).
+- `view/canvas/attention_canvas.py` y `view/canvas/vector_canvas.py` (solo
+  docstring).
+- `view/qml/components/ParameterSlider.qml` (9 líneas, solo un TODO).
+- `viewmodel/signal_manager.py`: 164 líneas de código real, **ningún
+  importador** y 0 % de cobertura; su prueba
+  `tests/viewmodel/test_signal_manager.py` es un stub vacío con 0 pruebas.
+- El `.coverage` de la raíz es un artefacto obsoleto de una corrida en Windows
+  con 3 archivos.
+
+## Control de versiones: `.gitignore`
+
+Ignora `docs` y `*.json` **en bloque**, con excepciones puntuales
+(`!data/evaluacion/question_bank.json`, `!data/aprendizaje/modules.json`, …).
+Consecuencia: **un `.json` de datos nuevo, o un documento nuevo en `docs/`, no
+se versiona y no aparece en `git status`.** Hay que agregarle su excepción o
+añadirlo con `git add -f`. Los documentos que ya estaban en `docs/` sí están
+versionados a pesar de la regla; uno nuevo no lo estará por sí solo.
