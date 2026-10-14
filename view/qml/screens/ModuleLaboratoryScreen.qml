@@ -502,10 +502,12 @@ PagePrincipal {
                                 border.color: Style.Theme.borde_suave
                             }
                             PestanaAccesible {
+                                objectName: "moduleLaboratoryTrainingMode"
                                 text: "Entrenamiento"
                                 onClicked: root.chooseMode("training")
                             }
                             PestanaAccesible {
+                                objectName: "moduleLaboratoryInferenceMode"
                                 text: "Inferencia"
                                 onClicked: root.chooseMode("inference")
                             }
@@ -636,7 +638,7 @@ PagePrincipal {
                         LaboratorySlider {
                             id: headSlider
                             objectName: "moduleLaboratoryHeadControl"
-                            visible: ["module_3", "module_4", "module_6", "module_8"]
+                            visible: ["module_3", "module_4", "module_5", "module_6", "module_8"]
                                      .indexOf(root.moduleId) !== -1
                             Layout.fillWidth: true
                             Layout.minimumWidth: 0
@@ -1095,10 +1097,10 @@ PagePrincipal {
                         RowLayout {
                             Layout.fillWidth: true
                             spacing: 5 * root.uiScale
-                            BotonSecundario { Layout.preferredWidth: 36 * root.uiScale; Layout.preferredHeight: 34 * root.uiScale; sx: root.uiScale; sy: root.uiScale; text: "↺"; onClicked: root.restartSteps() }
-                            BotonSecundario { Layout.fillWidth: true; Layout.preferredHeight: 34 * root.uiScale; sx: root.uiScale; sy: root.uiScale; text: "←"; enabled: root.safeStepIndex > 0; opacity: enabled ? 1 : 0.4; onClicked: root.previousStep() }
-                            BotonPrincipal { Layout.fillWidth: true; Layout.preferredHeight: 34 * root.uiScale; text: root.playing ? "Ⅱ" : "▶"; onClicked: root.togglePlayback() }
-                            BotonSecundario { Layout.fillWidth: true; Layout.preferredHeight: 34 * root.uiScale; sx: root.uiScale; sy: root.uiScale; text: "→"; enabled: root.safeStepIndex < root.steps.length - 1; opacity: enabled ? 1 : 0.4; onClicked: root.nextStep() }
+                            BotonSecundario { objectName: "moduleLaboratoryRestartSteps"; Layout.preferredWidth: 36 * root.uiScale; Layout.preferredHeight: 34 * root.uiScale; sx: root.uiScale; sy: root.uiScale; text: "↺"; onClicked: root.restartSteps() }
+                            BotonSecundario { objectName: "moduleLaboratoryPreviousStep"; Layout.fillWidth: true; Layout.preferredHeight: 34 * root.uiScale; sx: root.uiScale; sy: root.uiScale; text: "←"; enabled: root.safeStepIndex > 0; opacity: enabled ? 1 : 0.4; onClicked: root.previousStep() }
+                            BotonPrincipal { objectName: "moduleLaboratoryPlaySteps"; Layout.fillWidth: true; Layout.preferredHeight: 34 * root.uiScale; text: root.playing ? "Ⅱ" : "▶"; onClicked: root.togglePlayback() }
+                            BotonSecundario { objectName: "moduleLaboratoryNextStep"; Layout.fillWidth: true; Layout.preferredHeight: 34 * root.uiScale; sx: root.uiScale; sy: root.uiScale; text: "→"; enabled: root.safeStepIndex < root.steps.length - 1; opacity: enabled ? 1 : 0.4; onClicked: root.nextStep() }
                         }
                     }
                 }
