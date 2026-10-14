@@ -1050,7 +1050,7 @@ def test_layernorm_explica_sus_cuatro_fases_y_simbolos(qapp):
 def test_movimiento_reducido_sigue_la_preferencia_global(qapp):
     """El explorador obedece al tema y no tiene un control propio.
 
-    La preferencia se escribe solo desde MotionSwitch (main.qml); un control
+    La preferencia se escribe solo desde MotionSwitch (preferencias de main.qml); un control
     local dentro del modal se ocultaba en anchos compactos y dejaba la
     preferencia inalcanzable.
     """

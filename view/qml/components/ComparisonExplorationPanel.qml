@@ -28,7 +28,7 @@ Rectangle {
     property int compactModelIndex: 0
     property bool residualUsesFfn: false
     // Preferencia de la aplicación, no del panel: se lee del tema, que solo
-    // escribe MotionSwitch (main.qml). Antes este panel tenía su propia
+    // escribe MotionSwitch (panel de preferencias de main.qml). Antes este panel tenía su propia
     // casilla y una copia local que la preferencia global nunca alcanzaba.
     property bool reducedMotion: Style.Theme.movimientoReducido
     property bool stepMode: false

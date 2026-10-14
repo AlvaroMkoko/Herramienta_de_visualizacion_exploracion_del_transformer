@@ -335,10 +335,11 @@ PagePrincipal {
             RowLayout {
                 Layout.fillWidth: true
                 Layout.leftMargin: 24 * root.uiScale
-                // La ventana principal mantiene los controles de vista dual,
-                // movimiento y tema sobre la esquina superior derecha
-                // (150 + 8 + 74 + 8 + 74 + 12 = 326).
-                Layout.rightMargin: 330 * root.uiScale
+                // La ventana principal mantiene el indicador de vista dual y
+                // el botón de preferencias sobre la esquina superior derecha:
+                // 150 + 8 + 34 + 12 = 204 en el peor caso (vista dual
+                // visible), más 4 de holgura.
+                Layout.rightMargin: 208 * root.uiScale
                 spacing: 14 * root.uiScale
 
                 BotonPrincipal {

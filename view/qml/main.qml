@@ -72,22 +72,15 @@ ApplicationWindow {
         replaceExit: pushExit
     }
 
-    ThemeSwitch {
-        id: themeSwitch
+    // Preferencias globales (tema y movimiento reducido) detrás de un solo
+    // botón: viven aquí, no dentro de una pantalla que pueda ocultarlas o no
+    // abrirse, y ocupan la menor esquina posible (docs/architecture.md).
+    PreferencesMenu {
+        id: preferencias
         z: 100
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.margins: 12
-    }
-
-    // Movimiento reducido es preferencia de accesibilidad: vive aquí, junto
-    // al tema, y no dentro de una pantalla que pueda ocultarlo o no abrirse.
-    MotionSwitch {
-        id: motionSwitch
-        z: 100
-        anchors.right: themeSwitch.left
-        anchors.rightMargin: 8
-        anchors.verticalCenter: themeSwitch.verticalCenter
     }
 
     Rectangle {
@@ -95,9 +88,9 @@ ApplicationWindow {
         objectName: "dualScreenIndicator"
         z: 100
         visible: window.multiScreenAvailable
-        anchors.right: motionSwitch.left
+        anchors.right: preferencias.left
         anchors.rightMargin: 8
-        anchors.verticalCenter: themeSwitch.verticalCenter
+        anchors.verticalCenter: preferencias.verticalCenter
         width: 150
         height: 32
         radius: height / 2
@@ -125,9 +118,9 @@ ApplicationWindow {
         readonly property bool enLinea: visible && window.aulaAlumno.conectado
         z: 100
         visible: window.aulaAlumno !== null && window.aulaAlumno.enClase
-        anchors.right: indicadorDual.visible ? indicadorDual.left : motionSwitch.left
+        anchors.right: indicadorDual.visible ? indicadorDual.left : preferencias.left
         anchors.rightMargin: 8
-        anchors.verticalCenter: themeSwitch.verticalCenter
+        anchors.verticalCenter: preferencias.verticalCenter
         width: textoChipAula.implicitWidth + 30
         height: 32
         radius: height / 2

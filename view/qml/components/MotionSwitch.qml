@@ -4,10 +4,11 @@ import QtQuick
 import QtQuick.Controls
 import "../styles" as Style
 
-// Interruptor global de movimiento reducido. Gemelo de ThemeSwitch: vive en
-// main.qml, junto a él, para que la preferencia de accesibilidad se alcance
-// desde cualquier pantalla y a cualquier ancho. Los paneles solo la leen de
-// Style.Theme.movimientoReducido; ninguno guarda una copia local.
+// Interruptor global de movimiento reducido. Gemelo de ThemeSwitch: vive con
+// él en el panel de PreferencesMenu (main.qml), para que la preferencia de
+// accesibilidad se alcance desde cualquier pantalla y a cualquier ancho. Los
+// paneles solo la leen de Style.Theme.movimientoReducido; ninguno guarda una
+// copia local.
 ControlActivableAccesible {
     id: control
     objectName: "motionSwitch"

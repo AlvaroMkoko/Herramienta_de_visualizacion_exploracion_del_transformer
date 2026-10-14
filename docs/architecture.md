@@ -344,6 +344,23 @@ Además:
   `typeof mainViewModel !== "undefined" && mainViewModel ? ... : null`, para que
   el componente cargue sin contexto.
 
+**La esquina superior derecha es del cromo global.** `main.qml` dibuja ahí,
+por encima de cualquier pantalla (`z: 100`), el botón de preferencias
+(`PreferencesMenu`), que abre un panel con los controles que valen para toda la
+aplicación: el interruptor de tema (`ThemeSwitch`) y el de movimiento reducido
+(`MotionSwitch`). Toda pantalla nueva debe dejar libre esa franja. Hoy ocupa
+46 px de ancho medidos desde el borde derecho (12 de margen + 34) y 46 px de
+alto (12 de margen + 34), en píxeles fijos que no escalan con `sx`/`sy`; el
+panel abierto flota debajo, sobre el contenido, y se cierra con Escape. La
+franja crece a la izquierda cuando aparecen los indicadores condicionales
+anclados a la misma fila: la vista dual suma 158 px (150 + 8) y el chip del
+aula, su ancho variable más 8. Si una pantalla necesita contenido cerca de esa
+esquina, la reserva de forma explícita, como la cabecera del laboratorio
+(`ModuleLaboratoryScreen.qml`, `Layout.rightMargin: 208 * root.uiScale`, con la
+suma escrita en un comentario), y la ajusta cuando el cromo cambie. Una
+preferencia global nueva va dentro del panel, no como otro control en la
+esquina.
+
 ### Revisar QML sin ejecutar la app
 
 Un error de compilación en QML no rompe una línea: deja de cargar el archivo

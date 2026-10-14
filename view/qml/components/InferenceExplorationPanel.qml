@@ -25,7 +25,7 @@ Item {
     property int headIndex: 0
     property bool residualUsesFfn: false
     // Movimiento reducido es una preferencia de la aplicación, no del panel:
-    // se lee del tema, que solo escribe MotionSwitch (main.qml), para que el
+    // se lee del tema, que solo escribe MotionSwitch (preferencias de main.qml), para que el
     // laboratorio, la comparación y este explorador obedezcan la misma. Nada
     // en producción asigna esta propiedad; si algo lo hiciera, rompería el
     // enlace. Sigue siendo escribible solo para que las pruebas la fuercen.
