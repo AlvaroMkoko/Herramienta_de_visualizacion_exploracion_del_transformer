@@ -80,12 +80,22 @@ ApplicationWindow {
         anchors.margins: 12
     }
 
+    // Movimiento reducido es preferencia de accesibilidad: vive aquí, junto
+    // al tema, y no dentro de una pantalla que pueda ocultarlo o no abrirse.
+    MotionSwitch {
+        id: motionSwitch
+        z: 100
+        anchors.right: themeSwitch.left
+        anchors.rightMargin: 8
+        anchors.verticalCenter: themeSwitch.verticalCenter
+    }
+
     Rectangle {
         id: indicadorDual
         objectName: "dualScreenIndicator"
         z: 100
         visible: window.multiScreenAvailable
-        anchors.right: themeSwitch.left
+        anchors.right: motionSwitch.left
         anchors.rightMargin: 8
         anchors.verticalCenter: themeSwitch.verticalCenter
         width: 150
@@ -115,7 +125,7 @@ ApplicationWindow {
         readonly property bool enLinea: visible && window.aulaAlumno.conectado
         z: 100
         visible: window.aulaAlumno !== null && window.aulaAlumno.enClase
-        anchors.right: indicadorDual.visible ? indicadorDual.left : themeSwitch.left
+        anchors.right: indicadorDual.visible ? indicadorDual.left : motionSwitch.left
         anchors.rightMargin: 8
         anchors.verticalCenter: themeSwitch.verticalCenter
         width: textoChipAula.implicitWidth + 30

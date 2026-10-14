@@ -25,9 +25,10 @@ Item {
     property int headIndex: 0
     property bool residualUsesFfn: false
     // Movimiento reducido es una preferencia de la aplicación, no del panel:
-    // se lee del tema para que el laboratorio y el explorador obedezcan la
-    // misma. La casilla de este panel escribe en el tema y nunca aquí; si la
-    // escribiera aquí, la primera pulsación destruiría este enlace.
+    // se lee del tema, que solo escribe MotionSwitch (main.qml), para que el
+    // laboratorio, la comparación y este explorador obedezcan la misma. Nada
+    // en producción asigna esta propiedad; si algo lo hiciera, rompería el
+    // enlace. Sigue siendo escribible solo para que las pruebas la fuercen.
     property bool reducedMotion: Style.Theme.movimientoReducido
     property bool sequencePlaying: false
     property bool detailsExpanded: false
@@ -874,24 +875,6 @@ Item {
                     enabled: root.canGenerateNext && !root.tokenProcessing
                     accent: Style.Theme.acento
                     onClicked: root.nextTokenRequested()
-                }
-                CasillaPrincipal {
-                    objectName: "inferenceReducedMotionToggle"
-                    visible: !root.veryCompactWidth
-                    Layout.preferredWidth: visible
-                                           ? Math.max(122, (root.condensedWidth ? 132 : 158) * root.uiSx)
-                                           : 0
-                    Layout.minimumWidth: visible ? 122 : 0
-                    Layout.maximumWidth: visible ? 158 : 0
-                    text: "Reducir movimiento"
-                    // Es el interruptor global: ninguna otra pantalla escribe
-                    // Style.Theme.movimientoReducido, y el tema lo recuerda
-                    // entre sesiones. Quitarlo dejaría la preferencia
-                    // inalcanzable.
-                    checked: Style.Theme.movimientoReducido
-                    font.pixelSize: Math.max(11, 11 * root.sx)
-                    onToggled: Style.Theme.movimientoReducido = checked
-                    Accessible.description: "Detiene las transiciones decorativas en toda la aplicación"
                 }
                 ActionPill {
                     objectName: "inferenceGuideToggle"

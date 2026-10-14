@@ -339,3 +339,81 @@ def test_expansion_ffn_no_desborda_un_panel_comparativo(qapp):
     component.deleteLater()
     engine.deleteLater()
     qapp.processEvents()
+
+
+def _fijar_movimiento_reducido(engine: QQmlEngine, valor: bool) -> None:
+    # El tema es un singleton por engine: se escribe desde un componente del
+    # mismo engine, igual que lo haría MotionSwitch en la aplicación.
+    component = QQmlComponent(engine)
+    component.setData(
+        (
+            'import QtQuick\nimport "styles" as Style\n'
+            "QtObject { Component.onCompleted: Style.Theme.movimientoReducido = "
+            + ("true" if valor else "false")
+            + " }"
+        ).encode(),
+        QUrl.fromLocalFile(str(QML_ROOT / "FijarMovimiento.qml")),
+    )
+    assert component.create() is not None, _errors(component)
+
+
+def _la_carrera_anima_al_entrar(panel, qapp) -> bool:
+    """Entra a la escena de softmax desde otra y dice si algo cambia en 0.6 s."""
+    panel.setProperty("animationIndex", 8)
+    QTest.qWait(50)
+    panel.setProperty("animationIndex", 9)
+    qapp.processEvents()
+    scene = panel.findChild(QObject, "comparisonAnimationTraceA").findChild(
+        QObject, "softmaxRaceScene"
+    )
+    assert scene is not None and scene.property("active") is True
+    primero = scene.property("revealProgress")
+    QTest.qWait(600)
+    return scene.property("revealProgress") != primero
+
+
+def test_comparacion_obedece_el_movimiento_reducido_global(qapp):
+    """Con la preferencia global activada, el explorador de comparación no anima.
+
+    Antes tenía su propia casilla y una propiedad local que nada enlazaba al
+    tema: la preferencia global no llegaba a sus escenas.
+    """
+    engine = QQmlEngine()
+    engine.addImportPath(str(QML_ROOT))
+    component = QQmlComponent(
+        engine,
+        QUrl.fromLocalFile(
+            str(QML_ROOT / "components" / "ComparisonExplorationPanel.qml")
+        ),
+    )
+    assert component.status() == QQmlComponent.Status.Ready, _errors(component)
+    panel = component.create()
+    assert panel is not None, _errors(component)
+    window = QQuickWindow()
+    window.setWidth(1200)
+    window.setHeight(760)
+    panel.setParentItem(window.contentItem())
+    panel.setProperty("width", 1200)
+    panel.setProperty("height", 760)
+    panel.setProperty("snapshotsA", [_snapshot("corre", 0.7)])
+    panel.setProperty("snapshotsB", [_snapshot("duerme", 0.55)])
+    panel.setProperty("detailA", _detail())
+    panel.setProperty("detailB", _detail())
+    panel.setProperty("viewModeIndex", 1)
+    window.show()
+    qapp.processEvents()
+
+    # Control: sin la preferencia, la escena sí entra animando. Sin esto, una
+    # escena que nunca animara pasaría la aserción de abajo por accidente.
+    _fijar_movimiento_reducido(engine, False)
+    assert _la_carrera_anima_al_entrar(panel, qapp) is True
+
+    _fijar_movimiento_reducido(engine, True)
+    qapp.processEvents()
+    assert panel.property("reducedMotion") is True
+    assert _la_carrera_anima_al_entrar(panel, qapp) is False
+    assert panel.findChild(QObject, "comparisonReducedMotionToggle") is None
+
+    window.deleteLater()
+    engine.deleteLater()
+    qapp.processEvents()

@@ -22,6 +22,8 @@ QtObject {
     }
 
     function alternarModo() { modoOscuro = !modoOscuro }
+    // Lo invoca MotionSwitch, el único control que escribe la preferencia.
+    function alternarMovimiento() { movimientoReducido = !movimientoReducido }
 
     // ========= Tamaño de ancho y largo =========
     readonly property real baseWidth: 1280

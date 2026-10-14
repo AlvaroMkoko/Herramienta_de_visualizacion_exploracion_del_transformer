@@ -27,7 +27,10 @@ Rectangle {
     property int attentionPhaseIndex: 0
     property int compactModelIndex: 0
     property bool residualUsesFfn: false
-    property bool reducedMotion: false
+    // Preferencia de la aplicación, no del panel: se lee del tema, que solo
+    // escribe MotionSwitch (main.qml). Antes este panel tenía su propia
+    // casilla y una copia local que la preferencia global nunca alcanzaba.
+    property bool reducedMotion: Style.Theme.movimientoReducido
     property bool stepMode: false
     property bool canGenerateNext: false
     property bool tokenProcessing: false
@@ -485,15 +488,6 @@ Rectangle {
                         }
 
                         Item { Layout.fillWidth: true }
-
-                        CasillaPrincipal {
-                            objectName: "comparisonReducedMotionToggle"
-                            Layout.preferredWidth: 146 * root.sx
-                            text: "Reducir movimiento"
-                            checked: root.reducedMotion
-                            font.pixelSize: 10 * Math.min(root.sx, root.sy)
-                            onToggled: root.reducedMotion = checked
-                        }
                     }
 
                     RowLayout {

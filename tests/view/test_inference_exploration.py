@@ -9,7 +9,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("QSG_RHI_BACKEND", "software")
 os.environ.setdefault("QT_QUICK_CONTROLS_STYLE", "Basic")
 
-from PySide6.QtCore import Q_ARG, Q_RETURN_ARG, QMetaObject, QObject, QPointF, Qt, QUrl
+from PySide6.QtCore import Q_ARG, QMetaObject, QObject, QPointF, QUrl
 from PySide6.QtGui import QColor
 from PySide6.QtQml import QJSValue, QQmlComponent, QQmlEngine
 from PySide6.QtQuick import QQuickItem
@@ -37,7 +37,6 @@ ApplicationWindow {
     onRequestedDarkModeChanged: Style.Theme.modoOscuro = requestedDarkMode
     Component.onCompleted: Style.Theme.modoOscuro = requestedDarkMode
     function setGlobalReducedMotion(value) { Style.Theme.movimientoReducido = value }
-    function globalReducedMotion() { return Style.Theme.movimientoReducido }
 
     Components.InferenceExplorationPanel {
         anchors.fill: parent
@@ -127,7 +126,6 @@ def test_explorador_respeta_limites_del_modal_en_resolucion_base(qapp):
         "inferenceProcessMap",
         "inferenceNextTokenButton",
         "inferenceAnimationViewport",
-        "inferenceReducedMotionToggle",
         "inferenceGuideToggle",
         "inferenceCloseButton",
         "inferencePreviousOperationButton",
@@ -610,7 +608,6 @@ def test_explorador_prioriza_mapa_y_resumen_con_detalle_bajo_demanda(qapp):
     technical_map = window.findChild(QObject, "inferenceTransformerMiniMap")
     map_toggle = window.findChild(QObject, "inferenceLocationMapToggle")
     pedagogical_scroll = window.findChild(QObject, "inferencePedagogicalScroll")
-    reduced_motion = window.findChild(QObject, "inferenceReducedMotionToggle")
 
     assert process_map is not None
     assert process_map.property("visible") is True
@@ -638,7 +635,6 @@ def test_explorador_prioriza_mapa_y_resumen_con_detalle_bajo_demanda(qapp):
     assert map_toggle is not None and map_toggle.property("visible") is True
     assert map_toggle.property("text") == "Ocultar mapa"
     assert pedagogical_scroll is not None
-    assert reduced_motion is not None and reduced_motion.property("visible") is True
     assert panel.property("guidedStepDuration") >= 9000
     assert local_context is not None and local_context.property("visible") is True
     for item in (essential, visual_guide, animation_takeaway, next_step, input_output):
@@ -1051,46 +1047,27 @@ def test_layernorm_explica_sus_cuatro_fases_y_simbolos(qapp):
     qapp.processEvents()
 
 
-def _tema_reducido(window) -> bool:
-    return bool(
-        _como_python(
-            QMetaObject.invokeMethod(window, "globalReducedMotion", Q_RETURN_ARG("QVariant"))
-        )
-    )
+def test_movimiento_reducido_sigue_la_preferencia_global(qapp):
+    """El explorador obedece al tema y no tiene un control propio.
 
-
-def test_movimiento_reducido_sigue_la_preferencia_global_y_la_casilla_la_escribe(qapp):
-    """La preferencia global gobierna el explorador, y su casilla es esa preferencia.
-
-    Antes el panel solo obedecía a su casilla local: con el tema en
-    movimiento reducido las escenas seguían animando la transición.
+    La preferencia se escribe solo desde MotionSwitch (main.qml); un control
+    local dentro del modal se ocultaba en anchos compactos y dejaba la
+    preferencia inalcanzable.
     """
     engine = QQmlEngine()
     _, window, panel = _crear_panel(engine, qapp)
-    casilla = window.findChild(QObject, "inferenceReducedMotionToggle")
-    assert casilla is not None
+    assert window.findChild(QObject, "inferenceReducedMotionToggle") is None
+    escena = window.findChild(QObject, "tokenEmbeddingScene")
 
     QMetaObject.invokeMethod(window, "setGlobalReducedMotion", Q_ARG("QVariant", True))
     qapp.processEvents()
     assert panel.property("reducedMotion") is True
-    assert window.findChild(QObject, "tokenEmbeddingScene").property("reducedMotion") is True
-    assert casilla.property("checked") is True
+    assert escena.property("reducedMotion") is True
 
-    # Pulsar la casilla escribe en el tema, no en una copia local. Clic real:
-    # es lo que haría el estudiante, y lo que rompería un enlace de `checked`.
-    centro = casilla.mapToScene(QPointF(casilla.width() / 2, casilla.height() / 2))
-    QTest.mouseClick(window, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier,
-                     centro.toPoint())
+    QMetaObject.invokeMethod(window, "setGlobalReducedMotion", Q_ARG("QVariant", False))
     qapp.processEvents()
-    assert _tema_reducido(window) is False
     assert panel.property("reducedMotion") is False
-
-    # Tras la pulsación, la casilla y el panel siguen al tema: ningún
-    # enlace se rompió al escribir.
-    QMetaObject.invokeMethod(window, "setGlobalReducedMotion", Q_ARG("QVariant", True))
-    qapp.processEvents()
-    assert casilla.property("checked") is True
-    assert panel.property("reducedMotion") is True
+    assert escena.property("reducedMotion") is False
 
     window.deleteLater()
     engine.deleteLater()
