@@ -23,13 +23,11 @@ Item {
     property real sy: 1
     property bool essentialMode: true
     property bool detailsExpanded: false
-    // Una sola categoría visible reduce la cantidad de información que el
-    // estudiante debe procesar a la vez. La selección se conserva al cambiar
-    // de operación para poder comparar, por ejemplo, solo las fórmulas.
-    property int selectedSection: 0
 
-    onEssentialModeChanged: if (essentialMode && selectedSection === 3)
-                                selectedSection = 0
+    // Los datos técnicos son una revelación progresiva, no otra navegación.
+    // Al cambiar de operación o volver al nivel esencial se pliegan de nuevo.
+    onStepChanged: detailsExpanded = false
+    onEssentialModeChanged: if (essentialMode) detailsExpanded = false
 
     signal inspectRequested(var panel)
 
@@ -424,84 +422,19 @@ Item {
             width: guideScroll.availableWidth
             spacing: 10 * root.sy
 
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 6 * root.sx
-
-                Text {
-                    Layout.fillWidth: true
-                    text: "EXPLICACIÓN"
-                    color: root.accent
-                    font.bold: true
-                    font.letterSpacing: 0.5
-                    font.pixelSize: Math.max(11, 12 * root.sx)
-                }
-                Text {
-                    text: "Operación " + (root.stepIndex + 1) + " de " + root.steps.length
-                    color: Style.Theme.texto_secundario_fuerte
-                    font.bold: true
-                    font.pixelSize: Math.max(11, 12 * root.sx)
-                }
-            }
-
             Text {
                 Layout.fillWidth: true
-                text: root.valueOr(root.step && root.step.title, "Operación del módulo")
-                color: Style.Theme.texto_primario
+                text: "GUÍA DE LECTURA"
+                color: root.accent
                 font.bold: true
+                font.letterSpacing: 0.5
                 wrapMode: Text.WordWrap
-                font.pixelSize: Math.max(22, 25 * root.sx)
-            }
-
-            TabBar {
-                id: explanationTabs
-                objectName: "moduleLaboratoryGuideTabs"
-                Layout.fillWidth: true
-                Layout.preferredHeight: Math.max(44, 48 * root.sy)
-                currentIndex: root.selectedSection
-                spacing: 4 * root.sx
-                Accessible.name: "Categorías de la explicación"
-                Accessible.description: "Muestra una categoría a la vez"
-                onCurrentIndexChanged: root.selectedSection = currentIndex
-
-                background: Rectangle {
-                    radius: 10 * root.sx
-                    color: Style.Theme.surface
-                    border.color: Style.Theme.borde_suave
-                }
-
-                PestanaAccesible {
-                    objectName: "moduleLaboratoryGuideIdeaTab"
-                    text: "Idea clave"
-                    font.pixelSize: Math.max(11, 13 * root.sx)
-                }
-                PestanaAccesible {
-                    objectName: "moduleLaboratoryGuideFormulaTab"
-                    text: "Fórmula"
-                    font.pixelSize: Math.max(11, 13 * root.sx)
-                }
-                PestanaAccesible {
-                    objectName: "moduleLaboratoryGuideAnimationTab"
-                    text: "Animación"
-                    font.pixelSize: Math.max(11, 13 * root.sx)
-                }
-                PestanaAccesible {
-                    objectName: "moduleLaboratoryGuideDataTab"
-                    visible: !root.essentialMode
-                    text: "Datos"
-                    font.pixelSize: Math.max(11, 13 * root.sx)
-                }
+                font.pixelSize: Math.max(11, 12 * root.sx)
             }
 
             Text {
                 Layout.fillWidth: true
-                text: root.selectedSection === 0
-                      ? "Comprende el propósito y el lugar de esta operación."
-                      : (root.selectedSection === 1
-                         ? "Lee la fórmula, sus símbolos y el resultado que produce."
-                         : (root.selectedSection === 2
-                            ? "Concéntrate únicamente en lo que cambia dentro de la animación."
-                            : "Consulta las dimensiones, estadísticas y valores reales capturados."))
+                text: "Lee en orden: qué entra → qué cambia → qué observar."
                 color: Style.Theme.texto_secundario_fuerte
                 wrapMode: Text.WordWrap
                 font.pixelSize: Math.max(11, 13 * root.sx)
@@ -509,7 +442,7 @@ Item {
 
             Rectangle {
                 objectName: "moduleLaboratoryGuideLocalContext"
-                visible: root.selectedSection === 0 && !root.essentialMode
+                visible: !root.essentialMode
                 Layout.fillWidth: true
                 implicitHeight: localContextColumn.implicitHeight + 20 * root.sy
                 radius: 10 * root.sx
@@ -574,19 +507,18 @@ Item {
 
             GuideCard {
                 objectName: "moduleLaboratoryGuideInput"
-                visible: root.selectedSection === 0 && root.essentialMode
+                visible: root.essentialMode
                 Layout.fillWidth: true
                 eyebrow: "QUÉ ENTRA"
                 body: root.valueOr(root.step && root.step.input,
                                    "Datos producidos por la operación anterior.")
-                accent: Style.Theme.inferencia_estructura
-                fillColor: Style.Theme.info_fondo
+                accent: root.accent
+                fillColor: Style.Theme.superficie_alterna
                 sx: root.sx; sy: root.sy
             }
 
             GuideCard {
                 objectName: "moduleLaboratoryGuideIdea"
-                visible: root.selectedSection === 0
                 Layout.fillWidth: true
                 eyebrow: root.essentialMode ? "QUÉ CAMBIA" : "IDEA CLAVE"
                 body: root.valueOr(root.step && root.step.explanation,
@@ -600,12 +532,11 @@ Item {
 
             GuideCard {
                 objectName: "moduleLaboratoryGuideObservation"
-                visible: root.selectedSection === 2
                 Layout.fillWidth: true
                 eyebrow: "QUÉ OBSERVAR AHORA"
                 body: root.observationText()
-                accent: Style.Theme.inferencia_estructura
-                fillColor: Style.Theme.info_fondo
+                accent: root.accent
+                fillColor: Style.Theme.superficie_alterna
                 footer: "AL FINAL DEBES VER · "
                         + root.valueOr(root.step && root.step.output, "el resultado del paso")
                 sx: root.sx; sy: root.sy
@@ -613,7 +544,6 @@ Item {
 
             Rectangle {
                 objectName: "moduleLaboratoryGuideFormula"
-                visible: root.selectedSection === 1
                 Layout.fillWidth: true
                 implicitHeight: formulaColumn.implicitHeight + 24 * root.sy
                 radius: 11 * root.sx
@@ -699,22 +629,9 @@ Item {
                 }
             }
 
-            GuideCard {
-                visible: root.selectedSection === 3
-                Layout.fillWidth: true
-                eyebrow: root.trainingMode ? "SEÑAL DE APRENDIZAJE" : "USO EN INFERENCIA"
-                body: root.modeEvidenceText()
-                accent: root.trainingMode
-                        ? Style.Theme.inferencia_transformacion
-                        : Style.Theme.inferencia_contexto
-                fillColor: root.trainingMode
-                           ? Style.Theme.formula_fondo : Style.Theme.exito_fondo
-                sx: root.sx; sy: root.sy
-            }
-
             BotonAccesible {
                 objectName: "moduleLaboratoryGuideDetailsToggle"
-                visible: false
+                visible: !root.essentialMode
                 Layout.fillWidth: true
                 Layout.preferredHeight: Math.max(36, 40 * root.sy)
                 text: root.detailsExpanded ? "Ocultar datos técnicos  ▴" : "Ver datos técnicos  ▾"
@@ -726,15 +643,23 @@ Item {
             ColumnLayout {
                 objectName: "moduleLaboratoryGuideTechnicalDetails"
                 Layout.fillWidth: true
-                visible: root.selectedSection === 3
+                visible: !root.essentialMode && root.detailsExpanded
                 spacing: 9 * root.sy
+
+                GuideCard {
+                    Layout.fillWidth: true
+                    eyebrow: root.trainingMode ? "SEÑAL DE APRENDIZAJE" : "USO EN INFERENCIA"
+                    body: root.modeEvidenceText()
+                    accent: root.accent
+                    sx: root.sx; sy: root.sy
+                }
 
                 GuideCard {
                     objectName: "moduleLaboratoryGuideEvidence"
                     Layout.fillWidth: true
                     eyebrow: "DATOS DE ESTA CAPTURA"
                     body: root.captureText()
-                    accent: Style.Theme.inferencia_resultado
+                    accent: root.accent
                     sx: root.sx; sy: root.sy
                 }
                 BotonAccesible {
@@ -751,7 +676,7 @@ Item {
                     Layout.fillWidth: true
                     eyebrow: "GRADIENTES REALES DEL COMPONENTE"
                     body: root.gradientsText()
-                    accent: Style.Theme.inferencia_transformacion
+                    accent: root.accent
                     sx: root.sx; sy: root.sy
                 }
                 GuideCard {
@@ -759,13 +684,13 @@ Item {
                     eyebrow: "LEE EL ELEMENTO VISUAL"
                     body: root.valueOr(root.panel && root.panel.description,
                                        "Los números provienen del forward; el color y las flechas ayudan a representarlos.")
-                    accent: Style.Theme.inferencia_contexto
+                    accent: root.accent
                     sx: root.sx; sy: root.sy
                 }
             }
 
             Rectangle {
-                visible: root.selectedSection === 0 && !root.essentialMode
+                visible: !root.essentialMode
                 Layout.fillWidth: true
                 implicitHeight: caveatText.implicitHeight + 20 * root.sy
                 radius: 9 * root.sx

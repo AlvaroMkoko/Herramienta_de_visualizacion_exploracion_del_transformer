@@ -15,15 +15,9 @@ Item {
 
     property var demo: ({})
     property var step: ({})
-    // La pantalla enlaza estas dos explicaciones especializadas con la misma
-    // guía pedagógica que acompaña a la animación principal. Así la fórmula
-    // deja de ser una leyenda aislada: el estudiante puede leer qué operación
-    // se ejecuta y cómo reconocerla en pantalla sin abrir otra ventana.
+    // La lectura especializada alimenta la descripción accesible de la fórmula;
+    // la explicación visible vive en la única pestaña pedagógica de la pantalla.
     property string formulaExplanation: ""
-    property string animationDescription: ""
-    property int explanationSection: 0
-    property int contentSection: 0
-    property bool essentialMode: true
     property bool reducedMotion: false
     property real sx: 1
     property real sy: 1
@@ -95,10 +89,7 @@ Item {
                 + "». Los demás elementos permanecen atenuados para conservar el contexto."
     }
 
-    onDemoChanged: {
-        root.contentSection = 0
-        Qt.callLater(root.replay)
-    }
+    onDemoChanged: Qt.callLater(root.replay)
     onReducedMotionChanged: if (reducedMotion) { driver.stop(); t = 1 }
 
     NumberAnimation {
@@ -425,38 +416,9 @@ Item {
             maximumLineCount: 2
         }
 
-        TabBar {
-            id: formulaContentTabs
-            objectName: "formulaAnimationContentTabs"
-            Layout.fillWidth: true
-            Layout.preferredHeight: 38 * root.u
-            currentIndex: root.contentSection
-            spacing: 4 * root.u
-            Accessible.name: "Vista de la fórmula animada"
-            Accessible.description: "Separa el cálculo visual de su explicación"
-            onCurrentIndexChanged: root.contentSection = currentIndex
-
-            background: Rectangle {
-                radius: 8 * root.u
-                color: Style.Theme.superficie_alterna
-                border.color: Style.Theme.borde_suave
-            }
-            PestanaAccesible {
-                objectName: "formulaAnimationCalculationTab"
-                text: "Cálculo paso a paso"
-                font.pixelSize: Math.max(11, 12 * root.u)
-            }
-            PestanaAccesible {
-                objectName: "formulaAnimationBriefTab"
-                text: "Explicación breve"
-                font.pixelSize: Math.max(11, 12 * root.u)
-            }
-        }
-
         Rectangle {
-            visible: root.contentSection === 0
             Layout.fillWidth: true
-            Layout.fillHeight: visible
+            Layout.fillHeight: true
             radius: 10 * root.u
             color: Style.Theme.superficie_alterna
             border.color: Style.Theme.borde_suave
@@ -472,7 +434,6 @@ Item {
         }
 
         RowLayout {
-            visible: root.contentSection === 0
             Layout.fillWidth: true
             spacing: 6 * root.u
 
@@ -528,7 +489,6 @@ Item {
 
         Rectangle {
             objectName: "formulaAnimationPhaseGuidance"
-            visible: root.contentSection === 0
             Layout.fillWidth: true
             implicitHeight: phaseGuidanceText.implicitHeight + 16 * root.u
             radius: 8 * root.u
@@ -550,135 +510,9 @@ Item {
             }
         }
 
-        Rectangle {
-            objectName: "formulaAnimationExplanationPanel"
-            visible: root.contentSection === 1
-            Layout.fillWidth: true
-            Layout.fillHeight: visible
-            radius: 9 * root.u
-            color: Style.Theme.surface
-            border.color: Style.Theme.inferencia_contexto
-
-            ScrollView {
-                anchors.fill: parent
-                anchors.margins: 9 * root.u
-                contentWidth: availableWidth
-                clip: true
-                ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-
-                ColumnLayout {
-                    id: explanationColumn
-                    width: parent.width
-                    spacing: 8 * root.u
-
-                    BriefCard {
-                        Layout.fillWidth: true
-                        eyebrow: "QUÉ ENTRA"
-                        body: String(root.step && root.step.input
-                                     || "Datos producidos por la operación anterior.")
-                        accent: Style.Theme.inferencia_estructura
-                        fillColor: Style.Theme.info_fondo
-                    }
-
-                    BriefCard {
-                        Layout.fillWidth: true
-                        eyebrow: "QUÉ CAMBIA"
-                        body: String(root.step && root.step.explanation
-                                     || "La entrada se transforma con la fórmula mostrada.")
-                              + (!root.essentialMode && root.formulaExplanation.length
-                                 ? " " + root.formulaExplanation : "")
-                        accent: Style.Theme.formula_texto
-                        fillColor: Style.Theme.formula_fondo
-                        contentObjectName: "formulaAnimationExplanation"
-                    }
-
-                    BriefCard {
-                        Layout.fillWidth: true
-                        eyebrow: "QUÉ DEBES OBSERVAR"
-                        body: {
-                            var visual = String(root.demo && root.demo.animation_explanation
-                                                || root.animationDescription || "")
-                            var numeric = String(root.demo && root.demo.caption || "")
-                            if (!root.essentialMode && visual.length && numeric.length)
-                                return visual + " " + numeric
-                            return visual.length ? visual : numeric
-                        }
-                        accent: Style.Theme.inferencia_contexto
-                        fillColor: Style.Theme.exito_fondo
-                        contentObjectName: "formulaAnimationCaption"
-                    }
-
-                    Rectangle {
-                        objectName: "formulaAnimationResultCard"
-                        Layout.fillWidth: true
-                        implicitHeight: formulaResultText.implicitHeight + 16 * root.u
-                        radius: 7 * root.u
-                        color: Style.Theme.proceso_fondo
-                        border.color: Style.Theme.inferencia_resultado
-
-                        Text {
-                            id: formulaResultText
-                            objectName: "formulaAnimationResult"
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.top: parent.top
-                            anchors.margins: 8 * root.u
-                            text: "AL FINAL DEBES VER  ·  "
-                                  + String(root.step && root.step.output || "salida del paso")
-                            color: Style.Theme.proceso_texto
-                            font.bold: true
-                            wrapMode: Text.WordWrap
-                            lineHeight: 1.16
-                            font.pixelSize: Math.max(11, 13 * root.u)
-                        }
-                    }
-                }
-            }
-        }
     }
 
     // ---------------------------------------------------- piezas comunes
-    component BriefCard: Rectangle {
-        id: briefCard
-        property string eyebrow: ""
-        property string body: ""
-        property string contentObjectName: ""
-        property color accent: Style.Theme.acento
-        property color fillColor: Style.Theme.surface
-
-        implicitHeight: briefColumn.implicitHeight + 18 * root.u
-        radius: 8 * root.u
-        color: fillColor
-        border.color: accent
-
-        ColumnLayout {
-            id: briefColumn
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.margins: 9 * root.u
-            spacing: 4 * root.u
-
-            Text {
-                Layout.fillWidth: true
-                text: briefCard.eyebrow
-                color: briefCard.accent
-                font.bold: true
-                font.letterSpacing: 0.4
-                font.pixelSize: Math.max(10, 11 * root.u)
-            }
-            Text {
-                objectName: briefCard.contentObjectName
-                Layout.fillWidth: true
-                text: briefCard.body
-                color: Style.Theme.texto_primario
-                wrapMode: Text.WordWrap
-                lineHeight: 1.2
-                font.pixelSize: Math.max(12, 14 * root.u)
-            }
-        }
-    }
-
     component Cell: Rectangle {
         id: cell
         property var value: 0
