@@ -18,7 +18,7 @@ os.environ.setdefault("QT_QUICK_CONTROLS_STYLE", "Basic")
 
 import pytest
 from PySide6.QtCore import QObject, QPointF, QRectF, QSizeF, QUrl, qInstallMessageHandler
-from PySide6.QtQml import QQmlComponent, QQmlEngine
+from PySide6.QtQml import QJSValue, QQmlComponent, QQmlEngine
 from PySide6.QtQuick import QQuickItem
 
 from model.aprendizaje import ModuleProgressRepository
@@ -29,6 +29,12 @@ from viewmodel.module_laboratory_controller import _module_steps
 
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def _qml_value(value):
+    """Normaliza objetos JavaScript que PySide convierte de forma contextual."""
+
+    return value.toVariant() if isinstance(value, QJSValue) else value
 
 HOST = b"""\
 import QtQuick
@@ -643,6 +649,25 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(qapp, tmp_path):
     guide_technical_details = window.findChild(
         QObject, "moduleLaboratoryGuideTechnicalDetails"
     )
+    discovery_cycle = window.findChild(QObject, "laboratoryDiscoveryCycle")
+    discovery_button = window.findChild(
+        QObject, "moduleLaboratoryDiscoveryButton"
+    )
+    confirm_prediction = window.findChild(
+        QObject, "laboratoryDiscoveryConfirmPrediction"
+    )
+    run_experiment = window.findChild(
+        QObject, "laboratoryDiscoveryRunExperiment"
+    )
+    confirm_observation = window.findChild(
+        QObject, "laboratoryDiscoveryConfirmObservation"
+    )
+    check_explanation = window.findChild(
+        QObject, "laboratoryDiscoveryCheckExplanation"
+    )
+    show_explanation = window.findChild(
+        QObject, "laboratoryDiscoveryShowExplanation"
+    )
     progress = window.findChild(QObject, "moduleLaboratoryProgress")
     overview_map = window.findChild(QObject, "moduleLaboratoryOverviewMap")
     restart_steps = window.findChild(QObject, "moduleLaboratoryRestartSteps")
@@ -682,6 +707,13 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(qapp, tmp_path):
             guide_input,
             guide_details_toggle,
             guide_technical_details,
+            discovery_cycle,
+            discovery_button,
+            confirm_prediction,
+            run_experiment,
+            confirm_observation,
+            check_explanation,
+            show_explanation,
             progress,
             overview_map,
             restart_steps,
@@ -712,7 +744,7 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(qapp, tmp_path):
     # La vista abre en nivel Esencial y muestra una sola fuente de atención.
     assert screen.property("learningLevel") == "essential"
     assert bool(mode_summary.property("truncated")) is False
-    assert int(workspace_tabs.property("currentIndex")) == 1
+    assert int(workspace_tabs.property("currentIndex")) == 2
     assert bool(step_pane.property("visible")) is False
     assert bool(step_list.property("visible")) is False
     assert bool(advanced_controls.property("visible")) is False
@@ -720,9 +752,47 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(qapp, tmp_path):
     assert 0 < float(progress.property("value")) <= 1
     assert screen.property("guideDetached") is False
     assert guide.property("visible") is False
+    assert discovery_cycle.property("visible") is True
+    assert int(screen.property("discoveryStage")) == 0
 
-    screen.setProperty("workspaceSection", 2)
+    # El ciclo exige predecir, ejecutar un contrafactual, observar, explicar y
+    # recibir feedback antes de revelar la explicación completa.
+    screen.setProperty(
+        "discoveryPrediction", int(discovery_cycle.property("correctPrediction"))
+    )
+    confirm_prediction.clicked.emit()
     qapp.processEvents()
+    assert int(screen.property("discoveryStage")) == 1
+    run_experiment.clicked.emit()
+    for _ in range(5):
+        qapp.processEvents()
+    assert int(screen.property("discoveryStage")) == 2
+    assert int(workspace_tabs.property("currentIndex")) == 1
+    discovery_button.clicked.emit()
+    qapp.processEvents()
+    assert int(workspace_tabs.property("currentIndex")) == 2
+    confirm_observation.clicked.emit()
+    qapp.processEvents()
+    assert int(screen.property("discoveryStage")) == 3
+    correct_explanation = int(discovery_cycle.property("correctExplanation"))
+    wrong_explanation = (correct_explanation + 1) % len(
+        _qml_value(screen.property("explanationBundle"))["options"]
+    )
+    screen.setProperty("discoveryExplanation", wrong_explanation)
+    check_explanation.clicked.emit()
+    qapp.processEvents()
+    assert int(screen.property("discoveryStage")) == 3
+    assert str(screen.property("discoveryHint")).strip()
+    screen.setProperty(
+        "discoveryExplanation", correct_explanation
+    )
+    check_explanation.clicked.emit()
+    qapp.processEvents()
+    assert int(screen.property("discoveryStage")) == 4
+    show_explanation.clicked.emit()
+    qapp.processEvents()
+    assert int(screen.property("discoveryStage")) == 5
+    assert discovery_cycle.property("visible") is False
     assert bool(guide.property("visible")) is True
     assert bool(guide_input.property("visible")) is True
     assert bool(guide_context.property("visible")) is False
@@ -982,6 +1052,39 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(qapp, tmp_path):
             assert "cabeza 3" in title
         actual = tuple(bool(control.property("visible")) for control in controls)
         assert actual == expected, (module_id, step_id, actual)
+
+    # Auditoría pedagógica completa: cada operación de los ocho módulos y de
+    # ambos modos recibe una predicción válida, un experimento concreto y una
+    # comprobación cuya respuesta correcta es la explicación de ese paso.
+    audited = 0
+    for module_id in SPECIALIZATIONS:
+        view_model._course_controller.selectModule(module_id)
+        screen.setProperty("moduleId", module_id)
+        screen.setProperty("learningLevel", "advanced")
+        for mode in ("inference", "training"):
+            screen.setProperty("mode", mode)
+            view_model.moduleLaboratoryController.explore(
+                module_id, "texto", mode, 1, 2, 1, 0.8, 5, 0.9, True
+            )
+            qapp.processEvents()
+            result_steps = view_model.moduleLaboratoryController.result["steps"]
+            for index, step in enumerate(result_steps):
+                screen.setProperty("currentStepIndex", index)
+                qapp.processEvents()
+                challenge = _qml_value(screen.property("discoveryChallenge"))
+                prediction = _qml_value(screen.property("predictionBundle"))
+                explanation = _qml_value(screen.property("explanationBundle"))
+                experiment = _qml_value(screen.property("experimentDescriptor"))
+                assert str(challenge.get("prompt", "")).strip(), (module_id, mode, step["id"])
+                assert len(prediction["options"]) >= 3
+                assert 0 <= int(prediction["correct"]) < len(prediction["options"])
+                assert str(experiment.get("label", "")).strip()
+                assert str(experiment.get("instruction", "")).strip()
+                correct = int(explanation["correct"])
+                assert 0 <= correct < len(explanation["options"])
+                assert explanation["options"][correct] == step["explanation"]
+                audited += 1
+    assert audited >= 120
 
     window.deleteLater()
     engine.deleteLater()
