@@ -340,11 +340,13 @@ Item {
                     eyebrow: root.predictionIsCorrect
                              ? "TU PREDICCIÓN COINCIDIÓ"
                              : "TU PREDICCIÓN CAMBIÓ"
-                    body: root.predictionIsCorrect
-                          ? "La observación fue compatible con tu idea inicial. Ahora ya puedes justificarla con la operación matemática."
-                          : "La evidencia no coincidió con tu idea inicial. La respuesta esperada era: «"
-                            + String(root.predictionOptions[root.correctPrediction] || "—")
-                            + "». Cambiar de explicación después de observar es parte del aprendizaje."
+                    body: (root.predictionIsCorrect
+                           ? "La observación fue compatible con tu idea inicial. Ahora ya puedes justificarla con la operación matemática."
+                           : "La evidencia no coincidió con tu idea inicial. La respuesta esperada era: «"
+                             + String(root.predictionOptions[root.correctPrediction] || "—")
+                             + "». Cambiar de explicación después de observar es parte del aprendizaje.")
+                          + (String(root.value(root.challenge, "explanation", "")).length > 0
+                             ? "  " + String(root.value(root.challenge, "explanation", "")) : "")
                     sx: root.sx; sy: root.sy
                 }
 

@@ -113,6 +113,50 @@ Módulo → Pre-test → Recorrido guiado → Laboratorio → Post-test → Resu
 - `EvaluationIntroScreen` y `EvaluationScreen` aceptan opcionalmente
   `moduleId`; sin él conservan exactamente el instrumento global anterior.
 
+### Alineación teoría–práctica–evaluación
+
+`data/aprendizaje/alineacion.json` complementa `modules.json` y
+`LearningModuleCatalog` lo fusiona al cargar, así que recorrido, laboratorio y
+evaluación leen la misma fuente. Por módulo declara:
+
+| Clave | Dónde se usa | Para qué |
+|---|---|---|
+| `anchor` | `ModuleScreen`, recorrido, laboratorio | Pregunta problema, ejemplo numérico pequeño que se sigue en recorrido y laboratorio, y pregunta de cierre (`closing`). |
+| `step_checks` | `ModuleGuidedTourScreen` (`guided_steps[].check`) | Predicción por paso. CAMBIO y RESULTADO se revelan al intentarla; «Siguiente» se habilita sólo entonces. |
+| `post_variants` | `ModuleQuestionBank` (`challenges[].post_variant`) | Forma post isomorfa de cada reto: mismo constructo y dificultad, otros números, sin nombrar la operación. |
+| `transfer_items` | `ModuleQuestionBank` (A6 y A7) | Situación nueva con el mismo mecanismo; no comparte caso con otro reactivo del intento. |
+| `lab_challenges` | `ModuleLaboratoryScreen`, repaso espaciado | Retos propios del laboratorio. El de índice *i* trata el mismo concepto que `challenges[i]` (lo valida el catálogo) para que el mapa paso→reto del laboratorio siga valiendo. |
+
+Reglas que dependen de esta alineación (todas en `CourseController`):
+
+- **Recorrido completo** = las 8 predicciones intentadas (`recordGuidedCheck`).
+  Navegar o mirar no basta: `completeGuidedTour` devuelve `False` mientras falte alguna.
+- **Laboratorio completo** = `REQUIRED_LAB_CYCLES` (3) ciclos predecir→probar→
+  observar→explicar en pasos distintos (`recordDiscoveryCycle`) más la
+  pregunta de cierre (`recordAnchorClosing`). Un forward sólo se registra
+  (`recordLaboratoryAnalysis`).
+- **Pre-test**: sin retroalimentación de claves. Sus conceptos fallados sólo
+  marcan pasos «★» en el recorrido (`guidedProgress().focus_step_ids`).
+- **Post-test**: `moduleResults().review` da clave, explicación y paso del
+  recorrido por reactivo. **Nunca se construye para el pre-test.**
+- **Resultados**: ganancia normalizada de Hake (total y por concepto),
+  recomendaciones con paso del recorrido y reto de laboratorio, y la
+  interacción registrada (`interaction`) para cruzarla con la ganancia.
+- **Repaso espaciado**: al abrir el módulo *n* se repasan 3 retos de
+  laboratorio del módulo *n − 1* (no reactivos del test). Cuenta el primer
+  intento (`retention`).
+
+`INSTRUMENT_VERSION` del banco modular pasó a **8**: los resultados de la
+versión 7 no son comparables con los nuevos y `_build_results` ya los separa
+por versión. Un catálogo sin `alineacion.json` junto a él conserva el
+comportamiento anterior (lo usan algunas pruebas).
+
+El panel del aula (`model/aula/analisis.py`) añade `item_analysis`: por par
+de reactivos paralelos (mismo `code` en pre y post), la proporción de acierto
+*p*, el índice de discriminación *D* (27 % superior − 27 % inferior, con 4 o más
+alumnos) y Δp. Marca para revisión los reactivos con techo en el pre
+(p ≥ 0.9), D < 0.2 o sin ganancia.
+
 ### Compatibilidad e incorporación incremental
 
 La ruta global, sus controladores y las pantallas históricas no se eliminaron.

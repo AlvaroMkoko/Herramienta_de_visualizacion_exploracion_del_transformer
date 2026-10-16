@@ -25,6 +25,9 @@ class ModuleEvaluationController(EvaluationController):
     ) -> None:
         self._catalog = catalog or LearningModuleCatalog()
         self._module_bank = ModuleQuestionBank(self._catalog)
+        # Banco aparte para consultar claves: cambiarle el módulo al banco
+        # activo descartaría la selección del intento en curso.
+        self._key_bank = ModuleQuestionBank(self._catalog)
         self._module_id = self._module_bank.module_id
         super().__init__(
             parent=parent,
@@ -103,6 +106,16 @@ class ModuleEvaluationController(EvaluationController):
             assessment_type, self._used_question_ids(assessment_type)
         )
         self.startEvaluation(assessment_type)
+
+    def answer_key(
+        self, module_id: str, assessment_type: str, question_id: str
+    ) -> dict[str, Any]:
+        """Clave legible de un reactivo; sólo para revisar un post-test ya hecho."""
+        try:
+            self._key_bank.set_module(module_id)
+            return self._key_bank.answer_key(assessment_type, question_id)
+        except (QuestionBankError, ValueError):
+            return {}
 
     def _enrich_result(self, result: dict[str, Any]) -> dict[str, Any]:
         module = self._catalog.get(self._module_id)

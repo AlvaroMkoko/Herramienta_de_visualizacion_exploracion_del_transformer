@@ -61,15 +61,184 @@ def test_progreso_guiado_y_laboratorio_persiste(tmp_path):
         }
     )
 
-    course.completeGuidedStep("module_1", "m1_s1")
-    course.completeGuidedTour("module_1")
-    course.completeLaboratory("module_1")
+    _answer_guided_checks(course, "module_1")
+    assert course.completeGuidedTour("module_1") is True
+    _practice_laboratory(course, "module_1")
 
     restored = ModuleProgressRepository(tmp_path / "progress.json").snapshot()
     state = restored["modules"]["module_1"]
     assert state["guided_completed"] is True
     assert len(state["guided_steps_completed"]) == 8
     assert state["laboratory_completed"] is True
+
+
+def _answer_guided_checks(course: CourseController, module_id: str) -> None:
+    for step in course.catalog.get(module_id)["guided_steps"]:
+        course.recordGuidedCheck(module_id, step["id"], 0)
+
+
+def _practice_laboratory(course: CourseController, module_id: str) -> None:
+    steps = course.catalog.get(module_id)["guided_steps"]
+    for step in steps[: CourseController.REQUIRED_LAB_CYCLES]:
+        course.recordDiscoveryCycle(module_id, step["id"], True, 1)
+    course.recordAnchorClosing(module_id, 0)
+
+
+def _course(tmp_path) -> tuple[CourseController, ResultsRepository]:
+    results = ResultsRepository(tmp_path / "results.json")
+    evaluation = ModuleEvaluationController(repository=results)
+    course = CourseController(
+        evaluation, repository=ModuleProgressRepository(tmp_path / "progress.json")
+    )
+    return course, results
+
+
+def test_el_recorrido_no_se_completa_solo_con_mirarlo(tmp_path):
+    course, _ = _course(tmp_path)
+    steps = course.catalog.get("module_3")["guided_steps"]
+
+    for step in steps:
+        course.completeGuidedStep("module_3", step["id"])
+    assert course.completeGuidedTour("module_3") is False
+    assert not course.stageCompleted("module_3", "guided")
+
+    feedback = course.recordGuidedCheck(
+        "module_3", steps[0]["id"], steps[0]["check"]["correct_index"]
+    )
+    assert feedback["correct"] is True and feedback["feedback"]
+    progress = course.guidedProgress("module_3")
+    assert progress["attempted"] == [steps[0]["id"]]
+    assert len(progress["pending"]) == 7
+
+    _answer_guided_checks(course, "module_3")
+    assert course.completeGuidedTour("module_3") is True
+
+
+def test_el_primer_intento_de_cada_comprobacion_es_el_que_cuenta(tmp_path):
+    course, _ = _course(tmp_path)
+    step = course.catalog.get("module_2")["guided_steps"][0]
+    wrong = (step["check"]["correct_index"] + 1) % len(step["check"]["options"])
+
+    assert course.recordGuidedCheck("module_2", step["id"], wrong)["correct"] is False
+    assert course.recordGuidedCheck(
+        "module_2", step["id"], step["check"]["correct_index"]
+    )["correct"] is True
+    assert course.guidedProgress("module_2")["first_correct"] == []
+    assert course.recordGuidedCheck("module_2", step["id"], 99) == {}
+
+
+def test_ejecutar_el_laboratorio_no_lo_completa(tmp_path):
+    course, _ = _course(tmp_path)
+
+    course.recordLaboratoryAnalysis("module_4")
+    assert course.completeLaboratory("module_4") is False
+
+    steps = course.catalog.get("module_4")["guided_steps"]
+    # Repetir el mismo paso no cuenta como tres prácticas distintas.
+    for _ in range(3):
+        course.recordDiscoveryCycle("module_4", steps[0]["id"], True, 1)
+    course.recordAnchorClosing("module_4", 1)
+    assert course.laboratoryProgress("module_4")["cycles"] == 1
+    assert not course.stageCompleted("module_4", "laboratory")
+
+    course.recordDiscoveryCycle("module_4", steps[1]["id"], False, 2)
+    course.recordDiscoveryCycle("module_4", steps[2]["id"], True, 1)
+    progress = course.laboratoryProgress("module_4")
+    assert progress["cycles"] == 3 and progress["closing_answered"]
+    assert progress["completed"] and course.stageCompleted("module_4", "laboratory")
+
+
+def _result(module_id: str, assessment: str, percentage: float, answers: list) -> dict:
+    return {
+        "schema_version": 2,
+        "instrument_version": 8,
+        "assessment_type": assessment,
+        "module_id": module_id,
+        "module_title": "Self-Attention",
+        "puntaje": percentage * 0.15,
+        "maximo": 15.0,
+        "percentage": percentage,
+        "duration_seconds": 30,
+        "dimensions": [
+            {"id": "escalamiento_dk", "name": "Escalamiento", "percentage": percentage}
+        ],
+        "answers": answers,
+        "bloom": [],
+    }
+
+
+def test_resultados_dan_ganancia_normalizada_revision_y_pasos_a_repasar(tmp_path):
+    course, results = _course(tmp_path)
+    course._evaluation._key_bank.set_module("module_3")
+    post_question = next(
+        item
+        for item in course._evaluation._key_bank.all_questions("post")
+        if item["concept_id"] == "escalamiento_dk"
+    )
+    fallo = {
+        "question_id": post_question["id"],
+        "concept_id": "escalamiento_dk",
+        "prompt": post_question["prompt"],
+        "correcto": False,
+        "puntaje": 0.0,
+        "maximo": 1.0,
+    }
+    results.save_result(_result("module_3", "pre", 20.0, [dict(fallo)]))
+    results.save_result(_result("module_3", "post", 60.0, [fallo]))
+
+    data = course.moduleResults("module_3")
+
+    assert data["normalized_gain"] == 0.5  # (60 − 20) / (100 − 20)
+    row = next(item for item in data["concepts"] if item["id"] == "escalamiento_dk")
+    assert row["normalized_gain"] == 0.5 and row["step"]["id"] == "m3_s5"
+    assert data["recommendations"][0]["step"]["index"] == 4
+    assert data["recommendations"][0]["lab_prompt"]
+    assert "paso 5" in data["recommendation"]
+    review = data["review"][0]
+    assert review["correct"] is False and review["correct_text"]
+    assert review["step"]["id"] == "m3_s5"
+
+
+def test_la_revision_nunca_expone_claves_del_pretest(tmp_path):
+    course, results = _course(tmp_path)
+    course._evaluation._key_bank.set_module("module_3")
+    question = course._evaluation._key_bank.all_questions("pre")[0]
+    answer = {
+        "question_id": question["id"],
+        "concept_id": question["concept_id"],
+        "prompt": question["prompt"],
+        "correcto": False,
+        "puntaje": 0.0,
+        "maximo": 1.0,
+    }
+    results.save_result(_result("module_3", "pre", 10.0, [answer]))
+
+    data = course.moduleResults("module_3")
+
+    assert data["review"] == []
+    # El diagnóstico sí orienta el recorrido sin revelar claves.
+    assert course.guidedProgress("module_3")["focus_step_ids"]
+
+
+def test_repaso_espaciado_usa_retos_del_modulo_anterior(tmp_path):
+    course, results = _course(tmp_path)
+
+    assert course.spacedReview("module_3")["available"] is False
+    results.save_result(_result("module_2", "post", 70.0, []))
+    review = course.spacedReview("module_3")
+    assert review["available"] and review["module_id"] == "module_2"
+    item = review["items"][0]
+    lab_ids = {c["id"] for c in course.catalog.get("module_2")["lab_challenges"]}
+    assert item["id"] in lab_ids
+
+    challenge = next(
+        c for c in course.catalog.get("module_2")["lab_challenges"] if c["id"] == item["id"]
+    )
+    wrong = (challenge["correct_index"] + 1) % len(challenge["options"])
+    assert course.recordReviewAnswer("module_2", item["id"], wrong)["correct"] is False
+    course.recordReviewAnswer("module_2", item["id"], challenge["correct_index"])
+    again = course.spacedReview("module_3")["items"][0]
+    assert again["answered"] and again["correct"] is False  # cuenta el primer intento
 
 
 def test_modo_revision_desbloquea_todos_los_modulos_y_etapas(tmp_path):

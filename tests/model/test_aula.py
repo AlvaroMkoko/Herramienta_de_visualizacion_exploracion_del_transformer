@@ -317,3 +317,64 @@ def test_resumen_de_alumno_reproduce_estados_del_curso():
     assert resumen["modules"][0]["status"] == "review_recommended"
     assert resumen["modules"][1]["status"] == "not_started"
     assert resumen["global_percent"] == 50
+
+
+# ---------------------------------------------------------------------------
+# Análisis de reactivos y práctica
+# ---------------------------------------------------------------------------
+
+def _respuesta(code: str, puntaje: float) -> dict:
+    return {"code": code, "concept_id": "tok", "prompt": f"Reactivo {code}",
+            "puntaje": puntaje, "maximo": 1.0, "correcto": puntaje == 1.0}
+
+
+def test_analisis_de_reactivos_marca_techo_falta_de_ganancia_y_discriminacion():
+    modulo = {"id": "module_1", "title": "Entrada", "concepts": [{"id": "tok", "title": "Tokenización"}]}
+    alumnos = []
+    # A1: todos aciertan desde el pre (techo). A2: mejora y discrimina.
+    for indice, total in enumerate((20, 40, 60, 80)):
+        acierta_post = indice >= 2
+        alumnos.append((
+            {"alumno_id": f"a{indice}", "apodo": f"A{indice}"},
+            [
+                _resultado(f"p{indice}", "pre", total, answers=[_respuesta("A1", 1.0), _respuesta("A2", 0.0)]),
+                _resultado(f"q{indice}", "post", total + 10,
+                           answers=[_respuesta("A1", 1.0), _respuesta("A2", 1.0 if acierta_post else 0.0)]),
+            ],
+        ))
+
+    filas = {fila["code"]: fila for fila in analisis.analisis_reactivos("module_1", alumnos)}
+
+    assert filas["A1"]["p_pre"] == 1.0 and "Casi todos aciertan en el pre-test" in filas["A1"]["flags"]
+    assert "No mejora entre pre y post" in filas["A1"]["flags"]
+    assert filas["A2"]["gain"] == 0.5 and filas["A2"]["d_post"] == 1.0
+    assert filas["A2"]["flags"] == []
+
+    datos = analisis.analisis_modulo(modulo, alumnos)
+    assert datos["item_analysis"] and datos["avg_normalized_gain"] is not None
+
+
+def test_ganancia_normalizada_e_interaccion_por_alumno():
+    assert analisis.ganancia_normalizada(20, 60) == 0.5
+    assert analisis.ganancia_normalizada(100, 100) is None
+
+    modulo = {"id": "module_1", "title": "Entrada", "concepts": []}
+    alumnos = [({"alumno_id": "a", "apodo": "Ana"},
+                [_resultado("1", "pre", 50), _resultado("2", "post", 75)])]
+    snapshots = {"a": {"modules": {"module_1": {
+        "guided_checks": {"m1_s1": {"attempts": 2, "first_correct": False},
+                          "m1_s2": {"attempts": 1, "first_correct": True}},
+        "lab_cycles": [{"step_id": "tokens", "prediction_correct": True},
+                       {"step_id": "tokens", "prediction_correct": False},
+                       {"step_id": "ids", "prediction_correct": True}],
+        "retention": {"m1_l2": {"correct": True}},
+    }}}}
+
+    fila = analisis.analisis_modulo(modulo, alumnos, snapshots)["rows"][0]
+
+    assert fila["normalized_gain"] == 0.5
+    assert fila["interaction"] == {
+        "guided_checks": 2, "guided_first_correct": 1,
+        "lab_cycles": 2, "lab_predictions_correct": 2,
+        "retention_correct": 1, "retention_total": 1,
+    }

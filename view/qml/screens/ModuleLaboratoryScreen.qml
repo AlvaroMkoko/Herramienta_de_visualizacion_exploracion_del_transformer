@@ -92,6 +92,12 @@ PagePrincipal {
     property int discoveryPrediction: -1
     property int discoveryExplanation: -1
     property string discoveryHint: ""
+    // Evidencia del ciclo que se reporta al CourseController al cerrarlo.
+    property int discoveryExplanationAttempts: 0
+    property bool discoveryPredictionCorrect: false
+    property bool discoveryExperimentDone: false
+    property var labProgress: ({})
+    property var closingResult: ({})
     property string errorMessage: ""
     property string inspectedKey: ""
     property string inspectedTitle: ""
@@ -118,7 +124,9 @@ PagePrincipal {
     }
 
     function challengeForCurrentStep() {
-        var challenges = root.moduleData.challenges || []
+        // Retos propios del laboratorio: los `challenges` alimentan el pre y el
+        // post-test, y practicarlos aquí sería ensayar las respuestas.
+        var challenges = root.moduleData.lab_challenges || root.moduleData.challenges || []
         var sid = String(root.currentStep && root.currentStep.id || "")
         var key = root.moduleId + ":" + sid
         var specific = {
@@ -322,8 +330,15 @@ PagePrincipal {
         root.discoveryPrediction = -1
         root.discoveryExplanation = -1
         root.discoveryHint = ""
+        root.discoveryExplanationAttempts = 0
+        root.discoveryPredictionCorrect = false
+        root.discoveryExperimentDone = false
         if (openChallenge === true)
             root.workspaceSection = 2
+    }
+
+    function refreshLabProgress() {
+        root.labProgress = root.courseController.laboratoryProgress(root.moduleId) || ({})
     }
 
     function controlRelevant(controlName) {
@@ -523,6 +538,8 @@ PagePrincipal {
     function confirmDiscoveryPrediction() {
         if (root.discoveryPrediction < 0)
             return
+        root.discoveryPredictionCorrect =
+                root.discoveryPrediction === Number(root.predictionBundle.correct)
         root.discoveryStage = 1
     }
 
@@ -530,6 +547,7 @@ PagePrincipal {
         var sid = String(root.currentStep && root.currentStep.id || "")
         root.discoveryStage = 2
         root.discoveryHint = ""
+        root.discoveryExperimentDone = true
 
         if (sid === "temperature") {
             temperatureSlider.value = temperatureSlider.value <= 0.6 ? 1.4 : 0.5
@@ -587,9 +605,19 @@ PagePrincipal {
     function checkDiscoveryExplanation() {
         if (root.discoveryExplanation < 0)
             return
+        root.discoveryExplanationAttempts += 1
         if (root.discoveryExplanation === Number(root.explanationBundle.correct)) {
             root.discoveryHint = ""
             root.discoveryStage = 4
+            // Un ciclo cuenta cuando hubo predicción, experimento y una
+            // explicación correcta; no basta con abrir el reto.
+            if (root.discoveryExperimentDone) {
+                root.courseController.recordDiscoveryCycle(
+                            root.moduleId, String(root.currentStep.id || ""),
+                            root.discoveryPredictionCorrect,
+                            root.discoveryExplanationAttempts)
+                root.refreshLabProgress()
+            }
             return
         }
         root.discoveryHint = "Todavía no. Contrasta la fórmula «"
@@ -672,6 +700,7 @@ PagePrincipal {
         // existan, que es justo el síntoma que este botón resuelve.
         if (root.modelLibraryController)
             root.modelLibraryController.refrescar()
+        root.refreshLabProgress()
     }
     onVisibleChanged: if (!visible && guideDetached) closeDetachedGuide()
 
@@ -1160,6 +1189,79 @@ PagePrincipal {
                         font.pixelSize: 11 * root.uiScale
                         horizontalAlignment: Text.AlignHCenter
                         wrapMode: Text.WordWrap
+                    }
+                }
+            }
+
+            // Puente teoría→práctica: el ejemplo calculado a mano en el recorrido
+            // junto a lo que exige la etapa (ciclos guiados y pregunta ancla).
+            RectanglePrincipal {
+                objectName: "moduleLaboratoryPracticeCard"
+                visible: root.analysis.module_id === root.moduleId
+                         && root.moduleData.anchor !== undefined
+                Layout.fillWidth: true
+                Layout.leftMargin: 24 * root.uiScale
+                Layout.rightMargin: 24 * root.uiScale
+                Layout.preferredHeight: practiceColumn.implicitHeight + 18 * root.uiScale
+                sx: root.uiScale
+                sy: root.uiScale
+
+                ColumnLayout {
+                    id: practiceColumn
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.margins: 9 * root.uiScale
+                    spacing: 6 * root.uiScale
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8 * root.uiScale
+                        Text {
+                            objectName: "moduleLaboratoryPracticeStatus"
+                            Layout.fillWidth: true
+                            text: root.labProgress.completed
+                                  ? "PRÁCTICA COMPLETA ✓  ·  Ya puedes presentar el post-test."
+                                  : "TU PRÁCTICA  ·  " + Number(root.labProgress.cycles || 0) + " de "
+                                    + Number(root.labProgress.required_cycles || 3)
+                                    + " retos guiados en operaciones distintas"
+                                    + (root.labProgress.closing_answered ? "" : "  ·  pregunta del módulo pendiente")
+                            color: root.labProgress.completed ? Style.Theme.exito_texto : Style.Theme.acento_fuerte
+                            font.bold: true
+                            font.pixelSize: Math.max(10, 11 * root.uiScale)
+                            wrapMode: Text.WordWrap
+                        }
+                    }
+
+                    Text {
+                        objectName: "moduleLaboratoryAnchorExample"
+                        Layout.fillWidth: true
+                        text: "EJEMPLO DEL RECORRIDO  ·  " + String((root.moduleData.anchor || {}).example || "")
+                              + "  Compáralo con los tensores reales de tu frase."
+                        color: Style.Theme.texto_secundario_fuerte
+                        font.pixelSize: Math.max(10, 11 * root.uiScale)
+                        wrapMode: Text.WordWrap
+                    }
+
+                    PredictionCheck {
+                        id: closingCheck
+                        objectName: "moduleLaboratoryClosingCheck"
+                        Layout.fillWidth: true
+                        // Se vuelve a la pregunta del módulo cuando ya hay
+                        // evidencia propia con la cual responderla.
+                        visible: Number(root.labProgress.cycles || 0)
+                                 >= Number(root.labProgress.required_cycles || 3)
+                                 || root.labProgress.closing_answered === true
+                        sx: root.uiScale
+                        eyebrow: "VUELVE A LA PREGUNTA DEL MÓDULO  ·  "
+                                 + String((root.moduleData.anchor || {}).question || "")
+                        check: (root.moduleData.anchor || {}).closing || ({})
+                        result: root.closingResult
+                        onSubmitted: function(optionIndex) {
+                            root.closingResult = root.courseController.recordAnchorClosing(
+                                        root.moduleId, optionIndex) || ({})
+                            root.refreshLabProgress()
+                        }
                     }
                 }
             }

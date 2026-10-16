@@ -584,13 +584,14 @@ PagePrincipal {
 
                         GridLayout {
                             Layout.fillWidth: true
-                            columns: 4
+                            columns: 5
                             columnSpacing: 12
                             Repeater {
                                 model: [
                                     { "etiqueta": "PRE-TEST PROMEDIO", "valor": root.porcentaje(root.analisis.avg_pre), "detalle": (root.analisis.with_pre || 0) + " alumno(s)" },
                                     { "etiqueta": "POST-TEST PROMEDIO", "valor": root.porcentaje(root.analisis.avg_post), "detalle": (root.analisis.with_post || 0) + " alumno(s)" },
                                     { "etiqueta": "CAMBIO PROMEDIO", "valor": root.analisis.avg_delta === null || root.analisis.avg_delta === undefined ? "—" : (root.analisis.avg_delta > 0 ? "+" : "") + root.analisis.avg_delta + " pts", "detalle": (root.analisis.with_both || 0) + " con ambos tests" },
+                                    { "etiqueta": "GANANCIA g PROMEDIO", "valor": root.analisis.avg_normalized_gain === null || root.analisis.avg_normalized_gain === undefined ? "—" : Number(root.analisis.avg_normalized_gain).toFixed(2), "detalle": "(post − pre) / (100 − pre)" },
                                     { "etiqueta": "ALUMNOS", "valor": String(root.analisis.students || 0), "detalle": "en la clase" }
                                 ]
                                 delegate: Rectangle {
@@ -664,6 +665,98 @@ PagePrincipal {
                                 required property var modelData
                                 Layout.fillWidth: true
                                 text: "• " + modelData.count + "×  " + (modelData.prompt || modelData.question_id)
+                                color: Style.Theme.texto_secundario_fuerte
+                                font.pixelSize: 12
+                                wrapMode: Text.WordWrap
+                            }
+                        }
+
+                        // Análisis clásico por par de reactivos paralelos: un
+                        // reactivo con techo en el pre, sin discriminación o
+                        // sin ganancia se marca para reescribirlo.
+                        Text {
+                            Layout.topMargin: 8
+                            text: "Análisis de reactivos (pre ↔ post paralelos)"
+                            color: Style.Theme.texto_primario
+                            font.pixelSize: 16
+                            font.bold: true
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            text: "p = proporción de acierto · D = índice de discriminación (27 % superior − 27 % inferior; requiere 4 o más alumnos) · Δp = p post − p pre."
+                            color: Style.Theme.texto_secundario
+                            font.pixelSize: 11
+                            wrapMode: Text.WordWrap
+                        }
+                        Text {
+                            visible: !root.analisis.item_analysis || root.analisis.item_analysis.length === 0
+                            text: "Todavía no hay respuestas para analizar."
+                            color: Style.Theme.texto_terciario
+                        }
+                        Repeater {
+                            model: root.analisis.item_analysis || []
+                            delegate: RowLayout {
+                                id: filaReactivo
+                                objectName: "classroomItemAnalysisRow" + filaReactivo.index
+                                required property var modelData
+                                required property int index
+                                Layout.fillWidth: true
+                                spacing: 10
+                                function numero(valor) {
+                                    return valor === null || valor === undefined ? "—" : Number(valor).toFixed(2)
+                                }
+                                Text {
+                                    Layout.preferredWidth: 36
+                                    text: filaReactivo.modelData.code
+                                    color: Style.Theme.texto_primario
+                                    font.bold: true
+                                    font.pixelSize: 12
+                                }
+                                Text {
+                                    Layout.preferredWidth: 300
+                                    text: "p " + filaReactivo.numero(filaReactivo.modelData.p_pre)
+                                          + " → " + filaReactivo.numero(filaReactivo.modelData.p_post)
+                                          + "   Δp " + filaReactivo.numero(filaReactivo.modelData.gain)
+                                          + "   D " + filaReactivo.numero(filaReactivo.modelData.d_post)
+                                    color: Style.Theme.texto_secundario_fuerte
+                                    font.family: Style.Theme.fuente_mono
+                                    font.pixelSize: 12
+                                }
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: (filaReactivo.modelData.flags || []).length
+                                          ? "⚠ " + filaReactivo.modelData.flags.join(" · ") : "✓"
+                                    color: (filaReactivo.modelData.flags || []).length
+                                           ? Style.Theme.aviso_texto : Style.Theme.exito_texto
+                                    font.pixelSize: 12
+                                    wrapMode: Text.WordWrap
+                                }
+                            }
+                        }
+
+                        Text {
+                            Layout.topMargin: 8
+                            text: "Práctica y ganancia por alumno"
+                            color: Style.Theme.texto_primario
+                            font.pixelSize: 16
+                            font.bold: true
+                        }
+                        Repeater {
+                            model: root.analisis.rows || []
+                            delegate: Text {
+                                id: filaPractica
+                                required property var modelData
+                                readonly property var practica: filaPractica.modelData.interaction || ({})
+                                Layout.fillWidth: true
+                                text: "• " + filaPractica.modelData.apodo
+                                      + "  ·  g " + (filaPractica.modelData.normalized_gain === null
+                                                     || filaPractica.modelData.normalized_gain === undefined
+                                                     ? "—" : Number(filaPractica.modelData.normalized_gain).toFixed(2))
+                                      + "  ·  predicciones del recorrido " + (filaPractica.practica.guided_checks || 0)
+                                      + " (" + (filaPractica.practica.guided_first_correct || 0) + " al primer intento)"
+                                      + "  ·  retos de laboratorio " + (filaPractica.practica.lab_cycles || 0)
+                                      + "  ·  repaso " + (filaPractica.practica.retention_correct || 0)
+                                      + "/" + (filaPractica.practica.retention_total || 0)
                                 color: Style.Theme.texto_secundario_fuerte
                                 font.pixelSize: 12
                                 wrapMode: Text.WordWrap

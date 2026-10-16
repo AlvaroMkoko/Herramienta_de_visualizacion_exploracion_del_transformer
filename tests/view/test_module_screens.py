@@ -212,3 +212,67 @@ def test_los_64_pasos_modulares_tienen_ilustracion_especifica(qapp):
 
     window.deleteLater()
     engine.deleteLater()
+
+
+TOUR_HOST = b"""import QtQuick
+import QtQuick.Controls
+import "screens" as Screens
+
+ApplicationWindow {
+    width: 1280
+    height: 820
+    visible: false
+    StackView { id: navigation; anchors.fill: parent }
+    Screens.ModuleGuidedTourScreen {
+        anchors.fill: parent
+        stackView: navigation
+        moduleId: "module_3"
+    }
+}
+"""
+
+
+def test_recorrido_exige_predecir_antes_de_revelar_y_avanzar(qapp, tmp_path):
+    from PySide6.QtCore import Q_ARG, QMetaObject
+
+    from model.aprendizaje import ModuleProgressRepository
+
+    engine = QQmlEngine()
+    view_model = MainViewModel()
+    course = view_model.courseController
+    # Progreso propio: la suite comparte un solo temporal entre pruebas.
+    course._repository = ModuleProgressRepository(tmp_path / "progreso.json")
+    course._state = course._repository.snapshot()
+    engine.rootContext().setContextProperty("mainViewModel", view_model)
+    component = QQmlComponent(engine)
+    component.setData(
+        TOUR_HOST,
+        QUrl.fromLocalFile(str(ROOT / "view" / "qml" / "TourHost.qml")),
+    )
+    assert component.status() != QQmlComponent.Status.Error, _errors(component)
+    window = component.create()
+    assert window is not None, _errors(component)
+    qapp.processEvents()
+
+    tour = window.findChild(QObject, "moduleGuidedTourScreen")
+    next_button = window.findChild(QObject, "moduleGuidedNextButton")
+    check = window.findChild(QObject, "moduleGuidedCheck")
+    definition = window.findChild(QObject, "moduleGuidedDefinition")
+    assert tour is not None and next_button is not None and check is not None
+    assert definition is not None and definition.property("visible")
+    assert tour.property("currentAttempted") is False
+    assert next_button.property("enabled") is False
+
+    # Saltar hacia adelante por los chips no pasa de la primera predicción.
+    QMetaObject.invokeMethod(tour, "goToStep", Q_ARG("QVariant", 5))
+    assert tour.property("currentIndex") == 0
+
+    QMetaObject.invokeMethod(tour, "submitCheck", Q_ARG("QVariant", 0))
+    qapp.processEvents()
+    assert tour.property("currentAttempted") is True
+    assert next_button.property("enabled") is True
+    assert course.guidedProgress("module_3")["attempted"] == ["m3_s1"]
+    assert not course.stageCompleted("module_3", "guided")
+
+    window.deleteLater()
+    engine.deleteLater()

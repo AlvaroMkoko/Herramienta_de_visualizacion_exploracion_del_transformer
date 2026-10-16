@@ -416,7 +416,12 @@ class ClassroomHostController(QObject):
     def analisisModulo(self, module_id: str) -> dict[str, Any]:
         if self._repo is None or module_id not in self._catalog.module_ids:
             return {}
-        return analisis.analisis_modulo(self._catalog.get(module_id), self._alumnos_con_resultados())
+        alumnos = self._alumnos_con_resultados()
+        snapshots = {
+            str(ficha["alumno_id"]): self._repo.snapshot_de(ficha["alumno_id"])
+            for ficha, _ in alumnos
+        }
+        return analisis.analisis_modulo(self._catalog.get(module_id), alumnos, snapshots)
 
     @Slot(str, result=str)
     def exportarCsv(self, destino: str) -> str:

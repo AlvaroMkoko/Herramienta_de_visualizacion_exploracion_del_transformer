@@ -9,7 +9,16 @@ sesiones. Cada intento mezcla siete formatos calificables y actividades de
 memoria, comprensión, aplicación y razonamiento para evitar una secuencia de
 preguntas repetitivas de opción única.
 
-La definición pedagógica vive en `data/aprendizaje/modules.json`; las cinco
+Teoría, práctica y evaluación comparten un mismo ejemplo por módulo. En el
+recorrido, el alumno predice cada paso antes de ver su resultado. El
+laboratorio se completa con tres retos guiados sobre el modelo real y la
+respuesta a la pregunta del módulo. El post-test usa formas isomorfas (otros
+números) y, al terminar, muestra la revisión de cada reactivo con el paso del
+recorrido que lo enseña. Ver `docs/architecture.md` → *Alineación
+teoría–práctica–evaluación*.
+
+La definición pedagógica vive en `data/aprendizaje/modules.json` (y su
+alineación en `data/aprendizaje/alineacion.json`); las cinco
 pantallas del ciclo son reutilizables y se alimentan dinámicamente desde
 `CourseController`, manteniendo la separación PySide6 + QML + MVVM.
 

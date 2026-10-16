@@ -100,7 +100,9 @@ def test_flujo_completo_de_clase_en_red(qtbot, tmp_path, docente, puerto_udp, mo
     assert len(guardados) == 1 and guardados[0]["student"]["apodo"] == "Ana"
 
     # El progreso del curso también se sincroniza.
-    ana.course.completeGuidedTour("module_1")
+    for paso in ana.course.catalog.get("module_1")["guided_steps"]:
+        ana.course.recordGuidedCheck("module_1", paso["id"], 0)
+    assert ana.course.completeGuidedTour("module_1")
     qtbot.waitUntil(
         lambda: docente.alumnos and docente.alumnos[0]["modules"][0]["progress_percent"] == 40,
         timeout=TIEMPO,

@@ -216,10 +216,12 @@ def test_dimensiones_con_millares_aceptan_escritura_sin_separador():
     assert calificar(embedding_shape, {"texto": "[10000, 256]"})["puntaje"] == 1.0
 
     bank.set_module("module_7")
+    # El post usa la forma isomorfa (3 ejemplos, |V| = 50 000), no los
+    # números del pre.
     logits_shape = next(
         item for item in bank.all_questions("post") if item["id"].endswith("_a1")
     )
-    assert calificar(logits_shape, {"texto": "2 x 20000"})["puntaje"] == 1.0
+    assert calificar(logits_shape, {"texto": "3 x 50000"})["puntaje"] == 1.0
 
 
 def test_reactivo_de_logits_mantiene_la_misma_logica_en_pre_y_post():
@@ -239,3 +241,114 @@ def test_reactivo_de_logits_mantiene_la_misma_logica_en_pre_y_post():
         )
         assert "¿Es válido?" in question["prompt"]
         assert correct_text.startswith("Sí;")
+
+
+# ── Alineación teoría–práctica–evaluación ──────────────────────────────
+
+
+def test_la_alineacion_se_fusiona_en_todos_los_modulos():
+    catalog = LearningModuleCatalog()
+
+    assert catalog.has_alignment
+    for module in catalog.modules:
+        assert module["anchor"]["question"] and module["anchor"]["example"]
+        assert all(step["check"]["options"] for step in module["guided_steps"])
+        assert all("post_variant" in item for item in module["challenges"])
+        assert len(module["lab_challenges"]) == 8
+        assert [item["kind"] for item in module["transfer_items"]] == [
+            "verdadero_falso",
+            "respuesta_corta",
+        ]
+
+
+def test_catalogo_sin_archivo_de_alineacion_conserva_el_contrato_anterior(tmp_path):
+    copia = tmp_path / "modules.json"
+    copia.write_text(
+        recurso("data", "aprendizaje", "modules.json").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    catalog = LearningModuleCatalog(copia)
+    bank = ModuleQuestionBank(catalog, module_id="module_3", rng=random.Random(5))
+
+    assert not catalog.has_alignment
+    assert len(bank.all_questions("pre")) == 25
+
+
+def test_el_post_no_repite_los_casos_del_pre():
+    """Un post con los mismos números mide memoria del pre, no aprendizaje."""
+    catalog = LearningModuleCatalog()
+    bank = ModuleQuestionBank(catalog, rng=random.Random(41))
+
+    for module in catalog.modules:
+        bank.set_module(module["id"])
+        pre = {q["code"]: q for q in bank.all_questions("pre")}
+        post = {q["code"]: q for q in bank.all_questions("post")}
+        for code in ("A1", "A2", "A6", "A7", "A8"):
+            assert pre[code]["prompt"] != post[code]["prompt"], (module["id"], code)
+        for code in ("A1", "A7"):
+            assert (
+                pre[code]["respuestas_aceptadas"][0]
+                != post[code]["respuestas_aceptadas"][0]
+                or module["id"] == "module_8"  # A1: misma forma simbólica [B,T,|V|]
+                and code == "A1"
+            ), (module["id"], code)
+
+
+def test_un_intento_no_usa_el_mismo_caso_en_dos_reactivos_avanzados():
+    catalog = LearningModuleCatalog()
+    bank = ModuleQuestionBank(catalog, rng=random.Random(43))
+
+    for module in catalog.modules:
+        bank.set_module(module["id"])
+        for assessment in ("pre", "post"):
+            advanced = {
+                q["code"]: q
+                for q in bank.all_questions(assessment)
+                if q["difficulty"] == "Avanzada"
+            }
+            a5_cases = {item["texto"] for item in advanced["A5"]["elementos"]}
+            assert advanced["A8"]["prompt"] not in a5_cases
+            assert not any(case in advanced["A6"]["prompt"] for case in a5_cases)
+            assert advanced["A7"]["prompt"].removeprefix("Responde sin opciones: ") not in (
+                advanced["A2"]["prompt"],
+                advanced["A8"]["prompt"],
+            )
+
+
+def test_los_retos_del_laboratorio_no_aparecen_en_la_evaluacion():
+    catalog = LearningModuleCatalog()
+    bank = ModuleQuestionBank(catalog, rng=random.Random(47))
+
+    for module in catalog.modules:
+        bank.set_module(module["id"])
+        texts = []
+        for assessment in ("pre", "post"):
+            for question in bank.all_questions(assessment):
+                texts.append(question["prompt"])
+                texts.extend(option["text"] for option in question.get("options", []))
+                texts.extend(item["texto"] for item in question.get("elementos", []))
+        corpus = "\n".join(texts)
+        for challenge in module["lab_challenges"]:
+            assert challenge["prompt"] not in corpus, challenge["id"]
+
+
+def test_la_clave_legible_cubre_todos_los_formatos():
+    catalog = LearningModuleCatalog()
+    bank = ModuleQuestionBank(catalog, module_id="module_3", rng=random.Random(53))
+
+    for question in bank.all_questions("post"):
+        key = bank.answer_key("post", question["id"])
+        assert key["correct_text"], question["id"]
+        assert key["concept_id"] == question["concept_id"]
+    assert bank.answer_key("post", "no_existe") == {}
+
+
+def test_cada_concepto_con_paso_guiado_tiene_enlace():
+    catalog = LearningModuleCatalog()
+
+    assert catalog.step_for_concept("module_3", "escalamiento_dk") == {
+        "index": 4,
+        "id": "m3_s5",
+        "title": "Escalamiento",
+    }
+    assert catalog.step_for_concept("module_1", "dimensiones_entrada") == {}
