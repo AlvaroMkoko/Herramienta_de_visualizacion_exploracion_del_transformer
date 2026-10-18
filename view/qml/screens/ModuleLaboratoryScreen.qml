@@ -123,6 +123,16 @@ PagePrincipal {
         return filtered
     }
 
+    function labQuestion(id, prompt, correct, distractorA, distractorB, explanation) {
+        return ({
+            "id": id,
+            "prompt": prompt,
+            "options": [correct, distractorA, distractorB],
+            "correct_index": 0,
+            "explanation": explanation
+        })
+    }
+
     function challengeForCurrentStep() {
         // Retos propios del laboratorio: los `challenges` alimentan el pre y el
         // post-test, y practicarlos aquí sería ensayar las respuestas.
@@ -130,81 +140,138 @@ PagePrincipal {
         var sid = String(root.currentStep && root.currentStep.id || "")
         var key = root.moduleId + ":" + sid
         var specific = {
-            "module_1:no_grad": {
-                "prompt": "Después de tokenizar, rellenar y crear la máscara, ¿qué parte de esta preparación aprende por gradiente?",
-                "options": ["Ninguna: son operaciones de datos", "Los IDs se vuelven parámetros", "La máscara aprende qué columnas bloquear"],
-                "correct_index": 0
-            },
-            "module_2:embedding_gradient": {
-                "prompt": "Si el batch consultó solo algunos IDs, ¿qué filas de la tabla reciben gradiente directo en esta animación?",
-                "options": ["Las filas de los IDs consultados", "Todas las filas por igual", "Solo la primera fila de la tabla"],
-                "correct_index": 0
-            },
-            "module_7:target": {
-                "prompt": "Durante entrenamiento, ¿para qué se muestra el token objetivo junto a los logits?",
-                "options": ["Para indicar la respuesta que debe recibir mayor probabilidad", "Para sustituir todos los logits", "Para aplicar Top-K antes de la pérdida"],
-                "correct_index": 0
-            },
-            "module_7:loss": {
-                "prompt": "¿Qué datos debe comparar cross-entropy en esta animación?",
-                "options": ["Los logits crudos y el token objetivo", "Los pesos de atención y Top-P", "El token elegido y la máscara causal"],
-                "correct_index": 0
-            },
-            "module_7:hidden": {
-                "prompt": "¿Qué parte de la salida del decoder alimentará la predicción del siguiente token?",
-                "options": ["El estado de la posición actual", "La matriz completa del vocabulario", "El ID sin convertir a vector"],
-                "correct_index": 0
-            },
-            "module_8:full_tokens": {
-                "prompt": "¿Qué debe producir primero el Transformer a partir del texto para poder consultar embeddings?",
-                "options": ["Una secuencia ordenada de IDs", "Probabilidades del vocabulario", "Pesos de cross-attention"],
-                "correct_index": 0
-            },
-            "module_8:full_batch": {
-                "prompt": "¿Qué necesita preparar el batch antes del recorrido de entrenamiento?",
-                "options": ["Entradas, objetivos desplazados y máscaras", "Solo el último token generado", "Top-K y temperatura"],
-                "correct_index": 0
-            },
-            "module_8:full_logits": {
-                "prompt": "Al proyectar cada estado de d_model al vocabulario, ¿qué esperas obtener?",
-                "options": ["Un score por token posible", "Una sola probabilidad ya normalizada", "Una nueva máscara de padding"],
-                "correct_index": 0
-            },
-            "module_8:full_filters": {
-                "prompt": "¿Qué debería cambiar al aplicar temperatura, Top-K y Top-P a los logits?",
-                "options": ["La concentración y el conjunto de candidatos", "Los IDs del texto fuente", "Los parámetros ya aprendidos del encoder"],
-                "correct_index": 0
-            },
-            "module_8:full_select": {
-                "prompt": "Después de normalizar los candidatos supervivientes, ¿qué produce la selección?",
-                "options": ["El siguiente token", "La memoria del encoder", "Un nuevo vocabulario"],
-                "correct_index": 0
-            },
-            "module_8:full_feedback": {
-                "prompt": "¿Qué ocurrirá con el token recién seleccionado en el ciclo autoregresivo?",
-                "options": ["Se añadirá al prefijo para el siguiente paso", "Reemplazará la memoria del encoder", "Se convertirá en una cabeza de atención"],
-                "correct_index": 0
-            },
-            "module_8:full_loss": {
-                "prompt": "¿Qué resume el escalar de pérdida mostrado en el flujo completo?",
-                "options": ["El desacuerdo entre logits y objetivos válidos", "El número de capas del decoder", "La cantidad de candidatos Top-K"],
-                "correct_index": 0
-            }
+            "module_1:text": root.labQuestion(
+                "lab_m1_text", "¿Qué recibe el tokenizador al comenzar esta animación?",
+                "Texto Unicode todavía sin convertir en vectores", "Embeddings contextualizados", "Probabilidades del vocabulario",
+                "La entrada inicial es texto. Los tokens, IDs y vectores aparecen en operaciones posteriores."),
+            "module_1:ids": root.labQuestion(
+                "lab_m1_ids", "Al consultar el vocabulario, ¿qué debe reemplazar a cada token?",
+                "Un ID entero estable para ese token", "Un vector contextual completo", "Una probabilidad del siguiente token",
+                "El vocabulario realiza una correspondencia discreta token→ID; todavía no crea embeddings."),
+            "module_1:batch:training": root.labQuestion(
+                "lab_m1_batch_training", "Si las secuencias del batch tienen distinta longitud, ¿cómo se obtiene una matriz rectangular?",
+                "Se añade PAD a las secuencias más cortas", "Se mezclan todas las frases en una sola", "Se aumenta d_model",
+                "En entrenamiento, cada fila se rellena hasta la longitud común del batch."),
+            "module_1:batch:inference": root.labQuestion(
+                "lab_m1_batch_inference", "Si el texto supera el contexto máximo durante inferencia, ¿qué debe hacer este ajuste?",
+                "Recortar la secuencia al contexto admitido", "Añadir PAD hasta duplicar su longitud", "Cambiar el vocabulario",
+                "En inferencia se limita la longitud sin inventar contenido nuevo."),
+            "module_1:no_grad": root.labQuestion(
+                "lab_m1_no_grad", "Después de tokenizar, rellenar y crear la máscara, ¿qué parte de esta preparación aprende por gradiente?",
+                "Ninguna: son operaciones de datos", "Los IDs se vuelven parámetros", "La máscara aprende qué columnas bloquear",
+                "Estas operaciones preparan la entrada; no contienen parámetros que el optimizador pueda actualizar."),
+            "module_2:dropout:inference": root.labQuestion(
+                "lab_m2_dropout_inference", "¿Qué debe ocurrir con dropout durante inferencia?",
+                "Queda desactivado y conserva todas las activaciones", "Elimina tokens completos", "Cambia d_model en cada ejecución",
+                "Dropout regulariza el entrenamiento; al inferir se utiliza la representación completa y determinista."),
+            "module_2:embedding_gradient": root.labQuestion(
+                "lab_m2_embedding_gradient", "Si el batch consultó solo algunos IDs, ¿qué filas de la tabla reciben gradiente directo en esta animación?",
+                "Las filas de los IDs consultados", "Todas las filas por igual", "Solo la primera fila de la tabla",
+                "El lookup conecta la pérdida directamente con las filas utilizadas por el batch."),
+            "module_3:attention_input": root.labQuestion(
+                "lab_m3_attention_input", "En la matriz X mostrada, ¿qué representa cada fila antes de proyectar Q, K y V?",
+                "La representación de un token", "Una cabeza de atención completa", "Un token del vocabulario de salida",
+                "X conserva una fila de d_model componentes por posición de la secuencia."),
+            "module_4:project": root.labQuestion(
+                "lab_m4_project", "¿Qué producen XWQ, XWK y XWV antes de separar las cabezas?",
+                "Q, K y V completos con anchura d_model", "Un único mapa T×T", "Los IDs de la secuencia",
+                "Primero se calculan las proyecciones completas; después se reorganizan en h bloques de d_head."),
+            "module_4:contexts": root.labQuestion(
+                "lab_m4_contexts", "¿Cómo obtiene cada cabeza su vector de contexto?",
+                "Combina sus Values con sus propios pesos de atención", "Copia directamente la salida de otra cabeza", "Promedia todas las matrices WQ",
+                "Cada cabeza calcula C_h=A_hV_h dentro de su propio subespacio."),
+            "module_5:encoder_input": root.labQuestion(
+                "lab_m5_encoder_input", "Al seleccionar una capa del encoder, ¿qué recibe como X_l?",
+                "La salida de la capa anterior", "Los logits finales del vocabulario", "El objetivo desplazado del decoder",
+                "La primera capa recibe embeddings posicionados; las siguientes reciben la representación de la capa previa."),
+            "module_5:ffn_project": root.labQuestion(
+                "lab_m5_ffn_project", "Después de la activación en d_ff, ¿qué debe hacer la segunda proyección de la FFN?",
+                "Regresar de d_ff a d_model", "Expandir otra vez el número de tokens", "Convertir la salida en probabilidades",
+                "La salida vuelve a d_model para que pueda sumarse mediante la conexión residual."),
+            "module_6:decoder_prefix:inference": root.labQuestion(
+                "lab_m6_prefix_inference", "Durante inferencia, ¿qué información puede formar el prefijo del decoder?",
+                "BOS y los tokens generados hasta ahora", "Toda la respuesta futura", "Los logits de todas las capas",
+                "La generación es autoregresiva: solo dispone de los tokens ya producidos."),
+            "module_6:decoder_embedding": root.labQuestion(
+                "lab_m6_decoder_embedding", "¿Qué se añade a los embeddings del prefijo antes de la atención?",
+                "La codificación de sus posiciones", "Las probabilidades Top-P", "La pérdida del batch",
+                "El decoder necesita representar tanto la identidad de cada token como su orden."),
+            "module_6:decoder_residual_1": root.labQuestion(
+                "lab_m6_residual_1", "¿Qué combina la primera conexión residual del decoder?",
+                "El estado de entrada y el contexto causal", "La memoria del encoder y los logits", "Dos máscaras de padding",
+                "La primera Add & Norm conserva el estado previo mientras incorpora masked self-attention."),
+            "module_6:decoder_residual_2": root.labQuestion(
+                "lab_m6_residual_2", "¿Qué incorpora la segunda conexión residual del decoder?",
+                "El contexto recuperado de la fuente", "Un token elegido por Top-K", "La pérdida de entrenamiento",
+                "La segunda Add & Norm integra la salida de cross-attention con el estado del decoder."),
+            "module_6:decoder_ffn": root.labQuestion(
+                "lab_m6_ffn", "Después de las dos atenciones, ¿cómo actúa la FFN del decoder?",
+                "Transforma cada posición por separado", "Mezcla posiciones futuras sin máscara", "Selecciona directamente el siguiente token",
+                "La FFN procesa las características de cada posición; la mezcla entre tokens ya ocurrió en las atenciones."),
+            "module_6:decoder_layers": root.labQuestion(
+                "lab_m6_layers", "Al avanzar por la pila del decoder, ¿qué permanece y qué cambia?",
+                "Se conserva la forma y cambian los valores con parámetros de cada capa", "Aumenta un token en cada capa", "Todas las capas producen valores idénticos",
+                "Las capas comparten la interfaz [B,T,d_model], pero cada una aprende parámetros distintos."),
+            "module_7:hidden": root.labQuestion(
+                "lab_m7_hidden", "¿Qué representación alimenta la predicción asociada a la posición observada?",
+                "Su estado final del decoder", "La matriz completa del vocabulario", "El ID sin convertir a vector",
+                "La capa de salida recibe un vector d_model del decoder y lo proyecta al vocabulario."),
+            "module_7:select": root.labQuestion(
+                "lab_m7_select", "En esta animación reproducible, ¿qué candidato se seleccionará?",
+                "El de mayor probabilidad entre los supervivientes", "Siempre el primer ID del vocabulario", "Todos los candidatos a la vez",
+                "El laboratorio usa selección determinista para que el mismo experimento produzca el mismo resultado."),
+            "module_7:target": root.labQuestion(
+                "lab_m7_target", "Durante entrenamiento, ¿para qué se muestra el token objetivo junto a los logits?",
+                "Para indicar la respuesta que debe recibir mayor probabilidad", "Para sustituir todos los logits", "Para aplicar Top-K antes de la pérdida",
+                "Teacher forcing aporta el ID correcto con el que se calculará la pérdida."),
+            "module_7:loss": root.labQuestion(
+                "lab_m7_loss", "¿Qué datos debe comparar cross-entropy en esta animación?",
+                "Los logits crudos y el token objetivo", "Los pesos de atención y Top-P", "El token elegido y la máscara causal",
+                "La pérdida de entrenamiento se calcula antes de Top-K, Top-P o muestreo."),
+            "module_8:full_tokens": root.labQuestion(
+                "lab_m8_tokens", "¿Qué debe producir primero el Transformer a partir del texto para poder consultar embeddings?",
+                "Una secuencia ordenada de IDs", "Probabilidades del vocabulario", "Pesos de cross-attention",
+                "El tokenizador segmenta el texto y el vocabulario convierte cada token en un índice."),
+            "module_8:full_batch": root.labQuestion(
+                "lab_m8_batch", "¿Qué necesita preparar el batch antes del recorrido de entrenamiento?",
+                "Entradas, objetivos desplazados y máscaras", "Solo el último token generado", "Top-K y temperatura",
+                "El entrenamiento requiere tensores alineados y máscaras que oculten padding y futuro."),
+            "module_8:full_logits": root.labQuestion(
+                "lab_m8_logits", "Al proyectar cada estado de d_model al vocabulario, ¿qué esperas obtener?",
+                "Un vector de puntuaciones, una por token posible", "Una sola probabilidad ya normalizada", "Una nueva máscara de padding",
+                "La proyección final cambia el último eje de d_model a |V| y todavía produce logits."),
+            "module_8:full_filters": root.labQuestion(
+                "lab_m8_filters", "¿Qué debería cambiar al aplicar temperatura, Top-K y Top-P a los logits?",
+                "La concentración y el conjunto de candidatos", "Los IDs del texto fuente", "Los parámetros ya aprendidos del encoder",
+                "Estos controles modifican la distribución usada para generar, no los pesos ni la entrada fuente."),
+            "module_8:full_select": root.labQuestion(
+                "lab_m8_select", "Después de normalizar los candidatos supervivientes, ¿qué produce la selección?",
+                "El siguiente token", "La memoria del encoder", "Un nuevo vocabulario",
+                "La distribución final permite escoger un único token para continuar el ciclo."),
+            "module_8:full_feedback": root.labQuestion(
+                "lab_m8_feedback", "¿Qué ocurrirá con el token recién seleccionado en el ciclo autoregresivo?",
+                "Se añadirá al prefijo para el siguiente paso", "Reemplazará la memoria del encoder", "Se convertirá en una cabeza de atención",
+                "El prefijo crece un token y vuelve a entrar al decoder; la memoria de la fuente se conserva."),
+            "module_8:full_loss": root.labQuestion(
+                "lab_m8_loss", "¿Qué resume el escalar de pérdida mostrado en el flujo completo?",
+                "El desacuerdo entre logits y objetivos válidos", "El número de capas del decoder", "La cantidad de candidatos Top-K",
+                "Cross-entropy resume el error de las posiciones válidas del batch." )
         }
-        if (specific[key] !== undefined)
-            return specific[key]
+        var selectedSpecific = specific[key + ":" + root.mode] || specific[key]
+        if (selectedSpecific !== undefined)
+            return selectedSpecific
         if (sid === "backward" || sid === "full_backward")
-            return ({
-                "prompt": "Al iniciar backward desde la pérdida, ¿hacia dónde esperas que viaje la señal?",
-                "options": ["Hacia las operaciones y parámetros que participaron", "Solo hacia los tokens de texto", "Directamente hacia Top-K sin pasar por el modelo"],
-                "correct_index": 0
-            })
+            return root.labQuestion(
+                "lab_" + root.moduleId + "_" + sid,
+                "En «" + String(root.currentStep.title || "Backward") + "», ¿hacia dónde debe viajar la señal de la pérdida?",
+                "Hacia las operaciones y parámetros que participaron", "Solo hacia los tokens de texto", "Directamente hacia Top-K sin pasar por el modelo",
+                "Autograd recorre en sentido inverso las operaciones utilizadas en este módulo.")
         if (sid === "update" || sid === "embedding_update" || sid === "full_update")
-            return ({
-                "prompt": "¿Qué representa θ′ = θ − ηg en esta animación de actualización?",
-                "options": ["Un cambio hipotético guiado por el gradiente", "Una modificación del vocabulario", "La salida definitiva de softmax"],
-                "correct_index": 0
-            })
+            return root.labQuestion(
+                "lab_" + root.moduleId + "_" + sid,
+                "En «" + String(root.currentStep.title || "Actualización") + "», ¿qué representa θ′ = θ − ηg?",
+                "Un cambio hipotético guiado por el gradiente", "Una modificación del vocabulario", "La salida definitiva de softmax",
+                "El laboratorio visualiza el paso de SGD, pero no modifica los parámetros activos.")
         if (!challenges.length)
             return ({})
         var maps = {
@@ -227,7 +294,7 @@ PagePrincipal {
                           "decoder_ffn": 5, "decoder_output": 7, "decoder_layers": 7,
                           "backward": 5, "update": 5 },
             "module_7": { "hidden": 0, "linear": 1, "temperature": 2, "top_k": 3,
-                          "top_p": 4, "softmax": 5, "select": 6, "feedback": 7,
+                          "top_p": 4, "softmax": 5, "select": 6, "feedback": 6,
                           "target": 6, "loss": 5, "backward": 1, "update": 1 },
             "module_8": { "full_tokens": 2, "full_batch": 0, "full_embedding": 4,
                           "full_encoder": 1, "full_decoder": 3, "full_logits": 6,

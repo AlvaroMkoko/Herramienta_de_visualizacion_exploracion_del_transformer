@@ -1057,6 +1057,7 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(qapp, tmp_path):
     # ambos modos recibe una predicción válida, un experimento concreto y una
     # comprobación cuya respuesta correcta es la explicación de ese paso.
     audited = 0
+    audited_question_ids = {}
     for module_id in SPECIALIZATIONS:
         view_model._course_controller.selectModule(module_id)
         screen.setProperty("moduleId", module_id)
@@ -1075,7 +1076,19 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(qapp, tmp_path):
                 prediction = _qml_value(screen.property("predictionBundle"))
                 explanation = _qml_value(screen.property("explanationBundle"))
                 experiment = _qml_value(screen.property("experimentDescriptor"))
-                assert str(challenge.get("prompt", "")).strip(), (module_id, mode, step["id"])
+                context = (module_id, mode, step["id"])
+                question_id = str(challenge.get("id", "")).strip()
+                question_options = [
+                    str(option).strip() for option in challenge.get("options", [])
+                ]
+                assert question_id, context
+                assessment_prefix = module_id.replace("module_", "m") + "_a"
+                assert not question_id.startswith(assessment_prefix), context
+                assert str(challenge.get("prompt", "")).strip(), context
+                assert str(challenge.get("explanation", "")).strip(), context
+                assert len(question_options) >= 3, context
+                assert all(question_options), context
+                assert len(set(question_options)) == len(question_options), context
                 assert len(prediction["options"]) >= 3
                 assert 0 <= int(prediction["correct"]) < len(prediction["options"])
                 assert str(experiment.get("label", "")).strip()
@@ -1083,8 +1096,20 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(qapp, tmp_path):
                 correct = int(explanation["correct"])
                 assert 0 <= correct < len(explanation["options"])
                 assert explanation["options"][correct] == step["explanation"]
+                audited_question_ids[context] = question_id
                 audited += 1
     assert audited >= 120
+    assert audited_question_ids[("module_1", "inference", "batch")] == "lab_m1_batch_inference"
+    assert audited_question_ids[("module_1", "training", "batch")] == "lab_m1_batch_training"
+    assert audited_question_ids[("module_2", "inference", "dropout")] == "lab_m2_dropout_inference"
+    assert audited_question_ids[("module_2", "training", "dropout")] == "m2_l8"
+    assert audited_question_ids[("module_3", "inference", "mask")] == "m3_l7"
+    assert audited_question_ids[("module_4", "inference", "contexts")] == "lab_m4_contexts"
+    assert audited_question_ids[("module_5", "inference", "ffn_project")] == "lab_m5_ffn_project"
+    assert audited_question_ids[("module_6", "inference", "decoder_prefix")] == "lab_m6_prefix_inference"
+    assert audited_question_ids[("module_6", "training", "decoder_prefix")] == "m6_l7"
+    assert audited_question_ids[("module_7", "inference", "feedback")] == "m7_l7"
+    assert audited_question_ids[("module_8", "training", "full_loss")] == "lab_m8_loss"
 
     window.deleteLater()
     engine.deleteLater()

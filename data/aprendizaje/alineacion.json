@@ -588,7 +588,7 @@
         {
           "id": "m2_l4",
           "concept_id": "positional_encoding",
-          "prompt": "Observa otro token en una posición distinta. ¿Qué parte cambia aunque el token sea el mismo?",
+          "prompt": "Observa el mismo token en dos posiciones distintas. ¿Qué parte de su representación cambia?",
           "options": [
             "El vector posicional",
             "La fila de la tabla de embeddings",
