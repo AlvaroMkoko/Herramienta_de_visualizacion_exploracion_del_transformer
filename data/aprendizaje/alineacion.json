@@ -234,98 +234,98 @@
         {
           "id": "m1_l1",
           "concept_id": "dimensiones_entrada",
-          "prompt": "Antes de ejecutar: si el batch tiene dos frases de longitudes distintas, ¿qué forma esperas para la matriz de IDs?",
+          "prompt": "En la animación, ambas frases terminan como filas alineadas. ¿Qué evidencia muestra que el batch quedó listo?",
           "options": [
-            "[número de frases, longitud de la más larga]",
-            "[longitud de la más corta, número de frases]",
-            "[número total de tokens]"
+            "Las filas tienen igual número de celdas y el relleno sólo ocupa las sobrantes",
+            "Todos los IDs de ambas frases se mezclaron en una sola fila",
+            "La frase corta adquirió palabras nuevas"
           ],
           "correct_index": 0,
-          "explanation": "El batch es rectangular: una fila por frase y tantas columnas como la frase más larga."
+          "explanation": "Un batch rectangular conserva una fila por ejemplo; PAD completa únicamente las posiciones que faltan."
         },
         {
           "id": "m1_l2",
           "concept_id": "mascara_padding",
-          "prompt": "Observa la máscara del ejemplo. ¿Qué posiciones esperas que aparezcan bloqueadas?",
+          "prompt": "La animación atenúa una celda PAD antes de la atención. ¿Qué error evitará ese bloqueo?",
           "options": [
-            "Las que corresponden a PAD",
-            "Las primeras posiciones de cada frase",
-            "Ninguna: la máscara se aplica después de softmax"
+            "Que el modelo use el relleno como si fuera contenido",
+            "Que el tokenizador divida palabras largas",
+            "Que se conserve el orden de los tokens reales"
           ],
           "correct_index": 0,
-          "explanation": "La máscara de padding marca como no válidas exactamente las posiciones de relleno."
+          "explanation": "La máscara retira PAD del cálculo para que sus celdas no aporten información."
         },
         {
           "id": "m1_l3",
           "concept_id": "tokenizacion",
-          "prompt": "Escribe una palabra larga o poco común. ¿Qué esperas ver en la lista de tokens?",
+          "prompt": "Una palabra aparece repartida en varios chips consecutivos. ¿Qué interpretación es coherente con la animación?",
           "options": [
-            "Varias subpalabras para una sola palabra",
-            "Siempre un solo token por palabra",
-            "Un token por letra en todos los casos"
+            "El tokenizador encontró varias piezas conocidas para representarla",
+            "La palabra fue eliminada por no existir completa",
+            "Cada chip corresponde necesariamente a una letra"
           ],
           "correct_index": 0,
-          "explanation": "Las palabras poco frecuentes se dividen en piezas que sí están en el vocabulario."
+          "explanation": "Los chips muestran subpalabras del vocabulario que, juntas y en orden, representan la palabra."
         },
         {
           "id": "m1_l4",
           "concept_id": "padding",
-          "prompt": "Si alargas dos tokens la frase más larga, ¿qué le ocurre a la frase corta del batch?",
+          "prompt": "Al crecer la frase larga aparecen nuevas celdas PAD al final de la corta. ¿Qué permanece intacto?",
           "options": [
-            "Recibe dos PAD más",
-            "No cambia nada",
-            "Pierde dos tokens"
+            "Los tokens reales y su orden",
+            "La cantidad total de relleno",
+            "La longitud común del batch"
           ],
           "correct_index": 0,
-          "explanation": "La longitud común sube y la frase corta necesita más relleno para alcanzarla."
+          "explanation": "Padding extiende la fila por la derecha; no sustituye ni reordena su contenido."
         },
         {
           "id": "m1_l5",
           "concept_id": "secuencias",
-          "prompt": "Intercambia el orden de dos palabras de tu frase. ¿Qué cambia en los IDs?",
+          "prompt": "Tras intercambiar dos palabras, los mismos pares token–ID se desplazan de columna. ¿Qué demuestra esto?",
           "options": [
-            "Los mismos IDs aparecen en otro orden",
-            "Aparecen IDs nuevos",
-            "El vocabulario crece"
+            "La identidad se conserva, pero la secuencia cambia",
+            "El vocabulario asigna un ID nuevo en cada posición",
+            "El orden sólo se incorpora después de softmax"
           ],
           "correct_index": 0,
-          "explanation": "Cada palabra conserva su ID; sólo cambia su posición en la secuencia."
+          "explanation": "Mover un token no cambia su entrada de vocabulario; cambia su lugar dentro de la secuencia."
         },
         {
           "id": "m1_l6",
           "concept_id": "vocabulario",
-          "prompt": "Escribe la misma palabra dos veces. ¿Qué esperas de sus IDs?",
+          "prompt": "Dos apariciones de la misma palabra señalan la misma fila del vocabulario. ¿Qué puede variar más adelante?",
           "options": [
-            "El mismo ID en ambas posiciones",
-            "IDs distintos según la posición",
-            "Un ID que suma ambas apariciones"
+            "Su representación contextual por estar rodeadas de tokens distintos",
+            "El significado fijo del ID dentro del vocabulario",
+            "El número de filas de la tabla"
           ],
           "correct_index": 0,
-          "explanation": "El vocabulario asigna un ID fijo por token, independientemente de dónde aparezca."
+          "explanation": "El ID es estable; posición y atención harán que cada aparición adquiera un contexto diferente."
         },
         {
           "id": "m1_l7",
           "concept_id": "tokens_especiales",
-          "prompt": "Observa el inicio y el final de la secuencia. ¿Qué IDs esperas encontrar ahí?",
+          "prompt": "Los chips BOS y EOS aparecen en los extremos sin provenir de palabras escritas. ¿Qué función cumplen?",
           "options": [
-            "Los IDs reservados de inicio y fin",
-            "El ID de la primera palabra repetido",
-            "IDs de PAD"
+            "Marcar los límites que controlan el recorrido de la secuencia",
+            "Reemplazar el primer y el último token de contenido",
+            "Añadir significado contextual a todas las palabras"
           ],
           "correct_index": 0,
-          "explanation": "BOS y EOS delimitan la secuencia con IDs reservados que no corresponden a palabras."
+          "explanation": "BOS abre la secuencia y EOS indica su final mediante símbolos reservados."
         },
         {
           "id": "m1_l8",
           "concept_id": "token_ids",
-          "prompt": "¿Puede un Token ID por sí solo distinguir «banco» (asiento) de «banco» (dinero)?",
+          "prompt": "La animación asigna el mismo ID a «banco» en dos frases con sentidos distintos. ¿Dónde deberá resolverse esa diferencia?",
           "options": [
-            "No: el mismo texto da el mismo ID; el contexto llega después",
-            "Sí: cada significado tiene su propio ID",
-            "Sí: el ID incluye la posición"
+            "En las representaciones contextuales construidas por la atención",
+            "En un ID secreto distinto para cada significado",
+            "En la máscara de padding"
           ],
           "correct_index": 0,
-          "explanation": "El ID sólo identifica la pieza de texto. Distinguir significados es trabajo de la atención."
+          "explanation": "El ID identifica texto, no sentido; la atención incorpora las palabras vecinas para desambiguarlo."
         }
       ]
     },
@@ -552,38 +552,38 @@
         {
           "id": "m2_l1",
           "concept_id": "matriz_embeddings",
-          "prompt": "Observa la tabla de embeddings del modelo cargado. ¿Qué tamaño esperas en su segundo eje?",
+          "prompt": "Cambia varias veces el token seleccionado. ¿Qué patrón debería conservarse en los vectores copiados desde la tabla?",
           "options": [
-            "El d_model del modelo",
-            "La longitud de tu frase",
-            "El número de capas"
+            "Cambia la fila elegida, pero todos los vectores mantienen la misma anchura",
+            "La anchura crece con el ID del token",
+            "Todas las filas contienen exactamente los mismos valores"
           ],
           "correct_index": 0,
-          "explanation": "Cada fila es un vector de d_model componentes."
+          "explanation": "Cada ID selecciona valores distintos, pero la tabla entrega siempre un vector de anchura d_model."
         },
         {
           "id": "m2_l2",
           "concept_id": "seleccion_id",
-          "prompt": "Selecciona un token. ¿Qué esperas ver como su embedding?",
+          "prompt": "Al mover el selector de token, una fila se resalta y sus celdas aparecen a la derecha. ¿Qué confirma esa copia?",
           "options": [
-            "Exactamente la fila de la tabla indicada por su ID",
-            "Una mezcla de todas las filas",
-            "Un vector distinto en cada ejecución"
+            "El lookup recupera una sola fila mediante el ID",
+            "El ID se multiplica por toda la tabla",
+            "El embedding se sortea de nuevo en cada ejecución"
           ],
           "correct_index": 0,
-          "explanation": "El lookup copia la fila E[id]; es determinista."
+          "explanation": "El resaltado sigue el índice y la salida reproduce los valores almacenados en E[id]."
         },
         {
           "id": "m2_l3",
           "concept_id": "suma_embedding_posicion",
-          "prompt": "Compara el embedding escalado, la posición y su suma. ¿Qué esperas de sus formas?",
+          "prompt": "Fija el embedding y cambia una componente del vector posicional. ¿Qué celda de la suma debe reaccionar?",
           "options": [
-            "Las tres comparten la misma forma",
-            "La suma tiene el doble de anchura",
-            "La posición tiene una fila por token del vocabulario"
+            "La componente correspondiente de esa misma posición",
+            "Todas las filas y columnas por igual",
+            "Sólo el ID discreto del token"
           ],
           "correct_index": 0,
-          "explanation": "Se suman componente a componente, así que comparten [T, d_model]."
+          "explanation": "La suma es elemento a elemento: cada celda combina únicamente las dos celdas que ocupan su mismo lugar."
         },
         {
           "id": "m2_l4",
@@ -600,50 +600,50 @@
         {
           "id": "m2_l5",
           "concept_id": "d_model",
-          "prompt": "Antes de ejecutar: si tu frase tiene T tokens, ¿cuántos valores tiene la representación de un ejemplo?",
+          "prompt": "Añade un token al texto y vuelve a ejecutar. ¿Qué cambio visual debe aparecer en la representación?",
           "options": [
-            "T × d_model",
-            "T + d_model",
-            "Sólo d_model"
+            "Una fila nueva con la misma cantidad de componentes",
+            "Una columna nueva en cada vector existente",
+            "Una nueva capa del Transformer"
           ],
           "correct_index": 0,
-          "explanation": "Un vector de d_model componentes por cada uno de los T tokens."
+          "explanation": "Cada token aporta una fila; d_model fija la anchura y no depende de la longitud de la frase."
         },
         {
           "id": "m2_l6",
           "concept_id": "escalamiento_embedding",
-          "prompt": "Compara un componente antes y después de escalar. ¿Qué relación esperas?",
+          "prompt": "Compara todos los componentes antes y después del escalamiento. ¿Qué propiedad debería conservarse?",
           "options": [
-            "El escalado es √d_model veces el original",
-            "Son iguales",
-            "El escalado es el original dividido entre d_model"
+            "Sus signos y proporciones relativas",
+            "La magnitud exacta de cada valor",
+            "La suma total igual a uno"
           ],
           "correct_index": 0,
-          "explanation": "El embedding se multiplica por √d_model antes de sumar la posición."
+          "explanation": "Multiplicar todo el vector por la misma constante cambia la escala, no el patrón relativo de sus componentes."
         },
         {
           "id": "m2_l7",
           "concept_id": "token_embedding",
-          "prompt": "Escribe una frase que repita una palabra. Antes de sumar posición, ¿cómo serán sus embeddings?",
+          "prompt": "Las dos apariciones de una palabra parten de filas iguales, pero sus sumas finales difieren. ¿Qué señal produjo la diferencia?",
           "options": [
-            "Idénticos",
-            "Distintos según la posición",
-            "Opuestos"
+            "La codificación posicional",
+            "Un cambio de ID entre apariciones",
+            "Una reducción de d_model"
           ],
           "correct_index": 0,
-          "explanation": "Mismo ID, misma fila de la tabla."
+          "explanation": "El lookup es igual para el mismo ID; al sumar posiciones distintas se obtienen representaciones distintas."
         },
         {
           "id": "m2_l8",
           "concept_id": "representacion_entrada",
-          "prompt": "En modo entrenamiento con dropout, ¿qué esperas ver en la representación de entrada?",
+          "prompt": "Repite el paso de dropout durante entrenamiento. ¿Qué combinación de cambios es coherente?",
           "options": [
-            "Algunos componentes en cero y la misma forma",
-            "Menos tokens",
-            "Una anchura menor"
+            "Puede cambiar qué componentes quedan en cero, pero no las dimensiones",
+            "Siempre desaparece el mismo token completo",
+            "La tabla de embeddings pierde filas permanentemente"
           ],
           "correct_index": 0,
-          "explanation": "El dropout anula componentes al azar, pero no cambia la forma [B, T, d_model]."
+          "explanation": "Dropout aplica una máscara aleatoria a activaciones durante entrenamiento sin alterar la estructura del tensor."
         }
       ]
     },
@@ -878,43 +878,43 @@
         {
           "id": "m3_l1",
           "concept_id": "producto_qk",
-          "prompt": "Antes de ver los scores de tu frase: si tiene T tokens, ¿qué forma tendrá QKᵀ en esta cabeza?",
+          "prompt": "Sigue una sola Query mientras se compara con todas las Keys. ¿Qué parte del mapa se construye con ese recorrido?",
           "options": [
-            "[T, T]",
-            "[T, d_k]",
-            "[d_k, d_k]"
+            "Una fila completa de compatibilidades",
+            "Una columna de la matriz WQ",
+            "Un único Value sin combinar"
           ],
           "correct_index": 0,
-          "explanation": "Cada consulta se compara con cada clave: una celda por par de tokens."
+          "explanation": "Una Query fija recorre todas las Keys y llena la fila asociada a ese token."
         },
         {
           "id": "m3_l2",
           "concept_id": "escalamiento_dk",
-          "prompt": "Compara los scores crudos con los escalados. ¿Qué esperas?",
+          "prompt": "Los colores extremos se suavizan al escalar los scores antes de softmax. ¿Qué problema ayuda a evitar ese cambio?",
           "options": [
-            "Misma forma y mismo orden en cada fila, pero menor magnitud",
-            "Otro orden de las claves",
-            "Una forma más pequeña"
+            "Que softmax se sature y produzca gradientes poco útiles",
+            "Que Q y K tengan diferente cantidad de filas",
+            "Que la máscara causal bloquee el pasado"
           ],
           "correct_index": 0,
-          "explanation": "Dividir por √d_k es dividir por una constante: se conserva el orden y baja la escala."
+          "explanation": "Dividir por √d_k controla la magnitud para que softmax no se vuelva excesivamente extrema."
         },
         {
           "id": "m3_l3",
           "concept_id": "softmax_atencion",
-          "prompt": "Mira una fila del mapa de atención. ¿Qué esperas al sumar sus valores?",
+          "prompt": "Aumenta un score de la fila antes de softmax. ¿Cómo debería responder el mapa de pesos?",
           "options": [
-            "Aproximadamente 1",
-            "El número de tokens",
-            "Cero"
+            "Ese peso aumenta y los demás se reajustan para compartir la masa restante",
+            "Todos los pesos aumentan por la misma cantidad",
+            "La fila deja de depender de los scores"
           ],
           "correct_index": 0,
-          "explanation": "Softmax normaliza cada fila para que sus pesos sumen 1."
+          "explanation": "Softmax convierte scores relativos en una distribución: favorecer una clave redistribuye los pesos de la fila."
         },
         {
           "id": "m3_l4",
           "concept_id": "mezcla_valores",
-          "prompt": "Elige la fila de un token. ¿Qué esperas de su salida respecto a los Values?",
+          "prompt": "En la mezcla, incrementa el peso de un Value y repite la animación. ¿Hacia dónde se moverá el contexto?",
           "options": [
             "Se parece más a los Values con mayor peso",
             "Es el promedio simple de todos los Values",
@@ -926,50 +926,50 @@
         {
           "id": "m3_l5",
           "concept_id": "qkv",
-          "prompt": "Cambia el token observado. ¿Qué parte del cálculo cambia para la nueva consulta?",
+          "prompt": "Al seleccionar otro token, el resaltado salta a otra Query y a otra fila del mapa. ¿Qué permanece compartido?",
           "options": [
-            "Su Query y su fila de scores",
-            "Toda la matriz WQ",
-            "El número de claves"
+            "Las Keys disponibles y los parámetros de proyección",
+            "La Query que se está visualizando",
+            "Los pesos de esa nueva fila"
           ],
           "correct_index": 0,
-          "explanation": "Cada token tiene su propia Query; las claves y WQ son las mismas para todos."
+          "explanation": "Cambiar la consulta cambia su fila, pero se compara contra el mismo conjunto de Keys con los mismos parámetros."
         },
         {
           "id": "m3_l6",
           "concept_id": "pesos_qkv",
-          "prompt": "Si cambias una palabra de la frase y vuelves a ejecutar, ¿qué esperas de WQ, WK y WV?",
+          "prompt": "Después de cambiar una palabra, Q, K y V muestran otros valores, pero tres paneles permanecen iguales. ¿Cuáles?",
           "options": [
-            "No cambian: son parámetros aprendidos; cambian Q, K y V",
-            "Se recalculan con la nueva frase",
-            "Se reinician al azar"
+            "WQ, WK y WV",
+            "Las filas de Q, K y V",
+            "Los embeddings de todos los tokens"
           ],
           "correct_index": 0,
-          "explanation": "Las matrices de pesos sólo cambian al entrenar; Q, K y V dependen de la entrada."
+          "explanation": "La entrada modifica las activaciones proyectadas; los parámetros sólo cambian durante una actualización de entrenamiento."
         },
         {
           "id": "m3_l7",
           "concept_id": "softmax_atencion",
-          "prompt": "Con PAD o máscara causal, ¿qué esperas de los pesos de las posiciones bloqueadas tras softmax?",
+          "prompt": "Alterna la máscara y observa reaparecer celdas antes atenuadas. ¿Qué cambió en el cálculo?",
           "options": [
-            "Valen cero o casi cero",
-            "Valen 1",
-            "Se reparten igual que las demás"
+            "Esas posiciones volvieron a competir dentro de softmax",
+            "Los Values bloqueados se convirtieron en parámetros",
+            "La longitud de la secuencia disminuyó"
           ],
           "correct_index": 0,
-          "explanation": "Las posiciones enmascaradas reciben −∞ antes de softmax, así que su peso es cero."
+          "explanation": "La máscara excluye posiciones antes de normalizar; al retirarla recuperan scores y pueden recibir peso."
         },
         {
           "id": "m3_l8",
           "concept_id": "salida_atencion",
-          "prompt": "¿Cuántas filas tendrá la salida de atención para tu frase?",
+          "prompt": "Ninguna fila de salida coincide exactamente con un solo Value. ¿Qué evidencia aporta esto?",
           "options": [
-            "Una por token de la frase",
-            "Una sola para toda la frase",
-            "Una por componente de d_k"
+            "Cada token recibió una mezcla contextual de varios Values",
+            "La atención sólo copió el token con mayor ID",
+            "Las proyecciones dejaron de usar la entrada"
           ],
           "correct_index": 0,
-          "explanation": "La atención entrega un vector contextualizado por cada consulta."
+          "explanation": "La salida de cada Query combina contenido de las posiciones a las que asignó peso."
         }
       ]
     },
@@ -1196,86 +1196,86 @@
         {
           "id": "m4_l1",
           "concept_id": "division_cabezas",
-          "prompt": "Con el modelo cargado, ¿qué anchura esperas para cada cabeza?",
+          "prompt": "Al cambiar de cabeza, el resaltado recorre porciones más angostas de la proyección completa. ¿Qué muestra esa separación?",
           "options": [
-            "d_model dividido entre el número de cabezas",
-            "d_model completo",
-            "El número de tokens"
+            "Cada cabeza trabaja en un subespacio diferente de características",
+            "Cada cabeza recibe tokens distintos de la frase",
+            "Sólo la primera cabeza utiliza Q, K y V"
           ],
           "correct_index": 0,
-          "explanation": "Cada cabeza recibe un bloque de d_model / h componentes."
+          "explanation": "La anchura total se reparte en bloques para que las cabezas procesen subespacios separados."
         },
         {
           "id": "m4_l2",
           "concept_id": "dimensiones_multihead",
-          "prompt": "Antes de ver Q separado, ¿qué ejes esperas?",
+          "prompt": "Activa otra cabeza en Q separado. ¿Qué cambia en el panel y qué permanece estable?",
           "options": [
-            "[B, h, T, d_head]",
-            "[B, T]",
-            "[h, d_model]"
+            "Cambia el bloque de características; batch y posiciones permanecen",
+            "Cambia la cantidad de tokens de la secuencia",
+            "Desaparece el eje de cabezas"
           ],
           "correct_index": 0,
-          "explanation": "Se agrega el eje de cabezas y la anchura baja a d_head."
+          "explanation": "El selector recorre el eje h; cada bloque conserva los mismos ejemplos y posiciones."
         },
         {
           "id": "m4_l3",
           "concept_id": "concatenacion",
-          "prompt": "¿Qué anchura esperas para el contexto concatenado?",
+          "prompt": "Durante la concatenación, los bloques de contexto se colocan uno junto a otro. ¿Qué operación no ocurre todavía?",
           "options": [
-            "h × d_head = d_model",
-            "d_head",
-            "h + d_head"
+            "Mezclar sus componentes mediante WO",
+            "Conservar el bloque de cada cabeza",
+            "Recuperar una representación por token"
           ],
           "correct_index": 0,
-          "explanation": "Unir h bloques de d_head recupera d_model."
+          "explanation": "Concatenar sólo une bloques; la proyección WO posterior aprende a combinarlos."
         },
         {
           "id": "m4_l4",
           "concept_id": "especializacion_cabezas",
-          "prompt": "Cambia de cabeza y compara los mapas. ¿Qué esperas?",
+          "prompt": "Una cabeza parece seguir relaciones locales en este ejemplo. ¿Qué conviene comprobar antes de afirmar que se especializó?",
           "options": [
-            "Patrones distintos sobre la misma frase",
-            "Exactamente el mismo mapa",
-            "Un mapa vacío"
+            "Que el patrón se repita en varias entradas",
+            "Que una sola celda tenga el color más intenso",
+            "Que todas las demás cabezas sean idénticas"
           ],
           "correct_index": 0,
-          "explanation": "Cada cabeza tiene sus propias proyecciones y suele atender relaciones diferentes."
+          "explanation": "Un mapa aislado sugiere una hipótesis; observar el patrón en distintos ejemplos aporta evidencia de especialización."
         },
         {
           "id": "m4_l5",
           "concept_id": "proyeccion_wo",
-          "prompt": "Compara el contexto concatenado con la salida de WO. ¿Qué esperas?",
+          "prompt": "Después de WO cambian componentes pertenecientes a varios bloques de cabeza, aunque la cuadrícula conserva su tamaño. ¿Qué evidencia aporta?",
           "options": [
-            "Misma forma, valores mezclados entre bloques de cabezas",
-            "La salida de WO es más angosta",
-            "WO sólo copia la concatenación"
+            "WO aprendió a mezclar información entre los bloques concatenados",
+            "WO eliminó todas las cabezas salvo una",
+            "La concatenación ya era una probabilidad normalizada"
           ],
           "correct_index": 0,
-          "explanation": "WO es una matriz cuadrada [d_model, d_model] que combina todos los componentes."
+          "explanation": "WO mantiene la interfaz d_model, pero cada componente de salida puede combinar aportes de distintas cabezas."
         },
         {
           "id": "m4_l6",
           "concept_id": "atencion_independiente",
-          "prompt": "Si una cabeza concentra casi toda su atención en un token, ¿qué esperas de las otras cabezas?",
+          "prompt": "Seleccionar otra cabeza revela un softmax ya calculado sin copiar el patrón anterior. ¿Qué propiedad evidencia?",
           "options": [
-            "Pueden repartir su atención de forma distinta",
-            "Copian ese mismo patrón",
-            "Quedan en cero"
+            "Las cabezas calculan su atención de forma independiente",
+            "WO fija el mismo mapa para todas",
+            "El token seleccionado elimina las otras cabezas"
           ],
           "correct_index": 0,
-          "explanation": "Cada cabeza calcula su propio softmax sin ver a las demás."
+          "explanation": "Antes de concatenarse, cada cabeza obtiene scores y pesos con sus propias proyecciones."
         },
         {
           "id": "m4_l7",
           "concept_id": "salida_multihead",
-          "prompt": "¿Qué forma esperas para la salida multi-head que entra a Add & Norm?",
+          "prompt": "La salida de WO entra a la suma residual sin adaptadores adicionales. ¿Qué permite esa suma directa?",
           "options": [
-            "[B, T, d_model]",
-            "[B, h, T, T]",
-            "[B, d_head]"
+            "Que cada celda de salida tiene una celda correspondiente en X",
+            "Que todas las cabezas usan el mismo mapa",
+            "Que la secuencia perdió el eje de tokens"
           ],
           "correct_index": 0,
-          "explanation": "Debe coincidir con X para poder sumarse en la residual."
+          "explanation": "WO devuelve una representación compatible con X, por lo que la residual puede sumarlas elemento a elemento."
         },
         {
           "id": "m4_l8",
@@ -1514,38 +1514,38 @@
         {
           "id": "m5_l1",
           "concept_id": "residual_encoder",
-          "prompt": "Compara X con X + MHA(X). ¿Qué esperas de su forma y de sus valores?",
+          "prompt": "Imagina que la actualización de atención fuera cero. ¿Qué mostraría entonces la ruta residual antes de normalizar?",
           "options": [
-            "Misma forma; valores ajustados por la atención",
-            "El doble de anchura",
-            "Valores idénticos"
+            "Una copia de X que todavía puede avanzar por la capa",
+            "Un tensor vacío sin información del token",
+            "El doble de tokens que había en X"
           ],
           "correct_index": 0,
-          "explanation": "La residual suma una actualización sobre X sin cambiar la forma."
+          "explanation": "Si MHA(X)=0, la suma queda X+0=X; el atajo evita perder por completo la entrada."
         },
         {
           "id": "m5_l2",
           "concept_id": "ffn_encoder",
-          "prompt": "Antes de abrir la FFN, ¿qué anchura esperas para la activación oculta?",
+          "prompt": "Durante la expansión FFN aparecen más columnas, pero no más filas. ¿Qué está aumentando?",
           "options": [
-            "d_ff, mayor que d_model",
-            "d_model",
-            "El número de tokens"
+            "Las características temporales de cada token",
+            "La cantidad de tokens de la frase",
+            "El tamaño del batch"
           ],
           "correct_index": 0,
-          "explanation": "La primera lineal expande temporalmente cada token."
+          "explanation": "La FFN expande el eje de características a d_ff y procesa cada fila de token por separado."
         },
         {
           "id": "m5_l3",
           "concept_id": "mha_encoder",
-          "prompt": "Observa el mapa de atención del encoder. ¿Qué celdas esperas bloqueadas si tu frase no tiene PAD?",
+          "prompt": "El mapa del encoder no muestra la sombra triangular del decoder. Si tampoco hay PAD, ¿qué lectura visual es correcta?",
           "options": [
-            "Ninguna: cada token ve a todos",
-            "El triángulo superior",
-            "La diagonal"
+            "Todas las posiciones de contenido pueden relacionarse entre sí",
+            "Sólo están disponibles las posiciones anteriores",
+            "La diagonal debe permanecer bloqueada"
           ],
           "correct_index": 0,
-          "explanation": "El encoder no usa máscara causal; sólo bloquearía posiciones de relleno."
+          "explanation": "El encoder procesa la fuente completa y sólo necesita ocultar relleno, no el futuro."
         },
         {
           "id": "m5_l4",
@@ -1562,14 +1562,14 @@
         {
           "id": "m5_l5",
           "concept_id": "capas_encoder",
-          "prompt": "Cambia de capa. ¿Qué esperas de la forma de la representación?",
+          "prompt": "Cambia de capa y compara los mapas de activación. ¿Qué combinación es normal?",
           "options": [
-            "La misma [B, T, d_model] en todas",
-            "Más angosta en capas profundas",
-            "Más tokens en capas profundas"
+            "La cuadrícula conserva sus dimensiones, pero cambian sus valores",
+            "La cuadrícula gana una fila por cada capa",
+            "Todas las capas muestran exactamente los mismos valores"
           ],
           "correct_index": 0,
-          "explanation": "Todas las capas comparten interfaz; cambian los valores, no la forma."
+          "explanation": "Las capas usan una interfaz común para poder apilarse, aunque cada una refine la representación."
         },
         {
           "id": "m5_l6",
@@ -1586,26 +1586,26 @@
         {
           "id": "m5_l7",
           "concept_id": "salida_encoder",
-          "prompt": "Si tu frase fuente tiene T tokens, ¿cuántas filas tendrá la memoria del encoder por ejemplo?",
+          "prompt": "Cambia una palabra de la fuente y observa que también varían filas de otros tokens. ¿Qué demuestra ese efecto?",
           "options": [
-            "T",
-            "1",
-            "d_model"
+            "La memoria contiene representaciones contextualizadas, no copias aisladas",
+            "El encoder genera un token nuevo por cada capa",
+            "La memoria sólo conserva la palabra modificada"
           ],
           "correct_index": 0,
-          "explanation": "Un vector contextualizado por cada token de entrada."
+          "explanation": "Self-attention permite que cambiar una posición afecte las representaciones de otras posiciones."
         },
         {
           "id": "m5_l8",
           "concept_id": "flujo_encoder",
-          "prompt": "Sigue la capa de principio a fin. ¿Qué orden esperas ver?",
+          "prompt": "Detén la animación justo después de self-attention. ¿Qué bloque debe completar esa actualización antes de entrar a la FFN?",
           "options": [
-            "Atención, Add & Norm, FFN, Add & Norm",
-            "FFN, atención, softmax",
-            "LayerNorm, logits, atención"
+            "La primera suma residual y su normalización",
+            "La proyección directa al vocabulario",
+            "La máscara causal del decoder"
           ],
           "correct_index": 0,
-          "explanation": "Es el orden del bloque post-norm implementado."
+          "explanation": "En el bloque post-norm, cada subcapa entrega su actualización a Add & Norm antes de continuar."
         }
       ]
     },
@@ -1832,43 +1832,43 @@
         {
           "id": "m6_l1",
           "concept_id": "mascara_causal",
-          "prompt": "Antes de ver la máscara de tu prefijo, ¿qué zona esperas que quede bloqueada?",
+          "prompt": "La diagonal de la máscara causal permanece disponible mientras las celdas a su derecha se atenúan. ¿Por qué?",
           "options": [
-            "El triángulo superior: las posiciones futuras",
-            "La diagonal",
-            "La primera columna"
+            "La posición actual pertenece al prefijo conocido; las posteriores aún no existen",
+            "El token actual siempre debe copiarse como respuesta",
+            "La diagonal contiene la memoria del encoder"
           ],
           "correct_index": 0,
-          "explanation": "Cada consulta sólo puede ver claves en su posición o antes."
+          "explanation": "La consulta puede usar su propio estado y el pasado, pero no información de posiciones futuras."
         },
         {
           "id": "m6_l2",
           "concept_id": "mascara_causal",
-          "prompt": "Elige la última posición del prefijo. ¿A qué posiciones esperas que atienda?",
+          "prompt": "Compara la primera y la última fila del mapa causal. ¿Cuál diferencia debería destacar la animación?",
           "options": [
-            "A todas las anteriores y a sí misma",
-            "Sólo a las futuras",
-            "Sólo a la primera"
+            "La última dispone de más claves permitidas que la primera",
+            "La primera puede consultar más futuro que la última",
+            "Ambas tienen exactamente las mismas celdas habilitadas"
           ],
           "correct_index": 0,
-          "explanation": "La última posición tiene el prefijo más largo visible."
+          "explanation": "La región permitida crece con el prefijo disponible para cada consulta."
         },
         {
           "id": "m6_l3",
           "concept_id": "cross_attention",
-          "prompt": "¿Qué forma esperas para el mapa de cross-attention de tu ejemplo?",
+          "prompt": "Selecciona un token destino: su fila de cross-attention se extiende sobre los chips de la fuente. ¿Qué representan esas celdas?",
           "options": [
-            "[longitud destino, longitud fuente]",
-            "[longitud fuente, longitud fuente]",
-            "[longitud destino, d_model]"
+            "Cuánto consulta ese token destino a cada posición fuente",
+            "Qué tokens futuros del destino puede copiar",
+            "Los componentes internos de un único embedding"
           ],
           "correct_index": 0,
-          "explanation": "Consultas del decoder contra claves de la memoria del encoder."
+          "explanation": "Cada fila parte de una Query del decoder y recorre las Keys de la memoria del encoder."
         },
         {
           "id": "m6_l4",
           "concept_id": "cross_attention",
-          "prompt": "Compara self-attention y cross-attention. ¿Qué cambia en las claves?",
+          "prompt": "Sigue las flechas de cross-attention. ¿De qué panel llegan K y V mientras Q permanece en el decoder?",
           "options": [
             "En cross-attention son las posiciones de la fuente",
             "Son las mismas posiciones del prefijo",
@@ -1880,50 +1880,50 @@
         {
           "id": "m6_l5",
           "concept_id": "masked_self_attention",
-          "prompt": "Alterna la máscara causal. ¿Qué esperas ver en los pesos?",
+          "prompt": "Al desactivar la máscara aparecen valores sobre la diagonal. ¿Por qué esa visualización es sólo un contrafactual?",
           "options": [
-            "Sin máscara aparecen pesos hacia posiciones futuras",
-            "Nada cambia",
-            "Desaparece la diagonal"
+            "Permite usar información futura que no existe al generar",
+            "Reduce el número de parámetros del decoder",
+            "Impide consultar la memoria del encoder"
           ],
           "correct_index": 0,
-          "explanation": "Al quitar la máscara, softmax puede repartir peso sobre todo el destino."
+          "explanation": "Las celdas futuras pueden recibir peso sin máscara, pero una inferencia autoregresiva no dispone de esos tokens."
         },
         {
           "id": "m6_l6",
           "concept_id": "residuales_decoder",
-          "prompt": "Recorre la capa decoder. ¿Cuántas sumas residuales esperas encontrar?",
+          "prompt": "Las tres rutas de atajo rodean subcapas distintas. ¿Qué actualizaciones reincorporan al estado del decoder?",
           "options": [
-            "3",
-            "1",
-            "2"
+            "Contexto causal, contexto de fuente y transformación FFN",
+            "Tokenización, padding y muestreo",
+            "Temperatura, Top-K y Top-P"
           ],
           "correct_index": 0,
-          "explanation": "Una por subcapa: self-attention, cross-attention y FFN."
+          "explanation": "Cada subcapa principal aporta una actualización que se suma a su entrada mediante un atajo residual."
         },
         {
           "id": "m6_l7",
           "concept_id": "entrada_decoder",
-          "prompt": "En modo entrenamiento, compara la entrada del decoder con el objetivo. ¿Qué relación esperas?",
+          "prompt": "Selecciona una posición de entrenamiento: el chip de entrada coincide con la etiqueta anterior. ¿Qué tarea aprende esa posición?",
           "options": [
-            "El objetivo va una posición adelante de la entrada",
-            "Son idénticos",
-            "El objetivo es la frase fuente"
+            "Predecir el siguiente token a partir del prefijo conocido",
+            "Reconstruir el mismo token que ya recibió",
+            "Copiar una posición futura sin usar máscara"
           ],
           "correct_index": 0,
-          "explanation": "Teacher forcing: cada posición recibe el token anterior y predice el siguiente."
+          "explanation": "El desplazamiento alinea cada prefijo de entrada con el token que debe predecirse a continuación."
         },
         {
           "id": "m6_l8",
           "concept_id": "salida_decoder",
-          "prompt": "¿Qué forma esperas para la salida final del decoder?",
+          "prompt": "La salida final aún se muestra como estados y no como probabilidades. ¿Qué operación falta para puntuar palabras?",
           "options": [
-            "[B, T_tgt, d_model]",
-            "[B, |V|]",
-            "[B, T_src, T_tgt]"
+            "La proyección desde d_model hacia el vocabulario",
+            "Otra tokenización del texto fuente",
+            "Una máscara de padding sobre los parámetros"
           ],
           "correct_index": 0,
-          "explanation": "Un vector de d_model por posición destino; la proyección al vocabulario viene después."
+          "explanation": "Los estados del decoder deben pasar por la capa de salida antes de convertirse en logits por token posible."
         }
       ]
     },
@@ -2150,98 +2150,98 @@
         {
           "id": "m7_l1",
           "concept_id": "proyeccion_vocabulario",
-          "prompt": "¿Cuántos logits esperas para la posición que predice?",
+          "prompt": "Cambia el estado seleccionado y observa que todas las barras del vocabulario se actualizan. ¿Qué está haciendo la capa lineal?",
           "options": [
-            "Uno por token del vocabulario",
-            "Uno por token de la frase",
-            "d_model"
+            "Recalcula una puntuación para cada candidato posible",
+            "Elige primero un token y borra las demás barras",
+            "Modifica los IDs almacenados en el vocabulario"
           ],
           "correct_index": 0,
-          "explanation": "La proyección asigna un score a cada token posible."
+          "explanation": "Cada estado produce un vector completo de logits; la selección ocurre más adelante."
         },
         {
           "id": "m7_l2",
           "concept_id": "logits",
-          "prompt": "Mira los logits crudos. ¿Qué esperas encontrar?",
+          "prompt": "Compara el orden de las barras antes y después de softmax. ¿Qué debería conservarse aunque cambie la escala?",
           "options": [
-            "Valores negativos y positivos que no suman 1",
-            "Sólo valores entre 0 y 1",
-            "Valores que suman exactamente 1"
+            "La clasificación de mayor a menor",
+            "Los valores numéricos exactos",
+            "La presencia de logits negativos después de normalizar"
           ],
           "correct_index": 0,
-          "explanation": "Los logits aún no están normalizados."
+          "explanation": "Softmax es monótona: convierte logits en probabilidades sin cambiar cuál candidato supera a cuál."
         },
         {
           "id": "m7_l3",
           "concept_id": "temperature",
-          "prompt": "Baja la temperatura. ¿Qué esperas de la probabilidad del candidato principal?",
+          "prompt": "Baja la temperatura y observa que el ganador no cambia, pero se separa de las demás barras. ¿Qué se modificó?",
           "options": [
-            "Aumenta",
-            "Disminuye",
-            "Cambia de candidato"
+            "El contraste de la distribución",
+            "Los parámetros aprendidos de la capa de salida",
+            "El orden original de los logits"
           ],
           "correct_index": 0,
-          "explanation": "Una temperatura baja agranda las diferencias y concentra la distribución."
+          "explanation": "La temperatura reescala diferencias: una T menor concentra la masa sin reordenar los candidatos."
         },
         {
           "id": "m7_l4",
           "concept_id": "top_k",
-          "prompt": "Reduce K. ¿Qué esperas del conjunto de candidatos?",
+          "prompt": "Reduce K y mira qué barras se atenúan primero. ¿Qué criterio sigue el filtro?",
           "options": [
-            "Sobreviven exactamente los K de mayor logit",
-            "Sobreviven los K de menor logit",
-            "No cambia"
+            "Descarta primero las puntuaciones de menor rango",
+            "Elimina los tokens con IDs más grandes",
+            "Conserva candidatos al azar"
           ],
           "correct_index": 0,
-          "explanation": "Top-K corta por cantidad, conservando los mejores."
+          "explanation": "Top-K ordena por puntuación y mantiene la parte superior de la clasificación."
         },
         {
           "id": "m7_l5",
           "concept_id": "top_p",
-          "prompt": "Baja P. ¿Qué esperas del núcleo de candidatos?",
+          "prompt": "Con el mismo Top-K, dos distribuciones conservan distinta cantidad de tokens al aplicar Top-P. ¿Por qué?",
           "options": [
-            "Se conservan menos candidatos",
-            "Se conservan más candidatos",
-            "Siempre queda uno solo"
+            "Top-P corta al alcanzar masa acumulada, no una cantidad fija",
+            "Top-P utiliza la longitud de cada palabra",
+            "El núcleo siempre debe contener P tokens"
           ],
           "correct_index": 0,
-          "explanation": "Con una masa acumulada menor, alcanzan menos candidatos."
+          "explanation": "Una distribución concentrada alcanza el umbral con pocos candidatos; una plana puede necesitar más."
         },
         {
           "id": "m7_l6",
           "concept_id": "softmax_salida",
-          "prompt": "Tras softmax, ¿qué esperas al sumar las probabilidades de los candidatos que sobreviven?",
+          "prompt": "Aplica un filtro que deje un solo candidato y después normaliza. ¿Qué debería mostrar su barra?",
           "options": [
-            "1",
-            "K",
-            "El número de logits"
+            "Toda la probabilidad disponible",
+            "La misma puntuación cruda que tenía antes",
+            "Una probabilidad negativa"
           ],
           "correct_index": 0,
-          "explanation": "Después de filtrar se renormaliza para que la distribución sume 1."
+          "explanation": "Softmax reparte una masa total de uno; si sólo sobrevive un candidato, recibe toda esa masa."
         },
         {
           "id": "m7_l7",
           "concept_id": "generacion_autoregresiva",
-          "prompt": "Tras seleccionar un token, ¿qué esperas ver en el siguiente paso?",
+          "prompt": "La flecha lleva el token elegido desde la salida hasta la entrada del decoder. ¿Qué elemento puede reutilizarse sin recalcularse?",
           "options": [
-            "El prefijo creció un token",
-            "El prefijo se reinicia",
-            "El vocabulario cambia"
+            "La memoria de la fuente",
+            "El estado del prefijo antes de añadir el token",
+            "La distribución del paso anterior como nuevos logits"
           ],
           "correct_index": 0,
-          "explanation": "El token elegido se añade al prefijo."
+          "explanation": "El prefijo crece y vuelve al decoder, mientras la codificación de la fuente puede mantenerse."
         },
         {
           "id": "m7_l8",
           "concept_id": "generacion_autoregresiva",
-          "prompt": "¿Cuándo esperas que se detenga la generación de tu ejemplo?",
+          "prompt": "La animación recibe EOS antes de agotar el límite y deja de crear pasos. ¿Qué indica ese evento?",
           "options": [
-            "Al emitir EOS o al llegar al máximo de tokens",
-            "Cuando aparece un logit negativo",
-            "Cuando la temperatura vale 1"
+            "El modelo señaló que la secuencia terminó",
+            "El vocabulario quedó sin candidatos",
+            "La temperatura se volvió cero"
           ],
           "correct_index": 0,
-          "explanation": "Son los dos criterios de parada habituales."
+          "explanation": "EOS es una condición semántica de parada; el límite máximo sólo actúa como protección adicional."
         }
       ]
     },
@@ -2468,98 +2468,98 @@
         {
           "id": "m8_l1",
           "concept_id": "dimensiones_completas",
-          "prompt": "Antes de ejecutar, ¿qué forma esperas para los logits de tu ejemplo?",
+          "prompt": "En la proyección final, B y T permanecen visibles mientras cambia la etiqueta del último eje. ¿Qué transformación muestra?",
           "options": [
-            "[B, T_tgt, |V|]",
-            "[B, T_src, d_model]",
-            "[|V|, d_model]"
+            "Cada vector d_model se convierte en puntuaciones del vocabulario",
+            "El batch se convierte en una sola secuencia",
+            "Las posiciones destino se reemplazan por posiciones fuente"
           ],
           "correct_index": 0,
-          "explanation": "Un score por token del vocabulario en cada posición destino."
+          "explanation": "La capa de salida conserva batch y posiciones y sustituye las características por un eje de candidatos."
         },
         {
           "id": "m8_l2",
           "concept_id": "flujo_encoder_completo",
-          "prompt": "¿Qué parte del flujo esperas que no cambie entre un paso de generación y el siguiente?",
+          "prompt": "Cambia una palabra de la fuente y observa que se modifican varias filas de la memoria antes de iniciar el decoder. ¿Qué muestra ese efecto?",
           "options": [
-            "La memoria del encoder",
-            "El prefijo del decoder",
-            "El token seleccionado"
+            "El encoder contextualiza cada posición usando el resto de la fuente",
+            "Cada fila de memoria es una copia aislada de su Token ID",
+            "La memoria se construye con Top-K y Top-P"
           ],
           "correct_index": 0,
-          "explanation": "La memoria depende sólo de la fuente."
+          "explanation": "La autoatención propaga el cambio por la fuente y produce una memoria contextual antes de decodificar."
         },
         {
           "id": "m8_l3",
           "concept_id": "flujo_texto_ids",
-          "prompt": "¿Qué máscaras esperas ver al preparar la entrada?",
+          "prompt": "La vista completa sombrea PAD en la fuente y el futuro en el destino. ¿Por qué usa dos patrones distintos?",
           "options": [
-            "Padding en la fuente y causal en el destino",
-            "Sólo una máscara causal en la fuente",
-            "Ninguna"
+            "Uno elimina relleno y el otro impide anticipar la salida",
+            "Ambos sirven para reducir d_model",
+            "Uno elige tokens y el otro cambia el vocabulario"
           ],
           "correct_index": 0,
-          "explanation": "Cada lado tiene su restricción propia."
+          "explanation": "La máscara fuente protege contra PAD; la destino además respeta la generación causal."
         },
         {
           "id": "m8_l4",
           "concept_id": "flujo_decoder_completo",
-          "prompt": "En el decoder, ¿qué dos atenciones esperas recorrer?",
+          "prompt": "Un mapa del decoder es destino×destino y el siguiente es destino×fuente. ¿Cuál corresponde a la consulta de la memoria?",
           "options": [
-            "Autoatención causal y cross-attention",
-            "Dos self-attention sin máscara",
-            "Sólo cross-attention"
+            "El mapa destino×fuente",
+            "El mapa causal destino×destino",
+            "Ninguno: la memoria se consulta en la FFN"
           ],
           "correct_index": 0,
-          "explanation": "Primero el prefijo; después la consulta a la fuente."
+          "explanation": "Cross-attention usa Queries destino y Keys fuente, por eso sus dos ejes recorren secuencias distintas."
         },
         {
           "id": "m8_l5",
           "concept_id": "flujo_embeddings",
-          "prompt": "¿Qué forma esperas para la primera representación continua de la fuente?",
+          "prompt": "La animación pasa de chips con IDs enteros a filas de celdas coloreadas y les añade posición. ¿Qué cambio conceptual ocurrió?",
           "options": [
-            "[B, T_src, d_model]",
-            "[B, T_src]",
-            "[B, |V|]"
+            "Cada símbolo discreto se convirtió en un vector continuo con orden",
+            "Los IDs ya son probabilidades del vocabulario",
+            "La fuente se convirtió en el prefijo del decoder"
           ],
           "correct_index": 0,
-          "explanation": "Embedding escalado más posición, un vector por token."
+          "explanation": "Embedding aporta una representación continua y la señal posicional incorpora el orden de cada fila."
         },
         {
           "id": "m8_l6",
           "concept_id": "interpretacion_modelo",
-          "prompt": "Compara un peso de atención alto con la probabilidad final de ese token. ¿Qué esperas?",
+          "prompt": "Al cambiar la cabeza seleccionada aparece otro mapa, pero sólo estás inspeccionando una parte del modelo. ¿Qué interpretación es prudente?",
           "options": [
-            "No tienen por qué coincidir",
-            "Siempre son iguales",
-            "La probabilidad siempre es mayor"
+            "Un mapa aislado aporta evidencia local, no una explicación completa de la predicción",
+            "La cabeza visible determina por sí sola todo el token de salida",
+            "Las demás cabezas contienen necesariamente el mismo patrón"
           ],
           "correct_index": 0,
-          "explanation": "Son magnitudes de etapas distintas del modelo."
+          "explanation": "La salida combina muchas cabezas, capas, residuales y la proyección final; una vista aislada sólo describe un componente."
         },
         {
           "id": "m8_l7",
           "concept_id": "flujo_salida",
-          "prompt": "Tras elegir un token, ¿qué esperas que se agregue al prefijo?",
+          "prompt": "Sigue la flecha de realimentación: ¿qué dato concreto regresa al decoder mientras los candidatos descartados desaparecen?",
           "options": [
-            "El ID seleccionado",
-            "La memoria completa",
-            "Todos los candidatos de Top-K"
+            "El ID del único token elegido",
+            "La distribución completa como una nueva frase",
+            "Todos los pesos de atención del encoder"
           ],
           "correct_index": 0,
-          "explanation": "Sólo el token elegido pasa al siguiente paso."
+          "explanation": "La generación compromete una elección por paso y añade su ID al prefijo."
         },
         {
           "id": "m8_l8",
           "concept_id": "dimensiones_completas",
-          "prompt": "¿Qué forma esperas para la memoria del encoder con tu frase?",
+          "prompt": "Cambia una palabra fuente: la memoria se recalcula con otros valores, pero conserva su cuadrícula. ¿Qué se mantuvo?",
           "options": [
-            "[B, T_src, d_model]",
-            "[B, T_tgt, |V|]",
-            "[T_src, T_src]"
+            "Una fila por posición fuente y la misma anchura del modelo",
+            "Las activaciones numéricas de todas las posiciones",
+            "La distribución final del vocabulario"
           ],
           "correct_index": 0,
-          "explanation": "Un vector de d_model por cada token fuente."
+          "explanation": "Cambiar contenido modifica la memoria contextual, no la interfaz que el decoder consulta."
         }
       ]
     }

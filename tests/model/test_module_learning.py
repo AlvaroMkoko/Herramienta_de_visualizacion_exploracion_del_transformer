@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from difflib import SequenceMatcher
 import json
 import random
 import re
+import unicodedata
 
 from core.rutas import recurso
 from model.aprendizaje import LearningModuleCatalog, ModuleQuestionBank
@@ -13,6 +15,12 @@ from model.evaluacion.scorers import (
     es_respuesta_completa,
     normalizar_texto,
 )
+
+
+def _texto_comparable(texto: str) -> str:
+    texto = unicodedata.normalize("NFKD", texto.lower())
+    texto = texto.encode("ascii", "ignore").decode("ascii")
+    return " ".join(re.findall(r"[a-z0-9]+", texto))
 
 
 def _correct_answer(question: dict) -> dict:
@@ -328,8 +336,40 @@ def test_los_retos_del_laboratorio_no_aparecen_en_la_evaluacion():
                 texts.extend(option["text"] for option in question.get("options", []))
                 texts.extend(item["texto"] for item in question.get("elementos", []))
         corpus = "\n".join(texts)
-        for challenge in module["lab_challenges"]:
+        formal_prompts = [
+            question["prompt"]
+            for assessment in ("pre", "post")
+            for question in bank.all_questions(assessment)
+        ]
+        for index, challenge in enumerate(module["lab_challenges"]):
             assert challenge["prompt"] not in corpus, challenge["id"]
+            prompt = challenge["prompt"]
+            assert prompt == prompt.strip()
+            assert prompt.endswith("?") and "¿" in prompt
+            assert "  " not in prompt
+            assert challenge["explanation"].endswith((".", "?", "!"))
+            assert all(str(option).strip() for option in challenge["options"])
+
+            normalized_lab = _texto_comparable(prompt)
+            similarities = [
+                SequenceMatcher(
+                    None, normalized_lab, _texto_comparable(formal_prompt)
+                ).ratio()
+                for formal_prompt in formal_prompts
+            ]
+            assert max(similarities, default=0.0) < 0.58, challenge["id"]
+
+            parallel_forms = (
+                module["challenges"][index]["prompt"],
+                module["challenges"][index]["post_variant"]["prompt"],
+            )
+            assert all(
+                SequenceMatcher(
+                    None, normalized_lab, _texto_comparable(formal_prompt)
+                ).ratio()
+                < 0.58
+                for formal_prompt in parallel_forms
+            ), challenge["id"]
 
 
 def test_la_clave_legible_cubre_todos_los_formatos():

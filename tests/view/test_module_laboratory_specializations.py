@@ -9,8 +9,11 @@ vuelva a quedar sin ancho o fuera de su viewport.
 
 from __future__ import annotations
 
+from difflib import SequenceMatcher
 import os
 from pathlib import Path
+import re
+import unicodedata
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("QSG_RHI_BACKEND", "software")
@@ -21,7 +24,7 @@ from PySide6.QtCore import QObject, QPointF, QRectF, QSizeF, QUrl, qInstallMessa
 from PySide6.QtQml import QJSValue, QQmlComponent, QQmlEngine
 from PySide6.QtQuick import QQuickItem
 
-from model.aprendizaje import ModuleProgressRepository
+from model.aprendizaje import ModuleProgressRepository, ModuleQuestionBank
 from model.motor_llm.config import ConfiguracionTransformer
 from model.motor_llm.transformer import Transformer
 from viewmodel.main_viewmodel import MainViewModel
@@ -35,6 +38,12 @@ def _qml_value(value):
     """Normaliza objetos JavaScript que PySide convierte de forma contextual."""
 
     return value.toVariant() if isinstance(value, QJSValue) else value
+
+
+def _comparable_question(text: str) -> str:
+    text = unicodedata.normalize("NFKD", text.lower())
+    text = text.encode("ascii", "ignore").decode("ascii")
+    return " ".join(re.findall(r"[a-z0-9]+", text))
 
 HOST = b"""\
 import QtQuick
@@ -1062,6 +1071,12 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(qapp, tmp_path):
         view_model._course_controller.selectModule(module_id)
         screen.setProperty("moduleId", module_id)
         screen.setProperty("learningLevel", "advanced")
+        question_bank = ModuleQuestionBank(module_id=module_id)
+        assessment_prompts = [
+            _comparable_question(question["prompt"])
+            for assessment in ("pre", "post")
+            for question in question_bank.all_questions(assessment)
+        ]
         for mode in ("inference", "training"):
             screen.setProperty("mode", mode)
             view_model.moduleLaboratoryController.explore(
@@ -1084,7 +1099,14 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(qapp, tmp_path):
                 assert question_id, context
                 assessment_prefix = module_id.replace("module_", "m") + "_a"
                 assert not question_id.startswith(assessment_prefix), context
-                assert str(challenge.get("prompt", "")).strip(), context
+                challenge_prompt = str(challenge.get("prompt", "")).strip()
+                assert challenge_prompt, context
+                assert challenge_prompt.endswith("?") and "¿" in challenge_prompt, context
+                normalized_prompt = _comparable_question(challenge_prompt)
+                assert max(
+                    SequenceMatcher(None, normalized_prompt, formal_prompt).ratio()
+                    for formal_prompt in assessment_prompts
+                ) < 0.60, context
                 assert str(challenge.get("explanation", "")).strip(), context
                 assert len(question_options) >= 3, context
                 assert all(question_options), context
