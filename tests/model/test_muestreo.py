@@ -32,6 +32,7 @@ from model.motor_llm.muestreo import (
 # aplicar_temperatura
 # ---------------------------------------------------------------------------
 
+
 class TestAplicarTemperatura:
     def test_temperatura_uno_no_cambia_los_logits(self):
         logits = torch.tensor([[1.0, 2.0, 3.0]])
@@ -68,6 +69,7 @@ class TestAplicarTemperatura:
 # filtrar_top_k
 # ---------------------------------------------------------------------------
 
+
 class TestFiltrarTopK:
     def test_conserva_exactamente_k_valores_finitos(self):
         logits = torch.tensor([[5.0, 1.0, 4.0, 2.0, 3.0]])
@@ -84,6 +86,13 @@ class TestFiltrarTopK:
         assert filtrados[0, 1].item() == float("-inf")
         assert filtrados[0, 3].item() == float("-inf")
         assert filtrados[0, 4].item() == float("-inf")
+
+    def test_con_empates_en_el_umbral_conserva_exactamente_k(self):
+        logits = torch.tensor([[5.0, 4.0, 4.0, 4.0]])
+        filtrados = filtrar_top_k(logits, k=2)
+
+        assert torch.isfinite(filtrados).sum().item() == 2
+        assert filtrados[0, 0].item() == 5.0
 
     def test_k_mayor_o_igual_al_vocabulario_no_filtra(self):
         logits = torch.tensor([[5.0, 1.0, 4.0, 2.0, 3.0]])
@@ -104,10 +113,12 @@ class TestFiltrarTopK:
             filtrar_top_k(logits, k_invalido)
 
     def test_funciona_por_lotes_independientemente(self):
-        logits = torch.tensor([
-            [5.0, 1.0, 4.0, 2.0, 3.0],
-            [1.0, 5.0, 2.0, 4.0, 3.0],
-        ])
+        logits = torch.tensor(
+            [
+                [5.0, 1.0, 4.0, 2.0, 3.0],
+                [1.0, 5.0, 2.0, 4.0, 3.0],
+            ]
+        )
         filtrados = filtrar_top_k(logits, k=1)
 
         assert torch.isfinite(filtrados[0]).sum().item() == 1
@@ -119,6 +130,7 @@ class TestFiltrarTopK:
 # ---------------------------------------------------------------------------
 # filtrar_top_p
 # ---------------------------------------------------------------------------
+
 
 class TestFiltrarTopP:
     def test_p_uno_no_filtra_nada(self):
@@ -162,13 +174,16 @@ class TestFiltrarTopP:
         logits = torch.tensor([[1.0, 9.0, 2.0, 8.0, 0.5]])
         filtrados = filtrar_top_p(logits, p=0.99)
 
-        indices_finitos = torch.isfinite(filtrados[0]).nonzero(as_tuple=True)[0].tolist()
+        indices_finitos = (
+            torch.isfinite(filtrados[0]).nonzero(as_tuple=True)[0].tolist()
+        )
         assert indices_finitos == sorted(indices_finitos)
 
 
 # ---------------------------------------------------------------------------
 # muestrear_codicioso
 # ---------------------------------------------------------------------------
+
 
 class TestMuestrearCodicioso:
     def test_elige_siempre_el_token_mas_probable(self):
@@ -195,6 +210,7 @@ class TestMuestrearCodicioso:
 # ---------------------------------------------------------------------------
 # muestrear (pipeline completo)
 # ---------------------------------------------------------------------------
+
 
 class TestMuestrear:
     def test_forma_de_salida(self):

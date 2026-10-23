@@ -108,7 +108,16 @@ def test_intento_selecciona_15_equilibradas_y_minimiza_repeticiones():
         level: sum(question["difficulty"] == level for question in first_questions)
         for level in ("Básica", "Intermedia", "Avanzada")
     } == {"Básica": 5, "Intermedia": 5, "Avanzada": 5}
-    assert len({question["concept_id"] for question in first_questions}) == 8
+    assert (
+        len(
+            {
+                concept_id
+                for question in first_questions
+                for concept_id in question["concept_ids"]
+            }
+        )
+        == 8
+    )
     assert {question["pedagogical_type"] for question in first_questions} == set(
         ModuleQuestionBank.PEDAGOGICAL_TYPES
     )
@@ -302,6 +311,122 @@ def test_el_post_no_repite_los_casos_del_pre():
             ), (module["id"], code)
 
 
+def test_pre_y_post_no_reutilizan_reactivos_ni_asociaciones():
+    """Las formas paralelas miden lo mismo sin reciclar hechos completos."""
+
+    def respuesta_legible(question: dict) -> str:
+        options = {
+            option["id"]: option["text"] for option in question.get("options", [])
+        }
+        if question.get("correct_option_id"):
+            return options[question["correct_option_id"]]
+        if question.get("correct_option_ids"):
+            return " | ".join(
+                sorted(
+                    options[option_id] for option_id in question["correct_option_ids"]
+                )
+            )
+        if question.get("respuestas_aceptadas"):
+            return question["respuestas_aceptadas"][0]
+        destinations = {
+            item["id"]: item["texto"] for item in question.get("destinos", [])
+        }
+        return " | ".join(
+            sorted(
+                f"{item['texto']} -> {destinations.get(item['correcto'], item['correcto'])}"
+                for item in question.get("elementos", [])
+            )
+        )
+
+    def firma(question: dict) -> tuple[str, str]:
+        return (
+            _texto_comparable(question["prompt"]),
+            _texto_comparable(respuesta_legible(question)),
+        )
+
+    def asociaciones(question: dict) -> list[tuple[str, str]]:
+        if question.get("subtipo") != "relacionar":
+            return []
+        destinations = {item["id"]: item["texto"] for item in question["destinos"]}
+        return [
+            (
+                _texto_comparable(item["texto"]),
+                _texto_comparable(destinations[item["correcto"]]),
+            )
+            for item in question["elementos"]
+        ]
+
+    catalog = LearningModuleCatalog()
+    bank = ModuleQuestionBank(catalog, rng=random.Random(53))
+
+    for module in catalog.modules:
+        bank.set_module(module["id"])
+        pre = bank.all_questions("pre")
+        post = bank.all_questions("post")
+
+        assert {firma(question) for question in pre}.isdisjoint(
+            {firma(question) for question in post}
+        ), module["id"]
+
+        pre_facts = [fact for question in pre for fact in asociaciones(question)]
+        post_facts = [fact for question in post for fact in asociaciones(question)]
+        assert len(pre_facts) == len(set(pre_facts)), (module["id"], "pre")
+        assert len(post_facts) == len(set(post_facts)), (module["id"], "post")
+        assert set(pre_facts).isdisjoint(post_facts), module["id"]
+
+        pre_by_code = {question["code"]: question for question in pre}
+        post_by_code = {question["code"]: question for question in post}
+        for code in ("B1", "B2"):
+            assert _texto_comparable(respuesta_legible(pre_by_code[code])) != (
+                _texto_comparable(respuesta_legible(post_by_code[code]))
+            ), (module["id"], code)
+
+
+def test_los_nuevos_reactivos_se_responden_con_el_recorrido_del_modulo():
+    catalog = LearningModuleCatalog()
+    bank = ModuleQuestionBank(catalog, rng=random.Random(59))
+
+    def respuesta_unica(question: dict) -> str:
+        return next(
+            option["text"]
+            for option in question["options"]
+            if option["id"] == question["correct_option_id"]
+        )
+
+    def relaciones(question: dict) -> dict[str, str]:
+        destinations = {item["id"]: item["texto"] for item in question["destinos"]}
+        return {
+            item["texto"]: destinations[item["correcto"]]
+            for item in question["elementos"]
+        }
+
+    for module in catalog.modules:
+        bank.set_module(module["id"])
+        steps = module["guided_steps"]
+        post = {question["code"]: question for question in bank.all_questions("post")}
+
+        assert respuesta_unica(post["B1"]) == steps[0]["operation"]
+        assert respuesta_unica(post["B2"]) == steps[4]["operation"]
+
+        for assessment, reason_indices, change_indices in (
+            ("pre", (0, 2, 4, 6), (1, 3, 5, 7)),
+            ("post", (1, 3, 5, 7), (0, 2, 4, 6)),
+        ):
+            questions = {
+                question["code"]: question
+                for question in bank.all_questions(assessment)
+            }
+            assert relaciones(questions["B7"]) == {
+                steps[index]["title"]: steps[index]["why"] for index in reason_indices
+            }
+            assert relaciones(questions["I4"]) == {
+                steps[index]["title"]: steps[index]["change"]
+                for index in change_indices
+            }
+            assert questions["B7"]["explanation"].startswith("Relaciones correctas:")
+            assert questions["I4"]["explanation"].startswith("Relaciones correctas:")
+
+
 def test_un_intento_no_usa_el_mismo_caso_en_dos_reactivos_avanzados():
     catalog = LearningModuleCatalog()
     bank = ModuleQuestionBank(catalog, rng=random.Random(43))
@@ -317,7 +442,9 @@ def test_un_intento_no_usa_el_mismo_caso_en_dos_reactivos_avanzados():
             a5_cases = {item["texto"] for item in advanced["A5"]["elementos"]}
             assert advanced["A8"]["prompt"] not in a5_cases
             assert not any(case in advanced["A6"]["prompt"] for case in a5_cases)
-            assert advanced["A7"]["prompt"].removeprefix("Responde sin opciones: ") not in (
+            assert advanced["A7"]["prompt"].removeprefix(
+                "Responde sin opciones: "
+            ) not in (
                 advanced["A2"]["prompt"],
                 advanced["A8"]["prompt"],
             )

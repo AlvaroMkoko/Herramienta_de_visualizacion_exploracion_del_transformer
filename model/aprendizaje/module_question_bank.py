@@ -29,10 +29,12 @@ class ModuleQuestionBank:
     VALID_ASSESSMENTS = ("pre", "post")
     QUESTIONS_PER_ATTEMPT = 15
     QUESTIONS_PER_LEVEL = 5
-    # 8: el post usa formas isomorfas (otros números, sin nombrar la operación),
-    # A6 y A7 son reactivos de transferencia propios y A5 deja de compartir
-    # reto con A6 y A8. Los resultados de la versión 7 no son comparables.
-    INSTRUMENT_VERSION = 8
+    # 9: las formas básica e intermedia dejan de intercambiar las mismas
+    # asociaciones conceptuales entre pre y post. El post pregunta por
+    # operaciones y los reactivos de relación usan motivo, salida o cambio en
+    # conjuntos disjuntos de etapas. Los resultados de la versión 8 no son
+    # comparables.
+    INSTRUMENT_VERSION = 9
 
     PEDAGOGICAL_TYPES = (
         "opcion_multiple",
@@ -196,7 +198,12 @@ class ModuleQuestionBank:
                     )
                     question = pool.pop(preferred_index)
                     selected.append(question)
-                    covered_concepts.add(str(question["concept_id"]))
+                    covered_concepts.update(
+                        str(concept_id)
+                        for concept_id in question.get(
+                            "concept_ids", [question["concept_id"]]
+                        )
+                    )
                     covered_formats.add(str(question["pedagogical_type"]))
                 if len(selected) == self.QUESTIONS_PER_LEVEL:
                     break
@@ -212,12 +219,19 @@ class ModuleQuestionBank:
         covered_concepts: set[str],
         covered_formats: set[str],
     ) -> int:
+        def introduces_new_concept(question: dict[str, Any]) -> bool:
+            question_concepts = {
+                str(concept_id)
+                for concept_id in question.get("concept_ids", [question["concept_id"]])
+            }
+            return not question_concepts.issubset(covered_concepts)
+
         preferences = (
             lambda q: (
-                q["concept_id"] not in covered_concepts
+                introduces_new_concept(q)
                 and q["pedagogical_type"] not in covered_formats
             ),
-            lambda q: q["concept_id"] not in covered_concepts,
+            introduces_new_concept,
             lambda q: q["pedagogical_type"] not in covered_formats,
         )
         for predicate in preferences:
@@ -733,8 +747,39 @@ class ModuleQuestionBank:
                 explanation=concept["description"],
             )
 
+        def operation_choice(code: str, index: int) -> dict[str, Any]:
+            """Evalúa una operación enseñada sin repetir su definición."""
+
+            step = steps[index]
+            correct_operation = str(step["operation"])
+            distractors: list[str] = []
+            for jump in range(1, len(steps)):
+                candidate = str(steps[(index + jump) % len(steps)]["operation"])
+                if candidate != correct_operation and candidate not in distractors:
+                    distractors.append(candidate)
+                if len(distractors) == 3:
+                    break
+            return self._single_choice(
+                prefix,
+                code,
+                step["concept_id"],
+                "Básica",
+                "Comprender",
+                "Reconocimiento de operaciones",
+                f"¿Qué operación se realiza durante «{step['title']}»?",
+                [correct_operation, *distractors],
+                0,
+                explanation=(
+                    f"Durante «{step['title']}» se realiza esta operación: "
+                    f"{correct_operation}."
+                ),
+            )
+
         # ── 8 básicas: recordar sin reducir todo a reconocimiento ─────
-        questions.extend([concept_choice("B1", 0), concept_choice("B2", 4)])
+        if assessment == "pre":
+            questions.extend([concept_choice("B1", 0), concept_choice("B2", 4)])
+        else:
+            questions.extend([operation_choice("B1", 0), operation_choice("B2", 4)])
 
         concept = concepts[1]
         if assessment == "pre":
@@ -825,23 +870,25 @@ class ModuleQuestionBank:
         )
 
         relation_indices = [0, 2, 4, 6] if assessment == "pre" else [1, 3, 5, 7]
-        relation_concepts = [concepts[index] for index in relation_indices]
-        elements, destinations = self._relation_payload(
-            [(item["title"], item["description"]) for item in relation_concepts]
-        )
+        relation_steps = [steps[index] for index in relation_indices]
+        reason_pairs = [(step["title"], step["why"]) for step in relation_steps]
+        elements, destinations = self._relation_payload(reason_pairs)
         questions.append(
             self._assignment_question(
                 prefix,
                 "B7",
-                relation_concepts[0]["id"],
+                relation_steps[0]["concept_id"],
                 "Básica",
                 "Comprender",
-                "Asociación conceptual",
-                "Relaciona cada concepto con la función que cumple en este módulo.",
+                "Justificación de etapas",
+                "Relaciona cada etapa con el motivo por el que se realiza.",
                 elements,
                 destinations,
                 subtype="relacionar",
-                related_concepts=[item["id"] for item in relation_concepts[1:]],
+                related_concepts=[step["concept_id"] for step in relation_steps[1:]],
+                explanation="Relaciones correctas: "
+                + "; ".join(f"«{title}» → {reason}" for title, reason in reason_pairs)
+                + ".",
             )
         )
 
@@ -925,26 +972,28 @@ class ModuleQuestionBank:
             )
         )
 
-        selected_concepts = [
-            concepts[index]
+        change_steps = [
+            steps[index]
             for index in ([1, 3, 5, 7] if assessment == "pre" else [0, 2, 4, 6])
         ]
-        elements, destinations = self._relation_payload(
-            [(item["title"], item["description"]) for item in selected_concepts]
-        )
+        change_pairs = [(step["title"], step["change"]) for step in change_steps]
+        elements, destinations = self._relation_payload(change_pairs)
         questions.append(
             self._assignment_question(
                 prefix,
                 "I4",
-                selected_concepts[0]["id"],
+                change_steps[0]["concept_id"],
                 "Intermedia",
                 "Comprender",
-                "Relación entre componentes",
-                "Relaciona los componentes sin usar su posición como pista.",
+                "Relación etapa–cambio",
+                "Relaciona cada etapa con el cambio observable que produce.",
                 elements,
                 destinations,
                 subtype="relacionar",
-                related_concepts=[item["id"] for item in selected_concepts[1:]],
+                related_concepts=[step["concept_id"] for step in change_steps[1:]],
+                explanation="Relaciones correctas: "
+                + "; ".join(f"«{title}» → {change}" for title, change in change_pairs)
+                + ".",
             )
         )
 

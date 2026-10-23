@@ -47,6 +47,7 @@ def test_flujo_perfil_docente_y_registro_de_alumno(qapp, monkeypatch, tmp_path):
     assert window is not None, _errors(component)
     qapp.processEvents()
 
+    assert window.property("title") == "Transformer Visualizer"
     selection = window.findChild(QObject, "profileSelectionScreen")
     assert selection is not None
     _invoke(selection, "openTeacher")
@@ -88,6 +89,21 @@ def test_perfil_estudiante_entra_a_la_bienvenida_con_todas_sus_opciones(qapp):
 
     selection = window.findChild(QObject, "profileSelectionScreen")
     assert selection is not None
+    assert window.findChild(QObject, "institutionalHeader") is not None
+    assert window.findChild(QObject, "institutionNameText").property("text") == (
+        "INSTITUTO POLITÉCNICO NACIONAL"
+    )
+    assert window.findChild(QObject, "schoolNameText").property("text") == (
+        "ESCUELA SUPERIOR DE CÓMPUTO  ·  ESCOM"
+    )
+    assert window.findChild(QObject, "projectKeyText").property("text") == "2026-B056"
+    assert window.findChild(QObject, "applicationNameText").property("text") == (
+        "Transformer Visualizer"
+    )
+    assert "Herramienta de visualización" in window.findChild(
+        QObject, "projectTitleText"
+    ).property("text")
+    assert window.findChild(QObject, "presentersPanel") is not None
     # Un solo acceso por perfil: el botón de laboratorio ya no existe aquí.
     assert window.findChild(QObject, "studentProfileButton") is not None
     assert window.findChild(QObject, "studentLaboratoryButton") is None

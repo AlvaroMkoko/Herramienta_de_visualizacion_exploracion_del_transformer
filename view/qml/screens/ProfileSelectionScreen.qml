@@ -40,75 +40,73 @@ PagePrincipal {
             id: contenido
             width: Math.min(1060, desplazamiento.width - 64)
             x: (desplazamiento.width - width) / 2
-            y: Math.max(44, (desplazamiento.height - implicitHeight) * 0.46)
+            // El margen superior deja libre el menú global de preferencias
+            // incluso en el tamaño mínimo de ventana.
+            y: Math.max(64, (desplazamiento.height - implicitHeight) * 0.46)
             spacing: 0
 
             RowLayout {
-                Layout.alignment: Qt.AlignHCenter
-                spacing: 10
+                Layout.fillWidth: true
+                spacing: 24
 
-                Rectangle {
-                    Layout.preferredWidth: 34
-                    Layout.preferredHeight: 34
-                    radius: 10
-                    color: Style.Theme.acento
+                Image {
+                    Layout.preferredWidth: 104
+                    Layout.preferredHeight: 104
+                    source: "../../assets/icono_grande.svg"
+                    fillMode: Image.PreserveAspectFit
+                    mipmap: true
+                    Accessible.role: Accessible.Graphic
+                    Accessible.name: "Símbolo de Transformer Visualizer"
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 0
 
                     Text {
-                        anchors.centerIn: parent
-                        text: "T"
-                        color: Style.Theme.texto_sobre_color
+                        text: "VISUALIZA  ·  EXPLORA  ·  COMPRENDE"
+                        color: Style.Theme.acento_texto
                         font.family: Style.Theme.fuente_interfaz
-                        font.pixelSize: 17
+                        font.pixelSize: 11
                         font.bold: true
+                        font.letterSpacing: 1.7
+                    }
+
+                    Text {
+                        objectName: "applicationNameText"
+                        Layout.fillWidth: true
+                        Layout.topMargin: 4
+                        text: "Transformer Visualizer"
+                        color: Style.Theme.texto_primario
+                        font.family: Style.Theme.fuente_interfaz
+                        font.pixelSize: Math.max(32, Math.min(44, root.width * 0.038))
+                        font.bold: true
+                        lineHeight: 1
+                        wrapMode: Text.WordWrap
+                        Accessible.role: Accessible.Heading
+                    }
+
+                    Text {
+                        objectName: "projectTitleText"
+                        Layout.fillWidth: true
+                        Layout.topMargin: 8
+                        text: "“Herramienta de visualización y exploración interactiva de una arquitectura tipo Transformer”"
+                        color: Style.Theme.texto_secundario_fuerte
+                        font.family: Style.Theme.fuente_interfaz
+                        font.pixelSize: 15
+                        lineHeight: 1.25
+                        wrapMode: Text.WordWrap
                     }
                 }
-
-                Text {
-                    text: "TRANSFORMER LAB"
-                    color: Style.Theme.acento_texto
-                    font.family: Style.Theme.fuente_interfaz
-                    font.pixelSize: 12
-                    font.bold: true
-                    font.letterSpacing: 1.8
-                }
-            }
-
-            Text {
-                Layout.fillWidth: true
-                Layout.topMargin: 14
-                text: "Explora cómo aprende\nun Transformer"
-                color: Style.Theme.texto_primario
-                font.family: Style.Theme.fuente_interfaz
-                font.pixelSize: Math.max(34, Math.min(46, root.width * 0.036))
-                font.bold: true
-                lineHeight: 0.98
-                horizontalAlignment: Text.AlignHCenter
-                wrapMode: Text.WordWrap
-                Accessible.role: Accessible.Heading
-                Accessible.name: "Explora cómo aprende un Transformer"
-            }
-
-            Text {
-                Layout.fillWidth: true
-                Layout.maximumWidth: 660
-                Layout.alignment: Qt.AlignHCenter
-                Layout.topMargin: 12
-                text: "Una experiencia visual para comprender la arquitectura, experimentar con modelos y observar tu progreso."
-                color: Style.Theme.texto_secundario_fuerte
-                font.family: Style.Theme.fuente_interfaz
-                font.pixelSize: 16
-                lineHeight: 1.3
-                horizontalAlignment: Text.AlignHCenter
-                wrapMode: Text.WordWrap
             }
 
             RowLayout {
                 Layout.alignment: Qt.AlignHCenter
-                Layout.topMargin: 18
+                Layout.topMargin: 14
                 spacing: 8
 
                 Repeater {
-                    model: ["Ruta guiada", "Laboratorios reales", "Progreso local"]
+                    model: ["Ruta guiada", "Laboratorios interactivos", "Progreso local"]
 
                     Rectangle {
                         required property string modelData
@@ -134,8 +132,8 @@ PagePrincipal {
 
             Text {
                 Layout.fillWidth: true
-                Layout.topMargin: 28
-                text: "ELIGE TU EXPERIENCIA"
+                Layout.topMargin: 22
+                text: "ELIGE CÓMO ENTRAR"
                 color: Style.Theme.texto_terciario
                 font.family: Style.Theme.fuente_interfaz
                 font.pixelSize: 11
@@ -152,7 +150,7 @@ PagePrincipal {
 
                 Item {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 294
+                    Layout.preferredHeight: 254
 
                     Rectangle {
                         anchors.fill: studentCard
@@ -201,23 +199,23 @@ PagePrincipal {
                             anchors.fill: parent
                             anchors.leftMargin: 30
                             anchors.rightMargin: 26
-                            anchors.topMargin: 24
-                            anchors.bottomMargin: 22
+                            anchors.topMargin: 20
+                            anchors.bottomMargin: 18
                             spacing: 0
 
                             RowLayout {
                                 Layout.fillWidth: true
 
                                 Rectangle {
-                                    Layout.preferredWidth: 50
-                                    Layout.preferredHeight: 50
+                                Layout.preferredWidth: 44
+                                Layout.preferredHeight: 44
                                     radius: 15
                                     color: Style.Theme.acento_fondo
                                     Text {
                                         anchors.centerIn: parent
                                         text: "E"
                                         color: Style.Theme.acento
-                                        font.pixelSize: 23
+                                        font.pixelSize: 21
                                         font.bold: true
                                     }
                                 }
@@ -240,7 +238,7 @@ PagePrincipal {
                             }
 
                             Text {
-                                Layout.topMargin: 16
+                                Layout.topMargin: 12
                                 text: "Soy estudiante"
                                 color: Style.Theme.texto_primario
                                 font.pixelSize: 23
@@ -257,7 +255,7 @@ PagePrincipal {
                             }
                             Text {
                                 Layout.fillWidth: true
-                                Layout.topMargin: 12
+                                Layout.topMargin: 9
                                 text: "✓  Diagnóstico  ·  Ruta guiada  ·  Laboratorio"
                                 color: Style.Theme.acento_texto
                                 font.pixelSize: 12
@@ -278,7 +276,7 @@ PagePrincipal {
 
                 Item {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 294
+                    Layout.preferredHeight: 254
 
                     Rectangle {
                         anchors.fill: teacherCard
@@ -327,23 +325,23 @@ PagePrincipal {
                             anchors.fill: parent
                             anchors.leftMargin: 30
                             anchors.rightMargin: 26
-                            anchors.topMargin: 24
-                            anchors.bottomMargin: 22
+                            anchors.topMargin: 20
+                            anchors.bottomMargin: 18
                             spacing: 0
 
                             RowLayout {
                                 Layout.fillWidth: true
 
                                 Rectangle {
-                                    Layout.preferredWidth: 50
-                                    Layout.preferredHeight: 50
+                                    Layout.preferredWidth: 44
+                                    Layout.preferredHeight: 44
                                     radius: 15
                                     color: Style.Theme.info_fondo
                                     Text {
                                         anchors.centerIn: parent
                                         text: "P"
                                         color: Style.Theme.info_texto
-                                        font.pixelSize: 23
+                                        font.pixelSize: 21
                                         font.bold: true
                                     }
                                 }
@@ -366,7 +364,7 @@ PagePrincipal {
                             }
 
                             Text {
-                                Layout.topMargin: 16
+                                Layout.topMargin: 12
                                 text: "Soy profesor"
                                 color: Style.Theme.texto_primario
                                 font.pixelSize: 23
@@ -383,7 +381,7 @@ PagePrincipal {
                             }
                             Text {
                                 Layout.fillWidth: true
-                                Layout.topMargin: 12
+                                Layout.topMargin: 9
                                 text: "✓  Evaluaciones  ·  Seguimiento  ·  Comparativas"
                                 color: Style.Theme.info_texto
                                 font.pixelSize: 12
@@ -405,7 +403,7 @@ PagePrincipal {
 
             RowLayout {
                 Layout.alignment: Qt.AlignHCenter
-                Layout.topMargin: 20
+                Layout.topMargin: 16
                 spacing: 7
 
                 Text {
@@ -417,6 +415,180 @@ PagePrincipal {
                     text: "Tus datos y resultados permanecen en este equipo."
                     color: Style.Theme.texto_terciario
                     font.pixelSize: 12
+                }
+            }
+
+            Text {
+                Layout.fillWidth: true
+                Layout.topMargin: 34
+                text: "CRÉDITOS DEL PROYECTO"
+                color: Style.Theme.texto_terciario
+                font.family: Style.Theme.fuente_interfaz
+                font.pixelSize: 11
+                font.bold: true
+                font.letterSpacing: 1.5
+            }
+
+            Rectangle {
+                objectName: "institutionalHeader"
+                Layout.fillWidth: true
+                Layout.topMargin: 10
+                Layout.preferredHeight: 76
+                radius: 18
+                color: Style.Theme.surface
+                border.width: 1
+                border.color: Style.Theme.borde_medio
+                Accessible.role: Accessible.Grouping
+                Accessible.name: "Instituto Politécnico Nacional, Escuela Superior de Cómputo"
+
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 18
+                    anchors.rightMargin: 18
+                    anchors.topMargin: 12
+                    anchors.bottomMargin: 12
+                    spacing: 14
+
+                    Rectangle {
+                        Layout.preferredWidth: 50
+                        Layout.preferredHeight: 50
+                        radius: 14
+                        color: Style.Theme.modoOscuro ? "#8F365A" : "#6C1D45"
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "IPN"
+                            color: "#FFFFFF"
+                            font.family: Style.Theme.fuente_interfaz
+                            font.pixelSize: 15
+                            font.bold: true
+                            font.letterSpacing: 0.5
+                        }
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 2
+
+                        Text {
+                            objectName: "institutionNameText"
+                            Layout.fillWidth: true
+                            text: "INSTITUTO POLITÉCNICO NACIONAL"
+                            color: Style.Theme.texto_primario
+                            font.family: Style.Theme.fuente_interfaz
+                            font.pixelSize: 14
+                            font.bold: true
+                            font.letterSpacing: 0.9
+                            elide: Text.ElideRight
+                        }
+                        Text {
+                            objectName: "schoolNameText"
+                            Layout.fillWidth: true
+                            text: "ESCUELA SUPERIOR DE CÓMPUTO  ·  ESCOM"
+                            color: Style.Theme.texto_secundario_fuerte
+                            font.family: Style.Theme.fuente_interfaz
+                            font.pixelSize: 12
+                            font.bold: true
+                            elide: Text.ElideRight
+                        }
+                    }
+
+                    Rectangle {
+                        Layout.preferredWidth: 148
+                        Layout.preferredHeight: 48
+                        radius: 12
+                        color: Style.Theme.acento_fondo
+                        border.width: 1
+                        border.color: Style.Theme.acento
+
+                        Column {
+                            anchors.centerIn: parent
+                            spacing: 1
+                            Text {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: "TRABAJO TERMINAL"
+                                color: Style.Theme.acento_texto
+                                font.pixelSize: 9
+                                font.bold: true
+                                font.letterSpacing: 0.8
+                            }
+                            Text {
+                                objectName: "projectKeyText"
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: "2026-B056"
+                                color: Style.Theme.texto_primario
+                                font.pixelSize: 17
+                                font.bold: true
+                            }
+                        }
+                    }
+                }
+            }
+
+            Rectangle {
+                objectName: "presentersPanel"
+                Layout.fillWidth: true
+                Layout.topMargin: 12
+                Layout.preferredHeight: 78
+                radius: 16
+                color: Style.Theme.superficie_alterna
+                border.width: 1
+                border.color: Style.Theme.borde_suave
+                Accessible.role: Accessible.Grouping
+                Accessible.name: "Presentan: Martinez Contreras Leonardo; Salazar Bravo Alejandro Román; Velázquez Matus Álvaro Alexander"
+
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 20
+                    anchors.rightMargin: 20
+                    anchors.topMargin: 12
+                    anchors.bottomMargin: 12
+                    spacing: 18
+
+                    ColumnLayout {
+                        Layout.preferredWidth: 86
+                        spacing: 2
+                        Text {
+                            text: "PRESENTAN"
+                            color: Style.Theme.texto_terciario
+                            font.pixelSize: 10
+                            font.bold: true
+                            font.letterSpacing: 1.2
+                        }
+                        Rectangle {
+                            Layout.preferredWidth: 42
+                            Layout.preferredHeight: 3
+                            radius: 2
+                            color: Style.Theme.acento
+                        }
+                    }
+
+                    Rectangle {
+                        Layout.preferredWidth: 1
+                        Layout.fillHeight: true
+                        color: Style.Theme.divisor
+                    }
+
+                    Repeater {
+                        model: [
+                            "Martinez Contreras\nLeonardo",
+                            "Salazar Bravo\nAlejandro Román",
+                            "Velázquez Matus\nÁlvaro Alexander"
+                        ]
+
+                        Text {
+                            required property string modelData
+                            Layout.fillWidth: true
+                            text: modelData
+                            color: Style.Theme.texto_primario
+                            font.family: Style.Theme.fuente_interfaz
+                            font.pixelSize: 13
+                            font.bold: true
+                            lineHeight: 1.15
+                            horizontalAlignment: Text.AlignHCenter
+                            wrapMode: Text.WordWrap
+                        }
+                    }
                 }
             }
         }
