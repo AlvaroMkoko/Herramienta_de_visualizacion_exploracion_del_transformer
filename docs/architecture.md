@@ -437,6 +437,31 @@ sin uso*).
 - `entrenar.py` — entrenamiento sin interfaz, con todos los formatos de dataset.
 - `generar.py` — generación de texto desde un checkpoint.
 
+## Herramientas de datos (`tools/`)
+Scripts que **generan artefactos del repositorio**; la aplicación no los importa ni
+los ejecuta. Su salida se versiona y el modelo se entrena con ella, así que cada
+script declara la procedencia de sus datos en el encabezado y su salida tiene
+prueba de invariantes.
+
+- `filtrar_tatoeba.py` — genera `traduccion_es_en_basica.jsonl` y
+  `traduccion_en_es_basica.jsonl` en `data/datasets_predefinidos/` desde el
+  volcado de Tatoeba en OPUS (versión, licencia CC BY 2.0 FR y cita en el
+  encabezado). El volcado en bruto **no entra al repositorio**. La semilla es fija:
+  el mismo volcado da archivos idénticos al byte. `traduccion_demo.jsonl` está
+  escrito a mano y este script no lo toca.
+- `palabras_vetadas_corpus.txt` — la lista negra de ese script, un patrón por
+  línea y comentada por categorías. **No es un duplicado de
+  `data/aula/palabras_bloqueadas.json`**: compara distinto, veta cosas distintas
+  y no la edita el docente. El porqué completo está en el encabezado del script.
+- Los invariantes de la salida (de 3 a 16 tokens por lado con `cl100k_base`, frases
+  únicas en cada lado, EN→ES igual a ES→EN invertido, «Tom» entre el 2 % y el 3 %)
+  están en `tests/model/test_datasets_traduccion.py`. Si regeneras, córrela.
+
+Uso, desde la raíz: `python tools/filtrar_tatoeba.py <.en> <.es> data/datasets_predefinidos`.
+Es la excepción a *Toda ruta de escritura pasa por `core.rutas`*: escribe solo
+en el directorio que recibe por argumento, a mano, nunca desde la aplicación ni
+desde las pruebas. Regenerar cambia la muestra: hay que volver a leerla.
+
 ## Flujo de datos
 
 ```

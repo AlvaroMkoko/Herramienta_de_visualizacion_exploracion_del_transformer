@@ -1,0 +1,102 @@
+# Lista negra del corpus de traducción (la lee tools/filtrar_tatoeba.py).
+#
+# Un patrón por línea. Cada patrón es una expresión regular de Python que debe
+# coincidir con una palabra COMPLETA: el script los une con «|» y los rodea con
+# \b(...)\b, sin distinguir mayúsculas. Un par se descarta si cualquiera de sus
+# dos lados contiene una coincidencia. Las líneas vacías y lo que sigue a «#»
+# se ignoran.
+#
+# Por qué patrones y no palabras sueltas: el español conjuga, y «coger» tiene
+# una docena de formas. Por qué sin quitar acentos: así viene el corpus.
+#
+# Agregar un patrón cambia la muestra completa (se baraja después de filtrar):
+# hay que regenerar los dos .jsonl y volver a leerlos.
+
+# --- Sexual (español) ---
+foll\w*
+cog(er|erl\w*|e|es|en|emos|í|iste|ió|imos|ieron|ido|iendo|erá\w*|eré|ería\w*|ía\w*)   # vulgar en México
+coj(o|a|as|an|amos|ones)        # subjuntivo de «coger»; «cojones»
+poll(a|as)
+pene\w*
+vagin\w*
+sex\w*
+desnud\w*
+cachond\w*
+porn\w*
+cond[oó]n\w*
+orgasm\w*
+tetas?
+pez[oó]n\w*
+erecci\w*
+masturb\w*
+prostitu\w*
+
+# --- Vulgar e insultos (español, con vulgarismos mexicanos) ---
+put[aoi]\w*
+mierd\w*
+jod\w*
+coño
+culo\w*
+cabr[oó]n\w*
+gilipoll\w*
+pendej\w*
+ching\w*
+verga\w*
+pinche\w*
+maric\w*
+zorr[ao]s?
+hostia\w*
+
+# --- Violencia, drogas y temas que no van en un aula (español) ---
+viol(ar|ó|aci[oó]n|ada|ado|ador\w*|aron|a)
+suicid\w*
+asesin\w*
+mat(ar|ó|é|o|a|an|amos|aron|ará\w*|aré|aría\w*|ad[oa]s?|arl\w*|art\w*|arm\w*|arse)
+drog\w*
+coca[ií]na
+hero[ií]na
+nazi\w*
+cadáver\w*
+
+# --- Inglés: vulgar e insultos ---
+fuck\w*
+shit\w*
+bitch\w*
+ass
+asses
+asshole\w*
+dick\w*
+cock\w*
+puss(y|ies)
+cunt\w*
+whor\w*
+slut\w*
+bastard\w*
+nigg\w*
+fag\w*
+
+# --- Inglés: sexual ---
+sex\w*
+naked
+nude\w*
+porn\w*
+penis\w*
+vagin\w*
+breasts?
+boobs?
+condom\w*
+orgasm\w*
+horny
+masturb\w*
+prostitut\w*
+
+# --- Inglés: violencia, drogas ---
+rap(e|ed|es|ist\w*|ing)
+kill\w*
+murder\w*
+suicid\w*
+drugs?
+cocaine
+heroin
+nazi\w*
+corpse\w*
