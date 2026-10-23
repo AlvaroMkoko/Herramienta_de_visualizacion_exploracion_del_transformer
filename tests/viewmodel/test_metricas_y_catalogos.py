@@ -191,7 +191,19 @@ def datasets(tmp_path, monkeypatch):
 
 def test_datasets_predefinidos_aparecen_y_son_validos(datasets):
     predefinidos = [d for d in datasets.obtenerDatasets() if d.get("predefinido")]
-    assert {d["id"] for d in predefinidos} == {"PRE-TRADUCCION", "PRE-CONCEPTOS"}
+    # Invariantes del catálogo, no su inventario: agregar un dataset no debe
+    # romper esta prueba.
+    directorio = Path(DatasetController.DIR_PREDEFINIDOS)
+    entradas = json.loads((directorio / "catalogo.json").read_text(encoding="utf8"))
+    ids = [entrada["id"] for entrada in entradas]
+    assert len(ids) == len(set(ids))
+    for entrada in entradas:
+        for campo in ("id", "archivo", "nombre", "dominio", "descripcion"):
+            assert entrada.get(campo), (entrada.get("id"), campo)
+        assert (directorio / entrada["archivo"]).is_file(), entrada["archivo"]
+    # Una entrada con archivo inválido se omite en silencio al cargar; aquí no.
+    assert [d["id"] for d in predefinidos] == ids
+    assert {"PRE-TRADUCCION", "PRE-CONCEPTOS"} <= set(ids)
     for dataset in predefinidos:
         assert dataset["descripcion"] and dataset["dominio"]
         assert dataset["compatible_entrenamiento"] is True

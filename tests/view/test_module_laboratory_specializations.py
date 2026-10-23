@@ -571,7 +571,12 @@ def test_rascacielos_reserva_espacio_para_graficas_y_muestra_tres_pisos(qapp):
     engine.deleteLater()
 
 
-def test_pantalla_especializada_reordena_paneles_sin_encimarlos(qapp, tmp_path):
+def _side_by_side(left: QQuickItem, right: QQuickItem, ancestor: QQuickItem) -> bool:
+    left_box = _rect_in(left, ancestor)
+    return left_box.width() > 0 and _rect_in(right, ancestor).left() >= left_box.right() - 1
+
+
+def test_pantalla_especializada_reordena_paneles_sin_encimarlos(qapp, qtbot, tmp_path):
     view_model = MainViewModel()
     # Aísla la persistencia: explorar el laboratorio emite señales reales de
     # progreso y una prueba visual nunca debe cambiar la sesión del usuario.
@@ -823,7 +828,9 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(qapp, tmp_path):
 
     # Avanzado recupera la ventana separada y permite revelar los datos.
     screen.setProperty("learningLevel", "advanced")
-    qapp.processEvents()
+    # El GridLayout pasa a dos columnas en su siguiente polish, no al instante:
+    # medir antes daba el ancho de una sola columna y la prueba fallaba a ratos.
+    qtbot.waitUntil(lambda: _side_by_side(step_pane, visual_pane, workspace), timeout=3000)
     initial_visual_width = visual_pane.width()
     assert bool(step_pane.property("visible")) is True
     assert bool(step_list.property("visible")) is True
@@ -839,10 +846,19 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(qapp, tmp_path):
     assert bool(guide_technical_details.property("visible")) is True
     screen.setProperty("workspaceSection", 0)
     screen.setProperty("guideDetached", True)
-    for _ in range(4):
-        qapp.processEvents()
-    assert detached_window.property("visible") is True
-    assert detached_guide.property("visible") is True
+    qtbot.waitUntil(
+        lambda: detached_window.property("visible") is True
+        and detached_guide.property("visible") is True,
+        timeout=3000,
+    )
+    # Separar la guía no debe cambiar el reparto. Se fuerza el polish pendiente
+    # para no comparar contra un ancho que el layout aún no recalculó.
+    # Limitación aceptada: solo alcanza este GridLayout, no el layout padre. Si
+    # separar la guía llegara a cambiar el ancho del padre, el cambio podría
+    # aterrizar después de la aserción. Riesgo bajo: la guía separada es otra
+    # ventana y no ocupa espacio en esta página.
+    workspace.ensurePolished()
+    assert _side_by_side(step_pane, visual_pane, workspace)
     assert abs(visual_pane.width() - initial_visual_width) <= 1
 
     # A 1280 px, los pasos se colocan arriba y la escena conserva todo el ancho.
