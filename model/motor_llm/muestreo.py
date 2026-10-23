@@ -93,7 +93,7 @@ def filtrar_top_p(logits: torch.Tensor, p: float) -> torch.Tensor:
     if not (0 < p <= 1):
         raise ValueError(f"p debe estar en (0, 1], recibido: {p}")
 
-    if p == 1.0:
+    if p >= 1.0:
         return logits.clone()
 
     logits_ordenados, indices_ordenados = torch.sort(logits, descending=True, dim=-1)

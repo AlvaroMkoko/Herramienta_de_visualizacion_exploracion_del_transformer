@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-import random
+import socket
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("QSG_RHI_BACKEND", "software")
@@ -36,7 +36,11 @@ def _invoke(target: QObject, method: str) -> None:
 
 @pytest.fixture
 def ventana(qapp, monkeypatch, tmp_path):
-    puerto_udp = random.randint(52000, 60000)
+    # Deja que Windows elija un puerto que no esté reservado ni ocupado. Un
+    # entero aleatorio puede caer en los rangos excluidos por Hyper-V/Docker.
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as comprobacion:
+        comprobacion.bind(("127.0.0.1", 0))
+        puerto_udp = comprobacion.getsockname()[1]
 
     def host(parent=None, catalog=None):
         return ClassroomHostController(

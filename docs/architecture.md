@@ -2,7 +2,7 @@
 
 ## Panorama
 
-App de escritorio educativa: **Python 3.14 + PyTorch + PySide6 + QML**, patrón **MVVM estricto**.
+App de escritorio educativa: **Python 3.12+ + PyTorch + PySide6 + QML**, patrón **MVVM estricto**.
 Es el Trabajo Terminal de un equipo de tres personas que trabajan sobre el mismo `main`. Dos
 consecuencias mandan sobre todo lo demás:
 

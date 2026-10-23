@@ -6,7 +6,7 @@ que la prueba no depende de la red del equipo donde corre.
 
 from __future__ import annotations
 
-import random
+import socket
 
 import pytest
 
@@ -61,7 +61,11 @@ class _Alumno:
 
 @pytest.fixture
 def puerto_udp() -> int:
-    return random.randint(52000, 60000)
+    # El sistema operativo evita aquí sus rangos reservados; elegir un número
+    # al azar hacía que estas pruebas de red fallaran de forma intermitente.
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as comprobacion:
+        comprobacion.bind(("127.0.0.1", 0))
+        return comprobacion.getsockname()[1]
 
 
 @pytest.fixture
@@ -76,6 +80,8 @@ def docente(tmp_path, puerto_udp):
 def _unir(qtbot, alumno: _Alumno, docente, apodo: str) -> None:
     assert alumno.controller.buscarClase(docente.codigo.lower())
     qtbot.waitUntil(lambda: alumno.controller.estado == "eligiendo_apodo", timeout=TIEMPO)
+    assert alumno.controller._cliente._socket.requestUrl().scheme() == "wss"
+    assert len(alumno.controller._cliente._huella_esperada) == 64
     assert alumno.controller.nombreClase == "Inteligencia Artificial"
     assert alumno.controller.unirse(apodo, "")
     qtbot.waitUntil(lambda: alumno.controller.estado == "conectado", timeout=TIEMPO)
@@ -141,6 +147,8 @@ def test_apodo_repetido_y_conexion_por_direccion(qtbot, tmp_path, docente, puert
 
     assert ana.controller.buscarPorDireccion(f"127.0.0.1:{docente.puerto}", docente.codigo)
     qtbot.waitUntil(lambda: ana.controller.estado == "eligiendo_apodo", timeout=TIEMPO)
+    assert ana.controller._cliente._socket.requestUrl().scheme() == "wss"
+    assert len(ana.controller._cliente._huella_esperada) == 64
     assert ana.controller.pedirMatricula
     assert not ana.controller.unirse("Ana", "")  # falta matrícula
     assert ana.controller.unirse("Ana", "2021630001")
@@ -179,6 +187,20 @@ def test_codigo_inexistente_informa_error(qtbot, tmp_path, docente, puerto_udp):
     assert ana.controller.buscarClase("ZZZZZZ" if docente.codigo != "ZZZ-ZZZ" else "YYYYYY")
     qtbot.waitUntil(lambda: ana.controller.estado == "error", timeout=TIEMPO)
     assert "No se encontró" in ana.controller.mensaje
+
+
+def test_rechaza_certificado_tls_distinto(qtbot, docente, puerto_udp):
+    assert docente.crearClase("Inteligencia Artificial", "", False, False)
+    cliente = ClienteAulaLan(puerto_descubrimiento=puerto_udp)
+    destino = ("127.0.0.1", docente.puerto)
+    cliente._huellas_conocidas[destino] = "0" * 64
+
+    with qtbot.waitSignal(cliente.fallo, timeout=TIEMPO) as bloqueo:
+        cliente.conectar(*destino)
+
+    assert "TLS" in bloqueo.args[0]
+    assert not cliente.esta_conectado
+    cliente.cerrar()
 
 
 def test_archivo_tvclase_sin_red(qtbot, tmp_path, docente, puerto_udp):

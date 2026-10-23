@@ -11,6 +11,9 @@ docs
 *.pdf
 
 .pytest_cache/
+.scannerwork/
+coverage.xml
+test-results.xml
 data/checkpoints/modelo.pt
 data/resultados/resultados_evaluacion.json
 

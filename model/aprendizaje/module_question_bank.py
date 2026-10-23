@@ -34,7 +34,7 @@ class ModuleQuestionBank:
     # operaciones y los reactivos de relación usan motivo, salida o cambio en
     # conjuntos disjuntos de etapas. Los resultados de la versión 8 no son
     # comparables.
-    INSTRUMENT_VERSION = 9
+    VERSION_PREGUNTAS = 9
 
     PEDAGOGICAL_TYPES = (
         "opcion_multiple",
@@ -135,7 +135,7 @@ class ModuleQuestionBank:
 
     @property
     def instrument_version(self) -> int:
-        return self.INSTRUMENT_VERSION
+        return self.VERSION_PREGUNTAS
 
     @property
     def dimensions(self) -> list[dict[str, str]]:

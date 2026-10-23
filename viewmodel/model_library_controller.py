@@ -25,7 +25,7 @@ import torch
 from PySide6.QtCore import Property, QMimeData, QObject, QUrl, Signal, Slot
 from PySide6.QtGui import QGuiApplication
 
-from core.config import DIR_CHECKPOINTS, DISPOSITIVO
+from core.config import DIR_CHECKPOINTS, DISPOSITIVO  # noqa: F401
 from model.motor_llm.tokenizer import ENCODINGS, Tokenizer
 from model.persistencia.model_storage import (
     EXTENSION_MODELO,
@@ -1240,7 +1240,6 @@ class ModelLibraryController(QObject):
         pesos = _como_dict(manifiesto.get("pesos"))
         tokenizer = _como_dict(manifiesto.get("tokenizer"))
         capacidades = _como_dict(manifiesto.get("capabilities"))
-        entrenamiento = _como_dict(manifiesto.get("entrenamiento"))
         metadata = _como_dict(historial.get("metadata_extra"))
         if not metadata:
             metadata = _como_dict(manifiesto.get("metadata_extra"))
@@ -1442,7 +1441,7 @@ class ModelLibraryController(QObject):
                     "utf-8", errors="replace"
                 )
             except (KeyError, ValueError):
-                return "�"
+                return "\ufffd"
 
     def _probar_salud(
         self, ruta: Path, modelo: Any, tokenizer: Tokenizer
