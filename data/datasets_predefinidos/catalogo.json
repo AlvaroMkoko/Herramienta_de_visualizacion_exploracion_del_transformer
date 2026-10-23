@@ -4,7 +4,21 @@
     "archivo": "traduccion_es_en_basica.jsonl",
     "nombre": "Traducción español–inglés básica",
     "dominio": "Traducción",
-    "descripcion": "Oraciones cortas en español con su traducción al inglés. Permite observar la atención cruzada entre palabras equivalentes."
+    "descripcion": "4 000 oraciones cotidianas en español con su traducción al inglés, de 3 a 16 tokens por lado. Permite observar la atención cruzada entre palabras equivalentes. Fuente: Tatoeba (tatoeba.org), volcado OPUS v2026-07-08, licencia CC BY 2.0 FR; cita: J. Tiedemann, 2012, «Parallel Data, Tools and Interfaces in OPUS», LREC 2012."
+  },
+  {
+    "id": "PRE-TRADUCCION-EN",
+    "archivo": "traduccion_en_es_basica.jsonl",
+    "nombre": "Traducción inglés–español básica",
+    "dominio": "Traducción",
+    "descripcion": "Los mismos 4 000 pares de la traducción español–inglés, en sentido inverso: oraciones en inglés con su traducción al español. Fuente: Tatoeba (tatoeba.org), volcado OPUS v2026-07-08, licencia CC BY 2.0 FR; cita: J. Tiedemann, 2012, «Parallel Data, Tools and Interfaces in OPUS», LREC 2012."
+  },
+  {
+    "id": "PRE-TRADUCCION-DEMO",
+    "archivo": "traduccion_demo.jsonl",
+    "nombre": "Traducción español–inglés para demostración",
+    "dominio": "Traducción",
+    "descripcion": "Frases cortas en español con su traducción al inglés, escritas para enseñar alineaciones: el adjetivo que cambia de lugar («el coche rojo» → «the red car»), el sujeto que el español omite («como pan» → «I eat bread») y la palabra que se traduce con varias («madrugar» → «get up early»). Elaborado para este proyecto."
   },
   {
     "id": "PRE-CONCEPTOS",
