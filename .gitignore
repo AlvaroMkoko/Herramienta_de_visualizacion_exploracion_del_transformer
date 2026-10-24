@@ -1,5 +1,4 @@
 cuda.py
-docs
 *.pt
 *.tvismodel
 *.tvischeckpoint
@@ -16,6 +15,7 @@ coverage.xml
 test-results.xml
 data/checkpoints/modelo.pt
 data/resultados/resultados_evaluacion.json
+pruebas/
 
 *.pt
 !data/teoria/transformer.json
