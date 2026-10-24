@@ -12,27 +12,64 @@ import io
 from statistics import mean
 from typing import Any, Iterable
 
+from model.aprendizaje.module_question_bank import ModuleQuestionBank
+from model.evaluacion.results_repository import primer_intento, primer_intento_vigente
+
 ETAPAS = ("pretest", "guided", "laboratory", "posttest", "results")
 UMBRAL_REPASO = 70.0
 
 
-def _ultimo(resultados: Iterable[dict[str, Any]], modulo_id: str, tipo: str) -> dict[str, Any]:
-    elegido: dict[str, Any] = {}
-    for resultado in resultados:
-        if (
-            str(resultado.get("module_id", "")) == modulo_id
-            and resultado.get("assessment_type") == tipo
-        ):
-            elegido = resultado  # el repositorio conserva orden cronológico
-    return elegido
+def _intentos(
+    resultados: Iterable[dict[str, Any]], modulo_id: str, tipo: str
+) -> list[dict[str, Any]]:
+    return [
+        resultado
+        for resultado in resultados
+        if str(resultado.get("module_id", "")) == modulo_id
+        and resultado.get("assessment_type") == tipo
+    ]
+
+
+def _version(resultado: dict[str, Any]) -> int:
+    try:
+        return int(resultado.get("instrument_version", 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _primero(resultados: Iterable[dict[str, Any]], modulo_id: str, tipo: str) -> dict[str, Any]:
+    # Misma regla que CourseController: cuenta el primer intento del
+    # instrumento vigente (o el primero que haya, que no se compara).
+    return primer_intento_vigente(
+        _intentos(resultados, modulo_id, tipo),
+        ModuleQuestionBank.VERSION_PREGUNTAS,
+        _version,
+    )
+
+
+def _primero_vigente(resultados: Iterable[dict[str, Any]], modulo_id: str, tipo: str) -> dict[str, Any]:
+    """Sólo intentos del instrumento vigente: los códigos de reactivo de otra
+    versión no son los mismos reactivos."""
+    return primer_intento(
+        [
+            resultado
+            for resultado in _intentos(resultados, modulo_id, tipo)
+            if _version(resultado) == ModuleQuestionBank.VERSION_PREGUNTAS
+        ]
+    )
+
+
+def _comparables(pre: dict[str, Any], post: dict[str, Any]) -> bool:
+    # Pre y post de versiones distintas son reactivos distintos: no se restan.
+    return bool(pre and post and _version(pre) > 0 and _version(pre) == _version(post))
 
 
 def estado_modulo(
     modulo_id: str, snapshot: dict[str, Any], resultados: list[dict[str, Any]]
 ) -> dict[str, Any]:
     estado = (snapshot.get("modules") or {}).get(modulo_id) or {}
-    pre = _ultimo(resultados, modulo_id, "pre")
-    post = _ultimo(resultados, modulo_id, "post")
+    pre = _primero(resultados, modulo_id, "pre")
+    post = _primero(resultados, modulo_id, "post")
     hechas = {
         "pretest": bool(pre),
         "guided": bool(estado.get("guided_completed")),
@@ -60,6 +97,8 @@ def estado_modulo(
         "current_stage": etapa_actual,
         "has_pre": bool(pre),
         "has_post": bool(post),
+        "pre_attempts": len(_intentos(resultados, modulo_id, "pre")),
+        "post_attempts": len(_intentos(resultados, modulo_id, "post")),
         "pre_percentage": float(pre.get("percentage", 0)) if pre else None,
         "post_percentage": float(post.get("percentage", 0)) if post else None,
     }
@@ -134,7 +173,7 @@ def analisis_reactivos(
     enunciados: dict[str, dict[str, str]] = {}
     for _, resultados in alumnos:
         for tipo in ("pre", "post"):
-            resultado = _ultimo(resultados, modulo_id, tipo)
+            resultado = _primero_vigente(resultados, modulo_id, tipo)
             if not resultado:
                 continue
             puntos: dict[str, float] = {}
@@ -219,22 +258,32 @@ def analisis_modulo(
     errores_concepto: dict[str, int] = {}
     errores_reactivo: dict[str, dict[str, Any]] = {}
     filas = []
+    fuera_de_version = 0
     for ficha, resultados in alumnos:
-        pre = _ultimo(resultados, modulo_id, "pre")
-        post = _ultimo(resultados, modulo_id, "post")
+        pre = _primero(resultados, modulo_id, "pre")
+        post = _primero(resultados, modulo_id, "post")
         pre_pct = float(pre["percentage"]) if pre else None
         post_pct = float(post["percentage"]) if post else None
-        if pre_pct is not None:
-            pres.append(pre_pct)
-        if post_pct is not None:
-            posts.append(post_pct)
-        ganancia = None
-        if pre_pct is not None and post_pct is not None:
-            pares.append(post_pct - pre_pct)
-            ganancia = ganancia_normalizada(pre_pct, post_pct)
-            if ganancia is not None:
-                ganancias.append(ganancia)
-        for respuesta in post.get("answers", []) if post else []:
+        comparable = _comparables(pre, post)
+        ganancia = ganancia_normalizada(pre_pct, post_pct) if comparable else None
+        # Los agregados de la clase usan solo el instrumento vigente: promediar
+        # o restar intentos de versiones distintas mezclaría reactivos distintos.
+        pre_vigente = _primero_vigente(resultados, modulo_id, "pre")
+        post_vigente = _primero_vigente(resultados, modulo_id, "post")
+        if (pre or post) and not (pre_vigente or post_vigente):
+            fuera_de_version += 1
+        if pre_vigente:
+            pres.append(float(pre_vigente["percentage"]))
+        if post_vigente:
+            posts.append(float(post_vigente["percentage"]))
+        if pre_vigente and post_vigente:
+            antes = float(pre_vigente["percentage"])
+            despues = float(post_vigente["percentage"])
+            pares.append(despues - antes)
+            ganancia_vigente = ganancia_normalizada(antes, despues)
+            if ganancia_vigente is not None:
+                ganancias.append(ganancia_vigente)
+        for respuesta in post_vigente.get("answers", []) if post_vigente else []:
             if respuesta.get("correcto"):
                 continue
             concepto = str(respuesta.get("concept_id") or respuesta.get("dimension_id") or "")
@@ -258,10 +307,11 @@ def analisis_modulo(
                 "apodo": ficha.get("apodo", ""),
                 "pre_percentage": pre_pct,
                 "post_percentage": post_pct,
-                "delta": round(post_pct - pre_pct, 1)
-                if pre_pct is not None and post_pct is not None
-                else None,
+                "delta": round(post_pct - pre_pct, 1) if comparable else None,
+                "comparable": comparable,
                 "normalized_gain": ganancia,
+                "pre_attempts": len(_intentos(resultados, modulo_id, "pre")),
+                "post_attempts": len(_intentos(resultados, modulo_id, "post")),
                 "interaction": _interaccion(
                     ((snapshots.get(str(ficha.get("alumno_id", ""))) or {}).get("modules") or {})
                     .get(modulo_id)
@@ -280,6 +330,9 @@ def analisis_modulo(
         "with_pre": len(pres),
         "with_post": len(posts),
         "with_both": len(pares),
+        # Alumnos con resultados solo de otra versión del instrumento: no entran
+        # en los promedios.
+        "outside_current_version": fuera_de_version,
         "avg_pre": _promedio(pres),
         "avg_post": _promedio(posts),
         "avg_delta": _promedio(pares),
