@@ -23,13 +23,22 @@ import sys
 # porque Qt Quick decide el backend de renderizado al arrancar.
 os.environ["QSG_RHI_BACKEND"] = "opengl"
 
+from core.rutas import esta_empaquetada, recurso
+
+# tiktoken descarga la tabla de cada codificación de internet la primera vez
+# que se pide; en un equipo del laboratorio sin red eso deja sin tokenizador
+# a la inferencia y a la biblioteca de modelos. El paquete trae la caché ya
+# sembrada (tools/sembrar_cache_tiktoken.py). Con el archivo presente y su
+# hash correcto, tiktoken solo lee: la carpeta puede ser de solo lectura.
+# Se fija antes de importar cualquier capa que pueda pedir una codificación.
+if esta_empaquetada():
+    os.environ["TIKTOKEN_CACHE_DIR"] = str(recurso("cache_tiktoken"))
+
 from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterType
 from PySide6.QtQuickControls2 import QQuickStyle
 from PySide6.QtGui import QFont, QIcon
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import QCoreApplication, QUrl
-
-from core.rutas import recurso
 from view.canvas.animation_engine import VispyItem
 from viewmodel.display_manager import DisplayManager
 from viewmodel.main_viewmodel import MainViewModel
