@@ -14,7 +14,10 @@ PagePrincipal {
     helpPanelObjectName: "trainingContextPanel"
 
     readonly property var viewModel: mainViewModel
-    readonly property var trainingController: root.viewModel.trainingController
+    // Al activar otro modelo, viewModel.trainingController pasa a null mientras
+    // esta pantalla sigue viva en la pila. El sustituto inerte evita proteger
+    // cada enlace: con él la pantalla se ve detenida y los botones no hacen nada.
+    readonly property var trainingController: root.viewModel.trainingController || controladorRetirado
     // La columna de trabajo no debe crecer indefinidamente en monitores grandes.
     // El mapa conserva la escala general de la pantalla; la zona izquierda
     // usa una escala acotada y dedica el espacio extra a la visualización.
@@ -431,6 +434,22 @@ PagePrincipal {
         root.trainingController.activarNubeEmbeddings(false)
         root.trainingController.activarVisualizacionPedagogica(true)
         root.trainingController.configurarNubeEmbeddings("pca", [0,1,2], 10)
+    }
+
+    QtObject {
+        id: controladorRetirado
+        readonly property bool estaEntrenando: false
+        readonly property bool estaPausado: false
+        readonly property bool pausaSolicitada: false
+        readonly property bool detencionSolicitada: false
+        function establecer_velocidad(segundos) {}
+        function activarNubeEmbeddings(activa) {}
+        function activarVisualizacionPedagogica(activa) {}
+        function configurarNubeEmbeddings(metodo, componentes, puntos) {}
+        function iniciar_entrenamiento_ui(epocas, tasa, lote, velocidad) {}
+        function pausar() {}
+        function reanudar() {}
+        function detener() {}
     }
 
     Connections {

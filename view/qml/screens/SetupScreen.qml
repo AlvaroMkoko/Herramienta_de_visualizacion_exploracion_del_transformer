@@ -926,7 +926,7 @@ PagePrincipal {
                             text: "Épocas / iteraciones"
                             helpConceptId: "epoch_batch"
                             onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
-                            from: 1; to: 24; stepSize: 1; value: root.epocas
+                            from: 1; to: 60; stepSize: 1; value: root.epocas
                             onValueChanged: root.epocas = value
                         }
                         SliderColumn {
@@ -948,7 +948,7 @@ PagePrincipal {
                             text: "Batch Size"
                             helpConceptId: "epoch_batch"
                             onHelpRequested: function(conceptId) { root.openTheoryConcept(conceptId) }
-                            from: 1; to: 24; stepSize: 1; value: root.batchSize
+                            from: 1; to: 32; stepSize: 1; value: root.batchSize
                             onValueChanged: root.batchSize = value
                         }
                     }

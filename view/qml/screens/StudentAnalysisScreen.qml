@@ -24,6 +24,12 @@ PagePrincipal {
         return " · " + (minutos > 0 ? minutos + " min " : "") + (segundos % 60) + " s"
     }
 
+    // Cuenta el primer intento; las repeticiones se registran y se muestran.
+    function intentos(cantidad) {
+        var n = Number(cantidad || 0)
+        return n > 1 ? "  ·  cuenta el 1.º de " + n + " intentos" : ""
+    }
+
     function reload() {
         root.analysis = root.profileController.studentAnalysis(root.studentId)
     }
@@ -109,7 +115,7 @@ PagePrincipal {
                             font.bold: true
                         }
                         Text {
-                            text: root.analysis.has_pre ? root.analysis.pre.puntaje + " de " + root.analysis.pre.maximo + " puntos" + root.duracion(root.analysis.pre) : "Sin resultado guardado"
+                            text: root.analysis.has_pre ? root.analysis.pre.puntaje + " de " + root.analysis.pre.maximo + " puntos" + root.duracion(root.analysis.pre) + root.intentos(root.analysis.pre_attempts) : "Sin resultado guardado"
                             color: Style.Theme.texto_secundario
                             font.pixelSize: 11
                         }
@@ -134,7 +140,7 @@ PagePrincipal {
                             font.bold: true
                         }
                         Text {
-                            text: root.analysis.has_post ? root.analysis.post.puntaje + " de " + root.analysis.post.maximo + " puntos" + root.duracion(root.analysis.post) : "Sin resultado guardado"
+                            text: root.analysis.has_post ? root.analysis.post.puntaje + " de " + root.analysis.post.maximo + " puntos" + root.duracion(root.analysis.post) + root.intentos(root.analysis.post_attempts) : "Sin resultado guardado"
                             color: Style.Theme.texto_secundario
                             font.pixelSize: 11
                         }
@@ -160,7 +166,10 @@ PagePrincipal {
                             font.bold: true
                         }
                         Text {
-                            text: root.analysis.comparable ? "Diferencia post-test menos pre-test" : "Se requieren ambas evaluaciones"
+                            // Pre y post solo se comparan dentro del mismo módulo (o de la ruta general).
+                            objectName: "studentAnalysisScope"
+                            text: (root.analysis.comparable ? "Post-test menos pre-test" : "Se requieren ambas evaluaciones")
+                                  + " · " + (root.analysis.scope_label || "Ruta general")
                             color: Style.Theme.texto_secundario
                             font.pixelSize: 11
                         }

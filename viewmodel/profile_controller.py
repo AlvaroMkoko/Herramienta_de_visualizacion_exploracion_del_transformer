@@ -15,6 +15,9 @@ from typing import Any
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
+from model.aprendizaje.module_question_bank import ModuleQuestionBank
+from model.evaluacion.results_repository import primer_intento_vigente
+
 
 SELF_STUDENT_ID = "__self__"
 
@@ -37,6 +40,13 @@ def _instrument_version(result: dict[str, Any]) -> int:
         return int(result.get("instrument_version", 2))
     except (TypeError, ValueError):
         return 2
+
+
+def _module_instrument_version(result: dict[str, Any]) -> int:
+    try:
+        return int(result.get("instrument_version", 0))
+    except (TypeError, ValueError):
+        return 0
 
 
 class ProfileController(QObject):
@@ -195,42 +205,83 @@ class ProfileController(QObject):
             "correo": "",
         }
 
-    def _latest_for_student(self, student_id: str, assessment_type: str) -> dict[str, Any]:
-        if student_id == "__legacy__":
-            results = [
-                item
-                for item in self._evaluation.repository.get_history(assessment_type)
-                if not self._evaluation.repository._student_id_de(item)
-            ]
-            return results[-1] if results else {}
-        return self._evaluation.repository.latest(assessment_type, student_id)
-
-    @Property("QVariantList", notify=studentsChanged)
-    def students(self) -> list[dict[str, Any]]:
+    def _grouped_results(self) -> dict[str, dict[str, Any]]:
         grouped: dict[str, dict[str, Any]] = {}
         for result in self._evaluation.repository.get_history():
             student = self._student_from_result(result)
-            student_id = str(student["id"])
-            entry = grouped.setdefault(student_id, {**student, "results": []})
+            entry = grouped.setdefault(str(student["id"]), {**student, "results": []})
             # La ficha más reciente corrige nombre/grupo si el docente los
             # actualizó al aplicar el post-test.
             entry.update(student)
             entry["results"].append(result)
+        return grouped
 
+    @staticmethod
+    def _scope_of(result: dict[str, Any]) -> str:
+        return str(result.get("module_id", "") or "")
+
+    def _primary_scope(self, results: list[dict[str, Any]]) -> str:
+        """Ámbito que compara la fila: la ruta general si el alumno la usa, o
+        el módulo de su actividad más reciente. Pre y post de ámbitos
+        distintos nunca se restan: medirían contenidos distintos."""
+        if any(not self._scope_of(result) for result in results):
+            return ""
+        latest = max(
+            enumerate(results),
+            key=lambda item: (str(item[1].get("completed_at", "")), item[0]),
+        )[1]
+        return self._scope_of(latest)
+
+    def _scope_label(self, scope: str) -> str:
+        if not scope:
+            return "Ruta general"
+        try:
+            from model.aprendizaje import LearningModuleCatalog
+
+            module = LearningModuleCatalog().get(scope)
+            return f"M{module['order']} · {module['title']}"
+        except Exception:  # noqa: BLE001 - una etiqueta nunca debe tumbar el tablero
+            return scope
+
+    def _comparison(self, results: list[dict[str, Any]], scope: str) -> dict[str, Any]:
+        """Primer pre y primer post del mismo ámbito, con cuántas veces se tomó cada uno."""
+        in_scope = [result for result in results if self._scope_of(result) == scope]
+        pre_all = [r for r in in_scope if r.get("assessment_type") == "pre"]
+        post_all = [r for r in in_scope if r.get("assessment_type") == "post"]
+        # Primer intento del instrumento vigente de ese ámbito.
+        version = (
+            ModuleQuestionBank.VERSION_PREGUNTAS
+            if scope
+            else self._evaluation.instrumentVersion
+        )
+        # En módulos, un resultado sin versión es anterior al campo y no se
+        # compara (misma regla que CourseController); la ruta general lo toma
+        # como v2, el instrumento con el que se produjo.
+        version_de = _instrument_version if not scope else _module_instrument_version
+        pre = primer_intento_vigente(pre_all, version, version_de)
+        post = primer_intento_vigente(post_all, version, version_de)
+        return {
+            "scope": scope,
+            "pre": pre,
+            "post": post,
+            "pre_attempts": len(pre_all),
+            "post_attempts": len(post_all),
+            "comparable": bool(
+                pre and post and version_de(pre) > 0 and version_de(pre) == version_de(post)
+            ),
+        }
+
+    @Property("QVariantList", notify=studentsChanged)
+    def students(self) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []
-        for student_id, entry in grouped.items():
+        for entry in self._grouped_results().values():
             results = entry.pop("results")
-            pre_results = [r for r in results if r.get("assessment_type") == "pre"]
-            post_results = [r for r in results if r.get("assessment_type") == "post"]
-            pre = pre_results[-1] if pre_results else {}
-            post = post_results[-1] if post_results else {}
+            scope = self._primary_scope(results)
+            comparison = self._comparison(results, scope)
+            pre, post = comparison["pre"], comparison["post"]
             pre_pct = float(pre.get("percentage", 0)) if pre else 0.0
             post_pct = float(post.get("percentage", 0)) if post else 0.0
-            comparable = bool(
-                pre
-                and post
-                and _instrument_version(pre) == _instrument_version(post)
-            )
+            comparable = comparison["comparable"]
             latest_date = max(
                 (str(r.get("completed_at", "")) for r in results), default=""
             )
@@ -243,10 +294,15 @@ class ProfileController(QObject):
             rows.append(
                 {
                     **entry,
+                    "scope": scope,
+                    "scope_label": self._scope_label(scope),
                     "pre_completed": bool(pre),
                     "post_completed": bool(post),
                     "pre_percentage": pre_pct,
                     "post_percentage": post_pct,
+                    # Cuenta el primer intento; las repeticiones se registran.
+                    "pre_attempts": comparison["pre_attempts"],
+                    "post_attempts": comparison["post_attempts"],
                     "improvement": round(post_pct - pre_pct, 1) if comparable else 0.0,
                     "comparable": comparable,
                     "tests_count": len(results),
@@ -274,11 +330,11 @@ class ProfileController(QObject):
         row = next((item for item in self.students if item["id"] == student_key), None)
         if row is None:
             return {}
-        pre = self._latest_for_student(student_key, "pre")
-        post = self._latest_for_student(student_key, "post")
-        comparable = bool(
-            pre and post and _instrument_version(pre) == _instrument_version(post)
-        )
+        # El mismo ámbito y los mismos intentos que la fila del tablero.
+        results = self._grouped_results()[student_key]["results"]
+        comparison = self._comparison(results, row["scope"])
+        pre, post = comparison["pre"], comparison["post"]
+        comparable = comparison["comparable"]
 
         def dimensions(result: dict[str, Any]) -> dict[str, dict[str, Any]]:
             return {
@@ -316,6 +372,10 @@ class ProfileController(QObject):
             "has_pre": bool(pre),
             "has_post": bool(post),
             "comparable": comparable,
+            "scope": row["scope"],
+            "scope_label": row["scope_label"],
+            "pre_attempts": comparison["pre_attempts"],
+            "post_attempts": comparison["post_attempts"],
         }
 
     @Slot()

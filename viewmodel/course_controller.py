@@ -9,9 +9,18 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from core.rutas import dato
 from model.aprendizaje import LearningModuleCatalog, ModuleProgressRepository
+from model.aprendizaje.module_question_bank import ModuleQuestionBank
+from model.evaluacion.results_repository import primer_intento_vigente
 
 
 STAGES = ("pretest", "guided", "laboratory", "posttest", "results")
+
+
+def _instrument_version(result: dict[str, Any]) -> int:
+    try:
+        return int(result.get("instrument_version", 0))
+    except (TypeError, ValueError):
+        return 0
 
 
 class CourseController(QObject):
@@ -20,9 +29,11 @@ class CourseController(QObject):
     progressChanged = Signal()
     moduleChanged = Signal()
 
-    # Interruptor temporal para revisión funcional. Mantiene el registro real
-    # de avance, pero permite abrir cualquier módulo y etapa sin prerrequisitos.
-    REVIEW_MODE_UNLOCK_ALL = True
+    # Interruptor para revisión funcional. Mantiene el registro real de avance,
+    # pero permite abrir cualquier módulo y etapa sin prerrequisitos (RN18).
+    # Debe quedar en False con estudiantes: abrir el post-test sin pasar por el
+    # recorrido invalida la comparación pre/post.
+    REVIEW_MODE_UNLOCK_ALL = False
 
     # Ejecutar el forward no es practicar: el laboratorio cuenta como hecho
     # cuando el alumno cerró este número de ciclos predecir→probar→observar→
@@ -54,6 +65,15 @@ class CourseController(QObject):
         # con todos habilitados; esta restricción vence al modo revisión.
         self._class_modules: frozenset[str] | None = None
         self._evaluation.evaluationCompleted.connect(self._on_evaluation_completed)
+        set_guard = getattr(self._evaluation, "set_stage_guard", None)
+        if set_guard is not None:
+            set_guard(self._evaluation_block_reason)
+
+    def _evaluation_block_reason(self, module_id: str, assessment_type: str) -> str:
+        stage = {"pre": "pretest", "post": "posttest"}.get(str(assessment_type))
+        if stage is None or module_id not in self._catalog.module_ids:
+            return "Esta evaluación no pertenece al curso."
+        return self.stageBlockReason(module_id, stage)
 
     @property
     def catalog(self) -> LearningModuleCatalog:
@@ -98,10 +118,38 @@ class CourseController(QObject):
         self._repository.replace(self._state)
 
     def _result(self, module_id: str, assessment_type: str) -> dict[str, Any]:
-        return self._evaluation.repository.latest(
-            assessment_type,
-            self._student_filter(),
-            module_id=module_id,
+        # Cuenta el primer intento del instrumento vigente: repetir no reemplaza
+        # la medición original, y un intento de otra versión no se compara.
+        return primer_intento_vigente(
+            self._evaluation.repository.get_history(
+                assessment_type, self._student_filter(), module_id=module_id
+            ),
+            ModuleQuestionBank.VERSION_PREGUNTAS,
+            _instrument_version,
+        )
+
+    def _attempt_count(self, module_id: str, assessment_type: str) -> int:
+        return len(
+            self._evaluation.repository.get_history(
+                assessment_type, self._student_filter(), module_id=module_id
+            )
+        )
+
+    def _pretest_closed(self, module_id: str) -> bool:
+        # Solo se protege un pre-test que existe: si el alumno borró su
+        # historial, no queda medición que contaminar y el módulo no debe
+        # quedar sin forma de empezar (recorrido y pre-test cerrados a la vez).
+        return self._guided_entered(module_id) and self._stage_done(module_id, "pretest")
+
+    def _guided_entered(self, module_id: str) -> bool:
+        # Cualquier avance en el recorrido también cuenta: el progreso guardado
+        # antes de que existiera la marca no debe reabrir el pre-test.
+        state = self._module_state(module_id)
+        return bool(
+            state.get("guided_entered")
+            or state.get("guided_completed")
+            or state.get("guided_steps_completed")
+            or state.get("guided_checks")
         )
 
     def _stage_done(self, module_id: str, stage: str) -> bool:
@@ -219,6 +267,10 @@ class CourseController(QObject):
             return True
         if not self._module_unlocked(module_id):
             return False
+        # El pre-test mide lo que se sabía antes de la intervención: una vez
+        # visto el recorrido, rehacerlo mediría lo aprendido en él.
+        if stage == "pretest" and self._pretest_closed(module_id):
+            return False
         index = STAGES.index(stage)
         return all(self._stage_done(module_id, previous) for previous in STAGES[:index])
 
@@ -234,6 +286,11 @@ class CourseController(QObject):
             return "El docente todavía no habilita este módulo en la clase."
         if not self._module_unlocked(module_id):
             return "Completa el módulo anterior para desbloquear éste."
+        if stage == "pretest" and self._pretest_closed(module_id):
+            return (
+                "El pre-test se cierra al entrar al recorrido guiado: mide lo que "
+                "sabías antes de verlo."
+            )
         labels = {
             "guided": "Completa el pre-test del módulo.",
             "laboratory": "Completa el recorrido guiado del módulo.",
@@ -246,6 +303,21 @@ class CourseController(QObject):
         return labels.get(stage, "Etapa no disponible.")
 
     # ── Recorrido guiado: cada paso se completa al intentar su comprobación ──
+
+    @Slot(str)
+    def enterGuidedTour(self, module_id: str) -> None:
+        """Marca la entrada al recorrido; desde aquí el pre-test queda cerrado."""
+        if (
+            module_id not in self._catalog.module_ids
+            or not self.stageAvailable(module_id, "guided")
+        ):
+            return
+        state = self._module_state(module_id)
+        if state.get("guided_entered"):
+            return
+        state["guided_entered"] = True
+        self._persist()
+        self.progressChanged.emit()
 
     @Slot(str, str)
     def completeGuidedStep(self, module_id: str, step_id: str) -> None:
@@ -352,7 +424,7 @@ class CourseController(QObject):
         }
 
     def _focus_step_ids(self, module_id: str) -> list[str]:
-        """Pasos cuyos conceptos fallaron en el pre-test más reciente."""
+        """Pasos cuyos conceptos fallaron en el pre-test que cuenta (el primero)."""
         failed = {
             str(answer.get("concept_id", ""))
             for answer in self._result(module_id, "pre").get("answers", [])
@@ -577,14 +649,8 @@ class CourseController(QObject):
         if not pre and not post:
             return {"available": False, "module_id": module_id}
 
-        def instrument_version(result: dict[str, Any]) -> int:
-            try:
-                return int(result.get("instrument_version", 0))
-            except (TypeError, ValueError):
-                return 0
-
-        pre_version = instrument_version(pre)
-        post_version = instrument_version(post)
+        pre_version = _instrument_version(pre)
+        post_version = _instrument_version(post)
         comparable = bool(
             pre
             and post
@@ -655,6 +721,11 @@ class CourseController(QObject):
             "instrument_version_post": post_version,
             "pre_percentage": pre_pct,
             "post_percentage": post_pct,
+            # La comparación usa el primer intento; las repeticiones se cuentan.
+            "attempts": {
+                "pre": self._attempt_count(module_id, "pre"),
+                "post": self._attempt_count(module_id, "post"),
+            },
             "delta_percentage": delta,
             "relative_improvement": relative,
             "normalized_gain": self._normalized_gain(pre_pct, post_pct)
@@ -674,8 +745,9 @@ class CourseController(QObject):
             "frequent_errors": frequent_errors,
             "difficulty": post.get("bloom", []),
             "recommendation": (
-                "El instrumento cambió entre ambas evaluaciones. Repite el pre-test "
-                "para obtener una comparación válida con esta versión."
+                # Repetir el pre-test no lo arregla: cuenta el primer intento.
+                "El instrumento cambió entre tu primer pre-test y tu primer "
+                "post-test, así que no se pueden comparar."
                 if pre and post and not comparable
                 else (
                     "Repasa "

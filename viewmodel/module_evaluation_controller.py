@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Callable
 
 from PySide6.QtCore import Property, Signal, Slot
 
@@ -29,6 +29,9 @@ class ModuleEvaluationController(EvaluationController):
         # activo descartaría la selección del intento en curso.
         self._key_bank = ModuleQuestionBank(self._catalog)
         self._module_id = self._module_bank.module_id
+        # La pone CourseController: la evaluación de un módulo solo empieza si
+        # su etapa está abierta. «Repetir evaluación» no debe saltársela.
+        self._stage_guard: Callable[[str, str], str] | None = None
         super().__init__(
             parent=parent,
             question_bank=self._module_bank,
@@ -48,6 +51,11 @@ class ModuleEvaluationController(EvaluationController):
             assessment_type,
             self._student_filter(),
             module_id=self._module_id,
+        )
+
+    def _attempts(self, assessment_type: str) -> list[dict[str, Any]]:
+        return self._repository.get_history(
+            assessment_type, self._student_filter(), module_id=self._module_id
         )
 
     @Property("QVariantList", notify=EvaluationController.questionChanged)
@@ -98,8 +106,17 @@ class ModuleEvaluationController(EvaluationController):
             return
         self.prepareEvaluation(assessment_type)
 
+    def set_stage_guard(self, guard: Callable[[str, str], str] | None) -> None:
+        """``guard(module_id, assessment_type)`` devuelve "" si puede empezar,
+        o el motivo por el que no."""
+        self._stage_guard = guard
+
     @Slot(str, str)
     def startModuleEvaluation(self, module_id: str, assessment_type: str) -> None:
+        motivo = self._stage_guard(module_id, assessment_type) if self._stage_guard else ""
+        if motivo:
+            self.error.emit(motivo)
+            return
         if not self._select_module(module_id):
             return
         self._module_bank.start_attempt(

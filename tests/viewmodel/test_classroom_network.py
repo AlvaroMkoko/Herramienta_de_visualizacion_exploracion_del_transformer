@@ -19,6 +19,7 @@ from viewmodel.course_controller import CourseController
 from viewmodel.module_evaluation_controller import ModuleEvaluationController
 
 TIEMPO = 15000
+BLOQUEO_DOCENTE = "El docente todavía no habilita este módulo en la clase."
 
 
 def _responder(controller: ModuleEvaluationController) -> dict:
@@ -113,10 +114,25 @@ def test_flujo_completo_de_clase_en_red(qtbot, tmp_path, docente, puerto_udp, mo
         lambda: docente.alumnos and docente.alumnos[0]["modules"][0]["progress_percent"] == 40,
         timeout=TIEMPO,
     )
+    # El post-test del final exige el laboratorio: sin él la evaluación se rechaza.
+    pasos = ana.course.catalog.get("module_1")["guided_steps"]
+    for paso in pasos[: CourseController.REQUIRED_LAB_CYCLES]:
+        ana.course.recordDiscoveryCycle("module_1", paso["id"], True, 1)
+    ana.course.recordAnchorClosing("module_1", 0)
+    assert ana.course.stageAvailable("module_1", "posttest")
+    qtbot.waitUntil(
+        lambda: docente.alumnos[0]["modules"][0]["progress_percent"] == 60,
+        timeout=TIEMPO,
+    )
 
     # El docente restringe módulos y envía avisos.
     docente.habilitarModulo("module_2", False)
-    qtbot.waitUntil(lambda: not ana.course.stageAvailable("module_2", "guided"), timeout=TIEMPO)
+    # El módulo 2 ya está cerrado por prerrequisitos; lo que se observa es que
+    # el motivo pase a ser la restricción del docente, que tiene prioridad.
+    qtbot.waitUntil(
+        lambda: ana.course.stageBlockReason("module_2", "guided") == BLOQUEO_DOCENTE,
+        timeout=TIEMPO,
+    )
     assert docente.enviarAviso("Empiecen el módulo 1")
     qtbot.waitUntil(lambda: ana.controller.ultimoAviso == "Empiecen el módulo 1", timeout=TIEMPO)
 
@@ -137,7 +153,9 @@ def test_flujo_completo_de_clase_en_red(qtbot, tmp_path, docente, puerto_udp, mo
     qtbot.waitUntil(lambda: not ana.controller.enClase, timeout=TIEMPO)
     assert ana.controller.estado == "sin_clase"
     assert len(ana.results.get_history()) == 2
-    assert ana.course.stageAvailable("module_2", "guided")
+    # Fuera de la clase ya no rige la restricción del docente, solo los
+    # prerrequisitos del curso.
+    assert ana.course.stageBlockReason("module_2", "guided") not in ("", BLOQUEO_DOCENTE)
 
 
 def test_apodo_repetido_y_conexion_por_direccion(qtbot, tmp_path, docente, puerto_udp):

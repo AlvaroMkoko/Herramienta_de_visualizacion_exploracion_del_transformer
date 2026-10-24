@@ -752,6 +752,9 @@ PagePrincipal {
                                       + "  ·  g " + (filaPractica.modelData.normalized_gain === null
                                                      || filaPractica.modelData.normalized_gain === undefined
                                                      ? "—" : Number(filaPractica.modelData.normalized_gain).toFixed(2))
+                                      // g usa el primer intento; las repeticiones se cuentan aparte.
+                                      + "  ·  intentos pre " + (filaPractica.modelData.pre_attempts || 0)
+                                      + " / post " + (filaPractica.modelData.post_attempts || 0)
                                       + "  ·  predicciones del recorrido " + (filaPractica.practica.guided_checks || 0)
                                       + " (" + (filaPractica.practica.guided_first_correct || 0) + " al primer intento)"
                                       + "  ·  retos de laboratorio " + (filaPractica.practica.lab_cycles || 0)

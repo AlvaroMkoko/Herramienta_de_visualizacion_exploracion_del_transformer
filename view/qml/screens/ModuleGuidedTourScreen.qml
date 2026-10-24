@@ -44,6 +44,8 @@ PagePrincipal {
 
     Component.onCompleted: {
         root.courseController.selectModule(root.moduleId)
+        // Entrar cierra el pre-test del módulo (ver CourseController).
+        root.courseController.enterGuidedTour(root.moduleId)
         root.refreshProgress()
         root.refreshConcept()
     }

@@ -361,7 +361,7 @@ PagePrincipal {
 
     function resetProgress() {
         if (root.hasLearningController)
-            mainViewModel.learningController.resetProgress()
+            mainViewModel.learningController.restartTour()
         root.fallbackCompletedUnitIds = []
         root.progressRevision += 1
         root.currentUnitIndex = 0
@@ -438,6 +438,8 @@ PagePrincipal {
 
     Component.onCompleted: {
         if (root.hasLearningController) {
+            // Entrar cierra el pre-test de la ruta general (ver ProgressController).
+            mainViewModel.learningController.markTourEntered()
             root.currentUnitIndex = root.bounded(mainViewModel.learningController.lastUnitIndex,
                                                  0, root.totalUnits - 1)
             root.currentConceptIndex = root.bounded(mainViewModel.learningController.lastConceptIndex,

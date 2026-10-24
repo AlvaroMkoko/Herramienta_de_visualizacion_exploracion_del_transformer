@@ -37,6 +37,15 @@ class ProgressController(QObject):
 
         self._learning.progressChanged.connect(self.progresoCambio)
         self._evaluation.stateChanged.connect(self.progresoCambio)
+        set_guard = getattr(self._evaluation, "set_global_guard", None)
+        if set_guard is not None:
+            set_guard(self._motivo_evaluacion)
+
+    def _motivo_evaluacion(self, assessment_type: str) -> str:
+        orden = {"pre": 1, "post": 4}.get(str(assessment_type).lower().strip())
+        if orden is None:
+            return ""
+        return self.motivoBloqueo(orden)
 
     @staticmethod
     def _leer_lista(valor) -> list[str]:
@@ -86,6 +95,16 @@ class ProgressController(QObject):
     @Property(bool, notify=progresoCambio)
     def preTestCompletado(self) -> bool:
         return self._evaluation.hasPre
+
+    @Property(bool, notify=progresoCambio)
+    def preTestCerrado(self) -> bool:
+        """El pre-test mide lo que se sabía antes del recorrido: una vez visto,
+        rehacerlo mediría lo aprendido en él. Solo se protege uno que existe."""
+        return (
+            self._ruta_estricta
+            and self.preTestCompletado
+            and bool(getattr(self._learning, "tourEntered", False))
+        )
 
     @Property(bool, notify=progresoCambio)
     def recorridoCompletado(self) -> bool:
@@ -180,7 +199,7 @@ class ProgressController(QObject):
     @Slot(int, result=bool)
     def etapaDisponible(self, orden: int) -> bool:
         if orden == 1:
-            return True
+            return not self.preTestCerrado
         if orden == 2:
             return not self._ruta_estricta or self.preTestCompletado
         if orden == 3:
@@ -202,6 +221,8 @@ class ProgressController(QObject):
         if self.etapaDisponible(orden):
             return ""
         return {
+            1: "El pre-test se cierra al entrar al recorrido guiado: mide lo que "
+            "sabías antes de verlo.",
             2: "Completa el pre-test para desbloquear el recorrido guiado.",
             3: "Completa el recorrido guiado para desbloquear los laboratorios.",
             4: "Abre los tres laboratorios para desbloquear el post-test.",

@@ -344,27 +344,33 @@ def _analizar_dataset(
                 )
             )
 
+    # CU01 4a: un archivo vacío o sin los campos obligatorios se rechaza sin
+    # tocar el catálogo. Solo entra marcado «Revisar formato» el que tiene los
+    # campos pero algún registro inválido, porque ese se arregla editándolo.
+    if extension in {".txt", ".pdf"}:
+        if total_tokens == 0:
+            raise ValueError("El archivo no contiene texto utilizable.")
+    else:
+        if total_registros == 0:
+            raise ValueError("El archivo no contiene registros.")
+        faltantes = [campo for campo in _CAMPOS_PARES_REQUERIDOS if campo not in campos]
+        if faltantes:
+            raise ValueError(
+                "Faltan los campos obligatorios: " + ", ".join(faltantes) + "."
+            )
+
     promedio = round(total_tokens / total_registros, 2) if total_registros else 0
     tamano_mb = round(ruta.stat().st_size / (1024 * 1024), 2)
     checksum = _calcular_hash(ruta, reportar)
 
     if extension in {".txt", ".pdf"}:
-        compatible_entrenamiento = total_tokens > 0
+        compatible_entrenamiento = True
         mensaje_compatibilidad = (
             "Corpus legible: su tamaño útil se confirmará al tokenizarlo en fragmentos."
-            if compatible_entrenamiento
-            else "El corpus no contiene texto utilizable."
         )
     else:
-        compatible_entrenamiento = total_registros > 0 and pares_validos == total_registros
-        faltantes = [campo for campo in _CAMPOS_PARES_REQUERIDOS if campo not in campos]
-        if faltantes:
-            mensaje_compatibilidad = (
-                "Faltan los campos obligatorios: " + ", ".join(faltantes) + "."
-            )
-        elif total_registros == 0:
-            mensaje_compatibilidad = "El archivo no contiene registros."
-        elif pares_validos != total_registros:
+        compatible_entrenamiento = pares_validos == total_registros
+        if pares_validos != total_registros:
             mensaje_compatibilidad = (
                 f"{total_registros - pares_validos} registro(s) tienen instruction o response "
                 "vacíos, o un valor que no es texto."

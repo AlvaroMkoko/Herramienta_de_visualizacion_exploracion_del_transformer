@@ -27,6 +27,7 @@ from PySide6.QtQuick import QQuickItem
 from model.aprendizaje import ModuleProgressRepository, ModuleQuestionBank
 from model.motor_llm.config import ConfiguracionTransformer
 from model.motor_llm.transformer import Transformer
+from viewmodel.course_controller import CourseController
 from viewmodel.main_viewmodel import MainViewModel
 from viewmodel.module_laboratory_controller import _module_steps
 
@@ -576,7 +577,13 @@ def _side_by_side(left: QQuickItem, right: QQuickItem, ancestor: QQuickItem) -> 
     return left_box.width() > 0 and _rect_in(right, ancestor).left() >= left_box.right() - 1
 
 
-def test_pantalla_especializada_reordena_paneles_sin_encimarlos(qapp, qtbot, tmp_path):
+def test_pantalla_especializada_reordena_paneles_sin_encimarlos(
+    qapp, qtbot, tmp_path, monkeypatch
+):
+    # Al final se auditan los retos de los ocho módulos, y seleccionar uno
+    # cerrado no hace nada: el modo revisión existe justo para esta revisión de
+    # contenido. Los prerrequisitos reales se prueban en test_module_course.
+    monkeypatch.setattr(CourseController, "REVIEW_MODE_UNLOCK_ALL", True)
     view_model = MainViewModel()
     # Aísla la persistencia: explorar el laboratorio emite señales reales de
     # progreso y una prueba visual nunca debe cambiar la sesión del usuario.

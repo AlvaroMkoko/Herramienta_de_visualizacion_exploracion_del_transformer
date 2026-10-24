@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from model.aprendizaje import ModuleProgressRepository
 from model.evaluacion.results_repository import ResultsRepository
-from viewmodel.course_controller import CourseController
+from viewmodel.course_controller import STAGES, CourseController
 from viewmodel.module_evaluation_controller import ModuleEvaluationController
 
 
@@ -93,8 +93,40 @@ def _course(tmp_path) -> tuple[CourseController, ResultsRepository]:
     return course, results
 
 
+def _completar_etapas(course, results, module_id: str, etapas) -> None:
+    for etapa in etapas:
+        if etapa in ("pretest", "posttest"):
+            results.save_result(
+                {
+                    "schema_version": 2,
+                    "assessment_type": "pre" if etapa == "pretest" else "post",
+                    "module_id": module_id,
+                    "percentage": 80.0,
+                }
+            )
+        elif etapa == "guided":
+            _answer_guided_checks(course, module_id)
+            assert course.completeGuidedTour(module_id)
+        elif etapa == "laboratory":
+            _practice_laboratory(course, module_id)
+        elif etapa == "results":
+            course.markResultsViewed(module_id)
+        assert course.stageCompleted(module_id, etapa), (module_id, etapa)
+
+
+def _abrir_etapa(course, results, module_id: str, etapa: str) -> None:
+    """Cumple los prerrequisitos reales (RN18), como lo haría un alumno, hasta
+    dejar abierta la etapa: el modo revisión está apagado por defecto."""
+    modulos = [module["id"] for module in course.modules]
+    for previo in modulos[: modulos.index(module_id)]:
+        _completar_etapas(course, results, previo, STAGES)
+    _completar_etapas(course, results, module_id, STAGES[: STAGES.index(etapa)])
+    assert course.stageAvailable(module_id, etapa)
+
+
 def test_el_recorrido_no_se_completa_solo_con_mirarlo(tmp_path):
-    course, _ = _course(tmp_path)
+    course, results = _course(tmp_path)
+    _abrir_etapa(course, results, "module_3", "guided")
     steps = course.catalog.get("module_3")["guided_steps"]
 
     for step in steps:
@@ -115,7 +147,8 @@ def test_el_recorrido_no_se_completa_solo_con_mirarlo(tmp_path):
 
 
 def test_el_primer_intento_de_cada_comprobacion_es_el_que_cuenta(tmp_path):
-    course, _ = _course(tmp_path)
+    course, results = _course(tmp_path)
+    _abrir_etapa(course, results, "module_2", "guided")
     step = course.catalog.get("module_2")["guided_steps"][0]
     wrong = (step["check"]["correct_index"] + 1) % len(step["check"]["options"])
 
@@ -128,7 +161,8 @@ def test_el_primer_intento_de_cada_comprobacion_es_el_que_cuenta(tmp_path):
 
 
 def test_ejecutar_el_laboratorio_no_lo_completa(tmp_path):
-    course, _ = _course(tmp_path)
+    course, results = _course(tmp_path)
+    _abrir_etapa(course, results, "module_4", "laboratory")
 
     course.recordLaboratoryAnalysis("module_4")
     assert course.completeLaboratory("module_4") is False
@@ -241,7 +275,28 @@ def test_repaso_espaciado_usa_retos_del_modulo_anterior(tmp_path):
     assert again["answered"] and again["correct"] is False  # cuenta el primer intento
 
 
-def test_modo_revision_desbloquea_todos_los_modulos_y_etapas(tmp_path):
+def test_por_defecto_el_curso_aplica_los_prerrequisitos(tmp_path):
+    """RN18: con estudiantes el modo revisión debe estar apagado; abrir el
+    post-test sin pasar por el recorrido invalida la comparación pre/post."""
+    course, results = _course(tmp_path)
+
+    assert CourseController.REVIEW_MODE_UNLOCK_ALL is False
+    assert course.reviewMode is False
+    assert [module["available"] for module in course.modules] == [True] + [False] * 7
+    assert course.stageAvailable("module_1", "pretest")
+    assert not course.stageAvailable("module_1", "guided")
+    assert not course.stageAvailable("module_1", "posttest")
+    assert course.stageBlockReason("module_2", "pretest") == (
+        "Completa el módulo anterior para desbloquear éste."
+    )
+
+    _completar_etapas(course, results, "module_1", STAGES)
+    assert course.stageAvailable("module_2", "pretest")
+    assert not course.stageAvailable("module_2", "guided")
+
+
+def test_modo_revision_desbloquea_todos_los_modulos_y_etapas(tmp_path, monkeypatch):
+    monkeypatch.setattr(CourseController, "REVIEW_MODE_UNLOCK_ALL", True)
     evaluation = ModuleEvaluationController(
         repository=ResultsRepository(tmp_path / "results.json")
     )
@@ -347,4 +402,108 @@ def test_resultados_de_versiones_distintas_no_calculan_mejora(tmp_path):
     assert summary["delta_percentage"] == 0.0
     assert summary["relative_improvement"] == 0.0
     assert summary["concepts"][0]["comparable"] is False
-    assert "Repite el pre-test" in summary["recommendation"]
+    # Repetir el pre-test ya no lo arreglaría: la comparación usa el primero.
+    assert "no se pueden comparar" in summary["recommendation"]
+    assert "Repite" not in summary["recommendation"]
+
+
+def test_el_pretest_se_cierra_al_entrar_al_recorrido(tmp_path):
+    course, results = _course(tmp_path)
+    _abrir_etapa(course, results, "module_1", "guided")
+    assert course.stageAvailable("module_1", "pretest")  # aún se puede repetir
+
+    course.enterGuidedTour("module_1")
+
+    assert not course.stageAvailable("module_1", "pretest")
+    assert "recorrido guiado" in course.stageBlockReason("module_1", "pretest")
+    assert course.stageAvailable("module_1", "guided")
+    restored = ModuleProgressRepository(tmp_path / "progress.json").snapshot()
+    assert restored["modules"]["module_1"]["guided_entered"] is True
+
+
+def test_entrar_al_recorrido_cerrado_no_cierra_el_pretest(tmp_path):
+    course, _ = _course(tmp_path)
+    course.enterGuidedTour("module_1")  # sin pre-test el recorrido está cerrado
+    assert course.stageAvailable("module_1", "pretest")
+
+
+def test_avance_guardado_del_recorrido_tambien_cierra_el_pretest(tmp_path):
+    """Progreso de antes de que existiera la marca de entrada."""
+    repository = ModuleProgressRepository(tmp_path / "progress.json")
+    repository.replace({"modules": {"module_1": {"guided_steps_completed": ["m1_s1"]}}})
+    results = ResultsRepository(tmp_path / "results.json")
+    course = CourseController(ModuleEvaluationController(repository=results), repository=repository)
+    _completar_etapas(course, results, "module_1", ["pretest"])
+
+    assert not course.stageAvailable("module_1", "pretest")
+
+
+def test_repetir_la_evaluacion_no_se_salta_la_guarda_de_etapa(tmp_path):
+    course, results = _course(tmp_path)
+    evaluation = course._evaluation
+    _abrir_etapa(course, results, "module_1", "guided")
+    course.enterGuidedTour("module_1")
+    errors: list[str] = []
+    evaluation.error.connect(errors.append)
+
+    evaluation.startModuleEvaluation("module_1", "pre")
+    evaluation.startModuleEvaluation("module_1", "post")  # falta el laboratorio
+
+    assert evaluation.isActive is False
+    assert len(errors) == 2 and "recorrido guiado" in errors[0]
+    assert "laboratorio" in errors[1]
+    assert len(results.get_history("pre", module_id="module_1")) == 1
+
+
+def _version_vigente() -> int:
+    from model.aprendizaje.module_question_bank import ModuleQuestionBank
+
+    return ModuleQuestionBank.VERSION_PREGUNTAS
+
+
+def test_cuenta_el_primer_intento_y_registra_cuantas_veces_lo_tomaste(tmp_path):
+    course, results = _course(tmp_path)
+    evaluation = course._evaluation
+    # Un primer pre-test flojo y, antes de entrar al recorrido, uno real perfecto.
+    results.save_result(
+        {
+            "schema_version": 2,
+            "assessment_type": "pre",
+            "module_id": "module_1",
+            "instrument_version": _version_vigente(),
+            "percentage": 20.0,
+            "completed_at": "2000-01-01T00:00:00+00:00",
+        }
+    )
+    evaluation.startModuleEvaluation("module_1", "pre")
+    while evaluation.isActive:
+        evaluation.registrarRespuesta(_answer_current(evaluation))
+        evaluation.submitCurrentAnswer()
+    first_pre, second_pre = results.get_history("pre", module_id="module_1")
+    assert first_pre["percentage"] == 20.0 and second_pre["percentage"] == 100.0
+
+    _completar_etapas(course, results, "module_1", ["guided", "laboratory"])
+    for percentage in (55.0, 100.0):
+        evaluation_result = dict(second_pre, assessment_type="post", percentage=percentage)
+        evaluation_result.pop("result_id")
+        evaluation_result["completed_at"] = "2999-01-01T00:00:0%d+00:00" % int(percentage == 100.0)
+        results.save_result(evaluation_result)
+
+    summary = course.moduleResults("module_1")
+    assert summary["pre_percentage"] == 20.0
+    assert summary["post_percentage"] == 55.0
+    assert summary["attempts"] == {"pre": 2, "post": 2}
+
+
+def test_borrar_el_historial_no_deja_el_modulo_sin_forma_de_empezar(tmp_path):
+    """«Borrar progreso» quita los resultados pero no el estado del curso: sin
+    pre-test que proteger, el pre-test vuelve a abrirse."""
+    course, results = _course(tmp_path)
+    _abrir_etapa(course, results, "module_1", "guided")
+    course.enterGuidedTour("module_1")
+    assert not course.stageAvailable("module_1", "pretest")
+
+    results.clear("__self__")
+
+    assert course.stageAvailable("module_1", "pretest")
+    assert not course.stageAvailable("module_1", "guided")

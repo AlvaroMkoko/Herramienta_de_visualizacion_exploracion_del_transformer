@@ -592,6 +592,9 @@ class TrainingController(QObject):
         super().__init__(parent)
         self.modelo = modelo
         self.tokenizer = tokenizer
+        # Lo pone cerrar(): la señal de fin del hilo puede llegar después,
+        # cuando el modelo ya se soltó y la vista se está retirando.
+        self._retirado = False
 
         self._gestor = GestorConcurrencia(self)
         self._gestor.progreso.connect(self._al_recibir_paso)
@@ -959,6 +962,7 @@ class TrainingController(QObject):
 
     def cerrar(self) -> None:
         """Detiene workers y suelta referencias grandes al retirar la sesion."""
+        self._retirado = True
         self._gestor.cerrar()
         hilo_guardado = self._hilo_guardado
         if (
@@ -1208,6 +1212,8 @@ class TrainingController(QObject):
         self.paso_entrenamiento.emit(paso)
 
     def _al_completar(self, resultado: dict) -> None:
+        if self._retirado:
+            return
         self.modelo.capturar_traza_entrenamiento = False
         self.modelo.ultima_traza = None
         with self._bloqueo_estado:
@@ -1220,6 +1226,8 @@ class TrainingController(QObject):
         self.entrenamiento_completo.emit(resultado)
 
     def _al_cancelar(self) -> None:
+        if self._retirado:
+            return
         self.modelo.capturar_traza_entrenamiento = False
         self.modelo.ultima_traza = None
         with self._bloqueo_estado:
@@ -1248,6 +1256,8 @@ class TrainingController(QObject):
         )
 
     def _al_error(self, mensaje: str) -> None:
+        if self._retirado:
+            return
         self.modelo.capturar_traza_entrenamiento = False
         self.modelo.ultima_traza = None
         with self._bloqueo_estado:

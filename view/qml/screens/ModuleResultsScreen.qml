@@ -26,6 +26,15 @@ PagePrincipal {
     }
 
     // Ganancia normalizada de Hake: fracción de lo que faltaba que se ganó.
+    // Cuenta el primer intento; las repeticiones quedan registradas y se
+    // muestran para que el alumno sepa qué resultado se compara.
+    function attemptsText(type) {
+        var count = Number((root.results.attempts || {})[type] || 0)
+        if (count <= 0)
+            return ""
+        return count === 1 ? "1 intento" : "Cuenta el 1.º de " + count + " intentos"
+    }
+
     function formatGain(value) {
         if (value === undefined || value === null)
             return "—"
@@ -83,8 +92,8 @@ PagePrincipal {
             spacing: 12 * root.sx
             Repeater {
                 model: [
-                    { label: "PRE-TEST", value: (root.results.pre_percentage || 0) + "%", color: Style.Theme.info_fondo, textColor: Style.Theme.info_texto },
-                    { label: "POST-TEST", value: (root.results.post_percentage || 0) + "%", color: Style.Theme.exito_fondo, textColor: Style.Theme.exito_texto },
+                    { label: "PRE-TEST", value: (root.results.pre_percentage || 0) + "%", detail: root.attemptsText("pre"), detailName: "moduleResultsPreAttempts", color: Style.Theme.info_fondo, textColor: Style.Theme.info_texto },
+                    { label: "POST-TEST", value: (root.results.post_percentage || 0) + "%", detail: root.attemptsText("post"), detailName: "moduleResultsPostAttempts", color: Style.Theme.exito_fondo, textColor: Style.Theme.exito_texto },
                     { label: "DIFERENCIA", value: root.results.comparable ? (((root.results.delta_percentage || 0) >= 0 ? "+" : "") + (root.results.delta_percentage || 0) + " pts") : "—", color: Style.Theme.acento_fondo, textColor: Style.Theme.acento_fuerte },
                     { label: "MEJORA RELATIVA", value: root.results.comparable ? ((root.results.relative_improvement || 0) + "%") : "—", color: Style.Theme.formula_fondo, textColor: Style.Theme.formula_texto },
                     { label: "GANANCIA NORMALIZADA (g)", value: root.results.comparable ? root.formatGain(root.results.normalized_gain) : "—", color: Style.Theme.concepto_fondo, textColor: Style.Theme.concepto_texto }
@@ -101,6 +110,14 @@ PagePrincipal {
                         spacing: 5
                         Text { anchors.horizontalCenter: parent.horizontalCenter; text: metricCard.modelData.value; color: metricCard.modelData.textColor; font.bold: true; font.pixelSize: 28 * root.sx }
                         Text { anchors.horizontalCenter: parent.horizontalCenter; text: metricCard.modelData.label; color: metricCard.modelData.textColor; font.bold: true; font.pixelSize: 11 * root.sx }
+                        Text {
+                            objectName: metricCard.modelData.detailName || ""
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            visible: text !== ""
+                            text: metricCard.modelData.detail || ""
+                            color: metricCard.modelData.textColor
+                            font.pixelSize: 10 * root.sx
+                        }
                     }
                 }
             }
