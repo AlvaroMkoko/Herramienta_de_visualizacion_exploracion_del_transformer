@@ -65,6 +65,24 @@ ApplicationWindow {
 }
 """
 
+MODULE_PROGRESS_HOST = b"""\
+import QtQuick
+import QtQuick.Controls
+import "screens" as Screens
+
+ApplicationWindow {
+    width: 1280
+    height: 820
+    visible: true
+    StackView { id: navigation; anchors.fill: parent }
+    Screens.ModuleScreen {
+        anchors.fill: parent
+        stackView: navigation
+        moduleId: "module_1"
+    }
+}
+"""
+
 
 def _errors(component: QQmlComponent) -> str:
     return "\n".join(error.toString() for error in component.errors())
@@ -165,6 +183,110 @@ def test_pantallas_modulares_compilan_y_se_instancian(qapp):
     dimensions_grid = window.findChild(QObject, "evaluationDimensionGrid")
     assert dimensions_scroll is not None
     assert dimensions_grid is not None
+
+    window.deleteLater()
+    engine.deleteLater()
+
+
+def test_modulo_actualiza_etapas_al_completar_sin_recrear_pantalla(qapp, tmp_path):
+    """La pantalla queda viva debajo de cada etapa dentro del StackView."""
+    from model.aprendizaje import ModuleProgressRepository
+    from model.aprendizaje.module_question_bank import ModuleQuestionBank
+
+    engine = QQmlEngine()
+    view_model = MainViewModel()
+    course = view_model.courseController
+    course._repository = ModuleProgressRepository(tmp_path / "progreso.json")
+    course._state = course._repository.snapshot()
+    results = ResultsRepository(tmp_path / "resultados.json")
+    course._evaluation._repository = results
+    engine.rootContext().setContextProperty("mainViewModel", view_model)
+    component = QQmlComponent(engine)
+    component.setData(
+        MODULE_PROGRESS_HOST,
+        QUrl.fromLocalFile(str(ROOT / "view" / "qml" / "ModuleProgressHost.qml")),
+    )
+
+    assert component.status() != QQmlComponent.Status.Error, _errors(component)
+    window = component.create()
+    assert window is not None, _errors(component)
+    for _ in range(5):
+        qapp.processEvents()
+
+    screen = window.findChild(QQuickItem, "moduleScreen")
+    assert screen is not None
+    descendants = _visual_descendants(screen)
+    by_name = {item.objectName(): item for item in descendants if item.objectName()}
+    pre_card = by_name.get("moduleStageCard_0")
+    guided_card = by_name.get("moduleStageCard_1")
+    guided_button = by_name.get("moduleStageButton_1")
+    laboratory_card = by_name.get("moduleStageCard_2")
+    laboratory_button = by_name.get("moduleStageButton_2")
+    post_card = by_name.get("moduleStageCard_3")
+    post_button = by_name.get("moduleStageButton_3")
+    results_card = by_name.get("moduleStageCard_4")
+    results_button = by_name.get("moduleStageButton_4")
+    assert all(
+        item is not None
+        for item in (
+            pre_card,
+            guided_card,
+            guided_button,
+            laboratory_card,
+            laboratory_button,
+            post_card,
+            post_button,
+            results_card,
+            results_button,
+        )
+    )
+    assert pre_card.property("completed") is False
+    assert guided_card.property("available") is False
+    assert guided_button.property("enabled") is False
+
+    result = {
+        "schema_version": 2,
+        "instrument_version": ModuleQuestionBank.VERSION_PREGUNTAS,
+        "assessment_type": "pre",
+        "module_id": "module_1",
+        "percentage": 80.0,
+    }
+    results.save_result(result)
+    course._on_evaluation_completed(result)
+    qapp.processEvents()
+
+    assert pre_card.property("completed") is True
+    assert guided_card.property("available") is True
+    assert guided_button.property("enabled") is True
+
+    course.enterGuidedTour("module_1")
+    for step in course.catalog.get("module_1")["guided_steps"]:
+        course.recordGuidedCheck(
+            "module_1", step["id"], int(step["check"]["correct_index"])
+        )
+    assert course.completeGuidedTour("module_1")
+    qapp.processEvents()
+    assert guided_card.property("completed") is True
+    assert laboratory_card.property("available") is True
+    assert laboratory_button.property("enabled") is True
+
+    steps = course.catalog.get("module_1")["guided_steps"]
+    for step in steps[: course.REQUIRED_LAB_CYCLES]:
+        course.recordDiscoveryCycle("module_1", step["id"], True, 1)
+    closing = course.catalog.get("module_1")["anchor"]["closing"]
+    course.recordAnchorClosing("module_1", int(closing["correct_index"]))
+    qapp.processEvents()
+    assert laboratory_card.property("completed") is True
+    assert post_card.property("available") is True
+    assert post_button.property("enabled") is True
+
+    post_result = result | {"assessment_type": "post", "percentage": 90.0}
+    results.save_result(post_result)
+    course._on_evaluation_completed(post_result)
+    qapp.processEvents()
+    assert post_card.property("completed") is True
+    assert results_card.property("available") is True
+    assert results_button.property("enabled") is True
 
     window.deleteLater()
     engine.deleteLater()

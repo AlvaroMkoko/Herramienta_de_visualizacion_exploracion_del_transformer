@@ -69,6 +69,54 @@ def test_cada_paso_guiado_apunta_a_teoria_existente():
         assert set(module["theory_sequence"]) <= theory_ids
 
 
+def test_modulo_uno_distingue_encoder_decoder_padding_y_mascara():
+    catalog = LearningModuleCatalog()
+    module = catalog.get("module_1")
+    steps = module["guided_steps"]
+
+    assert steps[0]["output"] == steps[1]["input"] == "Texto listo para tokenizar"
+    assert module["theory_sequence"][4] == "tokens_especiales"
+    assert module["theory_sequence"][6] == "padding"
+    assert "[2, 3]" in module["anchor"]["example"]
+    assert "decoder recibe [1, 7, 15, 23]" in module["anchor"]["example"]
+    assert "objetivo es [7, 15, 23, 2]" in module["anchor"]["example"]
+
+    with recurso("data", "teoria", "transformer.json").open(encoding="utf-8") as source:
+        theory = json.load(source)
+    concepts = {
+        concept["id"]: concept
+        for section in theory["secciones"]
+        for concept in section["conceptos"]
+    }
+    assert "entrada del encoder se tokeniza sin agregar BOS ni EOS" in concepts[
+        "tokens_especiales"
+    ]["explanation"]
+    assert concepts["padding"]["dimensions"]["salida"] == "[B, T_max]"
+    mask_explanation = concepts["mascaras_en_scores"]["explanation"]
+    assert "bloquea esas columnas como keys" in mask_explanation
+    assert "no elimina las filas PAD" in mask_explanation
+
+
+def test_modulo_uno_post_usa_entrada_presentada_y_acepta_respuestas_equivalentes():
+    bank = ModuleQuestionBank(module_id="module_1", rng=random.Random(11))
+    pre = {question["code"]: question for question in bank.all_questions("pre")}
+    post = {question["code"]: question for question in bank.all_questions("post")}
+
+    i9 = post["I9"]
+    correct_texts = {
+        option["text"]
+        for option in i9["options"]
+        if option["id"] in i9["correct_option_ids"]
+    }
+    assert "Texto listo para tokenizar → Tokens visibles" in correct_texts
+    assert all("normalizado" not in option["text"].lower() for option in i9["options"])
+
+    assert calificar(pre["B6"], {"texto": "agregar BOS y EOS"})["correcto"]
+    assert calificar(post["B6"], {"texto": "formar secuencias"})["correcto"]
+    assert calificar(pre["I7"], {"texto": "batch de IDs"})["correcto"]
+    assert calificar(post["I7"], {"texto": "IDs con BOS y EOS"})["correcto"]
+
+
 def test_cada_modulo_tiene_25_preguntas_pre_y_post():
     catalog = LearningModuleCatalog()
     bank = ModuleQuestionBank(catalog, rng=random.Random(7))
