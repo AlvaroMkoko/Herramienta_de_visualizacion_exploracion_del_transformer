@@ -500,7 +500,17 @@ Trampas que el ejecutable solo muestra al correr:
   caracteres o menos; si no, `main.qml` no carga («nombre de archivo demasiado
   largo»).
 - **`data/aula/clases/` no viaja**: es estado de ejecución y trae el secreto de
-  la clase. De `data/aula/` solo es recurso `palabras_bloqueadas.json`.
+  la clase. De `data/aula/` solo es recurso `palabras_bloqueadas.json`. Tampoco
+  `view/qml/CLAUDE.md`: el `.spec` lo filtra de los datos.
+- **`QSettings` va a `datos\preferencias\`, no al registro.** Empaquetada,
+  `main.py` fija el formato INI bajo `dato("preferencias")`; alcanza a
+  `QSettings()` y al `Settings {}` de `Theme.qml`. Sin eso el ejecutable heredaba
+  el estado de quien corrió `main.py` con la misma cuenta de Windows (tema,
+  laboratorios abiertos, ruta estricta) y ese estado no se recogía con `datos\`.
+  Desde el código fuente sigue en el registro.
+- **Un alumno por carpeta.** En modo estudiante todo alumno es el mismo
+  `__self__` (`viewmodel/profile_controller.py`) y el avance es un archivo por
+  `datos\`: dos alumnos en la misma carpeta comparten pre-test y progreso.
 
 ## Flujo de datos
 

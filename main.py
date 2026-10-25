@@ -23,7 +23,7 @@ import sys
 # porque Qt Quick decide el backend de renderizado al arrancar.
 os.environ["QSG_RHI_BACKEND"] = "opengl"
 
-from core.rutas import esta_empaquetada, recurso
+from core.rutas import dato, esta_empaquetada, recurso
 
 # tiktoken descarga la tabla de cada codificación de internet la primera vez
 # que se pide; en un equipo del laboratorio sin red eso deja sin tokenizador
@@ -38,7 +38,7 @@ from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterType
 from PySide6.QtQuickControls2 import QQuickStyle
 from PySide6.QtGui import QFont, QIcon
 from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import QCoreApplication, QUrl
+from PySide6.QtCore import QCoreApplication, QSettings, QUrl
 from view.canvas.animation_engine import VispyItem
 from viewmodel.display_manager import DisplayManager
 from viewmodel.main_viewmodel import MainViewModel
@@ -51,6 +51,22 @@ def main() -> None:
     # como el backend de fuentes nazcan con la identidad correcta.
     QCoreApplication.setOrganizationName("TT")
     QCoreApplication.setApplicationName("TransformerVisualizer")
+
+    if esta_empaquetada():
+        # QSettings guarda en el registro de Windows, por cuenta de usuario, y
+        # no en datos\: el ejecutable heredaba el estado de quien corrió
+        # main.py con la misma cuenta, ese estado no se recogía al copiar la
+        # carpeta y lo compartía cualquiera que entrara con esa cuenta. Entre
+        # lo que guarda está la ruta estricta, que decide qué etapas quedan
+        # bloqueadas. Con el formato INI bajo datos\ todo el estado de una
+        # instalación vive en su carpeta. Alcanza a QSettings() en Python y al
+        # Settings {} de QML; antes de crear cualquiera de los dos.
+        QSettings.setDefaultFormat(QSettings.Format.IniFormat)
+        QSettings.setPath(
+            QSettings.Format.IniFormat,
+            QSettings.Scope.UserScope,
+            str(dato("preferencias")),
+        )
 
     app = QApplication(sys.argv)
 
