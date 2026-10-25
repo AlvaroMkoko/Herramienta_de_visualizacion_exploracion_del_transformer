@@ -1,0 +1,27 @@
+# Entorno de construcción del ejecutable (ESPEC-F). NO es el de desarrollo:
+# lo crea tools/construir_ejecutable.ps1 en .venv-empaquetado/.
+#
+# Versiones fijadas a las del .venv con el que se desarrolla y entrena, para que
+# el ejecutable se comporte como la aplicación probada. Se instala aparte, antes
+# que este archivo, desde el índice de CPU de PyTorch:
+#   torch==2.11.0+cpu  --index-url https://download.pytorch.org/whl/cpu
+# La rueda de CUDA de requirements.txt pesa unas diez veces más y los equipos
+# del laboratorio no tienen GPU.
+#
+# Lo que falta a propósito respecto de requirements.txt: datasets, torchvision,
+# torchaudio (ningún módulo de producción los importa; datasets arrastra pandas
+# y pyarrow), pytest, pytest-qt, pytest-cov, black y ruff.
+
+PySide6==6.11.1
+vispy==0.16.2
+PyOpenGL==3.1.10
+numpy==2.4.4
+# 0.13.0 exacto: la caché sembrada por tools/sembrar_cache_tiktoken.py usa el
+# formato interno de esta versión (nombre = SHA-1 de la URL) y se verificó sin
+# red con ella. pip instalaría 0.14.0 por omisión.
+tiktoken==0.13.0
+cryptography==50.0.2
+pypdf==6.14.2
+
+pyinstaller==6.22.3
+pyinstaller-hooks-contrib==2026.9

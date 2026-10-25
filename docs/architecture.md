@@ -462,6 +462,46 @@ Es la excepción a *Toda ruta de escritura pasa por `core.rutas`*: escribe solo
 en el directorio que recibe por argumento, a mano, nunca desde la aplicación ni
 desde las pruebas. Regenerar cambia la muestra: hay que volver a leerla.
 
+## Empaquetado (ejecutable del laboratorio)
+
+Un solo comando, desde la raíz y con red:
+`powershell -ExecutionPolicy Bypass -File tools\construir_ejecutable.ps1`. Deja
+`dist\TransformerVisualizer\`, que se distribuye **comprimido, sin instalador**
+(modo portable de `core/rutas.py`: los resultados se recogen copiando `datos\`).
+Las razones de `onedir`, CPU y portable están en ESPEC-F; aquí van las piezas y
+lo que rompe sin dar error al construir.
+
+- `transformer_visualizer.spec` — el análisis de PyInstaller. Copia además
+  `scripts\permitir_firewall_aula.ps1` junto al ejecutable (bajo `_internal\` el
+  docente no lo encontraría con la ruta de `docs/uso_aula.md`) y el modelo del
+  piloto a `datos\checkpoints\`, con su nombre y su estado de optimizador
+  intactos.
+- `requirements-empaquetado.txt` — el entorno `.venv-empaquetado\`, aparte del
+  de desarrollo: `torch` de CPU y sin `datasets`, `torchvision`, `torchaudio`
+  ni las herramientas de prueba.
+- `tools/sembrar_cache_tiktoken.py` — descarga las tres codificaciones de
+  `ENCODINGS` a `build\cache_tiktoken\`; `main.py` apunta `TIKTOKEN_CACHE_DIR` a
+  esa copia cuando corre empaquetada. A diferencia del resto de `tools/`, su
+  salida no se versiona.
+
+Trampas que el ejecutable solo muestra al correr:
+
+- **Sin la caché, sin red no hay tokenizador**: ni inferencia ni activar un
+  modelo. Con el archivo presente y su hash correcto tiktoken solo lee, así que
+  la caché puede quedarse dentro del paquete, en solo lectura.
+- **`tiktoken_ext.openai_public` es import oculto.** tiktoken halla sus
+  codificaciones recorriendo un paquete de espacio de nombres que PyInstaller no
+  sigue: sin la línea, «Unknown encoding» aunque la caché esté.
+- **`tiktoken==0.13.0` fijo.** El nombre de cada archivo de caché es un detalle
+  interno (SHA-1 de la URL); se verificó con esa versión y pip traería otra.
+- **Ruta de descompresión corta.** Windows no carga una DLL cuya ruta pase de
+  260 caracteres; el plugin de QtQuick.Controls más hondo mide 90 desde
+  `TransformerVisualizer\`. La carpeta donde se descomprime debe medir unos 140
+  caracteres o menos; si no, `main.qml` no carga («nombre de archivo demasiado
+  largo»).
+- **`data/aula/clases/` no viaja**: es estado de ejecución y trae el secreto de
+  la clase. De `data/aula/` solo es recurso `palabras_bloqueadas.json`.
+
 ## Flujo de datos
 
 ```

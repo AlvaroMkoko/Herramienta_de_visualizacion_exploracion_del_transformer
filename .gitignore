@@ -30,3 +30,8 @@ reporte_especificaciones_desarrollo.md
 !data/datasets_predefinidos/*.json
 !data/datasets_predefinidos/*.jsonl
 !data/aula/palabras_bloqueadas.json
+
+# Empaquetado (ESPEC-F): salida de PyInstaller, caché de tiktoken sembrada y entorno de construcción
+build/
+dist/
+.venv-empaquetado/
