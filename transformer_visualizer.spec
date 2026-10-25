@@ -95,6 +95,10 @@ a = Analysis(
     noarchive=False,
     optimize=0,
 )
+# view/qml/ trae las instrucciones del agente de desarrollo (CLAUDE.md): son
+# del repositorio, no de la aplicación, y no deben viajar a los equipos.
+a.datas = [entrada for entrada in a.datas if Path(entrada[0]).name != "CLAUDE.md"]
+
 pyz = PYZ(a.pure)
 
 exe = EXE(
