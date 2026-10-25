@@ -43,3 +43,12 @@ $modelo = (Get-ChildItem (Join-Path $salida "datos\checkpoints") -File | Measure
 Write-Host ("Listo: {0}" -f $salida) -ForegroundColor Green
 Write-Host ("  carpeta completa: {0:N1} MB" -f ($bytes / 1MB))
 Write-Host ("  sin el modelo:    {0:N1} MB" -f (($bytes - $modelo) / 1MB))
+
+# Lo que se reparte (ver INSTALACION.md). tar.exe de Windows y no
+# Compress-Archive: produce el mismo .zip estandar, que el Explorador abre, en
+# una fraccion del tiempo.
+$zip = Join-Path $raiz "dist\TransformerVisualizer.zip"
+if (Test-Path $zip) { Remove-Item $zip }
+& "$env:SystemRoot\System32\tar.exe" -a -c -f $zip -C (Join-Path $raiz "dist") TransformerVisualizer
+if ($LASTEXITCODE -ne 0) { throw "No se pudo crear $zip." }
+Write-Host ("  comprimido:       {0:N1} MB  ({1})" -f ((Get-Item $zip).Length / 1MB), $zip)
