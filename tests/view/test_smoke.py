@@ -11,7 +11,7 @@ os.environ.setdefault("QSG_RHI_BACKEND", "software")
 
 import pytest
 import torch
-from PySide6.QtCore import Q_ARG, QMetaObject, QObject, Qt, QUrl
+from PySide6.QtCore import Q_ARG, QMetaObject, QObject, Qt, QUrl, qInstallMessageHandler
 from PySide6.QtQml import QJSValue, QQmlComponent, QQmlEngine
 from PySide6.QtQuick import QQuickItem
 
@@ -789,3 +789,28 @@ def test_ayuda_del_resumen_superior_sobrevive_a_cada_paso(training_qml, qapp, qt
     QTest.mouseRelease(training_qml, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, centro)
     qtbot.wait(60)
     assert training_qml.findChild(QObject, "trainingTheoryModal").property("visible") is True
+
+
+def test_entrenamiento_tolera_que_el_controlador_se_retire(training_qml, qapp):
+    """CU08/CU11: al activar otro modelo, ``trainingController`` pasa a null
+    mientras la pantalla sigue en la pila; los enlaces no deben fallar."""
+    window = training_qml
+    view_model = window._test_view_model
+    errores: list[str] = []
+
+    def capturar(_modo, _contexto, mensaje):
+        if "TrainingScreen.qml" in mensaje:
+            errores.append(mensaje)
+
+    anterior = qInstallMessageHandler(capturar)
+    try:
+        # Lo mismo que hace MainViewModel al empezar a activar otro modelo.
+        view_model._training_controller = None
+        view_model.trainingControllerCambio.emit()
+        qapp.processEvents()
+    finally:
+        qInstallMessageHandler(anterior)
+
+    assert errores == []
+    pantalla = window.findChild(QObject, "trainingScreen")
+    assert pantalla.property("trainingController") is not None

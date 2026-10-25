@@ -113,8 +113,10 @@ class MainViewModel(QObject):
             self._module_evaluation_controller, self
         )
         self._module_laboratory_controller = ModuleLaboratoryController(self)
+        # Un forward sólo se registra; la etapa se completa con los ciclos de
+        # descubrimiento y la pregunta ancla (CourseController.REQUIRED_LAB_CYCLES).
         self._module_laboratory_controller.analysisCompleted.connect(
-            self._course_controller.completeLaboratory
+            self._course_controller.recordLaboratoryAnalysis
         )
         self._module_laboratory_controller.analysisCompleted.connect(
             self._record_module_model_configuration

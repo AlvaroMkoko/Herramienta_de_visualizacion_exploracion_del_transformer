@@ -14,11 +14,46 @@ import hashlib
 import json
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 import uuid
 
 #: Versión del esquema de resultados que produce ``model.evaluacion.metrics``.
 RESULT_SCHEMA_VERSION = 2
+
+
+def primer_intento(resultados: list[dict[str, Any]]) -> dict[str, Any]:
+    """El intento que cuenta para la comparación pre→post: el primero.
+
+    Repetir una evaluación ya hecha (con las claves del post-test a la vista o
+    después de estudiar) no debe reemplazar la medición original. Se ordena por
+    ``completed_at`` porque al docente los resultados le llegan por red y por
+    archivo, no necesariamente en el orden en que se resolvieron; si alguno no
+    trae fecha, vale el orden en que se guardaron.
+    """
+    if not resultados:
+        return {}
+    fechas = [str(item.get("completed_at", "") or "") for item in resultados]
+    if all(fechas):
+        indice = min(range(len(resultados)), key=lambda i: (fechas[i], i))
+        return resultados[indice]
+    return resultados[0]
+
+
+def primer_intento_vigente(
+    resultados: list[dict[str, Any]],
+    version: int,
+    version_de: Callable[[dict[str, Any]], int],
+) -> dict[str, Any]:
+    """Primer intento del instrumento vigente; si no hay ninguno, el primero.
+
+    Un intento con otra versión del instrumento no se compara con los de la
+    vigente (son reactivos distintos). Elegirlo como «primero» sólo porque es
+    más antiguo dejaría inválido el par pre/post para siempre, o lo mezclaría
+    donde no se revisa la versión. Si no hay intentos de la vigente se devuelve
+    el primero que haya, para mostrarlo; quien compare debe revisar la versión.
+    """
+    vigentes = [item for item in resultados if version_de(item) == int(version)]
+    return primer_intento(vigentes) or primer_intento(resultados)
 
 
 class ResultsRepository:
@@ -222,6 +257,15 @@ class ResultsRepository:
             ):
                 return deepcopy(result)
         return {}
+
+    def first(
+        self,
+        assessment_type: str,
+        student_id: str | None = None,
+        module_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Primer intento (ver :func:`primer_intento`); copia, como ``latest``."""
+        return primer_intento(self.get_history(assessment_type, student_id, module_id))
 
     @property
     def archived_count(self) -> int:

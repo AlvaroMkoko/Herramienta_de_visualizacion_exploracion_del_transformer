@@ -486,3 +486,47 @@ class TestIndicadorGuardado:
         finally:
             permitir_fin.set()
             controlador.cerrar()
+
+
+# ---------------------------------------------------------------------------
+# Cierre con un entrenamiento vivo (CU04)
+# ---------------------------------------------------------------------------
+
+def test_cerrar_con_entrenamiento_en_pausa_no_deja_traza_ni_avisa_a_la_vista(
+    qtbot, modelo, config
+):
+    """Al cerrar la app, ``cerrar()`` suelta el modelo antes de que llegue la
+    señal de cancelación del hilo; el manejador no debe tocar lo ya soltado ni
+    emitir hacia una vista que se está retirando."""
+    controlador = TrainingController(modelo)
+    avisos: list[str] = []
+    controlador.entrenamiento_cancelado.connect(lambda _: avisos.append("cancelado"))
+    controlador.estaEntrenandoCambio.connect(lambda: avisos.append("estado"))
+    proveedor = _crear_proveedor_batches(config, cantidad_batches=50)
+    with qtbot.waitSignal(controlador.paso_entrenamiento, timeout=2000):
+        controlador.iniciar_entrenamiento(proveedor, num_epocas=1, velocidad_inicial=0.08)
+    controlador.pausar()
+    qtbot.waitUntil(lambda: controlador.esta_pausado, timeout=1000)
+    avisos.clear()
+
+    # pytest-qt convierte en fallo una excepción lanzada dentro del slot.
+    with qtbot.waitSignal(controlador._gestor.cancelado, timeout=3000):
+        controlador.cerrar()
+
+    assert controlador.modelo is None
+    assert avisos == []
+
+
+@pytest.mark.parametrize("manejador", ["_al_completar", "_al_error"])
+def test_fin_del_hilo_tras_cerrar_se_ignora(qtbot, modelo, manejador):
+    controlador = TrainingController(modelo)
+    avisos: list[str] = []
+    controlador.estaEntrenandoCambio.connect(lambda: avisos.append("estado"))
+    controlador.entrenamiento_completo.connect(lambda _: avisos.append("completo"))
+    controlador.error.connect(lambda _: avisos.append("error"))
+    controlador.cerrar()
+
+    argumento = {} if manejador == "_al_completar" else "fallo tardío"
+    getattr(controlador, manejador)(argumento)
+
+    assert avisos == []

@@ -243,3 +243,92 @@ def test_borrar_el_progreso_persiste_el_borrado(tmp_path):
     assert nuevo.pasosCompletados == 0
     assert nuevo.laboratoriosAbiertos == []
     assert nuevo.seguimientoVisitado is False
+
+
+# ---------------------------------------------------------------------------
+# Ruta general: la misma regla que el curso por módulos
+# ---------------------------------------------------------------------------
+
+def test_el_pretest_general_se_cierra_al_entrar_al_recorrido(tmp_path):
+    learning, evaluation, progress = crear_controladores(tmp_path)
+    guardar_resultado(evaluation, "pre")
+    assert progress.etapaDisponible(1) is True  # aún se puede repetir
+
+    learning.markTourEntered()
+
+    assert progress.etapaDisponible(1) is False
+    assert "recorrido guiado" in progress.motivoBloqueo(1)
+    assert progress.etapaDisponible(2) is True
+    # La marca persiste y la borra el reinicio.
+    settings = QSettings(str(tmp_path / "progreso.ini"), QSettings.IniFormat)
+    assert LearningController(settings=settings).tourEntered is True
+    progress.borrarTodoElProgreso()
+    assert learning.tourEntered is False and progress.etapaDisponible(1) is True
+
+
+def test_sin_pretest_ni_ruta_estricta_no_se_cierra(tmp_path):
+    learning, evaluation, progress = crear_controladores(tmp_path)
+    learning.markTourEntered()
+    assert progress.etapaDisponible(1) is True  # no hay pre-test que proteger
+
+    guardar_resultado(evaluation, "pre")
+    progress.establecerRutaEstricta(False)  # demostraciones
+    assert progress.etapaDisponible(1) is True
+
+
+def test_repetir_en_la_ruta_general_respeta_la_guarda(tmp_path):
+    learning, evaluation, progress = crear_controladores(tmp_path)
+    guardar_resultado(evaluation, "pre")
+    learning.markTourEntered()
+    errores: list[str] = []
+    evaluation.error.connect(errores.append)
+
+    evaluation.startEvaluation("pre")
+    evaluation.startEvaluation("post")  # faltan los laboratorios
+
+    assert evaluation.isActive is False
+    assert "recorrido guiado" in errores[0] and "laboratorios" in errores[1]
+    assert len(evaluation._repository.get_history("pre")) == 1
+
+
+def test_la_ruta_general_cuenta_el_primer_intento(tmp_path):
+    _, evaluation, _ = crear_controladores(tmp_path)
+    for porcentaje in (30.0, 90.0):
+        evaluation._repository.save_result(
+            {"assessment_type": "pre", "percentage": porcentaje, "dimensions": []}
+        )
+    evaluation.prepareEvaluation("pre")
+
+    assert evaluation.preResult["percentage"] == 30.0
+    assert evaluation.previousResult["percentage"] == 90.0  # «Último resultado»
+    assert evaluation.attemptCount == 2
+
+
+def test_reiniciar_el_recorrido_no_reabre_el_pretest(tmp_path):
+    learning, evaluation, progress = crear_controladores(tmp_path)
+    guardar_resultado(evaluation, "pre")
+    learning.markUnitCompleted(learning._VALID_UNIT_IDS[0])
+    assert progress.etapaDisponible(1) is False
+
+    learning.restartTour()
+
+    assert learning.completedUnitsCount == 0
+    assert progress.etapaDisponible(1) is False  # sigue cerrado
+
+
+def test_la_ruta_general_ordena_los_intentos_por_fecha(tmp_path):
+    """Al docente los resultados le llegan desordenados: cuenta el más antiguo."""
+    _, evaluation, _ = crear_controladores(tmp_path)
+    version = evaluation.instrumentVersion
+    for porcentaje, fecha in ((90.0, "2026-10-07T11:00:00+00:00"), (30.0, "2026-10-07T10:00:00+00:00")):
+        evaluation._repository.save_result(
+            {
+                "assessment_type": "pre",
+                "instrument_version": version,
+                "percentage": porcentaje,
+                "completed_at": fecha,
+                "dimensions": [],
+            }
+        )
+
+    assert evaluation.preResult["percentage"] == 30.0

@@ -408,7 +408,30 @@ def test_un_resultado_sin_version_cuenta_como_v2(controller):
 
     guardar(controller, "post", 3, 95.0)
 
+    # El post del instrumento vigente (v3) es el que cuenta, y no tiene pre v3.
     assert controller.improvement["motivo"] == "instrumentos_distintos"
+
+
+def test_un_post_repetido_de_la_misma_version_no_reemplaza_al_primero(controller):
+    version = controller.instrumentVersion
+    guardar(controller, "pre", version, 40.0)
+    guardar(controller, "post", version, 70.0)
+    guardar(controller, "post", version, 100.0)  # repetido, p. ej. tras ver claves
+
+    assert controller.postResult["percentage"] == 70.0
+    assert controller.improvement["disponible"] is True
+
+
+def test_el_primer_intento_es_el_de_la_version_vigente(controller):
+    """Un pre de otra versión, aunque sea más antiguo, no le quita su par al
+    pre del instrumento vigente."""
+    version = controller.instrumentVersion
+    guardar(controller, "pre", version - 1, 10.0)
+    guardar(controller, "pre", version, 40.0)
+    guardar(controller, "post", version, 70.0)
+
+    assert controller.preResult["percentage"] == 40.0
+    assert controller.improvement["disponible"] is True
 
 
 def test_una_version_corrupta_no_rompe_la_comparacion(controller):

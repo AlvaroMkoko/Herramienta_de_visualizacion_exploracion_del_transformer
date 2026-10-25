@@ -19,15 +19,51 @@ import torch.nn.functional as F
 from .config import ConfiguracionTransformer
 
 
+def _calcular_atencion_escalada(
+    q: torch.Tensor,
+    k: torch.Tensor,
+    v: torch.Tensor,
+    mascara: torch.Tensor | None = None,
+    dropout: nn.Dropout | None = None,
+) -> tuple[torch.Tensor, torch.Tensor, dict[str, torch.Tensor | None]]:
+    """Calcula atención y conserva la traza usada por la visualización."""
+    dimension_cabeza = q.size(-1)
+
+    # (B, num_cabezas, T_q, T_k)
+    scores_crudos = (q @ k.transpose(-2, -1)) / math.sqrt(dimension_cabeza)
+    scores = scores_crudos
+
+    if mascara is not None:
+        scores = scores.masked_fill(mascara == False, float("-inf"))  # noqa: E712
+
+    # Conservamos por separado la distribución que sale de Softmax y la
+    # versión a la que se aplica dropout. La primera es la que una persona
+    # debe interpretar como "pesos de atención" (cada fila suma uno); la
+    # segunda es la que realmente participa en el forward de entrenamiento.
+    # Mezclarlas haría que la visualización mostrara filas con suma distinta
+    # de uno cuando dropout está activo.
+    pesos_atencion = F.softmax(scores, dim=-1)
+    pesos_aplicados = dropout(pesos_atencion) if dropout is not None else pesos_atencion
+
+    salida = pesos_aplicados @ v
+    traza = {
+        "scores_crudos": scores_crudos.detach(),
+        "scores_enmascarados": scores.detach(),
+        "mascara": mascara.detach() if mascara is not None else None,
+        "pesos_softmax": pesos_atencion.detach(),
+        "pesos_aplicados": pesos_aplicados.detach(),
+    }
+    return salida, pesos_atencion, traza
+
+
 def atencion_escalada(
     q: torch.Tensor,
     k: torch.Tensor,
     v: torch.Tensor,
     mascara: torch.Tensor | None = None,
     dropout: nn.Dropout | None = None,
-    devolver_traza: bool = False,
-) -> tuple[torch.Tensor, torch.Tensor] | tuple[torch.Tensor, torch.Tensor, dict]:
-    """Scaled Dot-Product Attention.
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Scaled Dot-Product Attention sin instrumentación.
 
     Attention(Q, K, V) = softmax(Q·K^T / sqrt(d_k)) · V
 
@@ -52,34 +88,21 @@ def atencion_escalada(
     T_k en cross-attention (Q viene del decoder con longitud T_tgt, K/V
     vienen del encoder con longitud T_src).
     """
-    dimension_cabeza = q.size(-1)
-
-    # (B, num_cabezas, T_q, T_k)
-    scores_crudos = (q @ k.transpose(-2, -1)) / math.sqrt(dimension_cabeza)
-    scores = scores_crudos
-
-    if mascara is not None:
-        scores = scores.masked_fill(mascara == False, float("-inf"))  # noqa: E712
-
-    # Conservamos por separado la distribucion que sale de Softmax y la
-    # version a la que se aplica dropout. La primera es la que una persona
-    # debe interpretar como "pesos de atencion" (cada fila suma uno); la
-    # segunda es la que realmente participa en el forward de entrenamiento.
-    # Mezclarlas haria que la visualizacion mostrara filas con suma distinta
-    # de uno cuando dropout esta activo.
-    pesos_atencion = F.softmax(scores, dim=-1)
-    pesos_aplicados = dropout(pesos_atencion) if dropout is not None else pesos_atencion
-
-    salida = pesos_aplicados @ v
-    if devolver_traza:
-        return salida, pesos_atencion, {
-            "scores_crudos": scores_crudos.detach(),
-            "scores_enmascarados": scores.detach(),
-            "mascara": mascara.detach() if mascara is not None else None,
-            "pesos_softmax": pesos_atencion.detach(),
-            "pesos_aplicados": pesos_aplicados.detach(),
-        }
+    salida, pesos_atencion, _traza = _calcular_atencion_escalada(
+        q, k, v, mascara=mascara, dropout=dropout
+    )
     return salida, pesos_atencion
+
+
+def atencion_escalada_con_traza(
+    q: torch.Tensor,
+    k: torch.Tensor,
+    v: torch.Tensor,
+    mascara: torch.Tensor | None = None,
+    dropout: nn.Dropout | None = None,
+) -> tuple[torch.Tensor, torch.Tensor, dict[str, torch.Tensor | None]]:
+    """Scaled Dot-Product Attention con instrumentación para la interfaz."""
+    return _calcular_atencion_escalada(q, k, v, mascara=mascara, dropout=dropout)
 
 
 class AtencionMultiCabeza(nn.Module):
@@ -152,13 +175,12 @@ class AtencionMultiCabeza(nn.Module):
         k = self._separar_cabezas(self.proyeccion_k(x_clave_valor))
         v = self._separar_cabezas(self.proyeccion_v(x_clave_valor))
 
-        salida, pesos_atencion, traza = atencion_escalada(
+        salida, pesos_atencion, traza = atencion_escalada_con_traza(
             q,
             k,
             v,
             mascara=mascara,
             dropout=self.dropout_atencion,
-            devolver_traza=True,
         )
         self.ultimos_pesos_atencion = pesos_atencion.detach()
 

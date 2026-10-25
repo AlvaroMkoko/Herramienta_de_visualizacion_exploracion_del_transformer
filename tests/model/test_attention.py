@@ -16,7 +16,11 @@ Cubren:
 import pytest
 import torch
 
-from model.motor_llm.atencion import AtencionMultiCabeza, atencion_escalada
+from model.motor_llm.atencion import (
+    AtencionMultiCabeza,
+    atencion_escalada,
+    atencion_escalada_con_traza,
+)
 from model.motor_llm.config import ConfiguracionTransformer
 from model.motor_llm.mascara import crear_mascara_causal, crear_mascara_relleno
 
@@ -104,9 +108,7 @@ class TestAtencionEscalada:
         v = torch.randn(batch_size, config.num_cabezas, t, config.dimension_cabeza)
         dropout = torch.nn.Dropout(0.5)
 
-        _, pesos, traza = atencion_escalada(
-            q, k, v, dropout=dropout, devolver_traza=True
-        )
+        _, pesos, traza = atencion_escalada_con_traza(q, k, v, dropout=dropout)
 
         assert torch.allclose(
             pesos.sum(dim=-1), torch.ones_like(pesos.sum(dim=-1)), atol=1e-6

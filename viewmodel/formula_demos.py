@@ -354,7 +354,7 @@ def _map(title, caption, input_label, output_label, operator, operand, inputs, o
 def _layer_norm(title, caption, norm: torch.nn.LayerNorm, a_label, b_label, a, b, x, out):
     values = _flat(x)
     mean = float(values.mean().item())
-    variance = float(values.var(unbiased=False).item())
+    variance = float(torch.var(values, dim=0, correction=0).item())
     std = math.sqrt(variance + float(norm.eps))
     normalized = (values - mean) / std
     gamma = _flat(norm.weight)
@@ -743,8 +743,12 @@ class FormulaDemoBuilder:
             if self.training:
                 probability = float(self.config.dropout)
                 flags = [
-                    bool(out == 0.0 and inp != 0.0)
-                    for inp, out in zip(_flat(summed)[:VISIBLE].tolist(), _flat(dropped)[:VISIBLE].tolist())
+                    math.isclose(out, 0.0, rel_tol=0.0, abs_tol=1e-12)
+                    and not math.isclose(inp, 0.0, rel_tol=0.0, abs_tol=1e-12)
+                    for inp, out in zip(
+                        _flat(summed)[:VISIBLE].tolist(),
+                        _flat(dropped)[:VISIBLE].tolist(),
+                    )
                 ]
                 factor = 1.0 / (1.0 - probability) if probability < 1 else 0.0
                 return _map(

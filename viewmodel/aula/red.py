@@ -67,7 +67,7 @@ def destinos_broadcast() -> list[str]:
 def separar_direccion(texto: str, puerto_por_defecto: int) -> tuple[str, int]:
     """``"192.168.1.5:47801"`` → ``("192.168.1.5", 47801)``. Devuelve
     ``("", 0)`` si no es una dirección IPv4 válida."""
-    limpio = str(texto or "").strip().replace("ws://", "").rstrip("/")
+    limpio = str(texto or "").strip().removeprefix("wss://").removeprefix("ws://").rstrip("/")
     host, _, puerto = limpio.partition(":")
     direccion = QHostAddress(host)
     if direccion.isNull() or direccion.protocol() != QAbstractSocket.NetworkLayerProtocol.IPv4Protocol:

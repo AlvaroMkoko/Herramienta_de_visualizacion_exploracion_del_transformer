@@ -9,8 +9,11 @@ vuelva a quedar sin ancho o fuera de su viewport.
 
 from __future__ import annotations
 
+from difflib import SequenceMatcher
 import os
 from pathlib import Path
+import re
+import unicodedata
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("QSG_RHI_BACKEND", "software")
@@ -18,17 +21,30 @@ os.environ.setdefault("QT_QUICK_CONTROLS_STYLE", "Basic")
 
 import pytest
 from PySide6.QtCore import QObject, QPointF, QRectF, QSizeF, QUrl, qInstallMessageHandler
-from PySide6.QtQml import QQmlComponent, QQmlEngine
+from PySide6.QtQml import QJSValue, QQmlComponent, QQmlEngine
 from PySide6.QtQuick import QQuickItem
 
-from model.aprendizaje import ModuleProgressRepository
+from model.aprendizaje import ModuleProgressRepository, ModuleQuestionBank
 from model.motor_llm.config import ConfiguracionTransformer
 from model.motor_llm.transformer import Transformer
+from viewmodel.course_controller import CourseController
 from viewmodel.main_viewmodel import MainViewModel
 from viewmodel.module_laboratory_controller import _module_steps
 
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def _qml_value(value):
+    """Normaliza objetos JavaScript que PySide convierte de forma contextual."""
+
+    return value.toVariant() if isinstance(value, QJSValue) else value
+
+
+def _comparable_question(text: str) -> str:
+    text = unicodedata.normalize("NFKD", text.lower())
+    text = text.encode("ascii", "ignore").decode("ascii")
+    return " ".join(re.findall(r"[a-z0-9]+", text))
 
 HOST = b"""\
 import QtQuick
@@ -556,7 +572,18 @@ def test_rascacielos_reserva_espacio_para_graficas_y_muestra_tres_pisos(qapp):
     engine.deleteLater()
 
 
-def test_pantalla_especializada_reordena_paneles_sin_encimarlos(qapp, tmp_path):
+def _side_by_side(left: QQuickItem, right: QQuickItem, ancestor: QQuickItem) -> bool:
+    left_box = _rect_in(left, ancestor)
+    return left_box.width() > 0 and _rect_in(right, ancestor).left() >= left_box.right() - 1
+
+
+def test_pantalla_especializada_reordena_paneles_sin_encimarlos(
+    qapp, qtbot, tmp_path, monkeypatch
+):
+    # Al final se auditan los retos de los ocho módulos, y seleccionar uno
+    # cerrado no hace nada: el modo revisión existe justo para esta revisión de
+    # contenido. Los prerrequisitos reales se prueban en test_module_course.
+    monkeypatch.setattr(CourseController, "REVIEW_MODE_UNLOCK_ALL", True)
     view_model = MainViewModel()
     # Aísla la persistencia: explorar el laboratorio emite señales reales de
     # progreso y una prueba visual nunca debe cambiar la sesión del usuario.
@@ -643,6 +670,25 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(qapp, tmp_path):
     guide_technical_details = window.findChild(
         QObject, "moduleLaboratoryGuideTechnicalDetails"
     )
+    discovery_cycle = window.findChild(QObject, "laboratoryDiscoveryCycle")
+    discovery_button = window.findChild(
+        QObject, "moduleLaboratoryDiscoveryButton"
+    )
+    confirm_prediction = window.findChild(
+        QObject, "laboratoryDiscoveryConfirmPrediction"
+    )
+    run_experiment = window.findChild(
+        QObject, "laboratoryDiscoveryRunExperiment"
+    )
+    confirm_observation = window.findChild(
+        QObject, "laboratoryDiscoveryConfirmObservation"
+    )
+    check_explanation = window.findChild(
+        QObject, "laboratoryDiscoveryCheckExplanation"
+    )
+    show_explanation = window.findChild(
+        QObject, "laboratoryDiscoveryShowExplanation"
+    )
     progress = window.findChild(QObject, "moduleLaboratoryProgress")
     overview_map = window.findChild(QObject, "moduleLaboratoryOverviewMap")
     restart_steps = window.findChild(QObject, "moduleLaboratoryRestartSteps")
@@ -682,6 +728,13 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(qapp, tmp_path):
             guide_input,
             guide_details_toggle,
             guide_technical_details,
+            discovery_cycle,
+            discovery_button,
+            confirm_prediction,
+            run_experiment,
+            confirm_observation,
+            check_explanation,
+            show_explanation,
             progress,
             overview_map,
             restart_steps,
@@ -712,7 +765,7 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(qapp, tmp_path):
     # La vista abre en nivel Esencial y muestra una sola fuente de atención.
     assert screen.property("learningLevel") == "essential"
     assert bool(mode_summary.property("truncated")) is False
-    assert int(workspace_tabs.property("currentIndex")) == 1
+    assert int(workspace_tabs.property("currentIndex")) == 2
     assert bool(step_pane.property("visible")) is False
     assert bool(step_list.property("visible")) is False
     assert bool(advanced_controls.property("visible")) is False
@@ -720,9 +773,47 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(qapp, tmp_path):
     assert 0 < float(progress.property("value")) <= 1
     assert screen.property("guideDetached") is False
     assert guide.property("visible") is False
+    assert discovery_cycle.property("visible") is True
+    assert int(screen.property("discoveryStage")) == 0
 
-    screen.setProperty("workspaceSection", 2)
+    # El ciclo exige predecir, ejecutar un contrafactual, observar, explicar y
+    # recibir feedback antes de revelar la explicación completa.
+    screen.setProperty(
+        "discoveryPrediction", int(discovery_cycle.property("correctPrediction"))
+    )
+    confirm_prediction.clicked.emit()
     qapp.processEvents()
+    assert int(screen.property("discoveryStage")) == 1
+    run_experiment.clicked.emit()
+    for _ in range(5):
+        qapp.processEvents()
+    assert int(screen.property("discoveryStage")) == 2
+    assert int(workspace_tabs.property("currentIndex")) == 1
+    discovery_button.clicked.emit()
+    qapp.processEvents()
+    assert int(workspace_tabs.property("currentIndex")) == 2
+    confirm_observation.clicked.emit()
+    qapp.processEvents()
+    assert int(screen.property("discoveryStage")) == 3
+    correct_explanation = int(discovery_cycle.property("correctExplanation"))
+    wrong_explanation = (correct_explanation + 1) % len(
+        _qml_value(screen.property("explanationBundle"))["options"]
+    )
+    screen.setProperty("discoveryExplanation", wrong_explanation)
+    check_explanation.clicked.emit()
+    qapp.processEvents()
+    assert int(screen.property("discoveryStage")) == 3
+    assert str(screen.property("discoveryHint")).strip()
+    screen.setProperty(
+        "discoveryExplanation", correct_explanation
+    )
+    check_explanation.clicked.emit()
+    qapp.processEvents()
+    assert int(screen.property("discoveryStage")) == 4
+    show_explanation.clicked.emit()
+    qapp.processEvents()
+    assert int(screen.property("discoveryStage")) == 5
+    assert discovery_cycle.property("visible") is False
     assert bool(guide.property("visible")) is True
     assert bool(guide_input.property("visible")) is True
     assert bool(guide_context.property("visible")) is False
@@ -744,7 +835,9 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(qapp, tmp_path):
 
     # Avanzado recupera la ventana separada y permite revelar los datos.
     screen.setProperty("learningLevel", "advanced")
-    qapp.processEvents()
+    # El GridLayout pasa a dos columnas en su siguiente polish, no al instante:
+    # medir antes daba el ancho de una sola columna y la prueba fallaba a ratos.
+    qtbot.waitUntil(lambda: _side_by_side(step_pane, visual_pane, workspace), timeout=3000)
     initial_visual_width = visual_pane.width()
     assert bool(step_pane.property("visible")) is True
     assert bool(step_list.property("visible")) is True
@@ -760,10 +853,19 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(qapp, tmp_path):
     assert bool(guide_technical_details.property("visible")) is True
     screen.setProperty("workspaceSection", 0)
     screen.setProperty("guideDetached", True)
-    for _ in range(4):
-        qapp.processEvents()
-    assert detached_window.property("visible") is True
-    assert detached_guide.property("visible") is True
+    qtbot.waitUntil(
+        lambda: detached_window.property("visible") is True
+        and detached_guide.property("visible") is True,
+        timeout=3000,
+    )
+    # Separar la guía no debe cambiar el reparto. Se fuerza el polish pendiente
+    # para no comparar contra un ancho que el layout aún no recalculó.
+    # Limitación aceptada: solo alcanza este GridLayout, no el layout padre. Si
+    # separar la guía llegara a cambiar el ancho del padre, el cambio podría
+    # aterrizar después de la aserción. Riesgo bajo: la guía separada es otra
+    # ventana y no ocupa espacio en esta página.
+    workspace.ensurePolished()
+    assert _side_by_side(step_pane, visual_pane, workspace)
     assert abs(visual_pane.width() - initial_visual_width) <= 1
 
     # A 1280 px, los pasos se colocan arriba y la escena conserva todo el ancho.
@@ -982,6 +1084,77 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(qapp, tmp_path):
             assert "cabeza 3" in title
         actual = tuple(bool(control.property("visible")) for control in controls)
         assert actual == expected, (module_id, step_id, actual)
+
+    # Auditoría pedagógica completa: cada operación de los ocho módulos y de
+    # ambos modos recibe una predicción válida, un experimento concreto y una
+    # comprobación cuya respuesta correcta es la explicación de ese paso.
+    audited = 0
+    audited_question_ids = {}
+    for module_id in SPECIALIZATIONS:
+        view_model._course_controller.selectModule(module_id)
+        screen.setProperty("moduleId", module_id)
+        screen.setProperty("learningLevel", "advanced")
+        question_bank = ModuleQuestionBank(module_id=module_id)
+        assessment_prompts = [
+            _comparable_question(question["prompt"])
+            for assessment in ("pre", "post")
+            for question in question_bank.all_questions(assessment)
+        ]
+        for mode in ("inference", "training"):
+            screen.setProperty("mode", mode)
+            view_model.moduleLaboratoryController.explore(
+                module_id, "texto", mode, 1, 2, 1, 0.8, 5, 0.9, True
+            )
+            qapp.processEvents()
+            result_steps = view_model.moduleLaboratoryController.result["steps"]
+            for index, step in enumerate(result_steps):
+                screen.setProperty("currentStepIndex", index)
+                qapp.processEvents()
+                challenge = _qml_value(screen.property("discoveryChallenge"))
+                prediction = _qml_value(screen.property("predictionBundle"))
+                explanation = _qml_value(screen.property("explanationBundle"))
+                experiment = _qml_value(screen.property("experimentDescriptor"))
+                context = (module_id, mode, step["id"])
+                question_id = str(challenge.get("id", "")).strip()
+                question_options = [
+                    str(option).strip() for option in challenge.get("options", [])
+                ]
+                assert question_id, context
+                assessment_prefix = module_id.replace("module_", "m") + "_a"
+                assert not question_id.startswith(assessment_prefix), context
+                challenge_prompt = str(challenge.get("prompt", "")).strip()
+                assert challenge_prompt, context
+                assert challenge_prompt.endswith("?") and "¿" in challenge_prompt, context
+                normalized_prompt = _comparable_question(challenge_prompt)
+                assert max(
+                    SequenceMatcher(None, normalized_prompt, formal_prompt).ratio()
+                    for formal_prompt in assessment_prompts
+                ) < 0.60, context
+                assert str(challenge.get("explanation", "")).strip(), context
+                assert len(question_options) >= 3, context
+                assert all(question_options), context
+                assert len(set(question_options)) == len(question_options), context
+                assert len(prediction["options"]) >= 3
+                assert 0 <= int(prediction["correct"]) < len(prediction["options"])
+                assert str(experiment.get("label", "")).strip()
+                assert str(experiment.get("instruction", "")).strip()
+                correct = int(explanation["correct"])
+                assert 0 <= correct < len(explanation["options"])
+                assert explanation["options"][correct] == step["explanation"]
+                audited_question_ids[context] = question_id
+                audited += 1
+    assert audited >= 120
+    assert audited_question_ids[("module_1", "inference", "batch")] == "lab_m1_batch_inference"
+    assert audited_question_ids[("module_1", "training", "batch")] == "lab_m1_batch_training"
+    assert audited_question_ids[("module_2", "inference", "dropout")] == "lab_m2_dropout_inference"
+    assert audited_question_ids[("module_2", "training", "dropout")] == "m2_l8"
+    assert audited_question_ids[("module_3", "inference", "mask")] == "m3_l7"
+    assert audited_question_ids[("module_4", "inference", "contexts")] == "lab_m4_contexts"
+    assert audited_question_ids[("module_5", "inference", "ffn_project")] == "lab_m5_ffn_project"
+    assert audited_question_ids[("module_6", "inference", "decoder_prefix")] == "lab_m6_prefix_inference"
+    assert audited_question_ids[("module_6", "training", "decoder_prefix")] == "m6_l7"
+    assert audited_question_ids[("module_7", "inference", "feedback")] == "m7_l7"
+    assert audited_question_ids[("module_8", "training", "full_loss")] == "lab_m8_loss"
 
     window.deleteLater()
     engine.deleteLater()

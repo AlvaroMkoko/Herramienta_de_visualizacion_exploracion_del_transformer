@@ -30,8 +30,8 @@ def test_api_sincrona_se_conserva_y_acepta_file_url(
     controlador = _crear_controlador(tmp_path, monkeypatch)
     ruta = tmp_path / "ejemplo con espacios.jsonl"
     ruta.write_text(
-        '{"pregunta": "hola mundo", "respuesta": "hola", "categoria": "demo"}\n'
-        '{"pregunta": "otra pregunta", "respuesta": "otra respuesta"}\n',
+        '{"instruction": "hola mundo", "response": "hola", "categoria": "demo"}\n'
+        '{"instruction": "otra pregunta", "response": "otra respuesta"}\n',
         encoding="utf8",
     )
 
@@ -42,7 +42,7 @@ def test_api_sincrona_se_conserva_y_acepta_file_url(
     assert dataset["tokens"] == 8
     assert dataset["categorias"] == {"demo": 1}
     assert controlador.obtenerRegistros(dataset["id"], 1) == [
-        {"pregunta": "hola mundo", "respuesta": "hola", "categoria": "demo"}
+        {"instruction": "hola mundo", "response": "hola", "categoria": "demo"}
     ]
     assert json.loads(controlador.DATASET_FILE.read_text(encoding="utf8"))[0][
         "checksum"
@@ -58,7 +58,7 @@ def test_agregar_async_reporta_fases_y_hace_commit_en_hilo_del_controlador(
     ruta = tmp_path / "datos.jsonl"
     ruta.write_text(
         "".join(
-            json.dumps({"texto": f"registro numero {indice}"}) + "\n"
+            json.dumps({"instruction": f"registro numero {indice}", "response": "ok"}) + "\n"
             for indice in range(20)
         ),
         encoding="utf8",
@@ -139,7 +139,7 @@ def test_vista_previa_async_entrega_registros_y_reporta_error(
 ) -> None:
     controlador = _crear_controlador(tmp_path, monkeypatch)
     ruta = tmp_path / "tabla.csv"
-    ruta.write_text("entrada,salida\nhola,mundo\nuno,dos\ntres,cuatro\n", encoding="utf8")
+    ruta.write_text("instruction,response\nhola,mundo\nuno,dos\ntres,cuatro\n", encoding="utf8")
     dataset = controlador.agregarDataset(str(ruta))
 
     with qtbot.waitSignal(controlador.resultado, timeout=3000) as final:
@@ -150,8 +150,8 @@ def test_vista_previa_async_entrega_registros_y_reporta_error(
         "operacion": "vista_previa",
         "dataset_id": dataset["id"],
         "registros": [
-            {"entrada": "hola", "salida": "mundo"},
-            {"entrada": "uno", "salida": "dos"},
+            {"instruction": "hola", "response": "mundo"},
+            {"instruction": "uno", "response": "dos"},
         ],
     }
     assert controlador.ocupado is False
@@ -333,11 +333,6 @@ def test_importacion_estructurada_publica_metadatos_de_compatibilidad(
     ("nombre_archivo", "contenido", "mensaje_esperado"),
     [
         (
-            "sin_respuesta.jsonl",
-            '{"instruction": "Entrada", "context": ""}\n',
-            "Faltan los campos obligatorios: response",
-        ),
-        (
             "respuesta_vacia.json",
             '[{"instruction": "Entrada", "response": "   "}]',
             "1 registro(s)",
@@ -366,3 +361,51 @@ def test_importacion_estructurada_explica_por_que_no_es_compatible(
     assert dataset["pares_validos"] == 0
     assert dataset["estado"] == "Revisar formato"
     assert mensaje_esperado in dataset["mensaje_compatibilidad"]
+
+
+@pytest.mark.parametrize(
+    ("nombre_archivo", "contenido", "mensaje_esperado"),
+    [
+        ("vacio.jsonl", "", "no contiene registros"),
+        ("vacio.csv", "instruction,context,response\n", "no contiene registros"),
+        ("vacio.txt", "   \n\n", "no contiene texto utilizable"),
+        (
+            "sin_respuesta.jsonl",
+            '{"instruction": "Entrada", "context": ""}\n',
+            "Faltan los campos obligatorios: response",
+        ),
+        (
+            "campos_ajenos.json",
+            '[{"pregunta": "Entrada", "respuesta": "Salida"}]',
+            "Faltan los campos obligatorios: instruction, response",
+        ),
+    ],
+)
+def test_importacion_rechaza_vacio_o_sin_campos_sin_mutar_catalogo(
+    tmp_path: Path,
+    monkeypatch,
+    qtbot,
+    nombre_archivo: str,
+    contenido: str,
+    mensaje_esperado: str,
+) -> None:
+    """CU01 4a: se rechaza con aviso y el catálogo queda como estaba."""
+    controlador = _crear_controlador(tmp_path, monkeypatch)
+    catalogo_antes = controlador.DATASET_FILE.read_bytes()
+    ruta = tmp_path / nombre_archivo
+    ruta.write_text(contenido, encoding="utf8")
+    agregados: list[dict] = []
+    controlador.datasetAgregado.connect(agregados.append)
+
+    with qtbot.waitSignal(controlador.error, timeout=3000) as error:
+        assert controlador.agregarDatasetAsync(str(ruta)) is True
+
+    assert mensaje_esperado in error.args[0]
+    qtbot.waitUntil(lambda: controlador.ocupado is False, timeout=1000)
+    assert agregados == []
+    assert controlador.obtenerDatasets() == []
+    assert controlador.DATASET_FILE.read_bytes() == catalogo_antes
+    # La API síncrona aplica la misma regla.
+    with pytest.raises(ValueError, match=mensaje_esperado):
+        controlador.agregarDataset(str(ruta))
+    assert controlador.obtenerDatasets() == []

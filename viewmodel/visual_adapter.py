@@ -1656,8 +1656,8 @@ def resumir_paso_entrenamiento(
         except (IndexError, RuntimeError, TypeError, ValueError):
             predicciones_top = []
 
-    tokens_origen_unicos = int(torch.unique(tokens_origen).numel())
-    tokens_destino_unicos = int(torch.unique(tokens_destino).numel())
+    tokens_origen_unicos = int(torch.unique(tokens_origen.flatten(), dim=0).numel())
+    tokens_destino_unicos = int(torch.unique(tokens_destino.flatten(), dim=0).numel())
     posicion = modelo.codificacion_posicional.pe[
         :, : max(tokens_origen.size(1), tokens_destino.size(1))
     ]

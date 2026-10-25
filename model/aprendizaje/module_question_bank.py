@@ -29,7 +29,12 @@ class ModuleQuestionBank:
     VALID_ASSESSMENTS = ("pre", "post")
     QUESTIONS_PER_ATTEMPT = 15
     QUESTIONS_PER_LEVEL = 5
-    INSTRUMENT_VERSION = 7
+    # 9: las formas básica e intermedia dejan de intercambiar las mismas
+    # asociaciones conceptuales entre pre y post. El post pregunta por
+    # operaciones y los reactivos de relación usan motivo, salida o cambio en
+    # conjuntos disjuntos de etapas. Los resultados de la versión 8 no son
+    # comparables.
+    VERSION_PREGUNTAS = 9
 
     PEDAGOGICAL_TYPES = (
         "opcion_multiple",
@@ -130,7 +135,7 @@ class ModuleQuestionBank:
 
     @property
     def instrument_version(self) -> int:
-        return self.INSTRUMENT_VERSION
+        return self.VERSION_PREGUNTAS
 
     @property
     def dimensions(self) -> list[dict[str, str]]:
@@ -193,7 +198,12 @@ class ModuleQuestionBank:
                     )
                     question = pool.pop(preferred_index)
                     selected.append(question)
-                    covered_concepts.add(str(question["concept_id"]))
+                    covered_concepts.update(
+                        str(concept_id)
+                        for concept_id in question.get(
+                            "concept_ids", [question["concept_id"]]
+                        )
+                    )
                     covered_formats.add(str(question["pedagogical_type"]))
                 if len(selected) == self.QUESTIONS_PER_LEVEL:
                     break
@@ -209,12 +219,19 @@ class ModuleQuestionBank:
         covered_concepts: set[str],
         covered_formats: set[str],
     ) -> int:
+        def introduces_new_concept(question: dict[str, Any]) -> bool:
+            question_concepts = {
+                str(concept_id)
+                for concept_id in question.get("concept_ids", [question["concept_id"]])
+            }
+            return not question_concepts.issubset(covered_concepts)
+
         preferences = (
             lambda q: (
-                q["concept_id"] not in covered_concepts
+                introduces_new_concept(q)
                 and q["pedagogical_type"] not in covered_formats
             ),
-            lambda q: q["concept_id"] not in covered_concepts,
+            introduces_new_concept,
             lambda q: q["pedagogical_type"] not in covered_formats,
         )
         for predicate in preferences:
@@ -257,6 +274,55 @@ class ModuleQuestionBank:
         public = QuestionBank.public_question(question)
         public.pop("explanation", None)
         return public
+
+    def answer_key(self, assessment_type: str, question_id: str) -> dict[str, Any]:
+        """Respuesta correcta legible y explicación de un reactivo del banco.
+
+        Es para la revisión posterior al post-test. Nunca debe mostrarse tras el
+        pre-test: revelaría la clave de reactivos paralelos antes de la
+        intervención y contaminaría la medición de ganancia.
+        """
+        assessment = self._normalize(assessment_type)
+        question = next(
+            (item for item in self._banks[assessment] if item["id"] == question_id),
+            None,
+        )
+        if question is None:
+            return {}
+        return {
+            "question_id": question_id,
+            "concept_id": question.get("concept_id", ""),
+            "correct_text": self._readable_answer(question),
+            "explanation": str(question.get("explanation", "")),
+        }
+
+    @staticmethod
+    def _readable_answer(question: dict[str, Any]) -> str:
+        options = {
+            str(option["id"]): str(option["text"])
+            for option in question.get("options", []) or []
+        }
+        if question.get("correct_option_id"):
+            return options.get(str(question["correct_option_id"]), "")
+        if question.get("correct_option_ids"):
+            return " · ".join(
+                options.get(str(option_id), "")
+                for option_id in question["correct_option_ids"]
+            )
+        if question.get("respuestas_aceptadas"):
+            return str(question["respuestas_aceptadas"][0])
+        destinations = {
+            str(item["id"]): str(item["texto"])
+            for item in question.get("destinos", []) or []
+        }
+        elements = question.get("elementos") or []
+        if question.get("subtipo") == "ordenar":
+            ordered = sorted(elements, key=lambda item: int(item["correcto"]))
+            return " → ".join(str(item["texto"]) for item in ordered)
+        return " · ".join(
+            f"{item['texto']} → {destinations.get(str(item['correcto']), '')}"
+            for item in elements
+        )
 
     def dimension_name(self, dimension_id: str) -> str:
         return next(
@@ -573,6 +639,30 @@ class ModuleQuestionBank:
         return str(challenge["prompt"])
 
     @staticmethod
+    def _challenge_form(challenge: dict[str, Any], assessment: str) -> dict[str, Any]:
+        """Reto con el enunciado, opciones y clave de la forma pedida.
+
+        Con alineación, el post usa una variante isomorfa: mismo constructo y
+        dificultad, otros números y sin nombrar la operación. Sin ella se
+        conserva el comportamiento anterior (``post_prompt`` sobre las mismas
+        opciones).
+        """
+        variant = challenge.get("post_variant") if assessment == "post" else None
+        if not isinstance(variant, dict):
+            return challenge
+        form = {
+            "id": challenge["id"],
+            "concept_id": challenge["concept_id"],
+            "prompt": variant["prompt"],
+            "options": list(variant["options"]),
+            "correct_index": int(variant["correct_index"]),
+            "explanation": variant.get("explanation", ""),
+        }
+        if variant.get("resource"):
+            form["resource"] = deepcopy(variant["resource"])
+        return form
+
+    @staticmethod
     def _correct_answer(challenge: dict[str, Any]) -> str:
         return str(challenge["options"][int(challenge["correct_index"])])
 
@@ -624,7 +714,11 @@ class ModuleQuestionBank:
         prefix = f"{module['id']}_{assessment}"
         concepts = module["concepts"]
         steps = module["guided_steps"]
-        challenges = module["challenges"]
+        challenges = [
+            self._challenge_form(challenge, assessment)
+            for challenge in module["challenges"]
+        ]
+        transfer_items = module.get("transfer_items") or []
         questions: list[dict[str, Any]] = []
 
         def concept_choice(code: str, index: int) -> dict[str, Any]:
@@ -653,8 +747,39 @@ class ModuleQuestionBank:
                 explanation=concept["description"],
             )
 
+        def operation_choice(code: str, index: int) -> dict[str, Any]:
+            """Evalúa una operación enseñada sin repetir su definición."""
+
+            step = steps[index]
+            correct_operation = str(step["operation"])
+            distractors: list[str] = []
+            for jump in range(1, len(steps)):
+                candidate = str(steps[(index + jump) % len(steps)]["operation"])
+                if candidate != correct_operation and candidate not in distractors:
+                    distractors.append(candidate)
+                if len(distractors) == 3:
+                    break
+            return self._single_choice(
+                prefix,
+                code,
+                step["concept_id"],
+                "Básica",
+                "Comprender",
+                "Reconocimiento de operaciones",
+                f"¿Qué operación se realiza durante «{step['title']}»?",
+                [correct_operation, *distractors],
+                0,
+                explanation=(
+                    f"Durante «{step['title']}» se realiza esta operación: "
+                    f"{correct_operation}."
+                ),
+            )
+
         # ── 8 básicas: recordar sin reducir todo a reconocimiento ─────
-        questions.extend([concept_choice("B1", 0), concept_choice("B2", 4)])
+        if assessment == "pre":
+            questions.extend([concept_choice("B1", 0), concept_choice("B2", 4)])
+        else:
+            questions.extend([operation_choice("B1", 0), operation_choice("B2", 4)])
 
         concept = concepts[1]
         if assessment == "pre":
@@ -745,23 +870,25 @@ class ModuleQuestionBank:
         )
 
         relation_indices = [0, 2, 4, 6] if assessment == "pre" else [1, 3, 5, 7]
-        relation_concepts = [concepts[index] for index in relation_indices]
-        elements, destinations = self._relation_payload(
-            [(item["title"], item["description"]) for item in relation_concepts]
-        )
+        relation_steps = [steps[index] for index in relation_indices]
+        reason_pairs = [(step["title"], step["why"]) for step in relation_steps]
+        elements, destinations = self._relation_payload(reason_pairs)
         questions.append(
             self._assignment_question(
                 prefix,
                 "B7",
-                relation_concepts[0]["id"],
+                relation_steps[0]["concept_id"],
                 "Básica",
                 "Comprender",
-                "Asociación conceptual",
-                "Relaciona cada concepto con la función que cumple en este módulo.",
+                "Justificación de etapas",
+                "Relaciona cada etapa con el motivo por el que se realiza.",
                 elements,
                 destinations,
                 subtype="relacionar",
-                related_concepts=[item["id"] for item in relation_concepts[1:]],
+                related_concepts=[step["concept_id"] for step in relation_steps[1:]],
+                explanation="Relaciones correctas: "
+                + "; ".join(f"«{title}» → {reason}" for title, reason in reason_pairs)
+                + ".",
             )
         )
 
@@ -845,26 +972,28 @@ class ModuleQuestionBank:
             )
         )
 
-        selected_concepts = [
-            concepts[index]
+        change_steps = [
+            steps[index]
             for index in ([1, 3, 5, 7] if assessment == "pre" else [0, 2, 4, 6])
         ]
-        elements, destinations = self._relation_payload(
-            [(item["title"], item["description"]) for item in selected_concepts]
-        )
+        change_pairs = [(step["title"], step["change"]) for step in change_steps]
+        elements, destinations = self._relation_payload(change_pairs)
         questions.append(
             self._assignment_question(
                 prefix,
                 "I4",
-                selected_concepts[0]["id"],
+                change_steps[0]["concept_id"],
                 "Intermedia",
                 "Comprender",
-                "Relación entre componentes",
-                "Relaciona los componentes sin usar su posición como pista.",
+                "Relación etapa–cambio",
+                "Relaciona cada etapa con el cambio observable que produce.",
                 elements,
                 destinations,
                 subtype="relacionar",
-                related_concepts=[item["id"] for item in selected_concepts[1:]],
+                related_concepts=[step["concept_id"] for step in change_steps[1:]],
+                explanation="Relaciones correctas: "
+                + "; ".join(f"«{title}» → {change}" for title, change in change_pairs)
+                + ".",
             )
         )
 
@@ -1057,7 +1186,9 @@ class ModuleQuestionBank:
             )
         )
 
-        related_challenges = challenges[4:8]
+        # Con transferencia propia, A5 usa tres retos y deja el octavo sólo a
+        # A8; antes A5, A6 y A8 repetían los mismos casos en un mismo intento.
+        related_challenges = challenges[4:7] if transfer_items else challenges[4:8]
         elements, destinations = self._relation_payload(
             [
                 (
@@ -1086,52 +1217,89 @@ class ModuleQuestionBank:
             )
         )
 
-        challenge = challenges[4]
-        conclusion_is_correct = (
-            int(module["order"]) + (0 if assessment == "pre" else 1)
-        ) % 2 == 0
-        conclusion = (
-            self._correct_answer(challenge)
-            if conclusion_is_correct
-            else self._wrong_answer(challenge)
-        )
-        questions.append(
-            self._true_false(
-                prefix,
-                "A6",
-                challenge["concept_id"],
-                "Avanzada",
-                "Analizar",
-                "Razonamiento",
-                f"Caso: {self._challenge_prompt(challenge, assessment)}\n"
-                f"Conclusión propuesta: {conclusion}",
-                conclusion_is_correct,
-                explanation=f"La conclusión correcta es {self._correct_answer(challenge)}.",
+        if transfer_items:
+            # Transferencia: situaciones nuevas con el mismo mecanismo. No
+            # comparten caso con ningún otro reactivo del intento ni con los
+            # retos del laboratorio.
+            true_false, short_answer = transfer_items[0], transfer_items[1]
+            form = true_false[assessment]
+            questions.append(
+                self._true_false(
+                    prefix,
+                    "A6",
+                    true_false["concept_id"],
+                    "Avanzada",
+                    "Analizar",
+                    "Transferencia",
+                    str(form["statement"]),
+                    bool(form["correct"]),
+                    explanation=str(form.get("explanation", "")),
+                )
             )
-        )
+            form = short_answer[assessment]
+            questions.append(
+                self._text_question(
+                    prefix,
+                    "A7",
+                    short_answer["concept_id"],
+                    "Avanzada",
+                    "Aplicar",
+                    "Cálculo sin pistas",
+                    "Responde sin opciones: " + str(form["prompt"]),
+                    self._accepted_short_answers(form["answer"]),
+                    pedagogical_type="respuesta_corta",
+                    formato="Respuesta numérica/corta",
+                    placeholder="Escribe una respuesta breve",
+                    explanation=str(form.get("explanation", "")),
+                )
+            )
+        else:
+            challenge = challenges[4]
+            conclusion_is_correct = (
+                int(module["order"]) + (0 if assessment == "pre" else 1)
+            ) % 2 == 0
+            conclusion = (
+                self._correct_answer(challenge)
+                if conclusion_is_correct
+                else self._wrong_answer(challenge)
+            )
+            questions.append(
+                self._true_false(
+                    prefix,
+                    "A6",
+                    challenge["concept_id"],
+                    "Avanzada",
+                    "Analizar",
+                    "Razonamiento",
+                    f"Caso: {self._challenge_prompt(challenge, assessment)}\n"
+                    f"Conclusión propuesta: {conclusion}",
+                    conclusion_is_correct,
+                    explanation=f"La conclusión correcta es {self._correct_answer(challenge)}.",
+                )
+            )
 
-        shortest_index = min(
-            range(1, len(challenges)),
-            key=lambda index: len(self._correct_answer(challenges[index])),
-        )
-        challenge = challenges[shortest_index]
-        questions.append(
-            self._text_question(
-                prefix,
-                "A7",
-                challenge["concept_id"],
-                "Avanzada",
-                "Aplicar",
-                "Cálculo sin pistas",
-                "Responde sin opciones: "
-                + self._challenge_prompt(challenge, assessment),
-                self._accepted_short_answers(self._correct_answer(challenge)),
-                pedagogical_type="respuesta_corta",
-                formato="Respuesta numérica/corta",
-                placeholder="Escribe una respuesta breve",
-                explanation=str(challenge.get("explanation", "")),
+            shortest_index = min(
+                range(1, len(challenges)),
+                key=lambda index: len(self._correct_answer(challenges[index])),
             )
-        )
+            challenge = challenges[shortest_index]
+            questions.append(
+                self._text_question(
+                    prefix,
+                    "A7",
+                    challenge["concept_id"],
+                    "Avanzada",
+                    "Aplicar",
+                    "Cálculo sin pistas",
+                    "Responde sin opciones: "
+                    + self._challenge_prompt(challenge, assessment),
+                    self._accepted_short_answers(self._correct_answer(challenge)),
+                    pedagogical_type="respuesta_corta",
+                    formato="Respuesta numérica/corta",
+                    placeholder="Escribe una respuesta breve",
+                    explanation=str(challenge.get("explanation", "")),
+                )
+            )
 
         challenge = challenges[7]
         questions.append(

@@ -284,4 +284,12 @@ def test_preparar_dataset_predefinido_async(monkeypatch, tmp_path, qtbot):
     with qtbot.waitSignal(view_model.datasetListoParaEntrenar, timeout=10000) as listo:
         view_model.cargarDatasetsParaEntrenarAsync(["PRE-TRADUCCION"])
 
-    assert listo.args == [100]
+    # Contra el archivo real y no contra un literal: ampliar o recortar el
+    # dataset no debe romper una prueba de la preparación.
+    entrada = next(
+        e
+        for e in json.loads((DatasetController.DIR_PREDEFINIDOS / "catalogo.json").read_text(encoding="utf8"))
+        if e["id"] == "PRE-TRADUCCION"
+    )
+    lineas = (DatasetController.DIR_PREDEFINIDOS / entrada["archivo"]).read_text(encoding="utf8").splitlines()
+    assert listo.args == [sum(1 for linea in lineas if linea.strip())]

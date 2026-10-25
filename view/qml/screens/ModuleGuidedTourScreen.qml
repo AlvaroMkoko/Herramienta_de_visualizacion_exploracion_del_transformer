@@ -29,8 +29,24 @@ PagePrincipal {
         ? String(currentTheorySequence[currentIndex])
         : String(currentStep.concept_id || "")
 
+    // Predecir antes de ver: el resultado del paso se revela al intentar su
+    // comprobación, y el paso cuenta como trabajado sólo entonces.
+    property var guidedProgress: ({})
+    property var checkResults: ({})
+    readonly property bool currentHasCheck: root.currentStep.check !== undefined
+    readonly property bool currentAttempted: root.stepAttempted(String(root.currentStep.id || ""))
+    readonly property int maxReachableIndex: root.firstPendingIndex()
+    readonly property var currentConceptDefinition: root.conceptDefinition(
+                                                        String(root.currentStep.concept_id || ""))
+    readonly property bool currentIsFocus: (root.guidedProgress.focus_step_ids || [])
+                                           .indexOf(String(root.currentStep.id || "")) !== -1
+    property string finishMessage: ""
+
     Component.onCompleted: {
         root.courseController.selectModule(root.moduleId)
+        // Entrar cierra el pre-test del módulo (ver CourseController).
+        root.courseController.enterGuidedTour(root.moduleId)
+        root.refreshProgress()
         root.refreshConcept()
     }
 
@@ -48,11 +64,62 @@ PagePrincipal {
         running: root.playing
         repeat: true
         onTriggered: {
-            if (root.currentIndex < root.steps.length - 1)
+            // La reproducción se detiene en cada predicción pendiente: avanzar
+            // sola convertiría el recorrido otra vez en lectura pasiva.
+            if (!root.currentAttempted)
+                root.playing = false
+            else if (root.currentIndex < root.steps.length - 1)
                 root.goToStep(root.currentIndex + 1)
             else
                 root.playing = false
         }
+    }
+
+    function refreshProgress() {
+        root.guidedProgress = root.courseController.guidedProgress(root.moduleId) || ({})
+    }
+
+    function stepAttempted(stepId) {
+        if (stepId.length === 0)
+            return false
+        var step = null
+        for (var index = 0; index < root.steps.length; ++index) {
+            if (String(root.steps[index].id) === stepId)
+                step = root.steps[index]
+        }
+        if (step && step.check === undefined)
+            return true
+        if (root.checkResults[stepId] !== undefined)
+            return true
+        return (root.guidedProgress.attempted || []).indexOf(stepId) !== -1
+    }
+
+    function firstPendingIndex() {
+        for (var index = 0; index < root.steps.length; ++index) {
+            if (!root.stepAttempted(String(root.steps[index].id || "")))
+                return index
+        }
+        return Math.max(0, root.steps.length - 1)
+    }
+
+    function conceptDefinition(conceptId) {
+        var concepts = root.moduleData.concepts || []
+        for (var index = 0; index < concepts.length; ++index) {
+            if (String(concepts[index].id) === conceptId)
+                return concepts[index]
+        }
+        return ({})
+    }
+
+    function submitCheck(optionIndex) {
+        var stepId = String(root.currentStep.id || "")
+        var result = root.courseController.recordGuidedCheck(root.moduleId, stepId, optionIndex)
+        if (!result || result.correct === undefined)
+            return
+        var copy = Object.assign({}, root.checkResults)
+        copy[stepId] = result
+        root.checkResults = copy
+        root.refreshProgress()
     }
 
     function refreshConcept() {
@@ -80,14 +147,21 @@ PagePrincipal {
     function goToStep(index) {
         if (root.steps.length === 0)
             return
-        root.currentIndex = Math.max(0, Math.min(index, root.steps.length - 1))
-        if (root.currentStep.id)
-            root.courseController.completeGuidedStep(root.moduleId, root.currentStep.id)
+        // Hacia atrás siempre se puede; hacia adelante, sólo hasta la primera
+        // predicción sin intentar.
+        root.currentIndex = Math.max(0, Math.min(index, root.maxReachableIndex,
+                                                 root.steps.length - 1))
     }
 
     function finishTour() {
         root.playing = false
-        root.courseController.completeGuidedTour(root.moduleId)
+        if (!root.courseController.completeGuidedTour(root.moduleId)) {
+            var pending = (root.courseController.guidedProgress(root.moduleId).pending || []).length
+            root.finishMessage = "Te faltan " + pending
+                                 + " predicciones por intentar antes de terminar el recorrido."
+            return
+        }
+        root.finishMessage = ""
         root.stackView.pop()
     }
 
@@ -123,6 +197,18 @@ PagePrincipal {
                     color: Style.Theme.texto_primario
                     font.bold: true
                     font.pixelSize: 25 * root.uiScale
+                    elide: Text.ElideRight
+                }
+                Text {
+                    objectName: "moduleGuidedAnchorQuestion"
+                    Layout.fillWidth: true
+                    visible: text.length > 0
+                    text: (root.moduleData.anchor && root.moduleData.anchor.question)
+                          ? "Pregunta del módulo: " + root.moduleData.anchor.question : ""
+                    color: Style.Theme.concepto_texto
+                    font.pixelSize: 11 * root.uiScale
+                    wrapMode: Text.WordWrap
+                    maximumLineCount: 2
                     elide: Text.ElideRight
                 }
             }
@@ -161,19 +247,30 @@ PagePrincipal {
                         id: stepChip
                         required property var modelData
                         required property int index
+                        readonly property bool attempted: root.stepAttempted(
+                                                              String(stepChip.modelData.id || ""))
+                        readonly property bool reachable: stepChip.index <= root.maxReachableIndex
+                        // El pre-test señaló este concepto como débil.
+                        readonly property bool weakConcept: (root.guidedProgress.focus_step_ids || [])
+                                                      .indexOf(String(stepChip.modelData.id || "")) !== -1
+                        objectName: "moduleGuidedStepChip_" + stepChip.index
                         width: 146 * root.uiScale
                         height: 50 * root.uiScale
                         radius: 9 * root.uiScale
+                        opacity: stepChip.reachable ? 1 : 0.45
                         color: index === root.currentIndex ? Style.Theme.acento
-                               : (index < root.currentIndex
+                               : (stepChip.attempted
                                   ? Style.Theme.exito_fondo : Style.Theme.chip_fondo)
+                        border.width: stepChip.weakConcept ? 2 : 1
                         border.color: index === root.currentIndex
-                                      ? Style.Theme.acento_alt : Style.Theme.borde_suave
+                                      ? Style.Theme.acento_alt
+                                      : (stepChip.weakConcept ? Style.Theme.warning : Style.Theme.borde_suave)
 
                         Text {
                             anchors.fill: parent
                             anchors.margins: 7 * root.uiScale
-                            text: (stepChip.index + 1) + ". " + stepChip.modelData.title
+                            text: (stepChip.weakConcept ? "★ " : "")
+                                  + (stepChip.index + 1) + ". " + stepChip.modelData.title
                             color: stepChip.index === root.currentIndex
                                    ? Style.Theme.texto_sobre_color
                                    : Style.Theme.texto_secundario_fuerte
@@ -261,6 +358,54 @@ PagePrincipal {
                                 width: parent.width
                                 spacing: 7 * root.uiScale
 
+                                // Definición oficial del concepto: es la misma
+                                // redacción que usan los reactivos básicos.
+                                Rectangle {
+                                    objectName: "moduleGuidedDefinition"
+                                    Layout.fillWidth: true
+                                    visible: String(root.currentConceptDefinition.description || "").length > 0
+                                    Layout.preferredHeight: definitionText.implicitHeight + 14 * root.uiScale
+                                    radius: 8 * root.uiScale
+                                    color: Style.Theme.concepto_fondo
+                                    Text {
+                                        id: definitionText
+                                        anchors.fill: parent
+                                        anchors.margins: 7 * root.uiScale
+                                        text: "DEFINICIÓN · " + String(root.currentConceptDefinition.title || "")
+                                              + ": " + String(root.currentConceptDefinition.description || "")
+                                        color: Style.Theme.concepto_texto
+                                        font.pixelSize: 10 * root.uiScale
+                                        wrapMode: Text.WordWrap
+                                    }
+                                }
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    visible: root.currentIsFocus
+                                    text: "★ En el pre-test fallaste reactivos de este concepto: tómate tu tiempo en este paso."
+                                    color: Style.Theme.aviso_texto
+                                    font.pixelSize: 10 * root.uiScale
+                                    font.bold: true
+                                    wrapMode: Text.WordWrap
+                                }
+
+                                PredictionCheck {
+                                    id: stepCheck
+                                    objectName: "moduleGuidedCheck"
+                                    Layout.fillWidth: true
+                                    visible: root.currentHasCheck
+                                    sx: root.uiScale
+                                    eyebrow: "PREDICE ANTES DE VER EL RESULTADO"
+                                    check: root.currentStep.check || ({})
+                                    result: root.checkResults[String(root.currentStep.id || "")] || ({})
+                                    onSubmitted: function(optionIndex) { root.submitCheck(optionIndex) }
+                                }
+
+                                Connections {
+                                    target: root
+                                    function onCurrentIndexChanged() { stepCheck.selectedIndex = -1 }
+                                }
+
                                 GridLayout {
                                     Layout.fillWidth: true
                                     columns: 2
@@ -268,11 +413,13 @@ PagePrincipal {
                                     columnSpacing: 7 * root.uiScale
 
                                     Repeater {
+                                        // CAMBIO y RESULTADO se revelan después
+                                        // de predecir; antes darían la respuesta.
                                         model: [
                                             { "label": "ENTRADA", "value": root.currentStep.input || "", "fill": Style.Theme.concepto_fondo, "ink": Style.Theme.concepto_texto },
                                             { "label": "OPERACIÓN", "value": root.currentStep.operation || "", "fill": Style.Theme.formula_fondo, "ink": Style.Theme.formula_texto },
-                                            { "label": "CAMBIO", "value": root.currentStep.change || "", "fill": Style.Theme.ejemplo_fondo, "ink": Style.Theme.ejemplo_texto },
-                                            { "label": "RESULTADO", "value": root.currentStep.output || "", "fill": Style.Theme.proceso_fondo, "ink": Style.Theme.proceso_texto }
+                                            { "label": "CAMBIO", "value": root.currentAttempted ? (root.currentStep.change || "") : "Se revela al comprobar tu predicción", "fill": Style.Theme.ejemplo_fondo, "ink": Style.Theme.ejemplo_texto },
+                                            { "label": "RESULTADO", "value": root.currentAttempted ? (root.currentStep.output || "") : "Se revela al comprobar tu predicción", "fill": Style.Theme.proceso_fondo, "ink": Style.Theme.proceso_texto }
                                         ]
                                         delegate: Rectangle {
                                             id: flowCard
@@ -377,8 +524,11 @@ PagePrincipal {
                 onClicked: { root.playing = false; root.goToStep(0) }
             }
             BotonPrincipal {
+                objectName: "moduleGuidedNextButton"
                 Layout.preferredWidth: 195 * root.uiScale
                 Layout.fillHeight: true
+                enabled: root.currentAttempted
+                opacity: enabled ? 1 : 0.4
                 text: root.currentIndex === root.steps.length - 1
                       ? "Finalizar recorrido" : "Siguiente →"
                 onClicked: {
@@ -388,6 +538,16 @@ PagePrincipal {
                         root.goToStep(root.currentIndex + 1)
                 }
             }
+        }
+
+        Text {
+            objectName: "moduleGuidedStatus"
+            Layout.alignment: Qt.AlignHCenter
+            text: root.finishMessage.length > 0 ? root.finishMessage
+                  : (root.currentAttempted ? "" : "Responde la predicción del paso para continuar.")
+            visible: text.length > 0
+            color: root.finishMessage.length > 0 ? Style.Theme.aviso_texto : Style.Theme.texto_secundario
+            font.pixelSize: 10 * root.uiScale
         }
     }
 }

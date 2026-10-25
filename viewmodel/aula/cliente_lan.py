@@ -6,14 +6,24 @@ controlador del alumno, que decide qué hacer con ellos.
 
 from __future__ import annotations
 
+import hmac
+
 from PySide6.QtCore import QObject, QTimer, QUrl, Signal
-from PySide6.QtNetwork import QAbstractSocket, QHostAddress, QUdpSocket
+from PySide6.QtNetwork import (
+    QAbstractSocket,
+    QHostAddress,
+    QSsl,
+    QSslConfiguration,
+    QSslSocket,
+    QUdpSocket,
+)
 from PySide6.QtWebSockets import QWebSocket
 
 from model.aula import protocolo as p
 from model.aula.codigo_clase import huella_codigo
 
 from .red import _ipv4, destinos_broadcast
+from .tls import huella_certificado, normalizar_huella
 
 
 class ClienteAulaLan(QObject):
@@ -49,7 +59,11 @@ class ClienteAulaLan(QObject):
         self._socket.connected.connect(self._al_conectar)
         self._socket.disconnected.connect(self._al_desconectar)
         self._socket.textMessageReceived.connect(self._recibir)
+        self._socket.sslErrors.connect(self._al_error_ssl)
         self._abriendo = False
+        self._destino_tls: tuple[str, int] | None = None
+        self._huella_esperada = ""
+        self._huellas_conocidas: dict[tuple[str, int], str] = {}
         self._temporizador_conexion = QTimer(self)
         self._temporizador_conexion.setSingleShot(True)
         self._temporizador_conexion.setInterval(espera_conexion_ms)
@@ -104,10 +118,15 @@ class ClienteAulaLan(QObject):
                 continue
             if not 0 < puerto < 65536:
                 continue
-            self.cancelar_busqueda()
-            self.encontrado.emit(
-                _ipv4(datagrama.senderAddress()), puerto, str(contenido.get("nombre", ""))
+            host = _ipv4(datagrama.senderAddress())
+            huella_certificado = normalizar_huella(
+                contenido.get("certificado_sha256")
             )
+            if not huella_certificado:
+                continue
+            self._huellas_conocidas[(host, puerto)] = huella_certificado
+            self.cancelar_busqueda()
+            self.encontrado.emit(host, puerto, str(contenido.get("nombre", "")))
             return
 
     # ------------------------------------------------------------------
@@ -120,9 +139,16 @@ class ClienteAulaLan(QObject):
 
     def conectar(self, host: str, puerto: int) -> None:
         self.cerrar()
+        puerto = int(puerto)
+        self._destino_tls = (host, puerto)
+        self._huella_esperada = self._huellas_conocidas.get(self._destino_tls, "")
+        configuracion = QSslConfiguration.defaultConfiguration()
+        configuracion.setProtocol(QSsl.SslProtocol.TlsV1_2OrLater)
+        configuracion.setPeerVerifyMode(QSslSocket.PeerVerifyMode.VerifyPeer)
+        self._socket.setSslConfiguration(configuracion)
         self._abriendo = True
         self._temporizador_conexion.start()
-        self._socket.open(QUrl(f"ws://{host}:{int(puerto)}"))
+        self._socket.open(QUrl(f"wss://{host}:{puerto}"))
 
     def cerrar(self) -> None:
         self._temporizador_conexion.stop()
@@ -144,6 +170,31 @@ class ClienteAulaLan(QObject):
         self._temporizador_conexion.stop()
         self._abriendo = False
         self.conectado.emit()
+
+    def _al_error_ssl(self, errores) -> None:
+        observada = huella_certificado(
+            self._socket.sslConfiguration().peerCertificate()
+        )
+        if observada and (
+            not self._huella_esperada
+            or hmac.compare_digest(observada, self._huella_esperada)
+        ):
+            if self._destino_tls is not None and not self._huella_esperada:
+                # La conexión manual por dirección usa confianza en el primer
+                # uso; desde la siguiente conexión la huella queda fijada.
+                self._huellas_conocidas[self._destino_tls] = observada
+                self._huella_esperada = observada
+            self._socket.ignoreSslErrors(errores)
+            return
+
+        self._temporizador_conexion.stop()
+        self._abriendo = False
+        self._socket.blockSignals(True)
+        self._socket.abort()
+        self._socket.blockSignals(False)
+        self.fallo.emit(
+            "No se pudo verificar la identidad TLS del equipo del docente."
+        )
 
     def _al_desconectar(self) -> None:
         self._temporizador_conexion.stop()

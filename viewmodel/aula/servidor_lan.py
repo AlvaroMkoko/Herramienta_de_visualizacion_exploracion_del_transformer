@@ -19,6 +19,7 @@ from model.aula.codigo_clase import huella_codigo
 from model.aula.sesion_clase import TODOS, Envio, SesionClase
 
 from .red import _ipv4
+from .tls import crear_credenciales_servidor
 
 
 class ServidorAulaLan(QObject):
@@ -36,9 +37,12 @@ class ServidorAulaLan(QObject):
         self._sesion = sesion
         self._puerto_inicial = puerto_websocket
         self._puerto_udp = puerto_descubrimiento
+        credenciales = crear_credenciales_servidor()
+        self._huella_certificado = credenciales.huella_sha256
         self._servidor = QWebSocketServer(
-            "TransformerVisualizer", QWebSocketServer.SslMode.NonSecureMode, self
+            "TransformerVisualizer", QWebSocketServer.SslMode.SecureMode, self
         )
+        self._servidor.setSslConfiguration(credenciales.configuracion)
         self._servidor.newConnection.connect(self._nueva_conexion)
         self._udp = QUdpSocket(self)
         self._udp.readyRead.connect(self._leer_datagramas)
@@ -170,7 +174,12 @@ class ServidorAulaLan(QObject):
             # Se responde a la dirección de origen: el sistema operativo elige
             # la interfaz correcta, aunque el docente esté en varias redes.
             self._udp.writeDatagram(
-                p.datagrama_respuesta(huella, self.puerto, self._sesion.repo.clase.get("nombre", "")),
+                p.datagrama_respuesta(
+                    huella,
+                    self.puerto,
+                    self._sesion.repo.clase.get("nombre", ""),
+                    self._huella_certificado,
+                ),
                 datagrama.senderAddress(),
                 datagrama.senderPort(),
             )

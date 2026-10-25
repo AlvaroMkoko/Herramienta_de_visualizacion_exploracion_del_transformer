@@ -2,4 +2,17 @@
 name = "transformer-visualizer"
 version = "0.1.0"
 description = "Herramienta interactiva de visualización e interpretabilidad de la arquitectura Transformer (MVVM)"
-requires-python = ">=3.14"
+requires-python = ">=3.12"
+
+[tool.coverage.run]
+relative_files = true
+source = ["core", "model", "view", "viewmodel"]
+
+[tool.coverage.report]
+omit = ["**/__init__.py"]
+
+[tool.black]
+target-version = ["py312"]
+
+[tool.ruff]
+target-version = "py312"

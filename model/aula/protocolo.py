@@ -120,9 +120,17 @@ def datagrama_busqueda(huella: str) -> bytes:
     return codificar(mensaje("buscar", huella=huella)).encode("utf-8")
 
 
-def datagrama_respuesta(huella: str, puerto: int, nombre_clase: str) -> bytes:
+def datagrama_respuesta(
+    huella: str, puerto: int, nombre_clase: str, certificado_sha256: str
+) -> bytes:
     return codificar(
-        mensaje("aqui", huella=huella, puerto=int(puerto), nombre=nombre_clase)
+        mensaje(
+            "aqui",
+            huella=huella,
+            puerto=int(puerto),
+            nombre=nombre_clase,
+            certificado_sha256=certificado_sha256,
+        )
     ).encode("utf-8")
 
 

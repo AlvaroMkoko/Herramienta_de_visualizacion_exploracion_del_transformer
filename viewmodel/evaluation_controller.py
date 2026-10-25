@@ -13,7 +13,7 @@ propiedad expuesta a QML revela si la respuesta en curso es correcta.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from PySide6.QtCore import (
     Property,
@@ -32,6 +32,7 @@ from model.evaluacion import (
     ResultsRepository,
     es_respuesta_completa,
 )
+from model.evaluacion.results_repository import primer_intento_vigente
 
 
 #: El banco de preguntas es un recurso de SOLO LECTURA: viaja dentro del
@@ -107,6 +108,9 @@ class EvaluationController(QObject):
         self._manager = EvaluationManager(self._bank)
         self._repository = repository or ResultsRepository(_ruta_resultados())
         self._profile_controller = None
+        # La pone ProgressController en la ruta general: una evaluación solo
+        # empieza si su etapa está abierta. «Repetir evaluación» no la salta.
+        self._guardia_global: Callable[[str], str] | None = None
         self._assessment_type = "pre"
         self._assessment_info: dict[str, Any] = {}
         self._respuesta_actual: Any = None
@@ -117,6 +121,10 @@ class EvaluationController(QObject):
     def repository(self) -> ResultsRepository:
         """Repositorio compartido con la vista docente (API interna)."""
         return self._repository
+
+    def set_global_guard(self, guardia: Callable[[str], str] | None) -> None:
+        """``guardia(assessment_type)`` devuelve "" si puede empezar, o el motivo."""
+        self._guardia_global = guardia
 
     def set_profile_controller(self, profile_controller) -> None:
         self._profile_controller = profile_controller
@@ -132,6 +140,21 @@ class EvaluationController(QObject):
         # curso llevan ``module_id`` y no deben desbloquear la ruta global.
         return self._repository.latest(
             assessment_type, self._student_filter(), module_id=""
+        )
+
+    def _attempts(self, assessment_type: str) -> list[dict[str, Any]]:
+        return self._repository.get_history(
+            assessment_type, self._student_filter(), module_id=""
+        )
+
+    def _first(self, assessment_type: str) -> dict[str, Any]:
+        # La comparación pre→post usa el primer intento del instrumento vigente:
+        # repetir después de estudiar o de ver las claves no reemplaza la
+        # medición original, y un intento de otra versión no se compara.
+        return primer_intento_vigente(
+            self._attempts(assessment_type),
+            self._bank.instrument_version,
+            _version_instrumento,
         )
 
     def _prepare(self, assessment_type: str) -> None:
@@ -327,13 +350,18 @@ class EvaluationController(QObject):
     # Estas cuatro NO dependen de ``_assessment_type``: la pantalla de progreso
     # necesita leer el pre y el post al mismo tiempo.
 
+    @Property(int, notify=questionChanged)
+    def attemptCount(self) -> int:
+        """Veces que se resolvió la evaluación preparada; cuenta la primera."""
+        return len(self._attempts(self._assessment_type))
+
     @Property("QVariantMap", notify=questionChanged)
     def preResult(self) -> dict[str, Any]:
-        return self._latest("pre")
+        return self._first("pre")
 
     @Property("QVariantMap", notify=questionChanged)
     def postResult(self) -> dict[str, Any]:
-        return self._latest("post")
+        return self._first("post")
 
     @Property(bool, notify=questionChanged)
     def hasPre(self) -> bool:
@@ -351,9 +379,9 @@ class EvaluationController(QObject):
 
     @Property("QVariantMap", notify=questionChanged)
     def improvement(self) -> dict[str, Any]:
-        """Avance pre→post, total y por dimensión. Vacío si falta alguno."""
-        pre = self._latest("pre")
-        post = self._latest("post")
+        """Avance pre→post (primeros intentos), total y por dimensión. Vacío si falta alguno."""
+        pre = self._first("pre")
+        post = self._first("post")
         if not pre or not post:
             return {"disponible": False, "motivo": "faltan_resultados"}
 
@@ -455,6 +483,10 @@ class EvaluationController(QObject):
 
     @Slot(str)
     def startEvaluation(self, assessment_type: str) -> None:
+        motivo = self._guardia_global(assessment_type) if self._guardia_global else ""
+        if motivo:
+            self.error.emit(motivo)
+            return
         try:
             self._prepare(assessment_type)
             self._manager.start_evaluation(self._assessment_type)

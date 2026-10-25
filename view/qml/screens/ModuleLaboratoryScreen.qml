@@ -70,6 +70,10 @@ PagePrincipal {
         var demo = demos[String(root.currentStep.id || "")]
         return demo && typeof demo === "object" ? demo : ({})
     }
+    readonly property var discoveryChallenge: root.challengeForCurrentStep()
+    readonly property var predictionBundle: root.buildPredictionBundle()
+    readonly property var explanationBundle: root.buildExplanationBundle()
+    readonly property var experimentDescriptor: root.buildExperimentDescriptor()
     readonly property bool advancedMode: root.learningLevel === "advanced"
     readonly property real laboratoryProgress: root.steps.length > 0
                                                ? (root.safeStepIndex + 1) / root.steps.length
@@ -82,8 +86,18 @@ PagePrincipal {
     property string learningLevel: "essential"
     // Una sola fuente de atención por vez: vista del componente, fórmula
     // animada o explicación. El contenido completo sigue disponible.
-    property int workspaceSection: 1
+    property int workspaceSection: 2
     property int currentStepIndex: 0
+    property int discoveryStage: 0
+    property int discoveryPrediction: -1
+    property int discoveryExplanation: -1
+    property string discoveryHint: ""
+    // Evidencia del ciclo que se reporta al CourseController al cerrarlo.
+    property int discoveryExplanationAttempts: 0
+    property bool discoveryPredictionCorrect: false
+    property bool discoveryExperimentDone: false
+    property var labProgress: ({})
+    property var closingResult: ({})
     property string errorMessage: ""
     property string inspectedKey: ""
     property string inspectedTitle: ""
@@ -107,6 +121,291 @@ PagePrincipal {
                 filtered.push(step)
         }
         return filtered
+    }
+
+    function labQuestion(id, prompt, correct, distractorA, distractorB, explanation) {
+        return ({
+            "id": id,
+            "prompt": prompt,
+            "options": [correct, distractorA, distractorB],
+            "correct_index": 0,
+            "explanation": explanation
+        })
+    }
+
+    function challengeForCurrentStep() {
+        // Retos propios del laboratorio: los `challenges` alimentan el pre y el
+        // post-test, y practicarlos aquí sería ensayar las respuestas.
+        var challenges = root.moduleData.lab_challenges || root.moduleData.challenges || []
+        var sid = String(root.currentStep && root.currentStep.id || "")
+        var key = root.moduleId + ":" + sid
+        var specific = {
+            "module_1:text": root.labQuestion(
+                "lab_m1_text", "¿Qué recibe el tokenizador al comenzar esta animación?",
+                "Texto Unicode todavía sin convertir en vectores", "Embeddings contextualizados", "Probabilidades del vocabulario",
+                "La entrada inicial es texto. Los tokens, IDs y vectores aparecen en operaciones posteriores."),
+            "module_1:ids": root.labQuestion(
+                "lab_m1_ids", "Al consultar el vocabulario, ¿qué debe reemplazar a cada token?",
+                "Un ID entero estable para ese token", "Un vector contextual completo", "Una probabilidad del siguiente token",
+                "El vocabulario realiza una correspondencia discreta token→ID; todavía no crea embeddings."),
+            "module_1:batch:training": root.labQuestion(
+                "lab_m1_batch_training", "Si las secuencias del batch tienen distinta longitud, ¿cómo se obtiene una matriz rectangular?",
+                "Se añade PAD a las secuencias más cortas", "Se mezclan todas las frases en una sola", "Se aumenta d_model",
+                "En entrenamiento, cada fila se rellena hasta la longitud común del batch."),
+            "module_1:batch:inference": root.labQuestion(
+                "lab_m1_batch_inference", "Si el texto supera el contexto máximo durante inferencia, ¿qué debe hacer este ajuste?",
+                "Recortar la secuencia al contexto admitido", "Añadir PAD hasta duplicar su longitud", "Cambiar el vocabulario",
+                "En inferencia se limita la longitud sin inventar contenido nuevo."),
+            "module_1:no_grad": root.labQuestion(
+                "lab_m1_no_grad", "Después de tokenizar, rellenar y crear la máscara, ¿qué parte de esta preparación aprende por gradiente?",
+                "Ninguna: son operaciones de datos", "Los IDs se vuelven parámetros", "La máscara aprende qué columnas bloquear",
+                "Estas operaciones preparan la entrada; no contienen parámetros que el optimizador pueda actualizar."),
+            "module_2:dropout:inference": root.labQuestion(
+                "lab_m2_dropout_inference", "¿Qué debe ocurrir con dropout durante inferencia?",
+                "Queda desactivado y conserva todas las activaciones", "Elimina tokens completos", "Cambia d_model en cada ejecución",
+                "Dropout regulariza el entrenamiento; al inferir se utiliza la representación completa y determinista."),
+            "module_2:embedding_gradient": root.labQuestion(
+                "lab_m2_embedding_gradient", "Si el batch consultó solo algunos IDs, ¿qué filas de la tabla reciben gradiente directo en esta animación?",
+                "Las filas de los IDs consultados", "Todas las filas por igual", "Solo la primera fila de la tabla",
+                "El lookup conecta la pérdida directamente con las filas utilizadas por el batch."),
+            "module_3:attention_input": root.labQuestion(
+                "lab_m3_attention_input", "En la matriz X mostrada, ¿qué representa cada fila antes de proyectar Q, K y V?",
+                "La representación de un token", "Una cabeza de atención completa", "Un token del vocabulario de salida",
+                "X conserva una fila de d_model componentes por posición de la secuencia."),
+            "module_4:project": root.labQuestion(
+                "lab_m4_project", "¿Qué producen XWQ, XWK y XWV antes de separar las cabezas?",
+                "Q, K y V completos con anchura d_model", "Un único mapa T×T", "Los IDs de la secuencia",
+                "Primero se calculan las proyecciones completas; después se reorganizan en h bloques de d_head."),
+            "module_4:contexts": root.labQuestion(
+                "lab_m4_contexts", "¿Cómo obtiene cada cabeza su vector de contexto?",
+                "Combina sus Values con sus propios pesos de atención", "Copia directamente la salida de otra cabeza", "Promedia todas las matrices WQ",
+                "Cada cabeza calcula C_h=A_hV_h dentro de su propio subespacio."),
+            "module_5:encoder_input": root.labQuestion(
+                "lab_m5_encoder_input", "Al seleccionar una capa del encoder, ¿qué recibe como X_l?",
+                "La salida de la capa anterior", "Los logits finales del vocabulario", "El objetivo desplazado del decoder",
+                "La primera capa recibe embeddings posicionados; las siguientes reciben la representación de la capa previa."),
+            "module_5:ffn_project": root.labQuestion(
+                "lab_m5_ffn_project", "Después de la activación en d_ff, ¿qué debe hacer la segunda proyección de la FFN?",
+                "Regresar de d_ff a d_model", "Expandir otra vez el número de tokens", "Convertir la salida en probabilidades",
+                "La salida vuelve a d_model para que pueda sumarse mediante la conexión residual."),
+            "module_6:decoder_prefix:inference": root.labQuestion(
+                "lab_m6_prefix_inference", "Durante inferencia, ¿qué información puede formar el prefijo del decoder?",
+                "BOS y los tokens generados hasta ahora", "Toda la respuesta futura", "Los logits de todas las capas",
+                "La generación es autoregresiva: solo dispone de los tokens ya producidos."),
+            "module_6:decoder_embedding": root.labQuestion(
+                "lab_m6_decoder_embedding", "¿Qué se añade a los embeddings del prefijo antes de la atención?",
+                "La codificación de sus posiciones", "Las probabilidades Top-P", "La pérdida del batch",
+                "El decoder necesita representar tanto la identidad de cada token como su orden."),
+            "module_6:decoder_residual_1": root.labQuestion(
+                "lab_m6_residual_1", "¿Qué combina la primera conexión residual del decoder?",
+                "El estado de entrada y el contexto causal", "La memoria del encoder y los logits", "Dos máscaras de padding",
+                "La primera Add & Norm conserva el estado previo mientras incorpora masked self-attention."),
+            "module_6:decoder_residual_2": root.labQuestion(
+                "lab_m6_residual_2", "¿Qué incorpora la segunda conexión residual del decoder?",
+                "El contexto recuperado de la fuente", "Un token elegido por Top-K", "La pérdida de entrenamiento",
+                "La segunda Add & Norm integra la salida de cross-attention con el estado del decoder."),
+            "module_6:decoder_ffn": root.labQuestion(
+                "lab_m6_ffn", "Después de las dos atenciones, ¿cómo actúa la FFN del decoder?",
+                "Transforma cada posición por separado", "Mezcla posiciones futuras sin máscara", "Selecciona directamente el siguiente token",
+                "La FFN procesa las características de cada posición; la mezcla entre tokens ya ocurrió en las atenciones."),
+            "module_6:decoder_layers": root.labQuestion(
+                "lab_m6_layers", "Al avanzar por la pila del decoder, ¿qué permanece y qué cambia?",
+                "Se conserva la forma y cambian los valores con parámetros de cada capa", "Aumenta un token en cada capa", "Todas las capas producen valores idénticos",
+                "Las capas comparten la interfaz [B,T,d_model], pero cada una aprende parámetros distintos."),
+            "module_7:hidden": root.labQuestion(
+                "lab_m7_hidden", "¿Qué representación alimenta la predicción asociada a la posición observada?",
+                "Su estado final del decoder", "La matriz completa del vocabulario", "El ID sin convertir a vector",
+                "La capa de salida recibe un vector d_model del decoder y lo proyecta al vocabulario."),
+            "module_7:select": root.labQuestion(
+                "lab_m7_select", "En esta animación reproducible, ¿qué candidato se seleccionará?",
+                "El de mayor probabilidad entre los supervivientes", "Siempre el primer ID del vocabulario", "Todos los candidatos a la vez",
+                "El laboratorio usa selección determinista para que el mismo experimento produzca el mismo resultado."),
+            "module_7:target": root.labQuestion(
+                "lab_m7_target", "Durante entrenamiento, ¿para qué se muestra el token objetivo junto a los logits?",
+                "Para indicar la respuesta que debe recibir mayor probabilidad", "Para sustituir todos los logits", "Para aplicar Top-K antes de la pérdida",
+                "Teacher forcing aporta el ID correcto con el que se calculará la pérdida."),
+            "module_7:loss": root.labQuestion(
+                "lab_m7_loss", "¿Qué datos debe comparar cross-entropy en esta animación?",
+                "Los logits crudos y el token objetivo", "Los pesos de atención y Top-P", "El token elegido y la máscara causal",
+                "La pérdida de entrenamiento se calcula antes de Top-K, Top-P o muestreo."),
+            "module_8:full_tokens": root.labQuestion(
+                "lab_m8_tokens", "¿Qué debe producir primero el Transformer a partir del texto para poder consultar embeddings?",
+                "Una secuencia ordenada de IDs", "Probabilidades del vocabulario", "Pesos de cross-attention",
+                "El tokenizador segmenta el texto y el vocabulario convierte cada token en un índice."),
+            "module_8:full_batch": root.labQuestion(
+                "lab_m8_batch", "¿Qué necesita preparar el batch antes del recorrido de entrenamiento?",
+                "Entradas, objetivos desplazados y máscaras", "Solo el último token generado", "Top-K y temperatura",
+                "El entrenamiento requiere tensores alineados y máscaras que oculten padding y futuro."),
+            "module_8:full_logits": root.labQuestion(
+                "lab_m8_logits", "Al proyectar cada estado de d_model al vocabulario, ¿qué esperas obtener?",
+                "Un vector de puntuaciones, una por token posible", "Una sola probabilidad ya normalizada", "Una nueva máscara de padding",
+                "La proyección final cambia el último eje de d_model a |V| y todavía produce logits."),
+            "module_8:full_filters": root.labQuestion(
+                "lab_m8_filters", "¿Qué debería cambiar al aplicar temperatura, Top-K y Top-P a los logits?",
+                "La concentración y el conjunto de candidatos", "Los IDs del texto fuente", "Los parámetros ya aprendidos del encoder",
+                "Estos controles modifican la distribución usada para generar, no los pesos ni la entrada fuente."),
+            "module_8:full_select": root.labQuestion(
+                "lab_m8_select", "Después de normalizar los candidatos supervivientes, ¿qué produce la selección?",
+                "El siguiente token", "La memoria del encoder", "Un nuevo vocabulario",
+                "La distribución final permite escoger un único token para continuar el ciclo."),
+            "module_8:full_feedback": root.labQuestion(
+                "lab_m8_feedback", "¿Qué ocurrirá con el token recién seleccionado en el ciclo autoregresivo?",
+                "Se añadirá al prefijo para el siguiente paso", "Reemplazará la memoria del encoder", "Se convertirá en una cabeza de atención",
+                "El prefijo crece un token y vuelve a entrar al decoder; la memoria de la fuente se conserva."),
+            "module_8:full_loss": root.labQuestion(
+                "lab_m8_loss", "¿Qué resume el escalar de pérdida mostrado en el flujo completo?",
+                "El desacuerdo entre logits y objetivos válidos", "El número de capas del decoder", "La cantidad de candidatos Top-K",
+                "Cross-entropy resume el error de las posiciones válidas del batch." )
+        }
+        var selectedSpecific = specific[key + ":" + root.mode] || specific[key]
+        if (selectedSpecific !== undefined)
+            return selectedSpecific
+        if (sid === "backward" || sid === "full_backward")
+            return root.labQuestion(
+                "lab_" + root.moduleId + "_" + sid,
+                "En «" + String(root.currentStep.title || "Backward") + "», ¿hacia dónde debe viajar la señal de la pérdida?",
+                "Hacia las operaciones y parámetros que participaron", "Solo hacia los tokens de texto", "Directamente hacia Top-K sin pasar por el modelo",
+                "Autograd recorre en sentido inverso las operaciones utilizadas en este módulo.")
+        if (sid === "update" || sid === "embedding_update" || sid === "full_update")
+            return root.labQuestion(
+                "lab_" + root.moduleId + "_" + sid,
+                "En «" + String(root.currentStep.title || "Actualización") + "», ¿qué representa θ′ = θ − ηg?",
+                "Un cambio hipotético guiado por el gradiente", "Una modificación del vocabulario", "La salida definitiva de softmax",
+                "El laboratorio visualiza el paso de SGD, pero no modifica los parámetros activos.")
+        if (!challenges.length)
+            return ({})
+        var maps = {
+            "module_1": { "text": 2, "tokens": 2, "ids": 7, "specials": 6,
+                          "batch": 3, "mask": 1, "no_grad": 0 },
+            "module_2": { "lookup": 1, "scale": 5, "position": 3, "sum": 2,
+                          "dropout": 7, "embedding_gradient": 6, "embedding_update": 6 },
+            "module_3": { "attention_input": 4, "weights": 5, "qkv": 4, "dot": 0,
+                          "scale": 1, "mask": 6, "softmax": 2, "weighted": 3,
+                          "output": 7, "backward": 5, "update": 5 },
+            "module_4": { "project": 7, "split": 0, "maps": 5, "contexts": 3,
+                          "concat": 2, "wo": 4, "backward": 6, "update": 6 },
+            "module_5": { "encoder_input": 7, "encoder_attention": 2, "residual_1": 0,
+                          "norm_1": 3, "ffn_expand": 1, "ffn_activation": 5,
+                          "ffn_project": 1, "norm_2": 3, "stack": 4,
+                          "backward": 6, "update": 6 },
+            "module_6": { "decoder_prefix": 6, "decoder_embedding": 6, "causal_mask": 0,
+                          "masked_attention": 4, "decoder_residual_1": 5,
+                          "cross_attention": 2, "decoder_residual_2": 5,
+                          "decoder_ffn": 5, "decoder_output": 7, "decoder_layers": 7,
+                          "backward": 5, "update": 5 },
+            "module_7": { "hidden": 0, "linear": 1, "temperature": 2, "top_k": 3,
+                          "top_p": 4, "softmax": 5, "select": 6, "feedback": 6,
+                          "target": 6, "loss": 5, "backward": 1, "update": 1 },
+            "module_8": { "full_tokens": 2, "full_batch": 0, "full_embedding": 4,
+                          "full_encoder": 1, "full_decoder": 3, "full_logits": 6,
+                          "full_filters": 6, "full_loss": 5, "full_select": 6,
+                          "full_feedback": 7, "full_backward": 5, "full_update": 5 }
+        }
+        var moduleMap = maps[root.moduleId] || ({})
+        var mapped = moduleMap[sid]
+        var index = mapped === undefined
+                    ? root.safeStepIndex % challenges.length : Number(mapped)
+        return challenges[Math.max(0, Math.min(challenges.length - 1, index))] || ({})
+    }
+
+    function rotatedBundle(options, correctIndex, offset) {
+        var source = options || []
+        var count = source.length
+        if (!count)
+            return ({ "options": [], "correct": -1 })
+        var shift = ((Number(offset) % count) + count) % count
+        var ordered = []
+        var displayedCorrect = -1
+        for (var index = 0; index < count; ++index) {
+            var sourceIndex = (index + shift) % count
+            ordered.push(String(source[sourceIndex]))
+            if (sourceIndex === Number(correctIndex))
+                displayedCorrect = index
+        }
+        return ({ "options": ordered, "correct": displayedCorrect })
+    }
+
+    function buildPredictionBundle() {
+        var challenge = root.discoveryChallenge || ({})
+        var options = challenge.options || []
+        var moduleNumber = Number(String(root.moduleId).split("_")[1]) || 0
+        return root.rotatedBundle(options, Number(challenge.correct_index || 0),
+                                  root.safeStepIndex + moduleNumber)
+    }
+
+    function buildExplanationBundle() {
+        var correct = String(root.currentStep && root.currentStep.explanation || "")
+        var candidates = [correct]
+        var offsets = [-1, 1, -2, 2]
+        for (var offsetIndex = 0; offsetIndex < offsets.length; ++offsetIndex) {
+            var index = root.safeStepIndex + offsets[offsetIndex]
+            if (index < 0 || index >= root.steps.length)
+                continue
+            var text = String(root.steps[index] && root.steps[index].explanation || "")
+            if (text.length && candidates.indexOf(text) === -1)
+                candidates.push(text)
+            if (candidates.length === 3)
+                break
+        }
+        var fallbacks = [
+            "La salida aparece sin depender de la entrada ni de los parámetros del modelo.",
+            "Esta operación cambia el tamaño del vocabulario y vuelve a entrenar todo el Transformer."
+        ]
+        for (var fallbackIndex = 0; candidates.length < 3; ++fallbackIndex)
+            candidates.push(fallbacks[fallbackIndex % fallbacks.length])
+        return root.rotatedBundle(candidates, 0,
+                                  root.safeStepIndex + root.steps.length)
+    }
+
+    function buildExperimentDescriptor() {
+        var sid = String(root.currentStep && root.currentStep.id || "")
+        if (sid === "temperature")
+            return ({ "label": "Cambiar la temperatura",
+                      "instruction": "Cambia T y compara si las probabilidades se concentran o se reparten entre más candidatos." })
+        if (sid === "top_k")
+            return ({ "label": "Reducir Top-K",
+                      "instruction": "Reduce K y observa cuántos candidatos sobreviven antes de normalizar." })
+        if (sid === "top_p")
+            return ({ "label": "Cambiar Top-P",
+                      "instruction": "Cambia P y observa cómo el tamaño del núcleo depende de la masa acumulada." })
+        if (sid === "full_filters")
+            return ({ "label": "Cambiar los filtros",
+                      "instruction": "Modifica temperatura, Top-K y Top-P juntos y compara el conjunto final de candidatos." })
+        if (["causal_mask", "masked_attention", "full_decoder"].indexOf(sid) !== -1)
+            return ({ "label": "Alternar la máscara causal",
+                      "instruction": "Contrasta el cálculo con y sin bloqueo del futuro. Busca qué celdas dejan de participar." })
+        if (root.controlRelevant("head") && root.modelHeadCount > 1)
+            return ({ "label": "Comparar otra cabeza",
+                      "instruction": "Selecciona otra cabeza y compara qué relaciones entre tokens reciben mayor peso." })
+        if (root.controlRelevant("layer") && root.modelLayerCount > 1)
+            return ({ "label": "Comparar otra capa",
+                      "instruction": "Cambia de capa y observa cómo la representación ya contextualizada vuelve a transformarse." })
+        if (root.controlRelevant("token") && root.tokens.length > 1)
+            return ({ "label": "Cambiar el token observado",
+                      "instruction": "Selecciona el token siguiente y compara qué fila, vector o distribución le corresponde." })
+        return ({ "label": "Recorrer la fórmula",
+                  "instruction": "Reproduce la animación y mueve su control de avance: identifica entrada, transformación y resultado sin saltar fases." })
+    }
+
+    function discoveryStageLabel() {
+        return ["Predecir", "Probar", "Observar", "Explicar", "Feedback", "Completado"]
+               [Math.max(0, Math.min(5, root.discoveryStage))]
+    }
+
+    function resetDiscovery(openChallenge) {
+        root.discoveryStage = 0
+        root.discoveryPrediction = -1
+        root.discoveryExplanation = -1
+        root.discoveryHint = ""
+        root.discoveryExplanationAttempts = 0
+        root.discoveryPredictionCorrect = false
+        root.discoveryExperimentDone = false
+        if (openChallenge === true)
+            root.workspaceSection = 2
+    }
+
+    function refreshLabProgress() {
+        root.labProgress = root.courseController.laboratoryProgress(root.moduleId) || ({})
     }
 
     function controlRelevant(controlName) {
@@ -182,9 +481,12 @@ PagePrincipal {
                                                     panels.length - 1)] : ({})
     }
 
-    function runAnalysis(preserveCurrentStep) {
+    function runAnalysis(preserveCurrentStep, keepDiscovery) {
         var preserve = preserveCurrentStep === undefined
                        ? true : Boolean(preserveCurrentStep)
+        var preserveDiscovery = keepDiscovery === true
+        if (!preserveDiscovery)
+            root.resetDiscovery(false)
         root.pendingStepId = preserve
                              ? String(root.currentStep && root.currentStep.id || "")
                              : ""
@@ -192,7 +494,7 @@ PagePrincipal {
         root.errorMessage = ""
         if (!preserve)
             root.currentStepIndex = 0
-        root.workspaceSection = 1
+        root.workspaceSection = preserveDiscovery || root.advancedMode ? 1 : 2
         root.laboratoryController.explore(
             root.moduleId, inputText.text, root.mode,
             Math.round(layerSlider.value), Math.round(headSlider.value),
@@ -223,7 +525,7 @@ PagePrincipal {
             return
         root.mode = nextMode
         root.currentStepIndex = 0
-        root.workspaceSection = 1
+        root.resetDiscovery(!root.advancedMode)
         if (root.laboratoryController.modelReady
                 && inputText.text.trim().length > 0)
             root.runAnalysis(false)
@@ -231,15 +533,18 @@ PagePrincipal {
 
     function previousStep() {
         root.currentStepIndex = Math.max(0, root.currentStepIndex - 1)
+        root.resetDiscovery(!root.advancedMode)
     }
 
     function nextStep() {
         root.currentStepIndex = Math.min(Math.max(0, root.steps.length - 1),
                                          root.currentStepIndex + 1)
+        root.resetDiscovery(!root.advancedMode)
     }
 
     function restartSteps() {
         root.currentStepIndex = 0
+        root.resetDiscovery(!root.advancedMode)
     }
 
     function showFormulaPane() {
@@ -250,6 +555,7 @@ PagePrincipal {
     function chooseLearningLevel(level) {
         root.learningLevel = level === "advanced" ? "advanced" : "essential"
         root.currentStepIndex = 0
+        root.resetDiscovery(!root.advancedMode)
         if (!root.advancedMode) {
             if (root.guideDetached)
                 root.closeDetachedGuide()
@@ -290,10 +596,105 @@ PagePrincipal {
         for (var index = 0; index < root.steps.length; ++index) {
             if (ids.indexOf(String(root.steps[index].id || "")) !== -1) {
                 root.currentStepIndex = index
-                root.workspaceSection = 1
+                root.resetDiscovery(!root.advancedMode)
                 return
             }
         }
+    }
+
+    function confirmDiscoveryPrediction() {
+        if (root.discoveryPrediction < 0)
+            return
+        root.discoveryPredictionCorrect =
+                root.discoveryPrediction === Number(root.predictionBundle.correct)
+        root.discoveryStage = 1
+    }
+
+    function applySuggestedExperiment() {
+        var sid = String(root.currentStep && root.currentStep.id || "")
+        root.discoveryStage = 2
+        root.discoveryHint = ""
+        root.discoveryExperimentDone = true
+
+        if (sid === "temperature") {
+            temperatureSlider.value = temperatureSlider.value <= 0.6 ? 1.4 : 0.5
+            root.runAnalysis(true, true)
+            return
+        }
+        if (sid === "top_k") {
+            topKSlider.value = topKSlider.value <= 5 ? 12 : 3
+            root.runAnalysis(true, true)
+            return
+        }
+        if (sid === "top_p") {
+            topPSlider.value = topPSlider.value <= 0.65 ? 0.95 : 0.55
+            root.runAnalysis(true, true)
+            return
+        }
+        if (sid === "full_filters") {
+            temperatureSlider.value = temperatureSlider.value <= 0.7 ? 1.35 : 0.55
+            topKSlider.value = topKSlider.value <= 6 ? 12 : 5
+            topPSlider.value = topPSlider.value <= 0.7 ? 0.92 : 0.62
+            root.runAnalysis(true, true)
+            return
+        }
+        if (["causal_mask", "masked_attention", "full_decoder"].indexOf(sid) !== -1) {
+            causalSwitch.checked = !causalSwitch.checked
+            root.runAnalysis(true, true)
+            return
+        }
+        if (root.controlRelevant("head") && root.modelHeadCount > 1) {
+            headSlider.value = (Math.round(headSlider.value) + 1) % root.modelHeadCount
+            root.runAnalysis(true, true)
+            return
+        }
+        if (root.controlRelevant("layer") && root.modelLayerCount > 1) {
+            layerSlider.value = (Math.round(layerSlider.value) + 1) % root.modelLayerCount
+            root.runAnalysis(true, true)
+            return
+        }
+        if (root.controlRelevant("token") && root.tokens.length > 1) {
+            tokenSlider.value = (Math.round(tokenSlider.value) + 1) % root.tokens.length
+            root.runAnalysis(true, true)
+            return
+        }
+        root.workspaceSection = 1
+        formulaScene.replay()
+    }
+
+    function confirmDiscoveryObservation() {
+        if (root.discoveryStage === 2) {
+            root.discoveryStage = 3
+            root.workspaceSection = 2
+        }
+    }
+
+    function checkDiscoveryExplanation() {
+        if (root.discoveryExplanation < 0)
+            return
+        root.discoveryExplanationAttempts += 1
+        if (root.discoveryExplanation === Number(root.explanationBundle.correct)) {
+            root.discoveryHint = ""
+            root.discoveryStage = 4
+            // Un ciclo cuenta cuando hubo predicción, experimento y una
+            // explicación correcta; no basta con abrir el reto.
+            if (root.discoveryExperimentDone) {
+                root.courseController.recordDiscoveryCycle(
+                            root.moduleId, String(root.currentStep.id || ""),
+                            root.discoveryPredictionCorrect,
+                            root.discoveryExplanationAttempts)
+                root.refreshLabProgress()
+            }
+            return
+        }
+        root.discoveryHint = "Todavía no. Contrasta la fórmula «"
+                             + String(root.currentStep.formula || "—")
+                             + "» con lo que entra y lo que sale; puedes cambiar tu respuesta."
+    }
+
+    function revealDiscoveryExplanation() {
+        root.discoveryStage = 5
+        root.workspaceSection = 2
     }
 
     function toggleGuide() {
@@ -366,6 +767,7 @@ PagePrincipal {
         // existan, que es justo el síntoma que este botón resuelve.
         if (root.modelLibraryController)
             root.modelLibraryController.refrescar()
+        root.refreshLabProgress()
     }
     onVisibleChanged: if (!visible && guideDetached) closeDetachedGuide()
 
@@ -381,8 +783,10 @@ PagePrincipal {
                 return
             if (root.pendingStepRestore)
                 Qt.callLater(root.restorePendingStep)
-            else
+            else {
                 root.currentStepIndex = 0
+                root.resetDiscovery(!root.advancedMode)
+            }
         }
     }
 
@@ -856,6 +1260,79 @@ PagePrincipal {
                 }
             }
 
+            // Puente teoría→práctica: el ejemplo calculado a mano en el recorrido
+            // junto a lo que exige la etapa (ciclos guiados y pregunta ancla).
+            RectanglePrincipal {
+                objectName: "moduleLaboratoryPracticeCard"
+                visible: root.analysis.module_id === root.moduleId
+                         && root.moduleData.anchor !== undefined
+                Layout.fillWidth: true
+                Layout.leftMargin: 24 * root.uiScale
+                Layout.rightMargin: 24 * root.uiScale
+                Layout.preferredHeight: practiceColumn.implicitHeight + 18 * root.uiScale
+                sx: root.uiScale
+                sy: root.uiScale
+
+                ColumnLayout {
+                    id: practiceColumn
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.margins: 9 * root.uiScale
+                    spacing: 6 * root.uiScale
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8 * root.uiScale
+                        Text {
+                            objectName: "moduleLaboratoryPracticeStatus"
+                            Layout.fillWidth: true
+                            text: root.labProgress.completed
+                                  ? "PRÁCTICA COMPLETA ✓  ·  Ya puedes presentar el post-test."
+                                  : "TU PRÁCTICA  ·  " + Number(root.labProgress.cycles || 0) + " de "
+                                    + Number(root.labProgress.required_cycles || 3)
+                                    + " retos guiados en operaciones distintas"
+                                    + (root.labProgress.closing_answered ? "" : "  ·  pregunta del módulo pendiente")
+                            color: root.labProgress.completed ? Style.Theme.exito_texto : Style.Theme.acento_fuerte
+                            font.bold: true
+                            font.pixelSize: Math.max(10, 11 * root.uiScale)
+                            wrapMode: Text.WordWrap
+                        }
+                    }
+
+                    Text {
+                        objectName: "moduleLaboratoryAnchorExample"
+                        Layout.fillWidth: true
+                        text: "EJEMPLO DEL RECORRIDO  ·  " + String((root.moduleData.anchor || {}).example || "")
+                              + "  Compáralo con los tensores reales de tu frase."
+                        color: Style.Theme.texto_secundario_fuerte
+                        font.pixelSize: Math.max(10, 11 * root.uiScale)
+                        wrapMode: Text.WordWrap
+                    }
+
+                    PredictionCheck {
+                        id: closingCheck
+                        objectName: "moduleLaboratoryClosingCheck"
+                        Layout.fillWidth: true
+                        // Se vuelve a la pregunta del módulo cuando ya hay
+                        // evidencia propia con la cual responderla.
+                        visible: Number(root.labProgress.cycles || 0)
+                                 >= Number(root.labProgress.required_cycles || 3)
+                                 || root.labProgress.closing_answered === true
+                        sx: root.uiScale
+                        eyebrow: "VUELVE A LA PREGUNTA DEL MÓDULO  ·  "
+                                 + String((root.moduleData.anchor || {}).question || "")
+                        check: (root.moduleData.anchor || {}).closing || ({})
+                        result: root.closingResult
+                        onSubmitted: function(optionIndex) {
+                            root.closingResult = root.courseController.recordAnchorClosing(
+                                        root.moduleId, optionIndex) || ({})
+                            root.refreshLabProgress()
+                        }
+                    }
+                }
+            }
+
             RectanglePrincipal {
                 objectName: "moduleLaboratoryProgressCard"
                 visible: root.analysis.module_id === root.moduleId
@@ -886,6 +1363,17 @@ PagePrincipal {
                             font.bold: true
                             font.pixelSize: Math.max(11, 12 * root.uiScale)
                             wrapMode: Text.WordWrap
+                        }
+                        BotonSecundario {
+                            objectName: "moduleLaboratoryDiscoveryButton"
+                            Layout.preferredWidth: 190 * root.uiScale
+                            Layout.preferredHeight: 30 * root.uiScale
+                            sx: root.uiScale; sy: root.uiScale
+                            text: root.discoveryStage < 5
+                                  ? "Reto guiado · " + root.discoveryStageLabel()
+                                  : "Explicación revisada ✓"
+                            Accessible.name: text
+                            onClicked: root.workspaceSection = 2
                         }
                         BotonSecundario { objectName: "moduleLaboratoryRestartSteps"; Layout.preferredWidth: 36 * root.uiScale; Layout.preferredHeight: 30 * root.uiScale; sx: root.uiScale; sy: root.uiScale; text: "↺"; Accessible.name: "Reiniciar operaciones"; onClicked: root.restartSteps() }
                         BotonSecundario { objectName: "moduleLaboratoryPreviousStep"; Layout.preferredWidth: 46 * root.uiScale; Layout.preferredHeight: 30 * root.uiScale; sx: root.uiScale; sy: root.uiScale; text: "←"; Accessible.name: "Operación anterior"; enabled: root.safeStepIndex > 0; opacity: enabled ? 1 : 0.4; onClicked: root.previousStep() }
@@ -1059,7 +1547,14 @@ PagePrincipal {
                                         Text { Layout.fillWidth: true; text: stepDelegate.modelData.title || "Paso"; color: Style.Theme.texto_primario; font.bold: true; font.pixelSize: Math.max(11, 12 * root.uiScale); maximumLineCount: 2; elide: Text.ElideRight; wrapMode: Text.WordWrap }
                                     }
                                 }
-                                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.currentStepIndex = stepDelegate.index }
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        root.currentStepIndex = stepDelegate.index
+                                        root.resetDiscovery(false)
+                                    }
+                                }
                             }
                         }
                     }
@@ -1144,7 +1639,8 @@ PagePrincipal {
                             }
                             PestanaAccesible {
                                 objectName: "moduleLaboratoryExplanationTab"
-                                text: "Explicación"
+                                text: root.discoveryStage < 5
+                                      ? "Reto guiado" : "Explicación"
                             }
                         }
 
@@ -1184,23 +1680,65 @@ PagePrincipal {
                                 sx: root.uiScale; sy: root.uiScale
                             }
 
-                            LaboratoryAnimationGuide {
-                                id: animationGuide
-                                objectName: "moduleLaboratoryAnimationGuide"
+                            Item {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
-                                moduleId: root.moduleId
-                                mode: root.mode
-                                steps: root.steps
-                                step: root.currentStep
-                                panel: root.currentPanel
-                                analysis: root.analysis
-                                demo: root.currentFormulaDemo
-                                stepIndex: root.safeStepIndex
-                                essentialMode: !root.advancedMode
-                                sx: root.uiScale
-                                sy: root.uiScale
-                                onInspectRequested: function(panel) { root.openValues(panel) }
+
+                                LaboratoryDiscoveryCycle {
+                                    id: discoveryCycle
+                                    anchors.fill: parent
+                                    visible: root.discoveryStage < 5
+                                    challenge: root.discoveryChallenge
+                                    step: root.currentStep
+                                    stage: root.discoveryStage
+                                    selectedPrediction: root.discoveryPrediction
+                                    correctPrediction: Number(root.predictionBundle.correct)
+                                    predictionOptions: root.predictionBundle.options || []
+                                    selectedExplanation: root.discoveryExplanation
+                                    correctExplanation: Number(root.explanationBundle.correct)
+                                    explanationOptions: root.explanationBundle.options || []
+                                    experimentInstruction: String(root.experimentDescriptor.instruction || "")
+                                    experimentActionLabel: String(root.experimentDescriptor.label || "Probar cambio")
+                                    observationPrompt: "Sigue «"
+                                                       + String(root.currentStep.input || "la entrada")
+                                                       + "» hasta «"
+                                                       + String(root.currentStep.output || "la salida")
+                                                       + "». Identifica en qué fase actúa "
+                                                       + String(root.currentStep.formula || "la fórmula") + "."
+                                    explanationHint: root.discoveryHint
+                                    sx: root.uiScale; sy: root.uiScale
+                                    onPredictionSelected: function(optionIndex) {
+                                        root.discoveryPrediction = optionIndex
+                                    }
+                                    onPredictionConfirmed: root.confirmDiscoveryPrediction()
+                                    onExperimentRequested: root.applySuggestedExperiment()
+                                    onObservationConfirmed: root.confirmDiscoveryObservation()
+                                    onExplanationSelected: function(optionIndex) {
+                                        root.discoveryExplanation = optionIndex
+                                        root.discoveryHint = ""
+                                    }
+                                    onExplanationChecked: root.checkDiscoveryExplanation()
+                                    onExplanationRequested: root.revealDiscoveryExplanation()
+                                }
+
+                                LaboratoryAnimationGuide {
+                                    id: animationGuide
+                                    objectName: "moduleLaboratoryAnimationGuide"
+                                    anchors.fill: parent
+                                    visible: root.discoveryStage >= 5
+                                    moduleId: root.moduleId
+                                    mode: root.mode
+                                    steps: root.steps
+                                    step: root.currentStep
+                                    panel: root.currentPanel
+                                    analysis: root.analysis
+                                    demo: root.currentFormulaDemo
+                                    stepIndex: root.safeStepIndex
+                                    essentialMode: !root.advancedMode
+                                    sx: root.uiScale
+                                    sy: root.uiScale
+                                    onInspectRequested: function(panel) { root.openValues(panel) }
+                                }
                             }
                         }
                     }

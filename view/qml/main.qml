@@ -14,7 +14,7 @@ ApplicationWindow {
     // para portatiles con 720--768 px de alto util.
     minimumWidth: 960
     minimumHeight: 600
-    title: "Visualizador de Transformers"
+    title: "Transformer Visualizer"
 
     // Los controles Qt no personalizados heredan también una paleta legible.
     // Esto cubre botones estándar de diálogos y evita que una incorporación

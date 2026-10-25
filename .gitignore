@@ -11,6 +11,9 @@ docs
 *.pdf
 
 .pytest_cache/
+.scannerwork/
+coverage.xml
+test-results.xml
 data/checkpoints/modelo.pt
 data/resultados/resultados_evaluacion.json
 
@@ -19,6 +22,7 @@ data/resultados/resultados_evaluacion.json
 !data/evaluacion/question_bank.json
 !data/aprendizaje/
 !data/aprendizaje/modules.json
+!data/aprendizaje/alineacion.json
 cambiar_constantes.py
 
 reporte_especificaciones_desarrollo.md

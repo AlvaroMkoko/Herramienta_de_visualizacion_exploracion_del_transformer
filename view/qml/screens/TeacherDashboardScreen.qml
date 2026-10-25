@@ -308,7 +308,10 @@ PagePrincipal {
                                     elide: Text.ElideRight
                                 }
                                 Text {
-                                    text: studentRow.modelData.status + "  ·  " + studentRow.modelData.tests_count + " intento(s)"
+                                    // La fila compara un solo ámbito; cuenta el primer intento de cada evaluación.
+                                    text: studentRow.modelData.scope_label + "  ·  " + studentRow.modelData.status
+                                          + "  ·  intentos pre " + studentRow.modelData.pre_attempts
+                                          + " / post " + studentRow.modelData.post_attempts
                                     color: Style.Theme.texto_terciario
                                     font.pixelSize: 11
                                 }

@@ -37,6 +37,7 @@ class LearningController(QObject):
             0,
             self._CONCEPTS_PER_UNIT - 1,
         )
+        self._tour_entered = self._settings.value("guided/entered", False, type=bool)
 
     def _migrar_desde_almacen_anterior(self) -> None:
         """Copia una sola vez el progreso del almacen anterior."""
@@ -88,6 +89,7 @@ class LearningController(QObject):
         self._settings.setValue(
             "guided/last_concept_index", self._last_concept_index
         )
+        self._settings.setValue("guided/entered", self._tour_entered)
         self._settings.sync()
 
     @Property("QVariantList", notify=progressChanged)
@@ -113,6 +115,27 @@ class LearningController(QObject):
     @Property(int, notify=progressChanged)
     def lastConceptIndex(self) -> int:
         return self._last_concept_index
+
+    @Property(bool, notify=progressChanged)
+    def tourEntered(self) -> bool:
+        """Si el alumno ya vio el recorrido; desde entonces el pre-test se cierra.
+
+        El avance guardado antes de existir la marca también cuenta.
+        """
+        return bool(
+            self._tour_entered
+            or self._completed_unit_ids
+            or self._last_unit_index != 0
+            or self._last_concept_index != 0
+        )
+
+    @Slot()
+    def markTourEntered(self) -> None:
+        if self._tour_entered:
+            return
+        self._tour_entered = True
+        self._persist()
+        self.progressChanged.emit()
 
     @Slot(str, result=bool)
     def isUnitCompleted(self, unit_id: str) -> bool:
@@ -160,14 +183,26 @@ class LearningController(QObject):
 
     @Slot()
     def resetProgress(self) -> None:
+        self._reset(keep_entry=False)
+
+    @Slot()
+    def restartTour(self) -> None:
+        """Vuelve a empezar el recorrido sin olvidar que ya se vio: reiniciarlo
+        no debe reabrir el pre-test (eso solo lo hace borrar todo el progreso)."""
+        self._reset(keep_entry=True)
+
+    def _reset(self, keep_entry: bool) -> None:
+        keep_entry = keep_entry and self.tourEntered
         had_visible_progress = bool(
             self._completed_unit_ids
             or self._last_unit_index != 0
             or self._last_concept_index != 0
+            or self._tour_entered != keep_entry
         )
         self._completed_unit_ids = []
         self._last_unit_index = 0
         self._last_concept_index = 0
+        self._tour_entered = keep_entry
         # Se persiste incluso si el estado visible ya estaba vacío: así una
         # llamada explícita a reiniciar también elimina valores externos
         # inválidos que se hayan normalizado al cargar QSettings.

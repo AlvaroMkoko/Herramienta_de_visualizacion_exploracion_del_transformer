@@ -9,11 +9,13 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("QSG_RHI_BACKEND", "software")
 os.environ.setdefault("QT_QUICK_CONTROLS_STYLE", "Basic")
 
+import pytest
 from PySide6.QtCore import QObject, QPointF, QUrl
 from PySide6.QtQml import QQmlComponent, QQmlEngine
 from PySide6.QtQuick import QQuickItem
 
 from model.aprendizaje import LearningModuleCatalog
+from model.evaluacion.results_repository import ResultsRepository
 from viewmodel.main_viewmodel import MainViewModel
 
 
@@ -212,3 +214,236 @@ def test_los_64_pasos_modulares_tienen_ilustracion_especifica(qapp):
 
     window.deleteLater()
     engine.deleteLater()
+
+
+TOUR_HOST = b"""import QtQuick
+import QtQuick.Controls
+import "screens" as Screens
+
+ApplicationWindow {
+    width: 1280
+    height: 820
+    visible: false
+    StackView { id: navigation; anchors.fill: parent }
+    Screens.ModuleGuidedTourScreen {
+        anchors.fill: parent
+        stackView: navigation
+        moduleId: "module_3"
+    }
+}
+"""
+
+
+def _unlock_stage(course, results, module_id: str, stage: str) -> None:
+    """Meets the real prerequisites (RN18) the way a student would: review
+    mode is off by default, so a locked stage ignores the screen's input."""
+    from viewmodel.course_controller import STAGES, CourseController
+
+    def complete(target: str, stages) -> None:
+        for name in stages:
+            if name in ("pretest", "posttest"):
+                results.save_result(
+                    {
+                        "schema_version": 2,
+                        "assessment_type": "pre" if name == "pretest" else "post",
+                        "module_id": target,
+                        "percentage": 80.0,
+                    }
+                )
+            elif name == "guided":
+                for step in course.catalog.get(target)["guided_steps"]:
+                    course.recordGuidedCheck(target, step["id"], 0)
+                assert course.completeGuidedTour(target)
+            elif name == "laboratory":
+                steps = course.catalog.get(target)["guided_steps"]
+                for step in steps[: CourseController.REQUIRED_LAB_CYCLES]:
+                    course.recordDiscoveryCycle(target, step["id"], True, 1)
+                course.recordAnchorClosing(target, 0)
+            elif name == "results":
+                course.markResultsViewed(target)
+            assert course.stageCompleted(target, name), (target, name)
+
+    module_ids = [module["id"] for module in course.modules]
+    for previous in module_ids[: module_ids.index(module_id)]:
+        complete(previous, STAGES)
+    complete(module_id, STAGES[: STAGES.index(stage)])
+    assert course.stageAvailable(module_id, stage)
+
+
+def test_recorrido_exige_predecir_antes_de_revelar_y_avanzar(qapp, tmp_path):
+    from PySide6.QtCore import Q_ARG, QMetaObject
+
+    from model.aprendizaje import ModuleProgressRepository
+
+    engine = QQmlEngine()
+    view_model = MainViewModel()
+    course = view_model.courseController
+    # Progreso y resultados propios: la suite comparte un solo temporal entre
+    # pruebas, y abrir el recorrido exige el pre-test y los módulos previos.
+    course._repository = ModuleProgressRepository(tmp_path / "progreso.json")
+    course._state = course._repository.snapshot()
+    results = ResultsRepository(tmp_path / "resultados.json")
+    course._evaluation._repository = results
+    _unlock_stage(course, results, "module_3", "guided")
+    engine.rootContext().setContextProperty("mainViewModel", view_model)
+    component = QQmlComponent(engine)
+    component.setData(
+        TOUR_HOST,
+        QUrl.fromLocalFile(str(ROOT / "view" / "qml" / "TourHost.qml")),
+    )
+    assert component.status() != QQmlComponent.Status.Error, _errors(component)
+    window = component.create()
+    assert window is not None, _errors(component)
+    qapp.processEvents()
+
+    tour = window.findChild(QObject, "moduleGuidedTourScreen")
+    next_button = window.findChild(QObject, "moduleGuidedNextButton")
+    check = window.findChild(QObject, "moduleGuidedCheck")
+    definition = window.findChild(QObject, "moduleGuidedDefinition")
+    assert tour is not None and next_button is not None and check is not None
+    assert definition is not None and definition.property("visible")
+    # Abrir la pantalla es entrar al recorrido: el pre-test queda cerrado.
+    assert not course.stageAvailable("module_3", "pretest")
+    assert tour.property("currentAttempted") is False
+    assert next_button.property("enabled") is False
+
+    # Saltar hacia adelante por los chips no pasa de la primera predicción.
+    QMetaObject.invokeMethod(tour, "goToStep", Q_ARG("QVariant", 5))
+    assert tour.property("currentIndex") == 0
+
+    QMetaObject.invokeMethod(tour, "submitCheck", Q_ARG("QVariant", 0))
+    qapp.processEvents()
+    assert tour.property("currentAttempted") is True
+    assert next_button.property("enabled") is True
+    assert course.guidedProgress("module_3")["attempted"] == ["m3_s1"]
+    assert not course.stageCompleted("module_3", "guided")
+
+    window.deleteLater()
+    engine.deleteLater()
+
+
+EVALUATION_HOST = b"""import QtQuick
+import QtQuick.Controls
+import "screens" as Screens
+
+ApplicationWindow {
+    width: 1280
+    height: 820
+    visible: false
+    StackView { id: navigation; anchors.fill: parent }
+    Screens.EvaluationScreen {
+        anchors.fill: parent
+        stackView: navigation
+        moduleId: "module_1"
+        assessmentType: "pre"
+    }
+}
+"""
+
+
+def _correct_answer(question: dict) -> dict:
+    if question["tipo"] == "opcion_unica":
+        return {"opcion_id": question["correct_option_id"]}
+    if question["tipo"] == "seleccion_multiple":
+        return {"opciones_ids": question["correct_option_ids"]}
+    if question["tipo"] == "texto":
+        return {"texto": question["respuestas_aceptadas"][0]}
+    return {"asignaciones": {item["id"]: item["correcto"] for item in question["elementos"]}}
+
+
+@pytest.mark.parametrize("entered_tour", [False, True])
+def test_repetir_el_pretest_respeta_la_entrada_al_recorrido(qapp, tmp_path, entered_tour):
+    from model.aprendizaje import ModuleProgressRepository
+
+    view_model = MainViewModel()
+    course = view_model.courseController
+    course._repository = ModuleProgressRepository(tmp_path / "progreso.json")
+    course._state = course._repository.snapshot()
+    evaluation = view_model.moduleEvaluationController
+    evaluation._repository = ResultsRepository(tmp_path / "resultados.json")
+    evaluation.startModuleEvaluation("module_1", "pre")
+    while evaluation.isActive:
+        evaluation.registrarRespuesta(_correct_answer(evaluation._manager.current_question))
+        evaluation.submitCurrentAnswer()
+    assert evaluation.finished
+    if entered_tour:
+        course.enterGuidedTour("module_1")
+
+    engine = QQmlEngine()
+    engine.rootContext().setContextProperty("mainViewModel", view_model)
+    component = QQmlComponent(engine)
+    component.setData(
+        EVALUATION_HOST,
+        QUrl.fromLocalFile(str(ROOT / "view" / "qml" / "EvaluationHost.qml")),
+    )
+    assert component.status() != QQmlComponent.Status.Error, _errors(component)
+    window = component.create()
+    assert window is not None, _errors(component)
+    qapp.processEvents()
+
+    screen = window.findChild(QObject, "evaluationScreen")
+    repeat = window.findChild(QObject, "evaluationRepeatButton")
+    assert screen.property("showingResult") is True
+    assert repeat is not None
+    assert repeat.property("visible") is (not entered_tour)
+
+    window.deleteLater()
+    engine.deleteLater()
+    qapp.processEvents()
+
+
+RESULTS_HOST = b"""import QtQuick
+import QtQuick.Controls
+import "screens" as Screens
+
+ApplicationWindow {
+    width: 1280
+    height: 820
+    visible: false
+    StackView { id: navigation; anchors.fill: parent }
+    Screens.ModuleResultsScreen { anchors.fill: parent; stackView: navigation; moduleId: "module_1" }
+}
+"""
+
+
+def test_resultados_muestran_cuantas_veces_se_tomo_cada_evaluacion(qapp, tmp_path):
+    from model.aprendizaje import ModuleProgressRepository
+
+    view_model = MainViewModel()
+    course = view_model.courseController
+    course._repository = ModuleProgressRepository(tmp_path / "progreso.json")
+    course._state = course._repository.snapshot()
+    results = ResultsRepository(tmp_path / "resultados.json")
+    view_model.moduleEvaluationController._repository = results
+    for assessment, percentage in (("pre", 30.0), ("pre", 90.0), ("post", 70.0)):
+        results.save_result(
+            {
+                "schema_version": 2,
+                "assessment_type": assessment,
+                "module_id": "module_1",
+                "percentage": percentage,
+            }
+        )
+
+    engine = QQmlEngine()
+    engine.rootContext().setContextProperty("mainViewModel", view_model)
+    component = QQmlComponent(engine)
+    component.setData(
+        RESULTS_HOST,
+        QUrl.fromLocalFile(str(ROOT / "view" / "qml" / "ResultsHost.qml")),
+    )
+    assert component.status() != QQmlComponent.Status.Error, _errors(component)
+    window = component.create()
+    assert window is not None, _errors(component)
+    qapp.processEvents()
+
+    screen_results = window.findChild(QQuickItem, "moduleResultsScreen")
+    assert screen_results.property("results")["pre_percentage"] == 30.0  # el primero
+    # Los delegados de un Repeater no son hijos QObject: se buscan en el árbol visual.
+    by_name = {item.objectName(): item for item in _visual_descendants(screen_results)}
+    assert by_name["moduleResultsPreAttempts"].property("text") == "Cuenta el 1.º de 2 intentos"
+    assert by_name["moduleResultsPostAttempts"].property("text") == "1 intento"
+
+    window.deleteLater()
+    engine.deleteLater()
+    qapp.processEvents()

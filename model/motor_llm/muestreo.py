@@ -64,11 +64,13 @@ def filtrar_top_k(logits: torch.Tensor, k: int) -> torch.Tensor:
     if k >= tamano_vocabulario:
         return logits.clone()
 
-    valores_top_k, _ = torch.topk(logits, k, dim=-1)
-    # El k-esimo valor mas alto es el umbral: todo lo que quede POR
-    # DEBAJO de el se descarta.
-    umbral = valores_top_k[..., -1, None]
-    return logits.masked_fill(logits < umbral, float("-inf"))
+    _, indices_top_k = torch.topk(logits, k, dim=-1)
+    # La máscara se construye con los índices seleccionados, no con el valor
+    # del umbral. Así se conservan exactamente k candidatos incluso cuando
+    # varios logits están empatados en la frontera.
+    descartados = torch.ones_like(logits, dtype=torch.bool)
+    descartados.scatter_(-1, indices_top_k, False)
+    return logits.masked_fill(descartados, float("-inf"))
 
 
 def filtrar_top_p(logits: torch.Tensor, p: float) -> torch.Tensor:
@@ -91,7 +93,7 @@ def filtrar_top_p(logits: torch.Tensor, p: float) -> torch.Tensor:
     if not (0 < p <= 1):
         raise ValueError(f"p debe estar en (0, 1], recibido: {p}")
 
-    if p == 1.0:
+    if p >= 1.0:
         return logits.clone()
 
     logits_ordenados, indices_ordenados = torch.sort(logits, descending=True, dim=-1)

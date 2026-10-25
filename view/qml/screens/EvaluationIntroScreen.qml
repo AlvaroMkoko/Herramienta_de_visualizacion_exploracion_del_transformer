@@ -329,9 +329,15 @@ PagePrincipal {
                         color: Style.Theme.exito_fondo
                         Text {
                             anchors.centerIn: parent
+                            objectName: "evaluationIntroPreviousResult"
                             text: "Último resultado: " + root.evaluationController.previousResult.puntaje + "/"
                                   + root.evaluationController.previousResult.maximo + " ("
                                   + root.evaluationController.previousResult.percentage + "%)"
+                                  // La comparación usa el primer intento, no este último.
+                                  + (root.evaluationController.attemptCount > 1
+                                     ? "  ·  " + root.evaluationController.attemptCount
+                                       + " intentos, cuenta el primero"
+                                     : "")
                             color: Style.Theme.exito_texto
                             font.pixelSize: 14 * root.sx
                             font.bold: true

@@ -16,6 +16,7 @@ import pytest
 from model.evaluacion.results_repository import (
     RESULT_SCHEMA_VERSION,
     ResultsRepository,
+    primer_intento,
 )
 
 
@@ -261,3 +262,23 @@ def test_clear_borra_historial_archivados_y_archivo(tmp_path):
     assert repositorio.archived_count == 0
     assert not ruta.exists()
     assert ResultsRepository(ruta).get_history() == []
+
+
+def test_first_toma_el_intento_mas_antiguo_aunque_llegue_despues(tmp_path):
+    """Al docente los resultados le llegan por red y por archivo: el orden de
+    llegada no es el orden en que se resolvieron."""
+    repo = ResultsRepository(tmp_path / "r.json")
+    base = {"schema_version": 2, "assessment_type": "pre", "module_id": "module_1"}
+    repo.save_result({**base, "percentage": 90.0, "completed_at": "2026-10-07T11:00:00+00:00"})
+    repo.save_result({**base, "percentage": 30.0, "completed_at": "2026-10-07T10:00:00+00:00"})
+    repo.save_result({**base, "percentage": 50.0, "completed_at": "2026-10-07T12:00:00+00:00"})
+
+    assert repo.first("pre", module_id="module_1")["percentage"] == 30.0
+    assert repo.latest("pre", module_id="module_1")["percentage"] == 50.0
+    assert repo.first("post", module_id="module_1") == {}
+
+
+def test_primer_intento_sin_fecha_usa_el_orden_de_guardado():
+    sin_fecha = [{"percentage": 10.0}, {"percentage": 20.0, "completed_at": "2026-01-01T00:00:00+00:00"}]
+    assert primer_intento(sin_fecha)["percentage"] == 10.0
+    assert primer_intento([]) == {}

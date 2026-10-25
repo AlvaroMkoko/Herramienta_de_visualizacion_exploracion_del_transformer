@@ -816,6 +816,15 @@ PagePrincipal {
                         Layout.preferredWidth: 240 * root.sx
                         Layout.preferredHeight: 54 * root.sy
                         text: "Repetir evaluación"
+                        // Respeta las guardas de etapa (curso y ruta general): el
+                        // pre-test se cierra al entrar al recorrido. Repetir no
+                        // cambia la medición, que siempre toma el primer intento.
+                        visible: root.moduleId.length === 0
+                                 ? mainViewModel.progressController.etapaDisponible(
+                                        root.assessmentType === "pre" ? 1 : 4)
+                                 : mainViewModel.courseController.stageAvailable(
+                                        root.moduleId,
+                                        root.assessmentType === "pre" ? "pretest" : "posttest")
                         onClicked: root.startAssessment()
                     }
                     BotonPrincipal {

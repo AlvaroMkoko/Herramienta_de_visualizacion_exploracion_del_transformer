@@ -6,6 +6,7 @@ import json
 
 import pytest
 
+from model.aprendizaje.module_question_bank import ModuleQuestionBank
 from model.aula import analisis
 from model.aula import protocolo as p
 from model.aula.apodos import ApodoInvalido, sugerir_apodo, validar_apodo
@@ -41,6 +42,8 @@ def _resultado(result_id: str, tipo: str, pct: float, modulo: str = "module_1", 
         "schema_version": 2,
         "assessment_type": tipo,
         "module_id": modulo,
+        # Los resultados de módulo siempre traen la versión del instrumento.
+        "instrument_version": ModuleQuestionBank.VERSION_PREGUNTAS,
         "percentage": pct,
         "student_id": "__self__",
         "completed_at": f"2026-10-07T10:00:0{1 if tipo == 'pre' else 2}+00:00",
@@ -317,3 +320,118 @@ def test_resumen_de_alumno_reproduce_estados_del_curso():
     assert resumen["modules"][0]["status"] == "review_recommended"
     assert resumen["modules"][1]["status"] == "not_started"
     assert resumen["global_percent"] == 50
+
+
+# ---------------------------------------------------------------------------
+# Análisis de reactivos y práctica
+# ---------------------------------------------------------------------------
+
+def _respuesta(code: str, puntaje: float) -> dict:
+    return {"code": code, "concept_id": "tok", "prompt": f"Reactivo {code}",
+            "puntaje": puntaje, "maximo": 1.0, "correcto": puntaje == 1.0}
+
+
+def test_analisis_de_reactivos_marca_techo_falta_de_ganancia_y_discriminacion():
+    modulo = {"id": "module_1", "title": "Entrada", "concepts": [{"id": "tok", "title": "Tokenización"}]}
+    alumnos = []
+    # A1: todos aciertan desde el pre (techo). A2: mejora y discrimina.
+    for indice, total in enumerate((20, 40, 60, 80)):
+        acierta_post = indice >= 2
+        alumnos.append((
+            {"alumno_id": f"a{indice}", "apodo": f"A{indice}"},
+            [
+                _resultado(f"p{indice}", "pre", total, answers=[_respuesta("A1", 1.0), _respuesta("A2", 0.0)]),
+                _resultado(f"q{indice}", "post", total + 10,
+                           answers=[_respuesta("A1", 1.0), _respuesta("A2", 1.0 if acierta_post else 0.0)]),
+            ],
+        ))
+
+    filas = {fila["code"]: fila for fila in analisis.analisis_reactivos("module_1", alumnos)}
+
+    assert filas["A1"]["p_pre"] == 1.0 and "Casi todos aciertan en el pre-test" in filas["A1"]["flags"]
+    assert "No mejora entre pre y post" in filas["A1"]["flags"]
+    assert filas["A2"]["gain"] == 0.5 and filas["A2"]["d_post"] == 1.0
+    assert filas["A2"]["flags"] == []
+
+    datos = analisis.analisis_modulo(modulo, alumnos)
+    assert datos["item_analysis"] and datos["avg_normalized_gain"] is not None
+
+
+def test_ganancia_normalizada_e_interaccion_por_alumno():
+    assert analisis.ganancia_normalizada(20, 60) == 0.5
+    assert analisis.ganancia_normalizada(100, 100) is None
+
+    modulo = {"id": "module_1", "title": "Entrada", "concepts": []}
+    alumnos = [({"alumno_id": "a", "apodo": "Ana"},
+                [_resultado("1", "pre", 50), _resultado("2", "post", 75)])]
+    snapshots = {"a": {"modules": {"module_1": {
+        "guided_checks": {"m1_s1": {"attempts": 2, "first_correct": False},
+                          "m1_s2": {"attempts": 1, "first_correct": True}},
+        "lab_cycles": [{"step_id": "tokens", "prediction_correct": True},
+                       {"step_id": "tokens", "prediction_correct": False},
+                       {"step_id": "ids", "prediction_correct": True}],
+        "retention": {"m1_l2": {"correct": True}},
+    }}}}
+
+    fila = analisis.analisis_modulo(modulo, alumnos, snapshots)["rows"][0]
+
+    assert fila["normalized_gain"] == 0.5
+    assert fila["interaction"] == {
+        "guided_checks": 2, "guided_first_correct": 1,
+        "lab_cycles": 2, "lab_predictions_correct": 2,
+        "retention_correct": 1, "retention_total": 1,
+    }
+
+
+def test_el_docente_ve_el_primer_intento_y_cuantas_veces_lo_tomo():
+    """Misma regla que CourseController: el primer intento es la medición; las
+    repeticiones se cuentan pero no la reemplazan."""
+    modulo = {"id": "module_1", "title": "Tokens", "concepts": []}
+    # El más antiguo por fecha no es ni el primero ni el último de la lista:
+    # así la prueba distingue «primer intento» de «primero/último guardado».
+    repetido = dict(_resultado("3", "pre", 95), completed_at="2026-10-07T10:00:09+00:00")
+    tardio = dict(_resultado("4", "pre", 70), completed_at="2026-10-07T10:00:05+00:00")
+    resultados = [repetido, _resultado("1", "pre", 40), tardio, _resultado("2", "post", 80)]
+
+    estado = analisis.estado_modulo("module_1", {}, resultados)
+    assert estado["pre_percentage"] == 40.0
+    assert estado["pre_attempts"] == 3 and estado["post_attempts"] == 1
+
+    fila = analisis.analisis_modulo(modulo, [({"alumno_id": "a"}, resultados)])["rows"][0]
+    assert fila["pre_percentage"] == 40.0 and fila["delta"] == 40.0
+    assert fila["pre_attempts"] == 3
+
+
+def test_el_aula_no_resta_pre_y_post_de_versiones_distintas():
+    """Caso real: el banco modular pasó de v8 a v9. Un pre v8 más antiguo no
+    puede ser el «primer intento» de un par con un post v9."""
+    vigente = ModuleQuestionBank.VERSION_PREGUNTAS
+    modulo = {"id": "module_1", "title": "Tokens", "concepts": []}
+    viejo = dict(_resultado("1", "pre", 20), instrument_version=vigente - 1,
+                 completed_at="2026-10-07T09:00:00+00:00")
+    con_par = [viejo, _resultado("2", "pre", 50), _resultado("3", "post", 80)]
+    sin_par = [viejo, _resultado("4", "post", 80)]
+
+    datos = analisis.analisis_modulo(
+        modulo, [({"alumno_id": "a"}, con_par), ({"alumno_id": "b"}, sin_par)]
+    )
+
+    fila_a, fila_b = datos["rows"]
+    assert fila_a["pre_percentage"] == 50.0 and fila_a["delta"] == 30.0
+    assert fila_b["delta"] is None and fila_b["comparable"] is False
+    assert fila_b["normalized_gain"] is None
+    assert datos["avg_delta"] == 30.0 and datos["with_both"] == 1
+    # Los promedios no mezclan el pre v8 del alumno b con los v9.
+    assert datos["avg_pre"] == 50.0 and datos["with_pre"] == 1
+
+
+def test_errores_frecuentes_solo_del_post_vigente():
+    vigente = ModuleQuestionBank.VERSION_PREGUNTAS
+    modulo = {"id": "module_1", "title": "Tokens", "concepts": [{"id": "tok", "title": "Tok"}]}
+    fallo = [{"question_id": "viejo", "concept_id": "tok", "correcto": False, "prompt": "¿?"}]
+    post_viejo = dict(_resultado("1", "post", 40, answers=fallo), instrument_version=vigente - 1)
+
+    datos = analisis.analisis_modulo(modulo, [({"alumno_id": "a"}, [post_viejo])])
+
+    assert datos["question_errors"] == [] and datos["concept_errors"] == []
+    assert datos["outside_current_version"] == 1 and datos["avg_post"] is None

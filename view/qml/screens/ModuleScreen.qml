@@ -20,13 +20,29 @@ PagePrincipal {
     readonly property real minimumJourneyWidth: 1110
     readonly property var stages: [
         { id: "pretest", number: "01", eyebrow: "DIAGNÓSTICO", title: "Pre-test", subtitle: "15 de 25 preguntas aleatorias", route: "EvaluationIntroScreen.qml" },
-        { id: "guided", number: "02", eyebrow: "APRENDE", title: "Recorrido guiado", subtitle: "8 pasos breves y reproducibles", route: "ModuleGuidedTourScreen.qml" },
-        { id: "laboratory", number: "03", eyebrow: "PRÁCTICA", title: "Laboratorio especializado", subtitle: "Entrenamiento e inferencia del componente", route: "ModuleLaboratoryScreen.qml" },
+        { id: "guided", number: "02", eyebrow: "APRENDE", title: "Recorrido guiado", subtitle: "8 pasos: predice, comprueba y revela", route: "ModuleGuidedTourScreen.qml" },
+        { id: "laboratory", number: "03", eyebrow: "PRÁCTICA", title: "Laboratorio especializado", subtitle: "3 retos guiados con el modelo real", route: "ModuleLaboratoryScreen.qml" },
         { id: "posttest", number: "04", eyebrow: "COMPRUEBA", title: "Post-test", subtitle: "15 reactivos equivalentes y distintos", route: "EvaluationIntroScreen.qml" },
         { id: "results", number: "05", eyebrow: "REFLEXIONA", title: "Resultados", subtitle: "Mejora, dominio y recomendaciones", route: "ModuleResultsScreen.qml" }
     ]
 
-    Component.onCompleted: root.courseController.selectModule(root.moduleId)
+    property var reviewData: ({})
+    property var reviewResults: ({})
+
+    Component.onCompleted: {
+        root.courseController.selectModule(root.moduleId)
+        root.reviewData = root.courseController.spacedReview(root.moduleId) || ({})
+    }
+
+    function submitReview(itemId, optionIndex) {
+        var result = root.courseController.recordReviewAnswer(
+                    String(root.reviewData.module_id || ""), itemId, optionIndex)
+        if (!result || result.correct === undefined)
+            return
+        var copy = Object.assign({}, root.reviewResults)
+        copy[itemId] = result
+        root.reviewResults = copy
+    }
 
     function openStage(stage) {
         if (!root.courseController.stageAvailable(root.moduleId, stage.id))
@@ -262,9 +278,14 @@ PagePrincipal {
                             maximumLineCount: 2
                             elide: Text.ElideRight
                         }
+                        // La pregunta problema es el gancho del módulo; la
+                        // descripción queda como respaldo sin alineación.
                         Text {
+                            objectName: "moduleHeroQuestion"
                             Layout.fillWidth: true
-                            text: root.moduleData.description || ""
+                            text: (root.moduleData.anchor && root.moduleData.anchor.question)
+                                  ? root.moduleData.anchor.question
+                                  : (root.moduleData.description || "")
                             color: Style.Theme.texto_secundario_fuerte
                             font.pixelSize: Math.max(13, 15 * root.sx)
                             lineHeight: 1.2
@@ -699,6 +720,119 @@ PagePrincipal {
                             }
 
                             AparicionSuave { objetivo: stageCard; orden: stageCard.index + 4 }
+                        }
+                    }
+                }
+            }
+
+            // La pregunta problema abre el módulo y se retoma al cerrar el
+            // laboratorio; el ejemplo es el mismo en recorrido y laboratorio.
+            Rectangle {
+                id: anchorCard
+                objectName: "moduleAnchorCard"
+                visible: root.moduleData.anchor !== undefined
+                Layout.fillWidth: true
+                Layout.leftMargin: root.pageMargin
+                Layout.rightMargin: root.pageMargin
+                Layout.preferredHeight: anchorColumn.implicitHeight + 24 * root.sy
+                radius: 16 * root.sx
+                color: Style.Theme.concepto_fondo
+                border.width: 1
+                border.color: Style.Theme.acento_suave
+
+                ColumnLayout {
+                    id: anchorColumn
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.margins: 12 * root.sx
+                    spacing: 5 * root.sy
+
+                    Text {
+                        text: "LA PREGUNTA DE ESTE MÓDULO"
+                        color: Style.Theme.acento_fuerte
+                        font.pixelSize: Math.max(9, 10 * root.sx)
+                        font.bold: true
+                        font.letterSpacing: 0.7
+                    }
+                    Text {
+                        objectName: "moduleAnchorQuestion"
+                        Layout.fillWidth: true
+                        text: String((root.moduleData.anchor || {}).question || "")
+                        color: Style.Theme.concepto_texto
+                        font.pixelSize: Math.max(13, 15 * root.sx)
+                        font.bold: true
+                        wrapMode: Text.WordWrap
+                    }
+                    Text {
+                        Layout.fillWidth: true
+                        text: "Ejemplo que seguirás en el recorrido y en el laboratorio: "
+                              + String((root.moduleData.anchor || {}).example || "")
+                        color: Style.Theme.texto_secundario_fuerte
+                        font.pixelSize: Math.max(10, 11 * root.sx)
+                        wrapMode: Text.WordWrap
+                    }
+                }
+            }
+
+            // Repaso espaciado: retos de laboratorio del módulo anterior, no
+            // reactivos del test, para no volver a exponer el instrumento.
+            Rectangle {
+                id: reviewCard
+                objectName: "moduleSpacedReviewCard"
+                visible: root.reviewData.available === true
+                Layout.fillWidth: true
+                Layout.leftMargin: root.pageMargin
+                Layout.rightMargin: root.pageMargin
+                Layout.preferredHeight: reviewColumn.implicitHeight + 24 * root.sy
+                radius: 16 * root.sx
+                color: Style.Theme.surface
+                border.width: 1
+                border.color: Style.Theme.borde_suave
+
+                ColumnLayout {
+                    id: reviewColumn
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.margins: 12 * root.sx
+                    spacing: 8 * root.sy
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: "REPASO RÁPIDO · " + String(root.reviewData.module_title || "")
+                              + " — tres preguntas para no olvidar lo anterior"
+                        color: Style.Theme.acento_fuerte
+                        font.pixelSize: Math.max(9, 10 * root.sx)
+                        font.bold: true
+                        wrapMode: Text.WordWrap
+                    }
+
+                    GridLayout {
+                        Layout.fillWidth: true
+                        columns: root.width >= 1100 ? 3 : 1
+                        columnSpacing: 10 * root.sx
+                        rowSpacing: 8 * root.sy
+
+                        Repeater {
+                            model: root.reviewData.items || []
+                            delegate: PredictionCheck {
+                                id: reviewItem
+                                required property var modelData
+                                required property int index
+                                objectName: "moduleSpacedReviewItem" + reviewItem.index
+                                Layout.fillWidth: true
+                                Layout.alignment: Qt.AlignTop
+                                sx: root.sx
+                                eyebrow: reviewItem.modelData.answered
+                                         && root.reviewResults[reviewItem.modelData.id] === undefined
+                                         ? "YA RESPONDIDA" : "RECUERDA"
+                                check: reviewItem.modelData
+                                result: root.reviewResults[reviewItem.modelData.id] || ({})
+                                onSubmitted: function(optionIndex) {
+                                    root.submitReview(String(reviewItem.modelData.id), optionIndex)
+                                }
+                            }
                         }
                     }
                 }

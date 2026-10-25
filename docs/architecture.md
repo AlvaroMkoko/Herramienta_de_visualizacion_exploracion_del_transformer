@@ -2,7 +2,7 @@
 
 ## Panorama
 
-App de escritorio educativa: **Python 3.14 + PyTorch + PySide6 + QML**, patrón **MVVM estricto**.
+App de escritorio educativa: **Python 3.12+ + PyTorch + PySide6 + QML**, patrón **MVVM estricto**.
 Es el Trabajo Terminal de un equipo de tres personas que trabajan sobre el mismo `main`. Dos
 consecuencias mandan sobre todo lo demás:
 
@@ -112,6 +112,50 @@ Módulo → Pre-test → Recorrido guiado → Laboratorio → Post-test → Resu
   lugar de duplicarse ocho veces.
 - `EvaluationIntroScreen` y `EvaluationScreen` aceptan opcionalmente
   `moduleId`; sin él conservan exactamente el instrumento global anterior.
+
+### Alineación teoría–práctica–evaluación
+
+`data/aprendizaje/alineacion.json` complementa `modules.json` y
+`LearningModuleCatalog` lo fusiona al cargar, así que recorrido, laboratorio y
+evaluación leen la misma fuente. Por módulo declara:
+
+| Clave | Dónde se usa | Para qué |
+|---|---|---|
+| `anchor` | `ModuleScreen`, recorrido, laboratorio | Pregunta problema, ejemplo numérico pequeño que se sigue en recorrido y laboratorio, y pregunta de cierre (`closing`). |
+| `step_checks` | `ModuleGuidedTourScreen` (`guided_steps[].check`) | Predicción por paso. CAMBIO y RESULTADO se revelan al intentarla; «Siguiente» se habilita sólo entonces. |
+| `post_variants` | `ModuleQuestionBank` (`challenges[].post_variant`) | Forma post isomorfa de cada reto: mismo constructo y dificultad, otros números, sin nombrar la operación. |
+| `transfer_items` | `ModuleQuestionBank` (A6 y A7) | Situación nueva con el mismo mecanismo; no comparte caso con otro reactivo del intento. |
+| `lab_challenges` | `ModuleLaboratoryScreen`, repaso espaciado | Retos propios del laboratorio. El de índice *i* trata el mismo concepto que `challenges[i]` (lo valida el catálogo) para que el mapa paso→reto del laboratorio siga valiendo. |
+
+Reglas que dependen de esta alineación (todas en `CourseController`):
+
+- **Recorrido completo** = las 8 predicciones intentadas (`recordGuidedCheck`).
+  Navegar o mirar no basta: `completeGuidedTour` devuelve `False` mientras falte alguna.
+- **Laboratorio completo** = `REQUIRED_LAB_CYCLES` (3) ciclos predecir→probar→
+  observar→explicar en pasos distintos (`recordDiscoveryCycle`) más la
+  pregunta de cierre (`recordAnchorClosing`). Un forward sólo se registra
+  (`recordLaboratoryAnalysis`).
+- **Pre-test**: sin retroalimentación de claves. Sus conceptos fallados sólo
+  marcan pasos «★» en el recorrido (`guidedProgress().focus_step_ids`).
+- **Post-test**: `moduleResults().review` da clave, explicación y paso del
+  recorrido por reactivo. **Nunca se construye para el pre-test.**
+- **Resultados**: ganancia normalizada de Hake (total y por concepto),
+  recomendaciones con paso del recorrido y reto de laboratorio, y la
+  interacción registrada (`interaction`) para cruzarla con la ganancia.
+- **Repaso espaciado**: al abrir el módulo *n* se repasan 3 retos de
+  laboratorio del módulo *n − 1* (no reactivos del test). Cuenta el primer
+  intento (`retention`).
+
+`INSTRUMENT_VERSION` del banco modular pasó a **8**: los resultados de la
+versión 7 no son comparables con los nuevos y `_build_results` ya los separa
+por versión. Un catálogo sin `alineacion.json` junto a él conserva el
+comportamiento anterior (lo usan algunas pruebas).
+
+El panel del aula (`model/aula/analisis.py`) añade `item_analysis`: por par
+de reactivos paralelos (mismo `code` en pre y post), la proporción de acierto
+*p*, el índice de discriminación *D* (27 % superior − 27 % inferior, con 4 o más
+alumnos) y Δp. Marca para revisión los reactivos con techo en el pre
+(p ≥ 0.9), D < 0.2 o sin ganancia.
 
 ### Compatibilidad e incorporación incremental
 
@@ -392,6 +436,31 @@ sin uso*).
 - `main.py` — punto de entrada de la aplicación.
 - `entrenar.py` — entrenamiento sin interfaz, con todos los formatos de dataset.
 - `generar.py` — generación de texto desde un checkpoint.
+
+## Herramientas de datos (`tools/`)
+Scripts que **generan artefactos del repositorio**; la aplicación no los importa ni
+los ejecuta. Su salida se versiona y el modelo se entrena con ella, así que cada
+script declara la procedencia de sus datos en el encabezado y su salida tiene
+prueba de invariantes.
+
+- `filtrar_tatoeba.py` — genera `traduccion_es_en_basica.jsonl` y
+  `traduccion_en_es_basica.jsonl` en `data/datasets_predefinidos/` desde el
+  volcado de Tatoeba en OPUS (versión, licencia CC BY 2.0 FR y cita en el
+  encabezado). El volcado en bruto **no entra al repositorio**. La semilla es fija:
+  el mismo volcado da archivos idénticos al byte. `traduccion_demo.jsonl` está
+  escrito a mano y este script no lo toca.
+- `palabras_vetadas_corpus.txt` — la lista negra de ese script, un patrón por
+  línea y comentada por categorías. **No es un duplicado de
+  `data/aula/palabras_bloqueadas.json`**: compara distinto, veta cosas distintas
+  y no la edita el docente. El porqué completo está en el encabezado del script.
+- Los invariantes de la salida (de 3 a 16 tokens por lado con `cl100k_base`, frases
+  únicas en cada lado, EN→ES igual a ES→EN invertido, «Tom» entre el 2 % y el 3 %)
+  están en `tests/model/test_datasets_traduccion.py`. Si regeneras, córrela.
+
+Uso, desde la raíz: `python tools/filtrar_tatoeba.py <.en> <.es> data/datasets_predefinidos`.
+Es la excepción a *Toda ruta de escritura pasa por `core.rutas`*: escribe solo
+en el directorio que recibe por argumento, a mano, nunca desde la aplicación ni
+desde las pruebas. Regenerar cambia la muestra: hay que volver a leerla.
 
 ## Flujo de datos
 
