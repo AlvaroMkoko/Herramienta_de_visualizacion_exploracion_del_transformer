@@ -5,11 +5,11 @@
     "module_1": {
       "anchor": {
         "question": "¿Cómo convierte el modelo la frase «el gato duerme» en algo que pueda calcular, y qué hace con una frase más corta que comparte el mismo batch?",
-        "example": "Vocabulario mínimo: PAD=0, BOS=1, EOS=2, el=7, gato=15, duerme=23, sol=9. «el gato duerme» → [1, 7, 15, 23, 2] (T=5). «el sol» → [1, 7, 9, 2] y, con relleno, [1, 7, 9, 2, 0]. El batch es una matriz [2, 5] y la máscara de la segunda fila es [T, T, T, T, F].",
+      "example": "Vocabulario mínimo: PAD=0, BOS=1, EOS=2, el=7, gato=15, duerme=23, sol=9. Como entradas del encoder: «el gato duerme» → [7, 15, 23] y «el sol» → [7, 9], que con relleno queda [7, 9, 0]. El batch es [2, 3] y la máscara de la segunda fila es [True, True, False]. Si «el gato duerme» fuera la salida esperada, primero se forma [1, 7, 15, 23, 2]; con teacher forcing, el decoder recibe [1, 7, 15, 23] y el objetivo es [7, 15, 23, 2].",
         "closing": {
           "prompt": "Con lo que observaste en el laboratorio, ¿qué hace el modelo con la posición PAD de «el sol»?",
           "options": [
-            "La conserva en la matriz [2, 5], pero la máscara impide usarla como clave",
+            "La conserva en la matriz [2, 3], pero la máscara impide usarla como clave",
             "La elimina del batch antes del embedding",
             "La trata como una palabra más con significado propio"
           ],
@@ -59,14 +59,14 @@
           "feedback": "Los IDs siguen el orden de los tokens. Los mismos IDs en otro orden forman otra secuencia."
         },
         "m1_s5": {
-          "prompt": "Si agregas BOS=1 al inicio y EOS=2 al final de [7, 15, 23], ¿qué longitud resulta?",
+          "prompt": "Antes del desplazamiento, si la salida contiene [7, 15, 23] y agregas BOS=1 al inicio y EOS=2 al final, ¿qué longitud tiene la secuencia destino completa?",
           "options": [
             "3",
             "5",
             "4"
           ],
           "correct_index": 1,
-          "feedback": "Los tokens especiales ocupan posiciones reales: 3 de contenido + 2 delimitadores = 5."
+          "feedback": "Antes de teacher forcing hay 3 IDs de contenido + BOS + EOS = 5; después se separan la entrada del decoder y el objetivo."
         },
         "m1_s6": {
           "prompt": "Si el contexto máximo es 4 y la secuencia mide 6, ¿qué debe ocurrir?",

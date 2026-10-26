@@ -146,8 +146,8 @@ Reglas que dependen de esta alineación (todas en `CourseController`):
   laboratorio del módulo *n − 1* (no reactivos del test). Cuenta el primer
   intento (`retention`).
 
-`INSTRUMENT_VERSION` del banco modular pasó a **8**: los resultados de la
-versión 7 no son comparables con los nuevos y `_build_results` ya los separa
+`INSTRUMENT_VERSION` del banco modular pasó a **11**: los resultados de la
+versión 10 no son comparables con los nuevos y `_build_results` ya los separa
 por versión. Un catálogo sin `alineacion.json` junto a él conserva el
 comportamiento anterior (lo usan algunas pruebas).
 

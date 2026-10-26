@@ -29,12 +29,11 @@ class ModuleQuestionBank:
     VALID_ASSESSMENTS = ("pre", "post")
     QUESTIONS_PER_ATTEMPT = 15
     QUESTIONS_PER_LEVEL = 5
-    # 9: las formas básica e intermedia dejan de intercambiar las mismas
-    # asociaciones conceptuales entre pre y post. El post pregunta por
-    # operaciones y los reactivos de relación usan motivo, salida o cambio en
-    # conjuntos disjuntos de etapas. Los resultados de la versión 8 no son
-    # comparables.
-    VERSION_PREGUNTAS = 9
+    # 11: el módulo 1 distingue la entrada del encoder de la secuencia destino
+    # completa y del desplazamiento del decoder. También acepta equivalentes
+    # semánticos en sus respuestas abiertas. Los resultados de la versión 10
+    # no son comparables.
+    VERSION_PREGUNTAS = 11
 
     PEDAGOGICAL_TYPES = (
         "opcion_multiple",
@@ -851,6 +850,15 @@ class ModuleQuestionBank:
         blank_step = steps[blank_index]
         previous_step = steps[blank_index - 1]
         next_step = steps[(blank_index + 1) % len(steps)]
+        blank_answers = [blank_step["title"]]
+        if module["id"] == "module_1":
+            blank_answers.extend(
+                (
+                    ["Agregar BOS y EOS", "BOS y EOS"]
+                    if blank_step["id"] == "m1_s5"
+                    else ["Formar secuencias"]
+                )
+            )
         questions.append(
             self._text_question(
                 prefix,
@@ -861,7 +869,7 @@ class ModuleQuestionBank:
                 "Evocación guiada",
                 f"Completa el flujo: {previous_step['title']} → ________ → "
                 f"{next_step['title']}.",
-                [blank_step["title"]],
+                blank_answers,
                 pedagogical_type="completar_espacios",
                 formato="Completar espacios",
                 placeholder="Escribe el nombre de la etapa",
@@ -1042,6 +1050,19 @@ class ModuleQuestionBank:
         )
 
         output_step = steps[6 if assessment == "pre" else 4]
+        output_answers = self._accepted_short_answers(output_step["output"])
+        if module["id"] == "module_1":
+            output_answers.extend(
+                (
+                    ["Batch de IDs", "Matriz rectangular de IDs"]
+                    if output_step["id"] == "m1_s7"
+                    else [
+                        "IDs con BOS y EOS",
+                        "Secuencia con BOS y EOS",
+                        "Secuencia delimitada",
+                    ]
+                )
+            )
         questions.append(
             self._text_question(
                 prefix,
@@ -1052,7 +1073,7 @@ class ModuleQuestionBank:
                 "Reconstrucción del flujo",
                 f"Completa: «{output_step['title']}» recibe "
                 f"{output_step['input']} y produce ________.",
-                self._accepted_short_answers(output_step["output"]),
+                output_answers,
                 pedagogical_type="completar_espacios",
                 formato="Completar espacios",
                 placeholder="Escribe la salida de la etapa",

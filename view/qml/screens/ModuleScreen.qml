@@ -28,10 +28,31 @@ PagePrincipal {
 
     property var reviewData: ({})
     property var reviewResults: ({})
+    property var stageStates: ({})
 
     Component.onCompleted: {
         root.courseController.selectModule(root.moduleId)
+        root.refreshStageStates()
         root.reviewData = root.courseController.spacedReview(root.moduleId) || ({})
+    }
+
+    Connections {
+        target: root.courseController
+        function onProgressChanged() { root.refreshStageStates() }
+    }
+
+    function refreshStageStates() {
+        var updated = {}
+        for (var index = 0; index < root.stages.length; ++index) {
+            var stageId = String(root.stages[index].id)
+            updated[stageId] = {
+                "available": root.courseController.stageAvailable(root.moduleId, stageId),
+                "completed": root.courseController.stageCompleted(root.moduleId, stageId)
+            }
+        }
+        // Reemplazar el mapa, en vez de mutarlo, notifica a todos los delegates
+        // que siguen vivos debajo de la sección abierta en el StackView.
+        root.stageStates = updated
     }
 
     function submitReview(itemId, optionIndex) {
@@ -547,8 +568,9 @@ PagePrincipal {
                             objectName: "moduleStageCard_" + stageCard.index
                             required property int index
                             required property var modelData
-                            readonly property bool available: root.courseController.stageAvailable(root.moduleId, modelData.id)
-                            readonly property bool completed: root.courseController.stageCompleted(root.moduleId, modelData.id)
+                            readonly property var stageState: root.stageStates[modelData.id] || ({})
+                            readonly property bool available: stageState.available === true
+                            readonly property bool completed: stageState.completed === true
                             readonly property bool current: String(root.moduleData.current_stage || "") === modelData.id
                             readonly property color accent: root.stageAccent(modelData.id)
                             readonly property color onAccent: root.stageOnAccent(modelData.id)
