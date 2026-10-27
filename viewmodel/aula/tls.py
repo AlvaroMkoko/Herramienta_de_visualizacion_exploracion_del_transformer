@@ -15,14 +15,33 @@ from PySide6.QtCore import QCryptographicHash
 from PySide6.QtNetwork import QSsl, QSslCertificate, QSslConfiguration, QSslKey, QSslSocket
 
 
+#: El alumno confía en la huella fijada, no en la fecha (``cliente_lan``
+#: ignora los errores de un certificado cuya huella coincide). El certificado
+#: vive tanto como la clase, que puede durar varios semestres.
+VIGENCIA_CERTIFICADO = timedelta(days=3650)
+
+
 @dataclass(frozen=True)
 class CredencialesTls:
     configuracion: QSslConfiguration
     huella_sha256: str
+    certificado_pem: bytes = b""
+    clave_pem: bytes = b""
 
 
-def crear_credenciales_servidor() -> CredencialesTls:
-    """Crea un certificado de sesión y una configuración TLS para Qt."""
+def crear_credenciales_servidor(
+    certificado_pem: bytes | None = None, clave_pem: bytes | None = None
+) -> CredencialesTls:
+    """Configuración TLS para Qt con el certificado dado o, sin él, uno nuevo.
+
+    Un certificado guardado que no se puede cargar se reemplaza por uno nuevo:
+    los alumnos tendrán que volver a unirse por dirección, pero la clase abre.
+    """
+    if certificado_pem and clave_pem:
+        try:
+            return _configurar(certificado_pem, clave_pem)
+        except (ValueError, RuntimeError):
+            pass
     clave = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     nombre = x509.Name(
         [x509.NameAttribute(NameOID.COMMON_NAME, "Transformer Visualizer Aula")]
@@ -35,7 +54,7 @@ def crear_credenciales_servidor() -> CredencialesTls:
         .public_key(clave.public_key())
         .serial_number(x509.random_serial_number())
         .not_valid_before(ahora - timedelta(minutes=1))
-        .not_valid_after(ahora + timedelta(days=1))
+        .not_valid_after(ahora + VIGENCIA_CERTIFICADO)
         .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)
         .add_extension(
             x509.ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH]), critical=False
@@ -52,12 +71,18 @@ def crear_credenciales_servidor() -> CredencialesTls:
         .sign(clave, hashes.SHA256())
     )
 
-    certificado_pem = certificado.public_bytes(serialization.Encoding.PEM)
-    clave_pem = clave.private_bytes(
-        serialization.Encoding.PEM,
-        serialization.PrivateFormat.TraditionalOpenSSL,
-        serialization.NoEncryption(),
+    return _configurar(
+        certificado.public_bytes(serialization.Encoding.PEM),
+        clave.private_bytes(
+            serialization.Encoding.PEM,
+            serialization.PrivateFormat.TraditionalOpenSSL,
+            serialization.NoEncryption(),
+        ),
     )
+
+
+def _configurar(certificado_pem: bytes, clave_pem: bytes) -> CredencialesTls:
+    huella = x509.load_pem_x509_certificate(certificado_pem).fingerprint(hashes.SHA256()).hex()
     certificado_qt = QSslCertificate(certificado_pem, QSsl.EncodingFormat.Pem)
     clave_qt = QSslKey(
         clave_pem,
@@ -75,7 +100,9 @@ def crear_credenciales_servidor() -> CredencialesTls:
     configuracion.setPeerVerifyMode(QSslSocket.PeerVerifyMode.VerifyNone)
     return CredencialesTls(
         configuracion=configuracion,
-        huella_sha256=certificado.fingerprint(hashes.SHA256()).hex(),
+        huella_sha256=huella,
+        certificado_pem=certificado_pem,
+        clave_pem=clave_pem,
     )
 
 

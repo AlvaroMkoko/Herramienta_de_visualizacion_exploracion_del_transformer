@@ -87,6 +87,34 @@ def test_la_escritura_es_atomica(tmp_path):
     assert list(tmp_path.glob("*.tmp")) == []
 
 
+def test_el_lote_escribe_una_sola_vez_al_salir(tmp_path):
+    """El docente guarda por lote lo que le llega a la vez. Dentro del bloque
+    nada está en disco todavía: por eso confirma a los alumnos después."""
+    ruta = tmp_path / "resultados.json"
+    repositorio = ResultsRepository(ruta)
+
+    with repositorio.lote():
+        with repositorio.lote():  # anidado: solo cuenta el bloque externo
+            repositorio.save_unique(dict(resultado(), result_id="a"))
+        repositorio.save_unique(dict(resultado("post"), result_id="b"))
+        assert not ruta.exists()
+
+    guardado = json.loads(ruta.read_text("utf-8"))
+    assert [r["result_id"] for r in guardado["results"]] == ["a", "b"]
+    assert ResultsRepository(ruta).has_result("b")
+
+
+def test_el_archivo_conserva_su_formato_legible(tmp_path):
+    """Escribir con ``json.dumps`` en vez de ``json.dump`` es más rápido, pero
+    el archivo debe seguir siendo exactamente el mismo JSON indentado."""
+    ruta = tmp_path / "resultados.json"
+    repositorio = ResultsRepository(ruta)
+    repositorio.save_result(dict(resultado(), comentario="evaluación"))
+
+    contenido = json.loads(ruta.read_text("utf-8"))
+    assert ruta.read_text("utf-8") == json.dumps(contenido, ensure_ascii=False, indent=2)
+
+
 def test_sin_ruta_no_toca_el_disco(tmp_path):
     repositorio = ResultsRepository()
     repositorio.save_result(resultado())

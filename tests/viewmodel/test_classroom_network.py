@@ -221,6 +221,50 @@ def test_rechaza_certificado_tls_distinto(qtbot, docente, puerto_udp):
     cliente.cerrar()
 
 
+def _puerto_tcp_libre() -> int:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as comprobacion:
+        comprobacion.bind(("127.0.0.1", 0))
+        return comprobacion.getsockname()[1]
+
+
+def test_reabrir_la_clase_sin_broadcast_reconecta_a_los_alumnos(qtbot, tmp_path, monkeypatch):
+    """En redes que no dejan pasar el broadcast (Wi-Fi IPN) el alumno solo
+    puede volver por la última dirección. Si el docente estrenara certificado al
+    reabrir la clase, la huella fijada ya no coincidiría y el alumno se quedaría
+    en «reconectando» para siempre (docs/estandar_red.md, P6)."""
+    monkeypatch.setattr(modulo_alumno, "ESPERAS_REINTENTO_MS", (200, 400))
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp_docente, socket.socket(
+        socket.AF_INET, socket.SOCK_DGRAM
+    ) as udp_sin_nadie:
+        udp_docente.bind(("127.0.0.1", 0))
+        udp_sin_nadie.bind(("127.0.0.1", 0))
+        puertos_udp = udp_docente.getsockname()[1], udp_sin_nadie.getsockname()[1]
+    puerto = _puerto_tcp_libre()
+    docente = ClassroomHostController(
+        raiz_clases=tmp_path / "clases", puerto_websocket=puerto, puerto_descubrimiento=puertos_udp[0]
+    )
+    try:
+        assert docente.crearClase("Inteligencia Artificial", "", False, False)
+        # El alumno busca en un puerto donde nadie responde: como sin broadcast.
+        ana = _Alumno(tmp_path, "ana", puertos_udp[1])
+        assert ana.controller.buscarPorDireccion(f"127.0.0.1:{docente.puerto}", docente.codigo)
+        qtbot.waitUntil(lambda: ana.controller.estado == "eligiendo_apodo", timeout=TIEMPO)
+        assert ana.controller.unirse("Ana", "")
+        qtbot.waitUntil(lambda: ana.controller.estado == "conectado", timeout=TIEMPO)
+        huella = ana.controller._cliente._huella_esperada
+
+        class_id = docente.classId
+        docente.detenerClase()
+        qtbot.waitUntil(lambda: ana.controller.estado == "reconectando", timeout=TIEMPO)
+        assert docente.abrirClase(class_id) and docente.puerto == puerto
+
+        qtbot.waitUntil(lambda: ana.controller.estado == "conectado", timeout=TIEMPO)
+        assert ana.controller._cliente._huella_esperada == huella
+        qtbot.waitUntil(lambda: docente.conectados == 1, timeout=TIEMPO)
+    finally:
+        docente.detenerClase()
+
+
 def test_archivo_tvclase_sin_red(qtbot, tmp_path, docente, puerto_udp):
     assert docente.crearClase("Inteligencia Artificial", "", False, False)
     sin_red = _Alumno(tmp_path, "mar", puerto_udp)
