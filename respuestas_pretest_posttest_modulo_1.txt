@@ -1,0 +1,417 @@
+PREGUNTAS Y RESPUESTAS CORRECTAS — MÓDULO 1 COMPLETO
+Pretest, recorrido guiado, laboratorio y post-test
+Fuentes: banco modular versión 11, alineación pedagógica y flujo del laboratorio
+
+Cada intento selecciona aleatoriamente 15 preguntas de un banco de 25.
+Este archivo incluye las 25 respuestas de cada evaluación para cubrir cualquier intento.
+
+================================================================================
+PRETEST — MÓDULO 1
+================================================================================
+
+1. [module_1_pre_b1]
+Pregunta: ¿Qué descripción corresponde a «Tokenización»?
+Respuesta correcta: Divide el texto en unidades del vocabulario antes de cualquier cálculo neuronal.
+
+2. [module_1_pre_b2]
+Pregunta: ¿Qué descripción corresponde a «Tokens especiales»?
+Respuesta correcta: Usa IDs reservados: BOS inicia la entrada del decoder, EOS marca el objetivo final y PAD completa filas cortas.
+
+3. [module_1_pre_b3]
+Pregunta: La función específica de «Token IDs» es representar cada token mediante el índice entero de su fila en el vocabulario.
+Respuesta correcta: Verdadero.
+
+4. [module_1_pre_b4]
+Pregunta: El orden de los IDs no afecta la secuencia y puede permutarse sin consecuencias.
+Respuesta correcta: Falso.
+
+5. [module_1_pre_b5]
+Pregunta: Selecciona las DOS asociaciones coherentes entre concepto y función.
+Respuestas correctas:
+- Vocabulario: Relaciona cada unidad reconocida con un identificador estable; ese ID permite seleccionar después su fila en la tabla de embeddings.
+- Padding: Iguala longitudes dentro de un batch agregando posiciones sin contenido semántico.
+
+6. [module_1_pre_b6]
+Pregunta: Construcción de Token IDs → ________ → Formación de secuencias.
+Respuesta correcta: Tokens especiales.
+
+7. [module_1_pre_b7]
+Pregunta: Relaciona cada etapa con el motivo por el que se realiza.
+Respuestas correctas:
+- Texto de entrada → El tokenizador necesita una cadena de texto bien definida.
+- Consulta del vocabulario → Las capas sólo reciben índices o tensores.
+- Tokens especiales → BOS inicia la entrada del decoder y EOS marca el último objetivo.
+- Padding del batch → Un batch necesita una matriz rectangular.
+
+8. [module_1_pre_b8]
+Pregunta: ¿Qué forma tiene el tensor producido por «Padding del batch»?
+Respuesta correcta: [B, T_max].
+
+9. [module_1_pre_i1]
+Pregunta: Ordena las etapas según el flujo real de información.
+Respuesta correcta: Texto de entrada → Separación en tokens → Consulta del vocabulario → Construcción de Token IDs.
+
+10. [module_1_pre_i2]
+Pregunta: Ordena las etapas según el flujo real de información.
+Respuesta correcta: Tokens especiales → Formación de secuencias → Padding del batch → Máscara de padding.
+
+11. [module_1_pre_i3]
+Pregunta: Relaciona cada transformación con la información que produce.
+Respuestas correctas:
+- Texto de entrada → Texto listo para tokenizar.
+- Consulta del vocabulario → Relación token ↔ fila.
+- Tokens especiales → Secuencia destino completa con BOS y EOS.
+- Padding del batch → Matriz de IDs.
+
+12. [module_1_pre_i4]
+Pregunta: Relaciona cada etapa con el cambio observable que produce.
+Respuestas correctas:
+- Separación en tokens → Una cadena pasa a ser una lista ordenada.
+- Construcción de Token IDs → Texto discreto pasa a enteros.
+- Formación de secuencias → Se fija una longitud válida.
+- Máscara de padding → La máscara se expande para aplicarse a los scores de atención.
+
+13. [module_1_pre_i5]
+Pregunta: Selecciona las DOS explicaciones que justifican correctamente su etapa.
+Respuestas correctas:
+- Consulta del vocabulario: Las capas sólo reciben índices o tensores.
+- Formación de secuencias: La posición de cada ID cambia la interpretación.
+
+14. [module_1_pre_i6]
+Pregunta: Después de «Separación en tokens» ocurre «Consulta del vocabulario».
+Respuesta correcta: Verdadero.
+
+15. [module_1_pre_i7]
+Pregunta: «Padding del batch» recibe secuencias de longitudes distintas y produce ________.
+Respuesta correcta: Matriz de IDs.
+
+16. [module_1_pre_i8]
+Pregunta: ¿Por qué se realiza «Formación de secuencias»?
+Respuesta correcta: La posición de cada ID cambia la interpretación.
+
+17. [module_1_pre_i9]
+Pregunta: Selecciona los DOS pares que describen la entrada y la salida de una misma etapa del recorrido.
+Respuestas correctas:
+- Una cadena legible → Texto listo para tokenizar.
+- Matriz con PAD → IDs + máscara.
+
+18. [module_1_pre_a1]
+Pregunta: Un batch contiene 3 secuencias rellenadas a 7 posiciones. ¿Qué forma tiene el tensor de IDs?
+Respuesta correcta: [3, 7].
+
+19. [module_1_pre_a2]
+Pregunta: La secuencia [18, 42, PAD, PAD] usa True=permitido. ¿Qué fila lógica describe su máscara de claves?
+Respuesta correcta: [True, True, False, False].
+
+20. [module_1_pre_a3]
+Pregunta: Selecciona los DOS casos emparejados correctamente.
+Respuestas correctas:
+- «hiperparametrización» no está como palabra completa, pero sus subpalabras sí → Dividirla en subpalabras conocidas.
+- Dos secuencias miden 4 y 6; ¿cuántos PAD necesita la primera? → 2.
+
+21. [module_1_pre_a4]
+Pregunta: Reconstruye el orden necesario para que la transformación sea válida.
+Respuesta correcta: Separación en tokens → Consulta del vocabulario → Construcción de Token IDs → Tokens especiales.
+
+22. [module_1_pre_a5]
+Pregunta: Relaciona cada situación con la conclusión correcta.
+Respuestas correctas:
+- Si se intercambian los IDs de dos tokens → El orden de la secuencia.
+- Un vocabulario tiene 30 000 entradas; el ID es 172 → Selecciona la fila 172 asociada al token.
+- PAD usa un ID reservado distinto de un token de contenido → La máscara no podría distinguir relleno de contenido si compartieran ID.
+
+23. [module_1_pre_a6]
+Pregunta: Sin máscara de padding, la atención puede repartir peso hacia las posiciones PAD.
+Respuesta correcta: Verdadero.
+
+24. [module_1_pre_a7]
+Pregunta: Un batch tiene frases de longitudes 4, 6 y 2, rellenadas a la mayor. ¿Cuántos PAD hay en total?
+Respuesta correcta: 6.
+
+25. [module_1_pre_a8]
+Pregunta: Tokens [«la», «casa»] se mapean a [31, 805]. ¿Qué conserva esa lista?
+Respuesta correcta: Identidad y orden discretos.
+
+================================================================================
+POST-TEST — MÓDULO 1
+================================================================================
+
+1. [module_1_post_b1]
+Pregunta: ¿Qué operación se realiza durante «Texto de entrada»?
+Respuesta correcta: Recibir el texto como una cadena de caracteres.
+
+2. [module_1_post_b2]
+Pregunta: ¿Qué operación se realiza durante «Tokens especiales»?
+Respuesta correcta: Construir [BOS] + IDs + [EOS] antes del desplazamiento.
+
+3. [module_1_post_b3]
+Pregunta: «Token IDs» convierte por sí solo cada ID en su vector contextual completo.
+Respuesta correcta: Falso.
+
+4. [module_1_post_b4]
+Pregunta: «Secuencias» conserva el orden de los Token IDs y determina la longitud que procesa el modelo.
+Respuesta correcta: Verdadero.
+
+5. [module_1_post_b5]
+Pregunta: Selecciona las DOS asociaciones coherentes entre concepto y función.
+Respuestas correctas:
+- Secuencias: Conserva el orden de los Token IDs y determina la longitud que procesa el modelo.
+- Máscara de padding: Impide que las posiciones de relleno se usen como claves y aporten información a otras posiciones durante la atención.
+
+6. [module_1_post_b6]
+Pregunta: Tokens especiales → ________ → Padding del batch.
+Respuesta correcta: Formación de secuencias.
+
+7. [module_1_post_b7]
+Pregunta: Relaciona cada etapa con el motivo por el que se realiza.
+Respuestas correctas:
+- Separación en tokens → Permite representar palabras conocidas y desconocidas con piezas reutilizables.
+- Construcción de Token IDs → El ID seleccionará una fila de embedding.
+- Formación de secuencias → La posición de cada ID cambia la interpretación.
+- Máscara de padding → PAD no debe usarse como clave ni aportar contenido a otras posiciones.
+
+8. [module_1_post_b8]
+Pregunta: ¿Qué forma tiene el tensor producido por «Construcción de Token IDs»?
+Respuesta correcta: [T].
+
+9. [module_1_post_i1]
+Pregunta: Ordena las etapas según el flujo real de información.
+Respuesta correcta: Separación en tokens → Consulta del vocabulario → Construcción de Token IDs → Tokens especiales.
+
+10. [module_1_post_i2]
+Pregunta: Ordena las etapas según el flujo real de información.
+Respuesta correcta: Construcción de Token IDs → Tokens especiales → Formación de secuencias → Padding del batch.
+
+11. [module_1_post_i3]
+Pregunta: Relaciona cada transformación con la información que produce.
+Respuestas correctas:
+- Separación en tokens → Tokens visibles.
+- Construcción de Token IDs → Secuencia de IDs.
+- Formación de secuencias → Secuencia del ejemplo.
+- Máscara de padding → IDs + máscara.
+
+12. [module_1_post_i4]
+Pregunta: Relaciona cada etapa con el cambio observable que produce.
+Respuestas correctas:
+- Texto de entrada → Todavía no hay tokens ni números.
+- Consulta del vocabulario → Cada pieza textual obtiene una dirección.
+- Tokens especiales → La secuencia destino completa gana dos posiciones.
+- Padding del batch → Aparecen posiciones artificiales.
+
+13. [module_1_post_i5]
+Pregunta: Selecciona las DOS explicaciones que justifican correctamente su etapa.
+Respuestas correctas:
+- Separación en tokens: Permite representar palabras conocidas y desconocidas con piezas reutilizables.
+- Padding del batch: Un batch necesita una matriz rectangular.
+
+14. [module_1_post_i6]
+Pregunta: Después de «Separación en tokens» ocurre «Tokens especiales».
+Respuesta correcta: Falso.
+
+15. [module_1_post_i7]
+Pregunta: «Tokens especiales» recibe IDs de contenido del destino y produce ________.
+Respuesta correcta: Secuencia destino completa con BOS y EOS.
+
+16. [module_1_post_i8]
+Pregunta: ¿Por qué se realiza «Consulta del vocabulario»?
+Respuesta correcta: Las capas sólo reciben índices o tensores.
+
+17. [module_1_post_i9]
+Pregunta: Selecciona los DOS pares que describen la entrada y la salida de una misma etapa del recorrido.
+Respuestas correctas:
+- Texto listo para tokenizar → Tokens visibles.
+- Secuencias de longitudes distintas → Matriz de IDs.
+
+18. [module_1_post_a1]
+Pregunta: Un batch reúne 4 frases y todas quedan rellenadas a 9 posiciones. ¿Qué forma tiene el tensor de Token IDs?
+Respuesta correcta: [4, 9].
+
+19. [module_1_post_a2]
+Pregunta: La secuencia [64, 12, 9, PAD] usa True=permitido. ¿Qué fila lógica describe su máscara de claves?
+Respuesta correcta: [True, True, True, False].
+
+20. [module_1_post_a3]
+Pregunta: Selecciona los DOS casos emparejados correctamente.
+Respuestas correctas:
+- «desconfiadamente» no aparece entera, pero «des», «confiada» y «mente» sí → Las piezas «des», «confiada» y «mente».
+- Tres secuencias miden 3, 8 y 5; ¿cuántos PAD necesita la de longitud 5? → 3.
+
+21. [module_1_post_a4]
+Pregunta: Reconstruye el orden necesario para que la transformación sea válida.
+Respuesta correcta: Consulta del vocabulario → Construcción de Token IDs → Tokens especiales → Formación de secuencias.
+
+22. [module_1_post_a5]
+Pregunta: Relaciona cada situación con la conclusión correcta.
+Respuestas correctas:
+- «perro muerde hombre» y «hombre muerde perro» usan los mismos IDs → El orden de la secuencia.
+- En un vocabulario de 50 000 entradas, «río» tiene el ID 2 931 → Selecciona la fila 2 931 asociada al token.
+- Reutilizar el ID de «the» como PAD → La máscara no podría distinguir relleno de contenido.
+
+23. [module_1_post_a6]
+Pregunta: Aunque no exista máscara, la atención nunca asigna peso al relleno porque su ID es 0.
+Respuesta correcta: Falso.
+
+24. [module_1_post_a7]
+Pregunta: Un batch tiene frases de longitudes 5, 7, 6 y 3, rellenadas a la mayor. ¿Cuántos PAD hay en total?
+Respuesta correcta: 7.
+
+25. [module_1_post_a8]
+Pregunta: Los tokens [«sol», «de», «mayo»] se mapean a [412, 9, 1077]. ¿Qué información contiene ya esa lista?
+Respuesta correcta: Identidad y orden discretos.
+
+================================================================================
+RECORRIDO GUIADO — MÓDULO 1
+================================================================================
+
+El recorrido tiene ocho comprobaciones, una por paso. Las opciones pueden
+mostrarse en distinto orden; usa el texto de la respuesta, no su posición.
+
+1. [m1_s1] Texto de entrada
+Pregunta: Antes de tokenizar, ¿qué tiene el modelo en las manos?
+Respuesta correcta: Una cadena de caracteres: todavía no hay números.
+
+2. [m1_s2] Separación en tokens
+Pregunta: Si «gatos» no está completa en el vocabulario, pero «gato» y «s» sí, ¿qué esperas que haga el tokenizador?
+Respuesta correcta: Dividirla en «gato» + «s».
+
+3. [m1_s3] Consulta del vocabulario
+Pregunta: ¿Qué obtiene cada token al consultar el vocabulario?
+Respuesta correcta: Un índice entero estable: su fila.
+
+4. [m1_s4] Construcción de Token IDs
+Pregunta: Con el=7, gato=15 y duerme=23, ¿qué secuencia corresponde a «gato duerme el»?
+Respuesta correcta: [15, 23, 7].
+
+5. [m1_s5] Tokens especiales
+Pregunta: Antes del desplazamiento, si la salida contiene [7, 15, 23] y agregas BOS=1 al inicio y EOS=2 al final, ¿qué longitud tiene la secuencia destino completa?
+Respuesta correcta: 5.
+
+6. [m1_s6] Formación de secuencias
+Pregunta: Si el contexto máximo es 4 y la secuencia mide 6, ¿qué debe ocurrir?
+Respuesta correcta: Se recorta para no superar 4 posiciones.
+
+7. [m1_s7] Padding del batch
+Pregunta: Un batch tiene secuencias de longitud 5 y 3. ¿Cuántos PAD recibe la más corta?
+Respuesta correcta: 2.
+
+8. [m1_s8] Máscara de padding
+Pregunta: Para [1, 7, 9, 2, 0] con PAD=0 y True=permitido, ¿qué máscara esperas?
+Respuesta correcta: [T, T, T, T, F].
+
+================================================================================
+LABORATORIO — PREGUNTAS DE PREDICCIÓN QUE MUESTRA EL FLUJO ACTUAL
+================================================================================
+
+Hay siete operaciones en cada modo. La operación «batch» usa una pregunta
+distinta en entrenamiento y en inferencia, por lo que existen ocho preguntas
+de predicción únicas.
+
+1. [lab_m1_text] Texto de entrada
+Pregunta: ¿Qué recibe el tokenizador al comenzar esta animación?
+Respuesta correcta: Texto Unicode todavía sin convertir en vectores.
+
+2. [m1_l3] Tokenización
+Pregunta: Una palabra aparece repartida en varios chips consecutivos. ¿Qué interpretación es coherente con la animación?
+Respuesta correcta: El tokenizador encontró varias piezas conocidas para representarla.
+
+3. [lab_m1_ids] Consulta del vocabulario
+Pregunta: Al consultar el vocabulario, ¿qué debe reemplazar a cada token?
+Respuesta correcta: Un ID entero estable para ese token.
+
+4. [m1_l7] Tokens especiales
+Pregunta: Los chips BOS y EOS aparecen en los extremos sin provenir de palabras escritas. ¿Qué función cumplen?
+Respuesta correcta: Marcar los límites que controlan el recorrido de la secuencia.
+
+5. [lab_m1_batch_training] Batch y padding — entrenamiento
+Pregunta: Si las secuencias del batch tienen distinta longitud, ¿cómo se obtiene una matriz rectangular?
+Respuesta correcta: Se añade PAD a las secuencias más cortas.
+
+6. [lab_m1_batch_inference] Ajuste de contexto — inferencia
+Pregunta: Si el texto supera el contexto máximo durante inferencia, ¿qué debe hacer este ajuste?
+Respuesta correcta: Recortar la secuencia al contexto admitido.
+
+7. [m1_l2] Máscara de padding
+Pregunta: La animación atenúa una celda PAD antes de la atención. ¿Qué error evitará ese bloqueo?
+Respuesta correcta: Que el modelo use el relleno como si fuera contenido.
+
+8. [lab_m1_no_grad] Participación en el aprendizaje
+Pregunta: Después de tokenizar, rellenar y crear la máscara, ¿qué parte de esta preparación aprende por gradiente?
+Respuesta correcta: Ninguna: son operaciones de datos.
+
+================================================================================
+LABORATORIO — COMPROBACIONES DE EXPLICACIÓN
+================================================================================
+
+En cada operación, después de predecir y observar, aparece la pregunta:
+«¿Cuál explicación conecta correctamente la fórmula con el cambio observado?»
+Estas son las siete respuestas correctas:
+
+1. [text] Texto de entrada
+Respuesta correcta: El tokenizador recibe texto Unicode, no vectores.
+
+2. [tokens] Tokenización
+Respuesta correcta: El vocabulario activo decide cómo separar la entrada.
+
+3. [ids] Consulta del vocabulario
+Respuesta correcta: Cada token se sustituye por un índice discreto.
+
+4. [specials] Tokens especiales
+Respuesta correcta: La secuencia destino completa se divide después: el decoder recibe BOS + ids y el objetivo usa ids + EOS.
+
+5. [batch] Batch y padding / Ajuste de contexto
+Respuesta correcta: En entrenamiento se alinean longitudes con PAD; en inferencia se recorta el contexto sin inventar contenido.
+
+6. [mask] Máscara de padding
+Respuesta correcta: La atención bloquea las columnas que solo contienen relleno.
+
+7. [no_grad] Participación en el aprendizaje
+Respuesta correcta: Tokenizar, rellenar y enmascarar son operaciones de datos; no aprenden por gradiente.
+
+================================================================================
+LABORATORIO — PREGUNTA FINAL DEL MÓDULO
+================================================================================
+
+Pregunta general: ¿Cómo convierte el modelo la frase «el gato duerme» en algo que pueda calcular, y qué hace con una frase más corta que comparte el mismo batch?
+
+Pregunta calificable: Con lo que observaste en el laboratorio, ¿qué hace el modelo con la posición PAD de «el sol»?
+Respuesta correcta: La conserva en la matriz [2, 3], pero la máscara impide usarla como clave.
+
+================================================================================
+LABORATORIO — BANCO COMPLETO DE RETOS
+================================================================================
+
+Este es el banco declarativo completo de ocho retos del laboratorio. Tres de
+ellos aparecen directamente en el flujo actual y los demás quedan disponibles
+como variantes del banco.
+
+1. [m1_l1]
+Pregunta: En la animación, ambas frases terminan como filas alineadas. ¿Qué evidencia muestra que el batch quedó listo?
+Respuesta correcta: Las filas tienen igual número de celdas y el relleno sólo ocupa las sobrantes.
+
+2. [m1_l2]
+Pregunta: La animación atenúa una celda PAD antes de la atención. ¿Qué error evitará ese bloqueo?
+Respuesta correcta: Que el modelo use el relleno como si fuera contenido.
+
+3. [m1_l3]
+Pregunta: Una palabra aparece repartida en varios chips consecutivos. ¿Qué interpretación es coherente con la animación?
+Respuesta correcta: El tokenizador encontró varias piezas conocidas para representarla.
+
+4. [m1_l4]
+Pregunta: Al crecer la frase larga aparecen nuevas celdas PAD al final de la corta. ¿Qué permanece intacto?
+Respuesta correcta: Los tokens reales y su orden.
+
+5. [m1_l5]
+Pregunta: Tras intercambiar dos palabras, los mismos pares token–ID se desplazan de columna. ¿Qué demuestra esto?
+Respuesta correcta: La identidad se conserva, pero la secuencia cambia.
+
+6. [m1_l6]
+Pregunta: Dos apariciones de la misma palabra señalan la misma fila del vocabulario. ¿Qué puede variar más adelante?
+Respuesta correcta: Su representación contextual por estar rodeadas de tokens distintos.
+
+7. [m1_l7]
+Pregunta: Los chips BOS y EOS aparecen en los extremos sin provenir de palabras escritas. ¿Qué función cumplen?
+Respuesta correcta: Marcar los límites que controlan el recorrido de la secuencia.
+
+8. [m1_l8]
+Pregunta: La animación asigna el mismo ID a «banco» en dos frases con sentidos distintos. ¿Dónde deberá resolverse esa diferencia?
+Respuesta correcta: En las representaciones contextuales construidas por la atención.
