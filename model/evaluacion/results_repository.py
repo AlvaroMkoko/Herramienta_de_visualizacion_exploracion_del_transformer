@@ -9,12 +9,13 @@ avance pre→post cruce dos instrumentos distintos.
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from copy import deepcopy
 import hashlib
 import json
 import os
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Iterator
 import uuid
 
 #: Versión del esquema de resultados que produce ``model.evaluacion.metrics``.
@@ -63,6 +64,8 @@ class ResultsRepository:
         self._ruta = Path(ruta) if ruta else None
         self._results: list[dict[str, Any]] = []
         self._archivados: list[dict[str, Any]] = []
+        self._en_lote = 0
+        self._guardar_al_cerrar_lote = False
         self._cargar()
 
     # ------------------------------------------------------------------
@@ -133,8 +136,29 @@ class ResultsRepository:
         contenido = json.dumps(resultado, ensure_ascii=False, sort_keys=True, default=str)
         return "h" + hashlib.sha256(contenido.encode("utf-8")).hexdigest()[:31]
 
+    @contextmanager
+    def lote(self) -> Iterator["ResultsRepository"]:
+        """Agrupa las escrituras del bloque en una sola, al salir de él.
+
+        El docente reescribe el archivo completo por cada resultado que recibe;
+        con la clase de un semestre (cientos de resultados) cuarenta entregas
+        simultáneas lo bloqueaban decenas de segundos. Quien confirme lo
+        guardado debe hacerlo **después** del bloque: dentro, aún no está en disco.
+        """
+        self._en_lote += 1
+        try:
+            yield self
+        finally:
+            self._en_lote -= 1
+            if not self._en_lote and self._guardar_al_cerrar_lote:
+                self._guardar_al_cerrar_lote = False
+                self._persistir()
+
     def _persistir(self) -> None:
         if self._ruta is None:
+            return
+        if self._en_lote:
+            self._guardar_al_cerrar_lote = True
             return
         self._ruta.parent.mkdir(parents=True, exist_ok=True)
         temporal = self._ruta.with_suffix(".tmp")
@@ -143,9 +167,12 @@ class ResultsRepository:
             "results": self._results,
             "archivados": self._archivados,
         }
+        # Mismos bytes que ``json.dump``, pero ``json.dump`` no usa el
+        # codificador en C: con un archivo de varios MB es unas 3 veces más lento.
+        texto = json.dumps(contenido, ensure_ascii=False, indent=2)
         try:
             with temporal.open("w", encoding="utf-8") as archivo:
-                json.dump(contenido, archivo, ensure_ascii=False, indent=2)
+                archivo.write(texto)
                 archivo.flush()
                 os.fsync(archivo.fileno())
             os.replace(temporal, self._ruta)
