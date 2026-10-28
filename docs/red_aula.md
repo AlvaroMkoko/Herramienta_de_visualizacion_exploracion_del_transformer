@@ -79,7 +79,8 @@ Alumno                                          Docente
   │  {"v":1,"tipo":"buscar","huella":"3fa2…"}  ─▶ │  ¿huella == sha256("tvaula:"+código)[:16]?
   │                                               │  sí → responde a la IP/puerto de origen
   │ ◀─ {"v":1,"tipo":"aqui","huella":"3fa2…",     │
-  │      "puerto":47801,"nombre":"IA 6CV1"}       │
+  │      "puerto":47801,"nombre":"IA 6CV1",       │
+  │      "certificado_sha256":"9c1e…"}            │
   │  la IP del docente es la de origen del datagrama
 ```
 
@@ -254,8 +255,14 @@ Un `.tvclase` es JSON con `formato`, `version`, `generado_en`, `clase`,
 
 La clase vive en la red del aula y el diseño lo asume:
 
-- **No hay TLS** en la LAN. Por eso viajan pocos datos personales: apodo y,
-  si el docente la pide, matrícula. Nunca nombre completo, correo ni edad.
+- La conexión es **`wss://` (TLS ≥ 1.2)** con un certificado autofirmado
+  **por clase**, guardado en `clase.json` (`tls.py`, `servidor_lan.py`). El
+  alumno fija su huella SHA-256: la que llega en la respuesta `aqui` o, si
+  entró por dirección, la primera que ve. Como el certificado persiste, la huella
+  sigue valiendo al reabrir la clase; es lo que permite reconectarse en redes
+  sin broadcast ([estandar_red.md](estandar_red.md), P6).
+- Aun así viajan pocos datos personales: apodo y, si el docente la pide,
+  matrícula. Nunca nombre completo, correo ni edad.
 - El código no es un secreto fuerte (30 bits). Se compensa con límites:
   5 intentos fallidos por conexión y 15 por IP cada 60 s. Después la conexión
   se cierra con `demasiados_intentos`.
@@ -263,8 +270,8 @@ La clase vive en la red del aula y el diseño lo asume:
 - Los mensajes de un alumno que todavía no está activo (o está en espera) se
   rechazan con `no_unido`.
 
-Si en el futuro se usa la nube (opción C), el TLS es obligatorio, junto con un
-aviso de privacidad (LFPDPPP).
+Si en el futuro se usa la nube (opción C), hará falta un certificado emitido
+por una autoridad (no autofirmado) y un aviso de privacidad (LFPDPPP).
 
 ## 12. Problemas de red en escuelas
 
@@ -291,8 +298,10 @@ clase.
 
 ## 13. Empaquetado
 
-- PyInstaller debe incluir `PySide6.QtWebSockets` y `PySide6.QtNetwork`. Si el
-  análisis automático no los detecta, agrégalos con `--hidden-import`.
+- PyInstaller debe incluir `PySide6.QtWebSockets`, `PySide6.QtNetwork`, el
+  plugin TLS de Qt (`plugins/tls/`) y `cryptography`. Si el análisis automático
+  no los detecta, agrégalos con `--hidden-import`. Sin el plugin TLS no hay
+  `wss://` y nadie puede unirse.
 - `data/aula/palabras_bloqueadas.json` es un recurso de **solo lectura**: debe
   viajar dentro del paquete, como `data/aprendizaje/modules.json`.
 - El instalador del equipo docente puede ejecutar
@@ -318,6 +327,6 @@ clase.
    `procesar()` / `Envio` igual que `ServidorAulaLan`.
 2. El código de clase se busca en una tabla del servidor en lugar de por
    broadcast. El alumno usa `ClienteAulaLan.conectar(host, puerto)` con
-   `wss://` (habría que permitir esquema seguro en `cliente_lan.py`).
+   `wss://`, que ya es el esquema que usa `cliente_lan.py`.
 3. El docente se conectaría como un cliente con rol de administrador. Esto
    requiere mensajes nuevos para las acciones que hoy llama directamente.

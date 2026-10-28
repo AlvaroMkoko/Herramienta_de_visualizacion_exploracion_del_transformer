@@ -3,7 +3,7 @@
 Estructura en disco (una carpeta por clase, fácil de respaldar o copiar)::
 
     aula/clases/<class_id>/
-        clase.json            configuración, código y secreto
+        clase.json            configuración, código, secreto y certificado TLS
         alumnos.json          fichas: apodo, matrícula, estado, origen
         progreso/<id>.json    último snapshot de avance de cada alumno
         resultados.json       un ResultsRepository normal
@@ -174,6 +174,29 @@ class RepositorioClase:
         if not alumno_id or not token or alumno_id not in self._alumnos:
             return False
         return hmac.compare_digest(self.token_de(alumno_id), str(token))
+
+    # ------------------------------------------------------------------
+    # Certificado TLS
+    # ------------------------------------------------------------------
+
+    def credenciales_tls(self) -> tuple[bytes, bytes] | None:
+        """Certificado y clave privada (PEM) de la clase, si ya tiene.
+
+        Se guardan con el secreto y, como él, nunca salen en ``clase_publica``:
+        los alumnos fijan la huella del certificado y debe ser la misma cada vez
+        que el docente reabre la clase.
+        """
+        tls = self._clase.get("tls")
+        if not isinstance(tls, dict) or not tls.get("certificado") or not tls.get("clave"):
+            return None
+        return str(tls["certificado"]).encode("ascii"), str(tls["clave"]).encode("ascii")
+
+    def guardar_credenciales_tls(self, certificado_pem: bytes, clave_pem: bytes) -> None:
+        self._clase["tls"] = {
+            "certificado": certificado_pem.decode("ascii"),
+            "clave": clave_pem.decode("ascii"),
+        }
+        escribir_json(self.carpeta / "clase.json", self._clase)
 
     # ------------------------------------------------------------------
     # Alumnos

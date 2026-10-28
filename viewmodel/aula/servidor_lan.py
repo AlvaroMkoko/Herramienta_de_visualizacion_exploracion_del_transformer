@@ -37,7 +37,13 @@ class ServidorAulaLan(QObject):
         self._sesion = sesion
         self._puerto_inicial = puerto_websocket
         self._puerto_udp = puerto_descubrimiento
-        credenciales = crear_credenciales_servidor()
+        # Un certificado por clase, guardado con ella: los alumnos fijan su
+        # huella al unirse, y uno nuevo en cada apertura los dejaría sin poder
+        # reconectarse en redes que no dejan pasar el broadcast (docs/estandar_red.md, P6).
+        guardadas = sesion.repo.credenciales_tls()
+        credenciales = crear_credenciales_servidor(*(guardadas or (None, None)))
+        if guardadas != (credenciales.certificado_pem, credenciales.clave_pem):
+            sesion.repo.guardar_credenciales_tls(credenciales.certificado_pem, credenciales.clave_pem)
         self._huella_certificado = credenciales.huella_sha256
         self._servidor = QWebSocketServer(
             "TransformerVisualizer", QWebSocketServer.SslMode.SecureMode, self
@@ -48,6 +54,12 @@ class ServidorAulaLan(QObject):
         self._udp.readyRead.connect(self._leer_datagramas)
         self._sockets: dict[str, QWebSocket] = {}
         self._descubrimiento = False
+        # Mensajes recibidos que esperan su turno; se atienden por lote.
+        self._cola: list[tuple[str, str]] = []
+        self._drenado = QTimer(self)
+        self._drenado.setSingleShot(True)
+        self._drenado.setInterval(0)
+        self._drenado.timeout.connect(self._procesar_cola)
 
     # ------------------------------------------------------------------
     # Arranque y parada
@@ -75,6 +87,7 @@ class ServidorAulaLan(QObject):
         return ""
 
     def detener(self) -> None:
+        self._procesar_cola()
         for conexion_id in list(self._sockets):
             self._cerrar(conexion_id)
         self._servidor.close()
@@ -114,8 +127,26 @@ class ServidorAulaLan(QObject):
             socket.disconnected.connect(socket.deleteLater)
 
     def _al_texto(self, texto: str) -> None:
-        conexion_id = self.sender().objectName()
-        self.enviar(self._sesion.procesar(conexion_id, texto))
+        self._cola.append((self.sender().objectName(), texto))
+        if not self._drenado.isActive():
+            self._drenado.start()
+
+    def _procesar_cola(self) -> None:
+        """Atiende lo recibido con una sola escritura de resultados.
+
+        Cuando 40 alumnos entregan a la vez, sus mensajes se juntan aquí y
+        ``resultados.json`` se escribe una vez por lote, no una por resultado.
+        Las respuestas (los ``ack``) salen después de guardar: el alumno borra de
+        su cola solo lo que ya está en disco (docs/estandar_red.md, R2 y P8).
+        """
+        if not self._cola:
+            return
+        cola, self._cola = self._cola, []
+        envios: list[Envio] = []
+        with self._sesion.repo.resultados.lote():
+            for conexion_id, texto in cola:
+                envios.extend(self._sesion.procesar(conexion_id, texto))
+        self.enviar(envios)
         self.actividad.emit()
 
     def _al_binario(self, _datos) -> None:
@@ -125,6 +156,11 @@ class ServidorAulaLan(QObject):
         self._desconectado(self.sender().objectName())
 
     def _desconectado(self, conexion_id: str) -> None:
+        if conexion_id not in self._sockets:
+            return
+        # Lo que el alumno envió justo antes de irse se atiende antes de
+        # olvidar su conexión, como cuando cada mensaje se atendía al llegar.
+        self._procesar_cola()
         if self._sockets.pop(conexion_id, None) is None:
             return
         self._sesion.desconectar(conexion_id)

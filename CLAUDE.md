@@ -16,6 +16,7 @@ Lectura obligatoria, en este orden:
 | `docs/medicion.md` | Invariantes de medición del pre-test y el post-test. **Obligatorio** si el cambio toca evaluación, reactivos o resultados. |
 | `docs/trampas.md` | Trampas de PySide6 y QML que no producen error. Repásalo antes de tocar QML o el puente Python↔QML. |
 | `docs/red_aula.md` | Protocolo y transporte del aula conectada. Solo si tocas `aula`. |
+| `docs/estandar_red.md` | **Obligatorio** si el cambio toca `aula`, `ResultsRepository`, la forma de un resultado o del avance, los puertos o el empaquetado: invariantes de red, presupuesto de rendimiento del docente y la prueba de carga de 40 alumnos que debe pasar. |
 | `docs/uso_aula.md` | Guía de uso del aula. Solo si tocas `aula`. |
 | `README.md` | Flujo funcional, perfiles estudiante/profesor y el contrato de datasets. |
 
