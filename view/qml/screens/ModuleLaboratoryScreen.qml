@@ -426,6 +426,51 @@ PagePrincipal {
         root.labProgress = root.courseController.laboratoryProgress(root.moduleId) || ({})
     }
 
+    function advancedStepIds() {
+        var identifiers = []
+        for (var index = 0; index < root.steps.length; ++index) {
+            var identifier = String(root.steps[index] && root.steps[index].id || "")
+            if (identifier.length && identifiers.indexOf(identifier) === -1)
+                identifiers.push(identifier)
+        }
+        return identifiers
+    }
+
+    function recordAdvancedVisit() {
+        if (!root.advancedMode
+                || root.moduleId !== "module_3"
+                || root.analysis.module_id !== root.moduleId
+                || String(root.analysis.mode || "") !== root.mode
+                || root.steps.length === 0)
+            return
+        var identifier = String(root.currentStep && root.currentStep.id || "")
+        if (!identifier.length)
+            return
+        var updated = root.courseController.recordAdvancedLaboratoryStep(
+                    root.moduleId, root.mode, identifier,
+                    root.advancedStepIds()) || ({})
+        if (updated.advanced_required !== undefined)
+            root.labProgress = updated
+    }
+
+    function practiceStatusText() {
+        if (root.labProgress.completed)
+            return "PRÁCTICA COMPLETA ✓  ·  Ya puedes presentar el post-test."
+        if (root.advancedMode && root.moduleId === "module_3") {
+            var visited = Number(root.labProgress.advanced_steps || 0)
+            var required = Number(root.labProgress.advanced_required || root.steps.length)
+            if (root.labProgress.advanced_completed)
+                return "EXPLORACIÓN AVANZADA COMPLETA ✓  ·  Responde la pregunta del módulo para desbloquear el post-test."
+            return "EXPLORACIÓN AVANZADA  ·  " + visited + " de " + required
+                    + " operaciones revisadas  ·  recorre todas para completar esta ruta"
+        }
+        return "TU PRÁCTICA  ·  " + Number(root.labProgress.cycles || 0) + " de "
+                + Number(root.labProgress.required_cycles || 3)
+                + " retos guiados en operaciones distintas"
+                + (root.labProgress.closing_answered
+                   ? "" : "  ·  pregunta del módulo pendiente")
+    }
+
     function controlRelevant(controlName) {
         var sid = String(root.currentStep && root.currentStep.id || "")
         var module = root.moduleId
@@ -574,6 +619,8 @@ PagePrincipal {
         root.learningLevel = level === "advanced" ? "advanced" : "essential"
         root.currentStepIndex = 0
         root.resetDiscovery(!root.advancedMode)
+        if (root.advancedMode)
+            Qt.callLater(root.recordAdvancedVisit)
         if (!root.advancedMode) {
             if (root.guideDetached)
                 root.closeDetachedGuide()
@@ -799,6 +846,8 @@ PagePrincipal {
             root.modelLibraryController.refrescar()
         root.refreshLabProgress()
     }
+    onCurrentStepChanged: if (root.advancedMode) Qt.callLater(root.recordAdvancedVisit)
+    onAdvancedModeChanged: if (root.advancedMode) Qt.callLater(root.recordAdvancedVisit)
     onVisibleChanged: if (!visible && guideDetached) closeDetachedGuide()
 
     Connections {
@@ -1331,12 +1380,7 @@ PagePrincipal {
                         Text {
                             objectName: "moduleLaboratoryPracticeStatus"
                             Layout.fillWidth: true
-                            text: root.labProgress.completed
-                                  ? "PRÁCTICA COMPLETA ✓  ·  Ya puedes presentar el post-test."
-                                  : "TU PRÁCTICA  ·  " + Number(root.labProgress.cycles || 0) + " de "
-                                    + Number(root.labProgress.required_cycles || 3)
-                                    + " retos guiados en operaciones distintas"
-                                    + (root.labProgress.closing_answered ? "" : "  ·  pregunta del módulo pendiente")
+                            text: root.practiceStatusText()
                             color: root.labProgress.completed ? Style.Theme.exito_texto : Style.Theme.acento_fuerte
                             font.bold: true
                             font.pixelSize: Math.max(10, 11 * root.uiScale)
@@ -1362,6 +1406,7 @@ PagePrincipal {
                         // evidencia propia con la cual responderla.
                         visible: Number(root.labProgress.cycles || 0)
                                  >= Number(root.labProgress.required_cycles || 3)
+                                 || root.labProgress.advanced_completed === true
                                  || root.labProgress.closing_answered === true
                         sx: root.uiScale
                         eyebrow: "VUELVE A LA PREGUNTA DEL MÓDULO  ·  "

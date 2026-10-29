@@ -151,6 +151,14 @@ ApplicationWindow {
             { text: "del", position: 2 },
             { text: "rio", position: 3 }
         ]
+        attentionData: ({
+            atencion: [
+                [0.10, 0.20, 0.15, 0.55],
+                [0.12, 0.25, 0.10, 0.53],
+                [0.20, 0.30, 0.15, 0.35],
+                [0.15, 0.18, 0.12, 0.55]
+            ]
+        })
     }
 }
 """
@@ -415,18 +423,19 @@ def test_vista_general_de_self_attention_cubre_todo_el_modulo_y_es_adaptable(
             assert loaded_item is not None
             assert loaded_item.objectName() == "moduleLabSelfAttentionOverviewView"
             descendants = _visual_descendants(loaded_item)
-            names = {item.objectName() for item in descendants if item.objectName()}
+            by_name = {item.objectName(): item for item in descendants if item.objectName()}
+            names = set(by_name)
             assert "selfAttentionOverviewScene" in names
-            scene = next(
-                item
-                for item in descendants
-                if item.objectName() == "selfAttentionOverviewScene"
-            )
+            scene = by_name["selfAttentionOverviewScene"]
             assert scene.property("personalized") is True
+            assert scene.property("phaseIndicatorInteractive") is False
             assert scene.property("stepId") == step["id"]
             assert scene.property("stageKind") == expected_kinds[step["id"]]
+            assert "el banco del río" in str(scene.property("phraseText"))
+            assert str(scene.property("stageNarration"))
             contract = (
                 str(scene.property("stageTitle")),
+                str(scene.property("stageQuestion")),
                 str(scene.property("stageInput")),
                 str(scene.property("stageAction")),
                 str(scene.property("stageOutput")),
@@ -434,6 +443,14 @@ def test_vista_general_de_self_attention_cubre_todo_el_modulo_y_es_adaptable(
             )
             assert all(contract)
             stage_contracts[step["id"]] = contract
+            assert by_name["selfAttentionOverviewFlow"].property("interactive") is False
+            assert "no es un botón" in str(
+                by_name["selfAttentionLocationHint"].property("text")
+            )
+            assert by_name.get("selfAttentionStageQuestion") is not None
+            assert by_name.get("selfAttentionReadingHint") is not None
+            assert by_name.get("selfAttentionExampleContext") is not None
+            assert by_name.get("selfAttentionStageNarration") is not None
             assert "simpleOutputStageScene" not in names
             assert "attentionComputationScene" not in names
             assert step["title"] in str(visual.property("animationDescription"))
@@ -470,7 +487,7 @@ def test_vista_general_de_self_attention_cubre_todo_el_modulo_y_es_adaptable(
         by_name["selfAttentionStageAction"],
         by_name["selfAttentionStageOutput"],
     ]
-    assert int(scene.property("stageColumns")) == 3
+    assert int(scene.property("stageColumns")) == 4
     boxes = [_rect_in(card, scene) for card in cards]
     assert all(box.width() > 0 and box.height() > 0 for box in boxes)
     for first_index, first in enumerate(boxes):
@@ -500,6 +517,8 @@ def test_vista_general_de_self_attention_se_reordena_y_respeta_mascara_causal(
     assert scene is not None
     assert scene.property("stageKind") == "mask"
     assert int(scene.property("stageColumns")) == 1
+    assert scene.property("usingCapturedAttention") is True
+    assert scene.property("maskUsesHypotheticalPad") is True
     descendants = _visual_descendants(scene)
     by_name = {item.objectName(): item for item in descendants if item.objectName()}
     cards = [
@@ -513,9 +532,18 @@ def test_vista_general_de_self_attention_se_reordena_y_respeta_mascara_causal(
             overlap = first.intersected(second)
             assert overlap.width() <= 1 or overlap.height() <= 1
 
+    scene.setProperty(
+        "tokens",
+        [
+            {"text": "el", "position": 0},
+            {"text": "banco", "position": 1},
+            {"text": "río", "position": 2},
+        ],
+    )
     scene.setProperty("selectedToken", 2)
     scene.setProperty("causal", True)
     qapp.processEvents()
+    assert int(scene.property("visibleTokenCount")) == 3
     assert int(scene.property("focusedIndex")) == 2
     assert int(scene.property("visibleConnectionCount")) == 3
     scope = window.findChild(QObject, "selfAttentionOverviewScope")
@@ -833,6 +861,8 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(
     inference_mode = window.findChild(QObject, "moduleLaboratoryInferenceMode")
     level_tabs = window.findChild(QQuickItem, "moduleLaboratoryLearningLevelTabs")
     practice_card = window.findChild(QQuickItem, "moduleLaboratoryPracticeCard")
+    practice_status = window.findChild(QObject, "moduleLaboratoryPracticeStatus")
+    closing_check = window.findChild(QObject, "moduleLaboratoryClosingCheck")
     standard_practice_host = window.findChild(
         QQuickItem, "moduleLaboratoryStandardPracticeHost"
     )
@@ -908,6 +938,8 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(
             inference_mode,
             level_tabs,
             practice_card,
+            practice_status,
+            closing_check,
             standard_practice_host,
             advanced_practice_host,
             mode_summary,
@@ -1047,6 +1079,21 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(
     assert bool(advanced_practice_host.property("visible")) is True
     assert advanced_practice_host.y() >= workspace.y() + workspace.height() - 1
     assert bool(mode_summary.property("truncated")) is False
+
+    # Recorrer todas las operaciones en Avanzado es una ruta de finalización
+    # válida: debe mostrar la pregunta de cierre sin exigir retos esenciales.
+    advanced_steps = _qml_value(screen.property("steps"))
+    for step_index in range(len(advanced_steps)):
+        screen.setProperty("currentStepIndex", step_index)
+        for _ in range(2):
+            qapp.processEvents()
+    advanced_progress = _qml_value(screen.property("labProgress"))
+    assert advanced_progress["advanced_steps"] == len(advanced_steps)
+    assert advanced_progress["advanced_required"] == len(advanced_steps)
+    assert advanced_progress["advanced_completed"] is True
+    assert bool(closing_check.property("visible")) is True
+    assert "EXPLORACIÓN AVANZADA COMPLETA" in str(practice_status.property("text"))
+
     screen.setProperty("workspaceSection", 2)
     qapp.processEvents()
     assert bool(guide_details_toggle.property("visible")) is True
@@ -1113,6 +1160,7 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(
 
     # Decoder abre primero un mapa general por bloques y permite saltar a cada
     # parte sin mezclar todas sus operaciones en una sola explicación.
+    screen.setProperty("currentStepIndex", 0)
     view_model._course_controller.selectModule("module_6")
     view_model.moduleLaboratoryController.explore(
         "module_6", "texto", "inference", 0, 0, 1, 1.0, 5, 0.9, True
