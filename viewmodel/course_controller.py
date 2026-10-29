@@ -35,7 +35,12 @@ class CourseController(QObject):
     # pero permite abrir cualquier módulo y etapa sin prerrequisitos (RN18).
     # Debe quedar en False con estudiantes: abrir el post-test sin pasar por el
     # recorrido invalida la comparación pre/post.
-    REVIEW_MODE_UNLOCK_ALL = True
+    REVIEW_MODE_UNLOCK_ALL = False
+
+    # Módulos abiertos para las pruebas; el resto queda bloqueado. ``None``
+    # abre todos. Vence al modo revisión, como la restricción del docente, y el
+    # módulo abierto no exige terminar el anterior (que estaría bloqueado).
+    TEST_MODULES: tuple[str, ...] | None = ("module_3",)
 
     # Ejecutar el forward no es practicar: el laboratorio cuenta como hecho
     # cuando el alumno cerró este número de ciclos predecir→probar→observar→
@@ -63,6 +68,8 @@ class CourseController(QObject):
         )
         if self._current_module_id not in self._catalog.module_ids:
             self._current_module_id = self._catalog.module_ids[0]
+        if self._blocked_for_test(self._current_module_id):
+            self._current_module_id = self.TEST_MODULES[0]
         # Módulos que el docente habilitó en la clase. ``None`` = sin clase o
         # con todos habilitados; esta restricción vence al modo revisión.
         self._class_modules: frozenset[str] | None = None
@@ -94,6 +101,9 @@ class CourseController(QObject):
 
     def _blocked_by_class(self, module_id: str) -> bool:
         return self._class_modules is not None and module_id not in self._class_modules
+
+    def _blocked_for_test(self, module_id: str) -> bool:
+        return self.TEST_MODULES is not None and module_id not in self.TEST_MODULES
 
     def _student_filter(self) -> str | None:
         return self._evaluation._student_filter()  # frontera interna compartida
@@ -165,8 +175,10 @@ class CourseController(QObject):
         }.get(stage, False)
 
     def _module_unlocked(self, module_id: str) -> bool:
-        if self._blocked_by_class(module_id):
+        if self._blocked_by_class(module_id) or self._blocked_for_test(module_id):
             return False
+        if self.TEST_MODULES is not None:
+            return True
         if self.REVIEW_MODE_UNLOCK_ALL:
             return True
         module = self._catalog.get(module_id)
@@ -263,7 +275,7 @@ class CourseController(QObject):
     def stageAvailable(self, module_id: str, stage: str) -> bool:
         if module_id not in self._catalog.module_ids or stage not in STAGES:
             return False
-        if self._blocked_by_class(module_id):
+        if self._blocked_by_class(module_id) or self._blocked_for_test(module_id):
             return False
         if self.REVIEW_MODE_UNLOCK_ALL:
             return True
@@ -286,6 +298,8 @@ class CourseController(QObject):
             return ""
         if self._blocked_by_class(module_id):
             return "El docente todavía no habilita este módulo en la clase."
+        if self._blocked_for_test(module_id):
+            return "Este módulo no está disponible en esta prueba."
         if not self._module_unlocked(module_id):
             return "Completa el módulo anterior para desbloquear éste."
         if stage == "pretest" and self._pretest_closed(module_id):
