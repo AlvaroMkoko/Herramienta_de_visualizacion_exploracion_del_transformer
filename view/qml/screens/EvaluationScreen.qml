@@ -117,6 +117,7 @@ PagePrincipal {
     Component { id: compOpcionUnica; ReactivoOpcionUnica {} }
     Component { id: compSeleccionMultiple; ReactivoSeleccionMultiple {} }
     Component { id: compTexto; ReactivoTexto {} }
+    Component { id: compForma; ReactivoForma {} }
     Component { id: compAsignacion; ReactivoAsignacion {} }
     Component { id: compOrdenar; ReactivoOrdenar {} }
     Component { id: compCestas; ReactivoCestas {} }
@@ -140,6 +141,7 @@ PagePrincipal {
         case "heatmap_clic":                  return compOpcionUnica
         case "chips_toggle":                  return compSeleccionMultiple
         case "caja_en_linea":                 return compTexto
+        case "forma_tensor":                  return compForma
         case "lista_arrastrable":             return compOrdenar
         case "cestas":                        return compCestas
         case "lineas_o_tocar_para_emparejar": return compRelacionar
@@ -285,8 +287,15 @@ PagePrincipal {
 
         // ── Reactivo en curso ────────────────────────────────────────
         RectanglePrincipal {
+            id: tarjetaReactivo
             objectName: "evaluationQuestionCard"
             visible: !root.showingResult
+            // Tocar fuera de una casilla de texto la suelta: sin esto el cursor
+            // seguía parpadeando y no había forma de «deseleccionar» el cuadro.
+            TapHandler {
+                onTapped: tarjetaReactivo.forceActiveFocus()
+            }
+
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.maximumWidth: 1500 * root.sx

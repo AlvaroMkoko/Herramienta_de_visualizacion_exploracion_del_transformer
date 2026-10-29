@@ -3,6 +3,8 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Dialogs
+import QtCore
 import "../styles" as Style
 import "../components"
 
@@ -13,6 +15,31 @@ PagePrincipal {
     property string moduleId: "module_1"
     readonly property var courseController: mainViewModel.courseController
     property var results: ({})
+    property string exportMessage: ""
+    readonly property var classroomStudent: mainViewModel.classroomStudentController
+
+    // Respaldo por si falla la red del aula y archivo para la encuesta de la
+    // página web: pocos kilobytes, sin enunciados (ver exportacion_resultados.py).
+    function exportResults(fileUrl) {
+        var apodo = root.classroomStudent && root.classroomStudent.enClase
+                    ? String(root.classroomStudent.apodo || "") : ""
+        var saved = root.courseController.exportarResultados(root.moduleId,
+                                                             String(fileUrl), apodo)
+        root.exportMessage = saved.length > 0
+                ? "Guardado en " + saved + ". Súbelo en la encuesta de la página web."
+                : "No se pudo guardar el archivo. Elige otra carpeta e intenta de nuevo."
+    }
+
+    FileDialog {
+        id: exportDialog
+        title: "Guardar mis resultados del módulo"
+        fileMode: FileDialog.SaveFile
+        defaultSuffix: "json"
+        nameFilters: ["Resultados de Transformer Visualizer (*.tvresultados.json)"]
+        currentFolder: StandardPaths.writableLocation(StandardPaths.DocumentsLocation)
+        selectedFile: currentFolder + "/resultados_" + root.moduleId + ".tvresultados.json"
+        onAccepted: root.exportResults(selectedFile)
+    }
 
     Component.onCompleted: {
         root.results = root.courseController.moduleResults(root.moduleId)
@@ -267,6 +294,14 @@ PagePrincipal {
                 onClicked: reviewPopup.open()
             }
             BotonPrincipal {
+                objectName: "moduleResultsExport"
+                visible: !!root.results.available
+                Layout.preferredWidth: 240 * root.sx
+                Layout.preferredHeight: 46 * root.sy
+                text: "Exportar mis resultados"
+                onClicked: exportDialog.open()
+            }
+            BotonPrincipal {
                 Layout.preferredWidth: 230 * root.sx
                 Layout.preferredHeight: 46 * root.sy
                 text: "Ver todos los módulos"
@@ -282,6 +317,17 @@ PagePrincipal {
                     "moduleId": root.courseController.currentModuleId
                 })
             }
+        }
+
+        Text {
+            objectName: "moduleResultsExportMessage"
+            Layout.fillWidth: true
+            visible: root.exportMessage.length > 0
+            text: root.exportMessage
+            horizontalAlignment: Text.AlignHCenter
+            color: Style.Theme.texto_secundario_fuerte
+            font.pixelSize: 12 * root.sx
+            wrapMode: Text.WordWrap
         }
     }
 

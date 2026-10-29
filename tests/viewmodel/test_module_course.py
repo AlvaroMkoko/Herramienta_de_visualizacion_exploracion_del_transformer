@@ -507,3 +507,42 @@ def test_borrar_el_historial_no_deja_el_modulo_sin_forma_de_empezar(tmp_path):
 
     assert course.stageAvailable("module_1", "pretest")
     assert not course.stageAvailable("module_1", "guided")
+
+
+def test_exportar_resultados_genera_un_archivo_ligero_sin_enunciados(tmp_path):
+    """Respaldo si falla la red y archivo para la encuesta: pocos kilobytes,
+    puntajes por reactivo y ningún enunciado ni respuesta escrita."""
+    import json
+    from pathlib import Path
+
+    from PySide6.QtCore import QUrl
+
+    results = ResultsRepository(tmp_path / "results.json")
+    evaluation = ModuleEvaluationController(repository=results)
+    course = CourseController(
+        evaluation, repository=ModuleProgressRepository(tmp_path / "progress.json")
+    )
+    enunciados = []
+    for tipo in ("pre", "post"):
+        evaluation.startModuleEvaluation("module_3", tipo)
+        while evaluation.isActive:
+            enunciados.append(evaluation._manager.current_question["prompt"])
+            evaluation.registrarRespuesta(_answer_current(evaluation))
+            evaluation.submitCurrentAnswer()
+
+    destino = QUrl.fromLocalFile(str(tmp_path / "mis_resultados")).toString()
+    ruta = course.exportarResultados("module_3", destino, "Ana")
+
+    assert ruta.endswith(".tvresultados.json")
+    texto = Path(ruta).read_text(encoding="utf-8")
+    datos = json.loads(texto)
+    assert datos["formato"] == "tvresultados"
+    assert datos["estudiante"]["apodo"] == "Ana"
+    assert datos["modulo"]["id"] == "module_3"
+    assert len(datos["pre"]["reactivos"]) == len(datos["post"]["reactivos"]) == 15
+    assert datos["post"]["porcentaje"] == 100.0
+    assert datos["comparable"] is True
+    assert len(texto.encode("utf-8")) < 12_000
+    assert not any(enunciado in texto for enunciado in enunciados)
+    # Sin evaluaciones no hay nada que exportar.
+    assert course.exportarResultados("module_5", destino, "") == ""

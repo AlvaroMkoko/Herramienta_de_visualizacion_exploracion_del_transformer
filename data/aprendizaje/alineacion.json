@@ -878,100 +878,463 @@
         {
           "id": "m3_l1",
           "concept_id": "producto_qk",
-          "prompt": "Sigue una sola Query mientras se compara con todas las Keys. ¿Qué parte del mapa se construye con ese recorrido?",
+          "prompt": "En el mapa del laboratorio hay 4 consultas y 4 claves, cada una con 8 componentes. ¿Cuántas filas y columnas tiene la tabla de compatibilidades?",
           "options": [
-            "Una fila completa de compatibilidades",
-            "Una columna de la matriz WQ",
-            "Un único Value sin combinar"
+            "4 filas × 4 columnas",
+            "8 filas × 8 columnas",
+            "4 filas × 8 columnas"
           ],
           "correct_index": 0,
-          "explanation": "Una Query fija recorre todas las Keys y llena la fila asociada a ese token."
+          "explanation": "Kᵀ tiene forma [8, 4]. [4, 8] × [8, 4] = [4, 4]: una fila por Query y una columna por Key. En el laboratorio, el mapa siempre es T × T."
         },
         {
           "id": "m3_l2",
           "concept_id": "escalamiento_dk",
-          "prompt": "Los colores extremos se suavizan al escalar los scores antes de softmax. ¿Qué problema ayuda a evitar ese cambio?",
+          "prompt": "Practica el escalamiento: con d_k = 25, un score crudo vale 10. ¿Cuánto vale ya escalado?",
           "options": [
-            "Que softmax se sature y produzca gradientes poco útiles",
-            "Que Q y K tengan diferente cantidad de filas",
-            "Que la máscara causal bloquee el pasado"
+            "2",
+            "0.4",
+            "250"
           ],
           "correct_index": 0,
-          "explanation": "Dividir por √d_k controla la magnitud para que softmax no se vuelva excesivamente extrema."
+          "explanation": "Se divide entre √d_k: √25 = 5 y 10 / 5 = 2. En el laboratorio verás que los colores del mapa se suavizan, pero el orden de las celdas se conserva."
         },
         {
           "id": "m3_l3",
           "concept_id": "softmax_atencion",
-          "prompt": "Aumenta un score de la fila antes de softmax. ¿Cómo debería responder el mapa de pesos?",
+          "prompt": "Observa la fila de un token en el mapa de pesos: 0.2, 0.2 y 0.6. ¿Cuál de sus vecinos domina la mezcla y cuánto suman esos tres números?",
           "options": [
-            "Ese peso aumenta y los demás se reajustan para compartir la masa restante",
-            "Todos los pesos aumentan por la misma cantidad",
-            "La fila deja de depender de los scores"
+            "El tercero; suman 1",
+            "El primero; suman 1",
+            "El tercero; suman 0.6"
           ],
           "correct_index": 0,
-          "explanation": "Softmax convierte scores relativos en una distribución: favorecer una clave redistribuye los pesos de la fila."
+          "explanation": "El mayor peso (0.6) es del tercer token, así que su Value domina la mezcla. Después de softmax, cada fila suma 1: 0.2 + 0.2 + 0.6 = 1."
         },
         {
           "id": "m3_l4",
           "concept_id": "mezcla_valores",
-          "prompt": "En la mezcla, incrementa el peso de un Value y repite la animación. ¿Hacia dónde se moverá el contexto?",
+          "prompt": "Ensayo de mezcla: un token reparte su atención 40 % y 60 % entre dos vecinos cuyos Values valen 5 y 10. ¿Qué valor sale?",
           "options": [
-            "Se parece más a los Values con mayor peso",
-            "Es el promedio simple de todos los Values",
-            "Es igual a su propio Value"
+            "8",
+            "7.5",
+            "15"
           ],
           "correct_index": 0,
-          "explanation": "La salida es una suma ponderada: los Values con más peso dominan."
+          "explanation": "Suma ponderada: 0.4·5 + 0.6·10 = 2 + 6 = 8. No es el promedio simple (7.5): el Value con más peso jala más el resultado."
         },
         {
           "id": "m3_l5",
           "concept_id": "qkv",
-          "prompt": "Al seleccionar otro token, el resaltado salta a otra Query y a otra fila del mapa. ¿Qué permanece compartido?",
+          "prompt": "«río» le ofrece información a «banco». ¿Qué vector de «río» se compara con la Query de «banco» y cuál se mezcla en la salida?",
           "options": [
-            "Las Keys disponibles y los parámetros de proyección",
-            "La Query que se está visualizando",
-            "Los pesos de esa nueva fila"
+            "Se compara su Key y se mezcla su Value",
+            "Se compara su Query y se mezcla su Key",
+            "Se compara su Value y se mezcla su Query"
           ],
           "correct_index": 0,
-          "explanation": "Cambiar la consulta cambia su fila, pero se compara contra el mismo conjunto de Keys con los mismos parámetros."
+          "explanation": "La Query del que pregunta se compara con la Key de cada token para decidir los pesos; después se mezclan los Values con esos pesos."
         },
         {
           "id": "m3_l6",
           "concept_id": "pesos_qkv",
-          "prompt": "Después de cambiar una palabra, Q, K y V muestran otros valores, pero tres paneles permanecen iguales. ¿Cuáles?",
+          "prompt": "Cambia una palabra de la frase y repite el experimento. ¿Qué cambia y qué queda igual?",
           "options": [
-            "WQ, WK y WV",
-            "Las filas de Q, K y V",
-            "Los embeddings de todos los tokens"
+            "Cambian Q, K y V; W_Q, W_K y W_V quedan iguales",
+            "Cambian W_Q, W_K y W_V; Q, K y V quedan iguales",
+            "No cambia nada porque los parámetros son fijos"
           ],
           "correct_index": 0,
-          "explanation": "La entrada modifica las activaciones proyectadas; los parámetros sólo cambian durante una actualización de entrenamiento."
+          "explanation": "Q = X·W_Q: si cambia la entrada X, cambia Q aunque W_Q sea la misma. Las W sólo cambian al entrenar."
         },
         {
           "id": "m3_l7",
           "concept_id": "softmax_atencion",
-          "prompt": "Alterna la máscara y observa reaparecer celdas antes atenuadas. ¿Qué cambió en el cálculo?",
+          "prompt": "Activa la máscara: una posición bloqueada recibe un score de −∞ antes de softmax. ¿Qué peso recibe y cuánto suma su fila?",
           "options": [
-            "Esas posiciones volvieron a competir dentro de softmax",
-            "Los Values bloqueados se convirtieron en parámetros",
-            "La longitud de la secuencia disminuyó"
+            "Peso 0; la fila sigue sumando 1",
+            "Peso 1; la fila suma 2",
+            "Peso negativo; la fila suma 0"
           ],
           "correct_index": 0,
-          "explanation": "La máscara excluye posiciones antes de normalizar; al retirarla recuperan scores y pueden recibir peso."
+          "explanation": "e^(−∞) = 0, así que la posición bloqueada no recibe atención. Softmax reparte el total (1) entre las posiciones que sí compiten."
         },
         {
           "id": "m3_l8",
           "concept_id": "salida_atencion",
-          "prompt": "Ninguna fila de salida coincide exactamente con un solo Value. ¿Qué evidencia aporta esto?",
+          "prompt": "Practica la forma de la salida: con T = 4 tokens y d_v = 8, ¿qué forma tiene el resultado de pesos × V?",
           "options": [
-            "Cada token recibió una mezcla contextual de varios Values",
-            "La atención sólo copió el token con mayor ID",
-            "Las proyecciones dejaron de usar la entrada"
+            "[4, 8]",
+            "[4, 4]",
+            "[8, 8]"
           ],
           "correct_index": 0,
-          "explanation": "La salida de cada Query combina contenido de las posiciones a las que asignó peso."
+          "explanation": "[4, 4] × [4, 8] = [4, 8]: un vector de d_v números por cada uno de los 4 tokens. La atención conserva la longitud de la secuencia."
         }
-      ]
+      ],
+      "lessons": {
+        "m3_s1": {
+          "intuicion": "Antes de que una palabra pueda «fijarse» en las demás, hace falta tener toda la frase junta y cada palabra descrita con números. Piensa en una hoja de cálculo: una fila por palabra y, en las columnas, rasgos que la describen. Esa tabla es la matriz X, el punto de partida de la atención.",
+          "terminos": [
+            {
+              "termino": "Token",
+              "definicion": "Cada pedazo en que se divide el texto. En este curso casi siempre es una palabra: «el», «banco», «del», «río»."
+            },
+            {
+              "termino": "Vector",
+              "definicion": "Una lista ordenada de números, como [0.2, −1.3, 0.7, 0.0]. El modelo describe cada token con un vector."
+            },
+            {
+              "termino": "Embedding",
+              "definicion": "El vector inicial de un token. Se obtiene buscando el token en una tabla que el modelo aprendió; tokens que se usan parecido terminan con vectores parecidos."
+            },
+            {
+              "termino": "Codificación posicional",
+              "definicion": "Números que se suman al embedding para indicar en qué lugar de la frase está el token. Sin ella, el modelo no distinguiría el orden de las palabras."
+            },
+            {
+              "termino": "Matriz",
+              "definicion": "Una tabla de números con filas y columnas. Su forma se escribe [filas, columnas]: una matriz de 3 filas y 4 columnas tiene forma [3, 4]."
+            },
+            {
+              "termino": "T",
+              "definicion": "Cuántos tokens tiene la frase (la longitud de la secuencia). En los ejemplos usaremos tres tokens, «el», «banco» y «río», así que T = 3."
+            },
+            {
+              "termino": "d_model",
+              "definicion": "Cuántos números tiene el vector de cada token: el «ancho» del modelo. Es igual para todos los tokens. En los ejemplos d_model = 4; en modelos reales, 512 o más."
+            },
+            {
+              "termino": "B (batch)",
+              "definicion": "Cuántas frases se procesan a la vez. Si entran 8 frases juntas, B = 8. Para entender la atención basta pensar en una sola frase (B = 1)."
+            },
+            {
+              "termino": "Forma [B, T, d_model]",
+              "definicion": "Se lee «B frases, cada una con T tokens, cada token con d_model números». Seguir la forma es la manera de saber qué tamaño tiene cada tabla en cada paso."
+            }
+          ],
+          "pasos": [
+            {
+              "texto": "Se toman los tokens de la frase en orden: «el», «banco», «río»."
+            },
+            {
+              "texto": "Cada token ya llega como un vector de d_model números: su embedding más su posición (eso lo construye el módulo 2)."
+            },
+            {
+              "texto": "Los vectores se apilan, uno por fila: la fila 1 es «el», la fila 2 es «banco» y la fila 3 es «río».",
+              "formula": "X = [ x_el ; x_banco ; x_río ]"
+            },
+            {
+              "texto": "La forma de X es [T, d_model] para una frase. Con un batch se agrega el eje B al frente.",
+              "formula": "X : [T, d_model]   →   con batch: [B, T, d_model]"
+            }
+          ],
+          "ejemplo": {
+            "titulo": "«el banco del río» con T = 3 y d_model = 4",
+            "lineas": [
+              "x_el    = [0.1, 0.9, 0.0, 0.2]",
+              "x_banco = [0.8, 0.1, 0.7, 0.0]",
+              "x_río   = [0.9, 0.0, 0.8, 0.3]",
+              "X tiene 3 filas (tokens) y 4 columnas (rasgos): forma [3, 4]."
+            ]
+          },
+          "clave": "X es la tabla de partida: una fila por token y d_model columnas."
+        },
+        "m3_s2": {
+          "intuicion": "En una biblioteca llevas en mente lo que buscas; cada libro tiene una etiqueta en el lomo que dice de qué trata, y un contenido, que es lo que te llevas si lo eliges. La atención le da a cada token esos tres papeles: Query (lo que busca), Key (cómo se anuncia ante los demás) y Value (la información que entrega).",
+          "terminos": [
+            {
+              "termino": "Query (Q, consulta)",
+              "definicion": "Vector que representa lo que un token busca en los demás."
+            },
+            {
+              "termino": "Key (K, clave)",
+              "definicion": "Vector con el que un token se anuncia. Se compara con las Queries de los demás."
+            },
+            {
+              "termino": "Value (V, valor)",
+              "definicion": "Vector con la información que el token aporta cuando otro le pone atención."
+            },
+            {
+              "termino": "Parámetro aprendido",
+              "definicion": "Número que el modelo ajusta durante el entrenamiento. W_Q, W_K y W_V son tablas de parámetros: se aprenden una vez y luego son las mismas para cualquier frase."
+            },
+            {
+              "termino": "Producto de matrices",
+              "definicion": "Multiplicar A de forma [m, n] por B de forma [n, p] da una matriz [m, p]. Regla: las dimensiones de en medio (n) deben coincidir, y desaparecen."
+            },
+            {
+              "termino": "d_k y d_v",
+              "definicion": "Ancho de cada Query y Key (d_k) y de cada Value (d_v). Suelen ser iguales; en los ejemplos d_k = d_v = 4."
+            }
+          ],
+          "pasos": [
+            {
+              "texto": "Se multiplica X por tres matrices distintas, una para cada papel.",
+              "formula": "Q = X·W_Q     K = X·W_K     V = X·W_V"
+            },
+            {
+              "texto": "Comprueba la forma con la regla del producto: el d_model de en medio coincide y desaparece.",
+              "formula": "[T, d_model] × [d_model, d_k] = [T, d_k]"
+            },
+            {
+              "texto": "Cada fila de Q, K y V sigue perteneciendo al mismo token: la fila 2 de Q es la Query de «banco»."
+            },
+            {
+              "texto": "Como W_Q, W_K y W_V no cambian, si cambia la frase (cambia X) cambian Q, K y V; las W siguen siendo las mismas."
+            }
+          ],
+          "ejemplo": {
+            "titulo": "Supón que, después de multiplicar, quedan estos vectores (d_k = 4)",
+            "lineas": [
+              "Q(banco) = [1, 0, 1, 0]    ← lo que busca «banco»",
+              "K(el)    = [0, 1, 0, 0]",
+              "K(banco) = [1, 0, 0, 0]",
+              "K(río)   = [1, 0, 1, 0]",
+              "Values simplificados a un número: V(el) = 1, V(banco) = 2, V(río) = 6"
+            ]
+          },
+          "clave": "Una sola X origina tres tablas: Q pregunta, K se anuncia y V entrega."
+        },
+        "m3_s3": {
+          "intuicion": "Queremos comparar la Query de cada token con la Key de cada token. Para hacerlo todo de una vez con un producto de matrices, las Keys tienen que quedar «de pie», en columnas, en lugar de acostadas en filas. Girar la tabla así se llama transponer.",
+          "terminos": [
+            {
+              "termino": "Transpuesta (Kᵀ)",
+              "definicion": "La misma matriz con filas y columnas intercambiadas: la fila i pasa a ser la columna i. Si K tiene forma [T, d_k], Kᵀ tiene forma [d_k, T]."
+            }
+          ],
+          "pasos": [
+            {
+              "texto": "K tiene una fila por token: forma [T, d_k]."
+            },
+            {
+              "texto": "Al transponer, cada Key queda como una columna.",
+              "formula": "K : [T, d_k]   →   Kᵀ : [d_k, T]"
+            },
+            {
+              "texto": "Ahora Q × Kᵀ cumple la regla del producto: el d_k de en medio coincide.",
+              "formula": "[T, d_k] × [d_k, T]"
+            },
+            {
+              "texto": "Transponer no cambia ningún número: sólo los acomoda."
+            }
+          ],
+          "ejemplo": {
+            "titulo": "Las Keys de «el banco del río»",
+            "lineas": [
+              "K tiene forma [3, 4]: tres tokens, d_k = 4.",
+              "Kᵀ tiene forma [4, 3]: cuatro filas y una columna por token.",
+              "La columna 3 de Kᵀ es la Key de «río»: [1, 0, 1, 0]."
+            ]
+          },
+          "clave": "Transponer no calcula nada: acomoda K para poder multiplicar."
+        },
+        "m3_s4": {
+          "intuicion": "Para saber cuánto le interesa «río» a «banco», se compara lo que busca «banco» (su Query) con lo que ofrece «río» (su Key). Si los dos vectores se parecen, el número que resulta es grande: son compatibles.",
+          "terminos": [
+            {
+              "termino": "Producto punto",
+              "definicion": "Se multiplican dos vectores componente a componente y se suman los resultados: [2, 1]·[1, 3] = 2·1 + 1·3 = 5. Entre más se parecen, mayor es."
+            },
+            {
+              "termino": "Score (puntuación)",
+              "definicion": "El resultado de comparar una Query con una Key. Todavía no es un peso: puede ser negativo o muy grande."
+            },
+            {
+              "termino": "Mapa de atención [T, T]",
+              "definicion": "Tabla con una fila por Query y una columna por Key. La celda (i, j) dice qué tan compatible es el token i con el token j."
+            }
+          ],
+          "pasos": [
+            {
+              "texto": "Se toma la Query de un token (una fila de Q)."
+            },
+            {
+              "texto": "Se calcula su producto punto con la Key de cada token (cada columna de Kᵀ). Eso llena una fila del mapa."
+            },
+            {
+              "texto": "Se repite con cada Query. El producto de matrices hace todas las comparaciones a la vez.",
+              "formula": "[T, d_k] × [d_k, T] = [T, T]"
+            },
+            {
+              "texto": "El eje d_k desaparece (se sumó dentro de cada producto punto) y queda una tabla de T × T scores."
+            }
+          ],
+          "ejemplo": {
+            "titulo": "Fila de «banco», con Q(banco) = [1, 0, 1, 0]",
+            "lineas": [
+              "con K(el)    = [0, 1, 0, 0]:  1·0 + 0·1 + 1·0 + 0·0 = 0",
+              "con K(banco) = [1, 0, 0, 0]:  1·1 + 0·0 + 1·0 + 0·0 = 1",
+              "con K(río)   = [1, 0, 1, 0]:  1·1 + 0·0 + 1·1 + 0·0 = 2",
+              "Scores de «banco» = [0, 1, 2]: «río» es el más compatible."
+            ]
+          },
+          "clave": "QKᵀ compara cada Query con todas las Keys y produce un mapa [T, T]."
+        },
+        "m3_s5": {
+          "intuicion": "Cuando los vectores son largos, los productos punto salen enormes porque suman muchos términos. Con números enormes, softmax se vuelve «todo o nada» y le da casi toda la atención a un solo token. Dividirlos todos por el mismo número los regresa a un rango cómodo.",
+          "terminos": [
+            {
+              "termino": "√d_k",
+              "definicion": "Raíz cuadrada del ancho de las Keys. Si d_k = 4, √d_k = 2; si d_k = 100, √d_k = 10."
+            },
+            {
+              "termino": "Saturar",
+              "definicion": "Cuando un score es mucho mayor que los demás, softmax le da casi todo el peso (≈ 1) y casi nada al resto (≈ 0). El modelo deja de repartir atención y aprende peor."
+            }
+          ],
+          "pasos": [
+            {
+              "texto": "Se calcula √d_k."
+            },
+            {
+              "texto": "Cada score se divide entre ese número.",
+              "formula": "score escalado = score / √d_k"
+            },
+            {
+              "texto": "Todos se dividen por la misma constante, así que el orden no cambia: el mayor sigue siendo el mayor."
+            },
+            {
+              "texto": "La forma tampoco cambia: sigue siendo [T, T]. Sólo baja la magnitud."
+            }
+          ],
+          "ejemplo": {
+            "titulo": "Scores de «banco» con d_k = 4",
+            "lineas": [
+              "√4 = 2",
+              "[0, 1, 2] / 2 = [0, 0.5, 1]",
+              "Otro caso: con d_k = 9 (√9 = 3), un score de 6 queda en 6 / 3 = 2."
+            ]
+          },
+          "clave": "Escalar baja la magnitud de los scores sin cambiar su orden ni su forma."
+        },
+        "m3_s6": {
+          "intuicion": "Los scores dicen quién es más compatible, pero no son porcentajes. Softmax convierte cada fila en un reparto: qué parte de la atención de un token va a cada uno de los demás. Como repartir un pastel: los trozos son positivos y juntos suman el pastel completo, es decir, 1.",
+          "terminos": [
+            {
+              "termino": "Exponencial (eˣ)",
+              "definicion": "Función que convierte cualquier número en uno positivo; los números grandes crecen mucho más. e⁰ = 1, e^0.5 ≈ 1.65, e¹ ≈ 2.72."
+            },
+            {
+              "termino": "Softmax",
+              "definicion": "Aplica eˣ a cada score de la fila y divide cada resultado entre la suma de la fila. Así todos quedan entre 0 y 1 y suman 1."
+            },
+            {
+              "termino": "Pesos de atención",
+              "definicion": "El resultado de softmax: qué fracción de su atención le da una Query a cada Key."
+            },
+            {
+              "termino": "Por fila",
+              "definicion": "Cada Query reparte su propia atención. Por eso se normaliza cada fila por separado y no la tabla completa."
+            }
+          ],
+          "pasos": [
+            {
+              "texto": "Toma una fila de scores escalados: la de una Query."
+            },
+            {
+              "texto": "Aplica la exponencial a cada valor de la fila."
+            },
+            {
+              "texto": "Suma los resultados de la fila."
+            },
+            {
+              "texto": "Divide cada valor entre esa suma.",
+              "formula": "peso_j = e^(s_j) / Σ_k e^(s_k)"
+            },
+            {
+              "texto": "Repite en cada fila. La forma sigue siendo [T, T], pero ahora cada fila suma 1."
+            }
+          ],
+          "ejemplo": {
+            "titulo": "Fila de «banco», con scores escalados [0, 0.5, 1]",
+            "lineas": [
+              "exponenciales: [1, 1.65, 2.72]   → suma ≈ 5.37",
+              "pesos: [1 / 5.37, 1.65 / 5.37, 2.72 / 5.37] ≈ [0.19, 0.31, 0.51]",
+              "«banco» pone cerca de la mitad de su atención en «río»."
+            ]
+          },
+          "clave": "Softmax convierte cada fila de scores en un reparto positivo que suma 1."
+        },
+        "m3_s7": {
+          "intuicion": "Ya sabemos cuánta atención le da «banco» a cada token. Ahora «banco» arma su nueva representación tomando un poco de la información (el Value) de cada uno, en la proporción de sus pesos: mucho de «río» y poco de «el». Es como mezclar pinturas en distintas cantidades.",
+          "terminos": [
+            {
+              "termino": "Suma ponderada",
+              "definicion": "Multiplicar cada valor por su peso y sumar. Con pesos [0.3, 0.7] y valores [10, 20]: 0.3·10 + 0.7·20 = 17."
+            },
+            {
+              "termino": "Contexto",
+              "definicion": "El resultado de la mezcla para un token: su representación ya informada por los demás."
+            }
+          ],
+          "pasos": [
+            {
+              "texto": "Para una Query, multiplica cada Value por el peso que le dio."
+            },
+            {
+              "texto": "Suma todo: ése es su vector de contexto."
+            },
+            {
+              "texto": "Con matrices se hace para todas las Queries a la vez.",
+              "formula": "Pesos [T, T] × V [T, d_v] = [T, d_v]"
+            },
+            {
+              "texto": "El eje de las Keys (la T de en medio) desaparece porque ya se sumó. Queda un vector de d_v números por token."
+            }
+          ],
+          "ejemplo": {
+            "titulo": "«banco» con pesos [0.19, 0.31, 0.51] y Values [1, 2, 6]",
+            "lineas": [
+              "0.19·1 + 0.31·2 + 0.51·6 ≈ 0.19 + 0.62 + 3.06 ≈ 3.8",
+              "El resultado queda mucho más cerca del Value de «río» (6) que del de «el» (1)."
+            ]
+          },
+          "clave": "La salida de cada token es una mezcla de Values pesada por su atención."
+        },
+        "m3_s8": {
+          "intuicion": "Al final, cada token sale con un vector nuevo que ya «sabe» de su contexto. «banco» entró como una palabra ambigua y sale inclinado hacia el sentido de orilla, porque mezcló mucha información de «río».",
+          "terminos": [
+            {
+              "termino": "Representación contextualizada",
+              "definicion": "Vector de un token que depende de la frase completa y no sólo de la palabra."
+            },
+            {
+              "termino": "Attention(X)",
+              "definicion": "Nombre de la salida completa de la capa de atención: todos los vectores contextualizados juntos."
+            },
+            {
+              "termino": "Cabeza de atención",
+              "definicion": "Un juego completo de W_Q, W_K y W_V con todo este cálculo. El módulo 4 usa varias cabezas en paralelo."
+            }
+          ],
+          "pasos": [
+            {
+              "texto": "Hay una fila de salida por cada Query: tantos vectores como tokens entraron."
+            },
+            {
+              "texto": "La longitud T se conserva; el ancho de cada vector es d_v.",
+              "formula": "Attention(X) : [T, d_v]   →   con batch: [B, T, d_v]"
+            },
+            {
+              "texto": "Todo el cálculo cabe en una fórmula.",
+              "formula": "Attention(Q, K, V) = softmax( Q·Kᵀ / √d_k ) · V"
+            },
+            {
+              "texto": "La misma palabra en otra frase obtendría otra salida, porque sus pesos serían distintos."
+            }
+          ],
+          "ejemplo": {
+            "titulo": "La misma palabra en dos frases",
+            "lineas": [
+              "«el banco del río»: «banco» atiende sobre todo a «río» → sentido de orilla.",
+              "«el banco cobró comisión»: atendería a «cobró» y «comisión» → sentido de dinero."
+            ]
+          },
+          "clave": "Entra un vector por token y sale un vector por token, ahora con contexto."
+        }
+      }
     },
     "module_4": {
       "anchor": {

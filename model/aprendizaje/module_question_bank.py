@@ -14,6 +14,7 @@ import re
 from typing import Any, Iterable
 
 from model.evaluacion.question_bank import QuestionBank, QuestionBankError
+from model.evaluacion.scorers import normalizar_texto
 
 from .learning_module import LearningModuleCatalog
 
@@ -33,7 +34,17 @@ class ModuleQuestionBank:
     # completa y del desplazamiento del decoder. También acepta equivalentes
     # semánticos en sus respuestas abiertas. Los resultados de la versión 10
     # no son comparables.
-    VERSION_PREGUNTAS = 11
+    # 12: las formas de tensor se escriben eje por eje, las respuestas
+    # numéricas sólo aceptan números y «completar» se contesta eligiendo del
+    # banco de opciones (reconocer en vez de evocar). Los de la 11 no son
+    # comparables.
+    VERSION_PREGUNTAS = 12
+
+    #: Una respuesta así se pide con una casilla por eje (presentación
+    #: «forma_tensor»): sin ese molde, «[5,5]», «5x5» y «5 por 5» parecen
+    #: igual de válidas y nadie sabe cómo escribirla.
+    _FORMA = re.compile(r"\[[^\[\]]+\]")
+    _NUMERO = re.compile(r"-?\d+(?:[.,]\d+)?")
 
     PEDAGOGICAL_TYPES = (
         "opcion_multiple",
@@ -352,6 +363,10 @@ class ModuleQuestionBank:
         destinations = shuffled.get("destinos")
         if isinstance(destinations, list) and shuffled.get("subtipo") != "ordenar":
             self._rng.shuffle(destinations)
+
+        bank = shuffled.get("banco_opciones")
+        if isinstance(bank, list):
+            self._rng.shuffle(bank)
         return shuffled
 
     # ------------------------------------------------------------------
@@ -526,7 +541,22 @@ class ModuleQuestionBank:
         formato: str,
         placeholder: str,
         explanation: str = "",
+        options: Iterable[str] = (),
+        symbols: Iterable[str] = (),
     ) -> dict[str, Any]:
+        """Reactivo de texto con la casilla que corresponde a su respuesta.
+
+        Con ``options`` se contesta eligiendo del banco (sin ortografía que
+        adivinar); una forma ``[..]`` se escribe eje por eje con ``symbols`` a
+        la mano; un número sólo admite dígitos. Lo demás queda en texto libre.
+        La respuesta sigue siendo ``{"texto": ...}`` en todos los casos, así que
+        la calificación no cambia.
+        """
+        aceptadas = list(
+            dict.fromkeys(str(item).strip() for item in accepted if str(item).strip())
+        )
+        bank = list(dict.fromkeys(str(item) for item in options if str(item).strip()))
+        es_forma = not bank and bool(aceptadas) and bool(cls._FORMA.fullmatch(aceptadas[0]))
         question = cls._base_question(
             prefix,
             code,
@@ -536,16 +566,59 @@ class ModuleQuestionBank:
             cognitive_process,
             pedagogical_type,
             formato,
-            "caja_en_linea",
+            "forma_tensor" if es_forma else "caja_en_linea",
             "texto",
             prompt,
             explanation=explanation,
         )
-        question["respuestas_aceptadas"] = list(
-            dict.fromkeys(str(item).strip() for item in accepted if str(item).strip())
-        )
+        question["respuestas_aceptadas"] = aceptadas
         question["placeholder"] = placeholder
+        if bank:
+            question["banco_opciones"] = bank
+        elif es_forma:
+            question["simbolos"] = list(symbols)
+        elif aceptadas and all(cls._NUMERO.fullmatch(item) for item in aceptadas):
+            question["formato_respuesta"] = "numero"
+            question["placeholder"] = "Escribe sólo el número"
         return question
+
+    @staticmethod
+    def _shape_symbols(steps: list[dict[str, Any]]) -> list[str]:
+        """Símbolos de eje que usa el recorrido del módulo (B, T, d_model…)."""
+        symbols: list[str] = []
+        for step in steps:
+            for shape in re.findall(r"\[([^\[\]]+)\]", str(step.get("dimensions", ""))):
+                for part in shape.split(","):
+                    part = part.strip()
+                    if part and not part.isdigit() and part not in symbols:
+                        symbols.append(part)
+        return symbols
+
+    @staticmethod
+    def _bank_options(
+        correct: str, candidates: Iterable[str], excluded: Iterable[str] = ()
+    ) -> list[str]:
+        """La respuesta y tres distractores del propio módulo, sin repetidos."""
+        seen = {normalizar_texto(item) for item in excluded}
+        seen.discard("")
+        options = [correct]
+        seen.add(normalizar_texto(correct))
+        for candidate in candidates:
+            key = normalizar_texto(candidate)
+            if key and key not in seen:
+                options.append(str(candidate))
+                seen.add(key)
+            if len(options) == 4:
+                break
+        return options
+
+    @staticmethod
+    def _distractor_indices(index: int, total: int) -> list[int]:
+        # Se evita el paso siguiente: su resultado suele refinar el del paso
+        # pedido («Contexto por token» y «Attention(X)») y dejaría dos opciones
+        # defendibles.
+        offsets = (-1, -2, -3, 2, 3, -4, 4)
+        return [(index + offset) % total for offset in offsets]
 
     @staticmethod
     def _accepted_short_answers(answer: Any) -> list[str]:
@@ -718,6 +791,7 @@ class ModuleQuestionBank:
             for challenge in module["challenges"]
         ]
         transfer_items = module.get("transfer_items") or []
+        shape_symbols = self._shape_symbols(steps)
         questions: list[dict[str, Any]] = []
 
         def concept_choice(code: str, index: int) -> dict[str, Any]:
@@ -872,8 +946,16 @@ class ModuleQuestionBank:
                 blank_answers,
                 pedagogical_type="completar_espacios",
                 formato="Completar espacios",
-                placeholder="Escribe el nombre de la etapa",
+                placeholder="Elige la etapa",
                 explanation=f"La etapa intermedia es {blank_step['title']}.",
+                options=self._bank_options(
+                    blank_step["title"],
+                    (
+                        steps[index]["title"]
+                        for index in self._distractor_indices(blank_index, len(steps))
+                    ),
+                    excluded=(previous_step["title"], next_step["title"]),
+                ),
             )
         )
 
@@ -922,13 +1004,15 @@ class ModuleQuestionBank:
                 "Básica",
                 "Aplicar",
                 "Lectura de dimensiones",
-                f"¿Qué forma tiene el tensor producido por "
-                f"«{dimension_step['title']}»?",
+                f"Al terminar el paso «{dimension_step['title']}», ¿qué forma "
+                f"(dimensiones) tiene el tensor que se obtiene? Escríbela eje por "
+                f"eje con los símbolos del recorrido.",
                 self._accepted_short_answers(dimension_step["dimensions"]),
                 pedagogical_type="respuesta_corta",
-                formato="Respuesta numérica/corta",
-                placeholder="Ejemplo: [B,T,d_model]",
+                formato="Forma del tensor",
+                placeholder="Eje",
                 explanation=f"La forma esperada es {dimension_step['dimensions']}.",
+                symbols=shape_symbols,
             )
         )
 
@@ -1076,8 +1160,18 @@ class ModuleQuestionBank:
                 output_answers,
                 pedagogical_type="completar_espacios",
                 formato="Completar espacios",
-                placeholder="Escribe la salida de la etapa",
+                placeholder="Elige la salida",
                 explanation=f"Produce {output_step['output']}.",
+                options=self._bank_options(
+                    output_step["output"],
+                    (
+                        steps[index]["output"]
+                        for index in self._distractor_indices(
+                            steps.index(output_step), len(steps)
+                        )
+                    ),
+                    excluded=(output_step["input"],),
+                ),
             )
         )
 
@@ -1142,6 +1236,7 @@ class ModuleQuestionBank:
                 formato="Respuesta numérica/corta",
                 placeholder="Escribe el valor o la dimensión",
                 explanation=str(challenge.get("explanation", "")),
+                symbols=shape_symbols,
             )
         )
 

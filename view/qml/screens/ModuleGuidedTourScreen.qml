@@ -20,6 +20,10 @@ PagePrincipal {
     property var currentConcept: ({})
     property var currentRelatedConcepts: []
     readonly property var currentStep: steps.length > currentIndex ? steps[currentIndex] : ({})
+    // Con lecciones escritas, el paso se lee de corrido en una sola columna:
+    // idea, términos, visualización, paso a paso, ejemplo, resumen y, al
+    // final, la comprobación. Sin ellas se conserva el recorrido de tres paneles.
+    readonly property bool lessonMode: root.steps.length > 0 && !!root.steps[0].lesson
 
     // Cada módulo declara qué contenido amplio corresponde a sus pasos. La
     // vista sigue siendo genérica y un módulo nuevo sólo modifica datos.
@@ -291,206 +295,228 @@ PagePrincipal {
             }
         }
 
-        RowLayout {
+        // Recorrido de tres paneles: lo usan los módulos que todavía no tienen
+        // lecciones escritas (ver docs/mejoras_pedagogicas.md, punto 7).
+        Loader {
+            id: legacyLayout
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 14 * root.uiScale
-
-            ColumnLayout {
-                Layout.preferredWidth: Math.max(360 * root.uiScale,
-                                                Math.min(500 * root.uiScale,
-                                                         root.width * 0.39))
-                Layout.minimumWidth: 360 * root.uiScale
+            active: !root.lessonMode
+            visible: active
+            sourceComponent: Component {
+            RowLayout {
+                Layout.fillWidth: true
                 Layout.fillHeight: true
-                spacing: 10 * root.uiScale
+                spacing: 14 * root.uiScale
 
-                GuidedDemoVisualization {
-                    objectName: "moduleGuidedVisualization"
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: Math.min(260 * root.uiScale,
-                                                     Math.max(220 * root.uiScale,
-                                                              root.height * 0.31))
-                    Layout.minimumHeight: 190 * root.uiScale
-                    conceptId: root.currentTheoryConceptId
-                    stepId: String(root.currentStep.id || "")
-                    scaleFactor: root.uiScale
-                }
-
-                RectanglePrincipal {
-                    Layout.fillWidth: true
+                ColumnLayout {
+                    Layout.preferredWidth: Math.max(360 * root.uiScale,
+                                                    Math.min(500 * root.uiScale,
+                                                             root.width * 0.39))
+                    Layout.minimumWidth: 360 * root.uiScale
                     Layout.fillHeight: true
-                    sx: root.uiScale
-                    sy: root.uiScale
+                    spacing: 10 * root.uiScale
 
-                    ColumnLayout {
-                        anchors.fill: parent
-                        anchors.margins: 13 * root.uiScale
-                        spacing: 8 * root.uiScale
+                    GuidedDemoVisualization {
+                        objectName: "moduleGuidedVisualization"
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: Math.min(260 * root.uiScale,
+                                                         Math.max(220 * root.uiScale,
+                                                                  root.height * 0.31))
+                        Layout.minimumHeight: 190 * root.uiScale
+                        conceptId: root.currentTheoryConceptId
+                        stepId: String(root.currentStep.id || "")
+                        scaleFactor: root.uiScale
+                    }
 
-                        RowLayout {
-                            Layout.fillWidth: true
-                            Text {
+                    RectanglePrincipal {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        sx: root.uiScale
+                        sy: root.uiScale
+
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: 13 * root.uiScale
+                            spacing: 8 * root.uiScale
+
+                            RowLayout {
                                 Layout.fillWidth: true
-                                text: "TRAZA DEL PASO"
-                                color: Style.Theme.acento_fuerte
-                                font.bold: true
-                                font.pixelSize: 10 * root.uiScale
-                                font.letterSpacing: 0.8
-                            }
-                            Text {
-                                text: root.currentStep.dimensions || ""
-                                color: Style.Theme.formula_texto
-                                font.family: Style.Theme.fuente_mono
-                                font.bold: true
-                                font.pixelSize: 10 * root.uiScale
-                            }
-                        }
-
-                        ScrollView {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            clip: true
-                            contentWidth: availableWidth
-                            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-                            ScrollBar.vertical.policy: ScrollBar.AsNeeded
-
-                            ColumnLayout {
-                                width: parent.width
-                                spacing: 7 * root.uiScale
-
-                                // Definición oficial del concepto: es la misma
-                                // redacción que usan los reactivos básicos.
-                                Rectangle {
-                                    objectName: "moduleGuidedDefinition"
-                                    Layout.fillWidth: true
-                                    visible: String(root.currentConceptDefinition.description || "").length > 0
-                                    Layout.preferredHeight: definitionText.implicitHeight + 14 * root.uiScale
-                                    radius: 8 * root.uiScale
-                                    color: Style.Theme.concepto_fondo
-                                    Text {
-                                        id: definitionText
-                                        anchors.fill: parent
-                                        anchors.margins: 7 * root.uiScale
-                                        text: "DEFINICIÓN · " + String(root.currentConceptDefinition.title || "")
-                                              + ": " + String(root.currentConceptDefinition.description || "")
-                                        color: Style.Theme.concepto_texto
-                                        font.pixelSize: 10 * root.uiScale
-                                        wrapMode: Text.WordWrap
-                                    }
-                                }
-
                                 Text {
                                     Layout.fillWidth: true
-                                    visible: root.currentIsFocus
-                                    text: "★ En el pre-test fallaste reactivos de este concepto: tómate tu tiempo en este paso."
-                                    color: Style.Theme.aviso_texto
-                                    font.pixelSize: 10 * root.uiScale
+                                    text: "TRAZA DEL PASO"
+                                    color: Style.Theme.acento_fuerte
                                     font.bold: true
-                                    wrapMode: Text.WordWrap
+                                    font.pixelSize: 10 * root.uiScale
+                                    font.letterSpacing: 0.8
                                 }
-
-                                PredictionCheck {
-                                    id: stepCheck
-                                    objectName: "moduleGuidedCheck"
-                                    Layout.fillWidth: true
-                                    visible: root.currentHasCheck
-                                    sx: root.uiScale
-                                    eyebrow: "PREDICE ANTES DE VER EL RESULTADO"
-                                    check: root.currentStep.check || ({})
-                                    result: root.checkResults[String(root.currentStep.id || "")] || ({})
-                                    onSubmitted: function(optionIndex) { root.submitCheck(optionIndex) }
+                                Text {
+                                    text: root.currentStep.dimensions || ""
+                                    color: Style.Theme.formula_texto
+                                    font.family: Style.Theme.fuente_mono
+                                    font.bold: true
+                                    font.pixelSize: 10 * root.uiScale
                                 }
+                            }
 
-                                Connections {
-                                    target: root
-                                    function onCurrentIndexChanged() { stepCheck.selectedIndex = -1 }
-                                }
+                            ScrollView {
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                clip: true
+                                contentWidth: availableWidth
+                                ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                                ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
-                                GridLayout {
-                                    Layout.fillWidth: true
-                                    columns: 2
-                                    rowSpacing: 7 * root.uiScale
-                                    columnSpacing: 7 * root.uiScale
+                                ColumnLayout {
+                                    width: parent.width
+                                    spacing: 7 * root.uiScale
 
-                                    Repeater {
-                                        // CAMBIO y RESULTADO se revelan después
-                                        // de predecir; antes darían la respuesta.
-                                        model: [
-                                            { "label": "ENTRADA", "value": root.currentStep.input || "", "fill": Style.Theme.concepto_fondo, "ink": Style.Theme.concepto_texto },
-                                            { "label": "OPERACIÓN", "value": root.currentStep.operation || "", "fill": Style.Theme.formula_fondo, "ink": Style.Theme.formula_texto },
-                                            { "label": "CAMBIO", "value": root.currentAttempted ? (root.currentStep.change || "") : "Se revela al comprobar tu predicción", "fill": Style.Theme.ejemplo_fondo, "ink": Style.Theme.ejemplo_texto },
-                                            { "label": "RESULTADO", "value": root.currentAttempted ? (root.currentStep.output || "") : "Se revela al comprobar tu predicción", "fill": Style.Theme.proceso_fondo, "ink": Style.Theme.proceso_texto }
-                                        ]
-                                        delegate: Rectangle {
-                                            id: flowCard
-                                            required property var modelData
-                                            Layout.fillWidth: true
-                                            Layout.preferredWidth: 180 * root.uiScale
-                                            Layout.preferredHeight: 72 * root.uiScale
-                                            radius: 8 * root.uiScale
-                                            color: flowCard.modelData.fill
+                                    // Definición oficial del concepto: es la misma
+                                    // redacción que usan los reactivos básicos.
+                                    Rectangle {
+                                        objectName: "moduleGuidedDefinition"
+                                        Layout.fillWidth: true
+                                        visible: String(root.currentConceptDefinition.description || "").length > 0
+                                        Layout.preferredHeight: definitionText.implicitHeight + 14 * root.uiScale
+                                        radius: 8 * root.uiScale
+                                        color: Style.Theme.concepto_fondo
+                                        Text {
+                                            id: definitionText
+                                            anchors.fill: parent
+                                            anchors.margins: 7 * root.uiScale
+                                            text: "DEFINICIÓN · " + String(root.currentConceptDefinition.title || "")
+                                                  + ": " + String(root.currentConceptDefinition.description || "")
+                                            color: Style.Theme.concepto_texto
+                                            font.pixelSize: 10 * root.uiScale
+                                            wrapMode: Text.WordWrap
+                                        }
+                                    }
 
-                                            ColumnLayout {
-                                                anchors.fill: parent
-                                                anchors.margins: 8 * root.uiScale
-                                                spacing: 3 * root.uiScale
-                                                Text {
-                                                    text: flowCard.modelData.label
-                                                    color: flowCard.modelData.ink
-                                                    font.bold: true
-                                                    font.pixelSize: 8 * root.uiScale
-                                                }
-                                                Text {
-                                                    Layout.fillWidth: true
-                                                    Layout.fillHeight: true
-                                                    text: flowCard.modelData.value
-                                                    color: Style.Theme.texto_primario
-                                                    font.pixelSize: 9 * root.uiScale
-                                                    wrapMode: Text.WordWrap
-                                                    maximumLineCount: 3
-                                                    elide: Text.ElideRight
+                                    Text {
+                                        Layout.fillWidth: true
+                                        visible: root.currentIsFocus
+                                        text: "★ En el pre-test fallaste reactivos de este concepto: tómate tu tiempo en este paso."
+                                        color: Style.Theme.aviso_texto
+                                        font.pixelSize: 10 * root.uiScale
+                                        font.bold: true
+                                        wrapMode: Text.WordWrap
+                                    }
+
+                                    PredictionCheck {
+                                        id: stepCheck
+                                        objectName: "moduleGuidedCheck"
+                                        Layout.fillWidth: true
+                                        visible: root.currentHasCheck
+                                        sx: root.uiScale
+                                        eyebrow: "PREDICE ANTES DE VER EL RESULTADO"
+                                        check: root.currentStep.check || ({})
+                                        result: root.checkResults[String(root.currentStep.id || "")] || ({})
+                                        onSubmitted: function(optionIndex) { root.submitCheck(optionIndex) }
+                                    }
+
+                                    Connections {
+                                        target: root
+                                        function onCurrentIndexChanged() { stepCheck.selectedIndex = -1 }
+                                    }
+
+                                    GridLayout {
+                                        Layout.fillWidth: true
+                                        columns: 2
+                                        rowSpacing: 7 * root.uiScale
+                                        columnSpacing: 7 * root.uiScale
+
+                                        Repeater {
+                                            // CAMBIO y RESULTADO se revelan después
+                                            // de predecir; antes darían la respuesta.
+                                            model: [
+                                                { "label": "ENTRADA", "value": root.currentStep.input || "", "fill": Style.Theme.concepto_fondo, "ink": Style.Theme.concepto_texto },
+                                                { "label": "OPERACIÓN", "value": root.currentStep.operation || "", "fill": Style.Theme.formula_fondo, "ink": Style.Theme.formula_texto },
+                                                { "label": "CAMBIO", "value": root.currentAttempted ? (root.currentStep.change || "") : "Se revela al comprobar tu predicción", "fill": Style.Theme.ejemplo_fondo, "ink": Style.Theme.ejemplo_texto },
+                                                { "label": "RESULTADO", "value": root.currentAttempted ? (root.currentStep.output || "") : "Se revela al comprobar tu predicción", "fill": Style.Theme.proceso_fondo, "ink": Style.Theme.proceso_texto }
+                                            ]
+                                            delegate: Rectangle {
+                                                id: flowCard
+                                                required property var modelData
+                                                Layout.fillWidth: true
+                                                Layout.preferredWidth: 180 * root.uiScale
+                                                Layout.preferredHeight: 72 * root.uiScale
+                                                radius: 8 * root.uiScale
+                                                color: flowCard.modelData.fill
+
+                                                ColumnLayout {
+                                                    anchors.fill: parent
+                                                    anchors.margins: 8 * root.uiScale
+                                                    spacing: 3 * root.uiScale
+                                                    Text {
+                                                        text: flowCard.modelData.label
+                                                        color: flowCard.modelData.ink
+                                                        font.bold: true
+                                                        font.pixelSize: 8 * root.uiScale
+                                                    }
+                                                    Text {
+                                                        Layout.fillWidth: true
+                                                        Layout.fillHeight: true
+                                                        text: flowCard.modelData.value
+                                                        color: Style.Theme.texto_primario
+                                                        font.pixelSize: 9 * root.uiScale
+                                                        wrapMode: Text.WordWrap
+                                                        maximumLineCount: 3
+                                                        elide: Text.ElideRight
+                                                    }
                                                 }
                                             }
                                         }
                                     }
-                                }
 
-                                Text {
-                                    Layout.fillWidth: true
-                                    text: "¿POR QUÉ?  " + (root.currentStep.why || "")
-                                    color: Style.Theme.texto_secundario_fuerte
-                                    font.pixelSize: 10 * root.uiScale
-                                    font.bold: true
-                                    wrapMode: Text.WordWrap
-                                }
-                                Text {
-                                    Layout.fillWidth: true
-                                    text: "Siguiente: " + (root.currentStep.next || "fin del recorrido")
-                                    color: Style.Theme.texto_secundario
-                                    font.pixelSize: 9 * root.uiScale
-                                    wrapMode: Text.WordWrap
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: "¿POR QUÉ?  " + (root.currentStep.why || "")
+                                        color: Style.Theme.texto_secundario_fuerte
+                                        font.pixelSize: 10 * root.uiScale
+                                        font.bold: true
+                                        wrapMode: Text.WordWrap
+                                    }
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: "Siguiente: " + (root.currentStep.next || "fin del recorrido")
+                                        color: Style.Theme.texto_secundario
+                                        font.pixelSize: 9 * root.uiScale
+                                        wrapMode: Text.WordWrap
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
 
-            GuidedConceptReader {
-                id: conceptReader
-                objectName: "moduleGuidedConceptReader"
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                Layout.minimumWidth: 500 * root.uiScale
-                concept: root.currentConcept
-                relatedConcepts: root.currentRelatedConcepts
-                loadError: typeof mainViewModel !== "undefined" && mainViewModel
-                           ? mainViewModel.theoryController.errorCarga : ""
-                scaleFactor: root.uiScale
-                showVisualization: false
-                onDeepDiveRequested: function(conceptId) {
-                    root.openTheoryConcept(conceptId)
+                GuidedConceptReader {
+                    id: conceptReader
+                    objectName: "moduleGuidedConceptReader"
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    Layout.minimumWidth: 500 * root.uiScale
+                    concept: root.currentConcept
+                    relatedConcepts: root.currentRelatedConcepts
+                    loadError: typeof mainViewModel !== "undefined" && mainViewModel
+                               ? mainViewModel.theoryController.errorCarga : ""
+                    scaleFactor: root.uiScale
+                    showVisualization: false
+                    onDeepDiveRequested: function(conceptId) {
+                        root.openTheoryConcept(conceptId)
+                    }
                 }
+            }
+            }
+        }
+
+        Loader {
+            id: lessonLayout
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            active: root.lessonMode
+            visible: active
+            sourceComponent: Component {
+                GuidedLessonView { tour: root }
             }
         }
 
@@ -512,6 +538,8 @@ PagePrincipal {
                 Layout.fillHeight: true
                 sx: root.uiScale
                 sy: root.uiScale
+                // Avanzar solo cada 9 s no deja leer una lección completa.
+                visible: !root.lessonMode
                 text: root.playing ? "Pausar recorrido" : "Reproducir recorrido"
                 onClicked: root.playing = !root.playing
             }
@@ -544,7 +572,9 @@ PagePrincipal {
             objectName: "moduleGuidedStatus"
             Layout.alignment: Qt.AlignHCenter
             text: root.finishMessage.length > 0 ? root.finishMessage
-                  : (root.currentAttempted ? "" : "Responde la predicción del paso para continuar.")
+                  : (root.currentAttempted ? ""
+                     : (root.lessonMode ? "Responde la comprobación al final del paso para continuar."
+                                        : "Responde la predicción del paso para continuar."))
             visible: text.length > 0
             color: root.finishMessage.length > 0 ? Style.Theme.aviso_texto : Style.Theme.texto_secundario
             font.pixelSize: 10 * root.uiScale

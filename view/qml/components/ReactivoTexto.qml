@@ -15,9 +15,13 @@ import "../styles" as Style
 // Este componente dibuja el enunciado, así que la pantalla NO debe volver a
 // dibujarlo (ver `reactivoDibujaEnunciado` en EvaluationScreen.qml).
 //
-// Deliberadamente NO hay banco de palabras: T1 está clasificado como «Recordar»
-// con evocación libre. Ofrecer opciones lo convertiría en reconocimiento, que es
-// otro nivel cognitivo, y dejaría de ser comparable con el instrumento en papel.
+// Si el reactivo trae `banco_opciones`, el hueco se llena eligiendo una ficha
+// del banco en vez de escribir. Con texto libre, el estudiante que sabía la
+// respuesta no sabía si escribir «Q» o «Query», ni si un error de ortografía
+// le costaba el punto. El banco convierte la evocación en reconocimiento (otro
+// nivel cognitivo, por eso subió la versión del instrumento modular), pero
+// mide el concepto y no la manera de escribirlo. Sin banco queda el campo, y
+// con `formato_respuesta: "numero"` sólo admite un número.
 //
 // La comparación contra las respuestas aceptadas ocurre en el modelo, que
 // normaliza mayúsculas, acentos y signos; aquí no se valida nada ni se insinúa
@@ -48,7 +52,19 @@ Item {
     readonly property var palabrasAntes: root.corte.antes
     readonly property var palabrasDespues: root.corte.despues
 
+    readonly property var banco: (root.pregunta && root.pregunta.banco_opciones)
+                                 ? root.pregunta.banco_opciones : []
+    readonly property bool conBanco: root.banco.length > 0
+    readonly property bool esNumero: !!(root.pregunta
+                                        && root.pregunta.formato_respuesta === "numero")
+    property string elegida: ""
+
     implicitHeight: columna.implicitHeight
+
+    RegularExpressionValidator {
+        id: validadorNumero
+        regularExpression: /-?[0-9]*([.,][0-9]*)?/
+    }
 
     TextMetrics {
         id: metricasPlaceholder
@@ -79,14 +95,22 @@ Item {
     }
 
     function respuestaActual() {
-        return { "texto": campo.text }
+        return { "texto": root.conBanco ? root.elegida : campo.text }
     }
 
     function restaurar() {
         root.restaurando = true
-        campo.text = (root.respuestaInicial && root.respuestaInicial.texto)
+        var previa = (root.respuestaInicial && root.respuestaInicial.texto)
                      ? String(root.respuestaInicial.texto) : ""
+        campo.text = previa
+        root.elegida = previa
         root.restaurando = false
+    }
+
+    // Tocar la ficha ya elegida la devuelve al banco.
+    function elegir(opcion) {
+        root.elegida = (root.elegida === opcion) ? "" : String(opcion)
+        root.respuestaCambiada(root.respuestaActual())
     }
 
     Component.onCompleted: root.restaurar()
@@ -117,9 +141,42 @@ Item {
                 }
             }
 
+            // Hueco del banco: muestra la ficha elegida, o invita a elegir.
+            Rectangle {
+                id: hueco
+                objectName: "evaluationBankSlot"
+                visible: root.conBanco
+                width: Math.max(230 * root.sx, textoHueco.implicitWidth + 36 * root.sx)
+                height: campo.height
+                radius: 10 * root.sx
+                color: root.elegida !== "" ? Style.Theme.acento_fondo : "transparent"
+                border.width: root.elegida !== "" ? 2 : 1.5
+                border.color: root.elegida !== "" ? Style.Theme.acento : Style.Theme.borde_medio
+
+                Text {
+                    id: textoHueco
+                    anchors.centerIn: parent
+                    text: root.elegida !== "" ? root.elegida : "elige abajo ↓"
+                    color: root.elegida !== "" ? Style.Theme.texto_primario
+                                               : Style.Theme.texto_terciario
+                    font.family: Style.Theme.fuente_interfaz
+                    font.pixelSize: 17 * root.sy
+                    font.bold: root.elegida !== ""
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    enabled: root.elegida !== ""
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.elegir(root.elegida)
+                }
+            }
+
             CampoTextoPrincipal {
                 id: campo
                 objectName: "evaluationTextAnswer"
+                visible: !root.conBanco
+                validator: root.esNumero ? validadorNumero : null
                 // Crece con lo escrito para que la oración no salte de golpe,
                 // pero nunca tanto como para empujar el resto fuera del renglón.
                 width: Math.max(230 * root.sx,
@@ -144,6 +201,7 @@ Item {
                         root.respuestaCambiada(root.respuestaActual())
                 }
                 Keys.onReturnPressed: campo.focus = false
+                Keys.onEscapePressed: campo.focus = false
             }
 
             Repeater {
@@ -161,9 +219,54 @@ Item {
             }
         }
 
+        Flow {
+            objectName: "evaluationAnswerBank"
+            Layout.fillWidth: true
+            visible: root.conBanco
+            spacing: 8 * root.sx
+
+            Repeater {
+                model: root.banco
+
+                delegate: BotonAccesible {
+                    id: ficha
+                    required property var modelData
+                    readonly property bool marcada: root.elegida === String(ficha.modelData)
+                    height: 42 * root.sy
+                    width: etiquetaFicha.implicitWidth + 32 * root.sx
+                    Accessible.name: String(ficha.modelData)
+                    onClicked: root.elegir(String(ficha.modelData))
+
+                    background: Rectangle {
+                        radius: 10 * root.sx
+                        color: ficha.marcada ? Style.Theme.acento
+                                             : (ficha.hovered ? Style.Theme.acento_fondo
+                                                              : Style.Theme.surface)
+                        border.width: 1
+                        border.color: ficha.marcada ? Style.Theme.acento : Style.Theme.borde_medio
+                    }
+                    contentItem: Text {
+                        id: etiquetaFicha
+                        text: String(ficha.modelData)
+                        color: ficha.marcada ? Style.Theme.texto_sobre_acento
+                                             : Style.Theme.texto_primario
+                        font.family: Style.Theme.fuente_interfaz
+                        font.pixelSize: 15 * root.sx
+                        font.bold: ficha.marcada
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                }
+            }
+        }
+
         Text {
             Layout.fillWidth: true
-            text: "No importan las mayúsculas ni los acentos."
+            text: root.conBanco
+                  ? "Elige la opción que completa la frase. Para cambiarla, toca otra; para quitarla, tócala de nuevo."
+                  : (root.esNumero
+                     ? "Escribe sólo el número, sin unidades. Usa punto o coma para los decimales (0.5)."
+                     : "No importan las mayúsculas ni los acentos.")
             color: Style.Theme.texto_terciario
             font.family: Style.Theme.fuente_interfaz
             font.pixelSize: 11 * root.sx

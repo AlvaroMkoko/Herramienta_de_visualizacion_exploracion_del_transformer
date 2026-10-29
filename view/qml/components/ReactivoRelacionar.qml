@@ -8,8 +8,8 @@ import "../styles" as Style
 // Relacionar columnas (A1 y S2) · presentación «lineas_o_tocar_para_emparejar».
 //
 // Dos columnas: a la izquierda los elementos, a la derecha las funciones. Se
-// toca uno de cada lado y quedan emparejados; el par se marca con un color y un
-// número que aparecen en los dos lados.
+// toca uno de cada lado, en cualquier orden, y quedan emparejados; el par se
+// marca con un color y un número que aparecen en los dos lados.
 //
 // No se dibujan líneas entre columnas. Una línea tendría que recalcularse con
 // cada cambio de alto, de desplazamiento o de escala, y en cuanto la columna
@@ -70,8 +70,10 @@ AsignacionBase {
                 Layout.fillWidth: true
                 text: root.pendientes.length === 0
                       ? "Todos los elementos están relacionados"
-                      : "Toca un elemento y luego su "
-                        + root.etiquetaDestino.toLowerCase()
+                      : (root.destinoEnMano !== ""
+                         ? "Ahora toca el elemento que corresponde"
+                         : "Toca un elemento y luego su "
+                           + root.etiquetaDestino.toLowerCase() + ", o al revés")
                 color: root.pendientes.length === 0
                        ? Style.Theme.exito_texto : Style.Theme.texto_secundario_fuerte
                 font.family: Style.Theme.fuente_interfaz
@@ -139,18 +141,19 @@ AsignacionBase {
                         readonly property string destino: root.destinoDe(filaElemento.elementoId)
                         readonly property bool emparejado: filaElemento.destino !== ""
                         readonly property bool enMano: root.enMano === filaElemento.elementoId
+                        readonly property bool esperando: root.destinoEnMano !== ""
 
                         objectName: "evaluationPairItem_" + filaElemento.elementoId
                         Layout.fillWidth: true
                         Layout.preferredHeight: Math.max(
                             54 * root.sy, textoElemento.implicitHeight + 24 * root.sy)
                         radius: 11 * root.sx
-                        color: filaElemento.enMano
+                        color: filaElemento.enMano || filaElemento.esperando
                                ? Style.Theme.acento_fondo
                                : (areaElemento.containsMouse
                                   ? Style.Theme.superficie_alterna : Style.Theme.surface)
                         border.width: filaElemento.enMano ? 2 : 1
-                        border.color: filaElemento.enMano
+                        border.color: filaElemento.enMano || filaElemento.esperando
                                       ? Style.Theme.acento
                                       : (filaElemento.emparejado
                                          ? root.colorDe(filaElemento.elementoId)
@@ -162,9 +165,13 @@ AsignacionBase {
                             anchors.fill: parent
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
-                            // Tocar un elemento ya emparejado deshace el par:
+                            // Con una función en mano, el elemento tocado se
+                            // empareja con ella (aunque ya tuviera par). Sin
+                            // nada en mano, tocar uno emparejado deshace el par:
                             // es la misma regla que en las otras disposiciones.
-                            onClicked: root.alternar(filaElemento.elementoId)
+                            onClicked: root.destinoEnMano !== ""
+                                       ? root.tomar(filaElemento.elementoId)
+                                       : root.alternar(filaElemento.elementoId)
                         }
 
                         RowLayout {
@@ -232,18 +239,21 @@ AsignacionBase {
                         readonly property var ocupante: root.elementoEn(filaDestino.destinoId)
                         readonly property bool ocupado: filaDestino.ocupante !== null
                         readonly property bool esperando: root.enMano !== ""
+                        readonly property bool enMano: root.destinoEnMano === filaDestino.destinoId
 
                         objectName: "evaluationPairTarget_" + filaDestino.destinoId
                         Layout.fillWidth: true
                         Layout.preferredHeight: Math.max(
                             54 * root.sy, contenidoDestino.implicitHeight + 22 * root.sy)
                         radius: 11 * root.sx
-                        color: filaDestino.esperando
+                        color: filaDestino.esperando || filaDestino.enMano
                                ? Style.Theme.acento_fondo
                                : (areaDestino.containsMouse
                                   ? Style.Theme.superficie_alterna : Style.Theme.surface)
-                        border.width: filaDestino.ocupado ? 2 : 1
-                        border.color: filaDestino.ocupado
+                        border.width: filaDestino.ocupado || filaDestino.enMano ? 2 : 1
+                        border.color: filaDestino.enMano
+                                      ? Style.Theme.acento
+                                      : filaDestino.ocupado
                                       ? root.colorDe(String(filaDestino.ocupante.id))
                                       : (filaDestino.esperando
                                          ? Style.Theme.acento : Style.Theme.borde_suave)
@@ -254,9 +264,17 @@ AsignacionBase {
                             anchors.fill: parent
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
-                            // Sin nada en mano, tocar un destino ocupado toma
-                            // de vuelta su elemento (lo hereda de soltarEn).
-                            onClicked: root.soltarEn(filaDestino.destinoId)
+                            // Con un elemento en mano, lo recibe. Si no, tocar
+                            // una función ocupada deshace su par y una libre
+                            // queda en mano esperando su elemento.
+                            onClicked: {
+                                if (root.enMano !== "")
+                                    root.soltarEn(filaDestino.destinoId)
+                                else if (filaDestino.ocupado)
+                                    root.liberar(String(filaDestino.ocupante.id))
+                                else
+                                    root.tomarDestino(filaDestino.destinoId)
+                            }
                         }
 
                         ColumnLayout {

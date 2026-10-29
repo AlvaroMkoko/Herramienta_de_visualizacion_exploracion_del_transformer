@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Controls
 import "../styles" as Style
 
 // Ficha de un reactivo de asignación: el rectángulo con el texto de un elemento,
@@ -11,6 +12,14 @@ import "../styles" as Style
 // Layout que la contiene, y moverla directamente pelearía con el layout y la
 // dejaría saltando. Al soltar, el hijo vuelve a su sitio y quien decide qué
 // pasó es el DropArea del destino.
+//
+// Mientras se arrastra, el cuerpo se muda a la capa superior de la ventana:
+// dentro del ScrollView del examen quedaba recortado y por debajo de las
+// ranuras. Al soltar, la ficha se entrega a mano al área que tiene debajo
+// (`Drag.target`, que debe declarar `function recibir(elementoId)`). Ni
+// `Drag.drop()` ni `onDropped` sirven aquí: MouseArea termina el arrastre al
+// soltar el botón y el evento de soltar ya no llega a ningún DropArea, así que
+// el destino nunca recibía la ficha y el arrastre sólo «parecía» funcionar.
 Item {
     id: ficha
 
@@ -26,6 +35,17 @@ Item {
 
     signal tocada()
 
+    // Capa donde viaja la ficha mientras se arrastra.
+    readonly property Item capaArrastre: Overlay.overlay
+    property bool huboArrastre: false
+
+    function soltar() {
+        var destino = cuerpo.Drag.target
+        cuerpo.Drag.active = false
+        if (destino && typeof destino.recibir === "function")
+            destino.recibir(ficha.elementoId)
+    }
+
     implicitHeight: Math.max(46 * ficha.sy, etiqueta.implicitHeight + 22 * ficha.sy)
 
     Rectangle {
@@ -33,7 +53,7 @@ Item {
         width: ficha.width
         height: ficha.height
         radius: 10 * ficha.sx
-        z: arrastre.drag.active ? 10 : 0
+        z: cuerpo.Drag.active ? 10 : 0
 
         color: ficha.seleccionada
                ? Style.Theme.acento_fondo
@@ -44,11 +64,11 @@ Item {
                       ? Style.Theme.acento
                       : (arrastre.containsMouse
                          ? Style.Theme.acento_alt : Style.Theme.borde_suave)
-        opacity: arrastre.drag.active ? 0.85 : 1
+        opacity: cuerpo.Drag.active ? 0.9 : 1
+        scale: cuerpo.Drag.active ? 1.03 : 1
 
         Behavior on color { ColorAnimation { duration: 110 } }
 
-        Drag.active: arrastre.drag.active
         Drag.source: ficha
         Drag.hotSpot.x: cuerpo.width / 2
         Drag.hotSpot.y: cuerpo.height / 2
@@ -96,16 +116,37 @@ Item {
             cursorShape: Qt.PointingHandCursor
             drag.target: ficha.arrastrable ? cuerpo : null
             drag.smoothed: true
+            // El ScrollView del examen no debe robarse el gesto para desplazar.
+            preventStealing: true
 
-            // El clic no debe dispararse al terminar un arrastre, así que se
-            // usa onReleased y se distingue por si el arrastre estaba activo.
+            drag.onActiveChanged: {
+                if (arrastre.drag.active) {
+                    ficha.huboArrastre = true
+                    cuerpo.Drag.active = true
+                } else if (cuerpo.Drag.active) {
+                    ficha.soltar()
+                }
+            }
+
+            onPressed: ficha.huboArrastre = false
+            // Un arrastre terminado no cuenta como toque.
             onReleased: {
-                var arrastraba = arrastre.drag.active
                 cuerpo.x = 0
                 cuerpo.y = 0
-                if (!arrastraba)
+                if (!ficha.huboArrastre)
                     ficha.tocada()
             }
+            onCanceled: {
+                cuerpo.Drag.cancel()
+                cuerpo.x = 0
+                cuerpo.y = 0
+            }
+        }
+
+        states: State {
+            name: "arrastrando"
+            when: cuerpo.Drag.active && ficha.capaArrastre !== null
+            ParentChange { target: cuerpo; parent: ficha.capaArrastre }
         }
     }
 

@@ -33,6 +33,10 @@ Item {
 
     // Elemento tomado, a la espera de un destino. Cadena vacía = ninguno.
     property string enMano: ""
+    // Lo inverso: destino tomado, a la espera de un elemento. Al relacionar
+    // columnas, la gente empieza por el lado que lee primero; obligarla a
+    // empezar por la izquierda hacía que el toque en la derecha no hiciera nada.
+    property string destinoEnMano: ""
 
     // Las listas se leen con listaDe() y NO con una derivada directa: QML
     // dispara onPreguntaChanged en cuanto se asigna `pregunta`, pero reevalúa
@@ -79,6 +83,7 @@ Item {
         }
         base.asignaciones = limpias
         base.enMano = ""
+        base.destinoEnMano = ""
     }
 
     function destinoDe(elementoId) {
@@ -135,7 +140,17 @@ Item {
 
     function tomar(elementoId) {
         var id = String(elementoId)
+        if (base.destinoEnMano !== "") {
+            base.asignar(id, base.destinoEnMano)
+            return
+        }
         base.enMano = (base.enMano === id) ? "" : id
+    }
+
+    function tomarDestino(destinoId) {
+        var id = String(destinoId)
+        base.enMano = ""
+        base.destinoEnMano = (base.destinoEnMano === id) ? "" : id
     }
 
     // Tocar un destino. Si no hay nada en mano y el destino está ocupado, se
@@ -181,6 +196,7 @@ Item {
         copia[id] = destino
         base.asignaciones = copia
         base.enMano = ""
+        base.destinoEnMano = ""
         base.respuestaCambiada(base.respuestaActual())
     }
 
@@ -212,6 +228,7 @@ Item {
     function limpiar() {
         base.asignaciones = ({})
         base.enMano = ""
+        base.destinoEnMano = ""
         base.respuestaCambiada(base.respuestaActual())
     }
 
