@@ -32,8 +32,7 @@ PagePrincipal {
     readonly property var laboratory: moduleData.laboratory || ({})
     readonly property var analysis: laboratoryController.result || ({})
     readonly property var allSteps: analysis.steps || []
-    readonly property var steps: root.advancedMode
-                                 ? root.allSteps : root.essentialSteps(root.allSteps)
+    readonly property var steps: root.allSteps
     readonly property var tokens: analysis.tokens || []
     readonly property real uiScale: Math.max(0.82, Math.min(1.08,
                                                            Math.min(root.sx,
@@ -74,7 +73,7 @@ PagePrincipal {
     readonly property var predictionBundle: root.buildPredictionBundle()
     readonly property var explanationBundle: root.buildExplanationBundle()
     readonly property var experimentDescriptor: root.buildExperimentDescriptor()
-    readonly property bool advancedMode: root.learningLevel === "advanced"
+    readonly property bool advancedMode: true
     readonly property real laboratoryProgress: root.steps.length > 0
                                                ? (root.safeStepIndex + 1) / root.steps.length
                                                : 0
@@ -83,7 +82,7 @@ PagePrincipal {
                                                        String(root.currentStep.id || ""))
 
     property string mode: "inference"
-    property string learningLevel: "essential"
+    readonly property string learningLevel: "advanced"
     // Una sola fuente de atención por vez: vista del componente, fórmula
     // animada o explicación. El contenido completo sigue disponible.
     property int workspaceSection: 2
@@ -97,7 +96,6 @@ PagePrincipal {
     property bool discoveryPredictionCorrect: false
     property bool discoveryExperimentDone: false
     property var labProgress: ({})
-    property var closingResult: ({})
     property string errorMessage: ""
     property string inspectedKey: ""
     property string inspectedTitle: ""
@@ -108,20 +106,6 @@ PagePrincipal {
     property bool pendingStepRestore: false
     // La explicación vive aparte para que la animación nunca pierda espacio.
     property bool guideDetached: false
-
-    function essentialSteps(items) {
-        var advancedOnly = [
-            "weights", "embedding_gradient", "embedding_update",
-            "backward", "update", "full_backward", "full_update"
-        ]
-        var filtered = []
-        for (var index = 0; index < items.length; ++index) {
-            var step = items[index]
-            if (advancedOnly.indexOf(String(step && step.id || "")) === -1)
-                filtered.push(step)
-        }
-        return filtered
-    }
 
     function labQuestion(id, prompt, correct, distractorA, distractorB, explanation) {
         return ({
@@ -406,11 +390,17 @@ PagePrincipal {
     }
 
     function discoveryStageLabel() {
-        return ["Predecir", "Probar", "Observar", "Explicar", "Feedback", "Completado"]
-               [Math.max(0, Math.min(5, root.discoveryStage))]
+        if (root.discoveryStage === 0)
+            return "Predecir"
+        if (root.discoveryStage <= 2)
+            return "Observar"
+        if (root.discoveryStage === 3)
+            return "Contestar"
+        return "Completado"
     }
 
     function resetDiscovery(openChallenge) {
+        discoveryAdvanceTimer.stop()
         root.discoveryStage = 0
         root.discoveryPrediction = -1
         root.discoveryExplanation = -1
@@ -436,9 +426,8 @@ PagePrincipal {
         return identifiers
     }
 
-    function recordAdvancedVisit() {
-        if (!root.advancedMode
-                || root.moduleId !== "module_3"
+    function recordAdvancedCompletion() {
+        if (root.moduleId !== "module_3"
                 || root.analysis.module_id !== root.moduleId
                 || String(root.analysis.mode || "") !== root.mode
                 || root.steps.length === 0)
@@ -456,11 +445,11 @@ PagePrincipal {
     function practiceStatusText() {
         if (root.labProgress.completed)
             return "PRÁCTICA COMPLETA ✓  ·  Ya puedes presentar el post-test."
-        if (root.advancedMode && root.moduleId === "module_3") {
+        if (root.moduleId === "module_3") {
             var visited = Number(root.labProgress.advanced_steps || 0)
             var required = Number(root.labProgress.advanced_required || root.steps.length)
             if (root.labProgress.advanced_completed)
-                return "EXPLORACIÓN AVANZADA COMPLETA ✓  ·  Responde la pregunta del módulo para desbloquear el post-test."
+                return "EXPLORACIÓN AVANZADA COMPLETA ✓  ·  Post-test desbloqueado."
             return "EXPLORACIÓN AVANZADA  ·  " + visited + " de " + required
                     + " operaciones revisadas  ·  recorre todas para completar esta ruta"
         }
@@ -557,7 +546,7 @@ PagePrincipal {
         root.errorMessage = ""
         if (!preserve)
             root.currentStepIndex = 0
-        root.workspaceSection = preserveDiscovery || root.advancedMode ? 1 : 2
+        root.workspaceSection = preserveDiscovery ? 1 : 2
         root.laboratoryController.explore(
             root.moduleId, inputText.text, root.mode,
             Math.round(layerSlider.value), Math.round(headSlider.value),
@@ -588,7 +577,7 @@ PagePrincipal {
             return
         root.mode = nextMode
         root.currentStepIndex = 0
-        root.resetDiscovery(!root.advancedMode)
+        root.resetDiscovery(true)
         if (root.laboratoryController.modelReady
                 && inputText.text.trim().length > 0)
             root.runAnalysis(false)
@@ -596,35 +585,23 @@ PagePrincipal {
 
     function previousStep() {
         root.currentStepIndex = Math.max(0, root.currentStepIndex - 1)
-        root.resetDiscovery(!root.advancedMode)
+        root.resetDiscovery(true)
     }
 
     function nextStep() {
         root.currentStepIndex = Math.min(Math.max(0, root.steps.length - 1),
                                          root.currentStepIndex + 1)
-        root.resetDiscovery(!root.advancedMode)
+        root.resetDiscovery(true)
     }
 
     function restartSteps() {
         root.currentStepIndex = 0
-        root.resetDiscovery(!root.advancedMode)
+        root.resetDiscovery(true)
     }
 
     function showFormulaPane() {
         root.workspaceSection = 1
         formulaScene.replay()
-    }
-
-    function chooseLearningLevel(level) {
-        root.learningLevel = level === "advanced" ? "advanced" : "essential"
-        root.currentStepIndex = 0
-        root.resetDiscovery(!root.advancedMode)
-        if (root.advancedMode)
-            Qt.callLater(root.recordAdvancedVisit)
-        if (!root.advancedMode) {
-            if (root.guideDetached)
-                root.closeDetachedGuide()
-        }
     }
 
     function groupsForModule() {
@@ -661,7 +638,7 @@ PagePrincipal {
         for (var index = 0; index < root.steps.length; ++index) {
             if (ids.indexOf(String(root.steps[index].id || "")) !== -1) {
                 root.currentStepIndex = index
-                root.resetDiscovery(!root.advancedMode)
+                root.resetDiscovery(true)
                 return
             }
         }
@@ -761,7 +738,9 @@ PagePrincipal {
                             root.discoveryPredictionCorrect,
                             root.discoveryExplanationAttempts)
                 root.refreshLabProgress()
+                root.recordAdvancedCompletion()
             }
+            discoveryAdvanceTimer.restart()
             return
         }
         root.discoveryHint = "Todavía no. Contrasta la fórmula «"
@@ -770,8 +749,21 @@ PagePrincipal {
     }
 
     function revealDiscoveryExplanation() {
+        discoveryAdvanceTimer.stop()
+        root.advanceAfterDiscovery()
+    }
+
+    function advanceAfterDiscovery() {
+        if (root.discoveryStage < 4)
+            return
+        if (root.safeStepIndex < root.steps.length - 1) {
+            root.currentStepIndex = root.safeStepIndex + 1
+            root.resetDiscovery(true)
+            return
+        }
         root.discoveryStage = 5
         root.workspaceSection = 2
+        root.refreshLabProgress()
     }
 
     function toggleGuide() {
@@ -837,6 +829,13 @@ PagePrincipal {
         return numeric.toFixed(6)
     }
 
+    Timer {
+        id: discoveryAdvanceTimer
+        interval: 1400
+        repeat: false
+        onTriggered: root.advanceAfterDiscovery()
+    }
+
     Component.onCompleted: {
         root.courseController.selectModule(root.moduleId)
         // El catálogo pudo cambiar desde que se construyó el controlador; sin
@@ -846,8 +845,6 @@ PagePrincipal {
             root.modelLibraryController.refrescar()
         root.refreshLabProgress()
     }
-    onCurrentStepChanged: if (root.advancedMode) Qt.callLater(root.recordAdvancedVisit)
-    onAdvancedModeChanged: if (root.advancedMode) Qt.callLater(root.recordAdvancedVisit)
     onVisibleChanged: if (!visible && guideDetached) closeDetachedGuide()
 
     Connections {
@@ -864,7 +861,7 @@ PagePrincipal {
                 Qt.callLater(root.restorePendingStep)
             else {
                 root.currentStepIndex = 0
-                root.resetDiscovery(!root.advancedMode)
+                root.resetDiscovery(true)
             }
         }
     }
@@ -965,38 +962,6 @@ PagePrincipal {
                     anchors.fill: parent
                     anchors.margins: 12 * root.uiScale
                     spacing: 10 * root.uiScale
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 8 * root.uiScale
-
-                        TabBar {
-                            id: learningLevelTabs
-                            objectName: "moduleLaboratoryLearningLevelTabs"
-                            Layout.fillWidth: true
-                            Layout.minimumWidth: 0
-                            Layout.preferredHeight: 44 * root.uiScale
-                            currentIndex: root.advancedMode ? 1 : 0
-                            spacing: 4 * root.uiScale
-                            Accessible.name: "Nivel de detalle del laboratorio"
-                            background: Rectangle {
-                                radius: 9 * root.uiScale
-                                color: Style.Theme.superficie_alterna
-                                border.color: Style.Theme.borde_suave
-                            }
-                            PestanaAccesible {
-                                objectName: "moduleLaboratoryEssentialLevel"
-                                text: "Esencial para clase"
-                                onClicked: root.chooseLearningLevel("essential")
-                            }
-                            PestanaAccesible {
-                                objectName: "moduleLaboratoryAdvancedLevel"
-                                text: "Exploración avanzada"
-                                onClicked: root.chooseLearningLevel("advanced")
-                            }
-                        }
-
-                    }
 
                     GridLayout {
                         Layout.fillWidth: true
@@ -1339,28 +1304,11 @@ PagePrincipal {
                 }
             }
 
-            // Puente teoría→práctica: el ejemplo calculado a mano en el recorrido
-            // junto a lo que exige la etapa (ciclos guiados y pregunta ancla).
-            Item {
-                id: standardPracticeHost
-                objectName: "moduleLaboratoryStandardPracticeHost"
-                visible: !root.advancedMode
-                         && root.analysis.module_id === root.moduleId
-                         && root.moduleData.anchor !== undefined
-                Layout.fillWidth: true
-                Layout.leftMargin: 24 * root.uiScale
-                Layout.rightMargin: 24 * root.uiScale
-                Layout.preferredHeight: visible ? practiceCard.implicitHeight : 0
-            }
-
-            // La misma tarjeta cambia de contenedor según el nivel para que en
-            // avanzado no interrumpa el recorrido entre controles y animación.
             RectanglePrincipal {
                 id: practiceCard
                 objectName: "moduleLaboratoryPracticeCard"
-                parent: root.advancedMode ? advancedPracticeHost : standardPracticeHost
+                parent: advancedPracticeHost
                 visible: root.analysis.module_id === root.moduleId
-                         && root.moduleData.anchor !== undefined
                 anchors.fill: parent
                 implicitHeight: practiceColumn.implicitHeight + 18 * root.uiScale
                 sx: root.uiScale
@@ -1388,36 +1336,18 @@ PagePrincipal {
                         }
                     }
 
-                    Text {
-                        objectName: "moduleLaboratoryAnchorExample"
+                    BotonPrincipal {
+                        objectName: "moduleLaboratoryOpenPosttest"
+                        visible: root.labProgress.completed === true
                         Layout.fillWidth: true
-                        text: "EJEMPLO DEL RECORRIDO  ·  " + String((root.moduleData.anchor || {}).example || "")
-                              + "  Compáralo con los tensores reales de tu frase."
-                        color: Style.Theme.texto_secundario_fuerte
-                        font.pixelSize: Math.max(10, 11 * root.uiScale)
-                        wrapMode: Text.WordWrap
-                    }
-
-                    PredictionCheck {
-                        id: closingCheck
-                        objectName: "moduleLaboratoryClosingCheck"
-                        Layout.fillWidth: true
-                        // Se vuelve a la pregunta del módulo cuando ya hay
-                        // evidencia propia con la cual responderla.
-                        visible: Number(root.labProgress.cycles || 0)
-                                 >= Number(root.labProgress.required_cycles || 3)
-                                 || root.labProgress.advanced_completed === true
-                                 || root.labProgress.closing_answered === true
-                        sx: root.uiScale
-                        eyebrow: "VUELVE A LA PREGUNTA DEL MÓDULO  ·  "
-                                 + String((root.moduleData.anchor || {}).question || "")
-                        check: (root.moduleData.anchor || {}).closing || ({})
-                        result: root.closingResult
-                        onSubmitted: function(optionIndex) {
-                            root.closingResult = root.courseController.recordAnchorClosing(
-                                        root.moduleId, optionIndex) || ({})
-                            root.refreshLabProgress()
-                        }
+                        Layout.preferredHeight: visible ? 42 * root.uiScale : 0
+                        text: "Continuar al post-test  →"
+                        onClicked: root.stackView.push(
+                            "EvaluationIntroScreen.qml", {
+                                "stackView": root.stackView,
+                                "moduleId": root.moduleId,
+                                "assessmentType": "post"
+                            })
                     }
                 }
             }
@@ -1842,9 +1772,7 @@ PagePrincipal {
             Item {
                 id: advancedPracticeHost
                 objectName: "moduleLaboratoryAdvancedPracticeHost"
-                visible: root.advancedMode
-                         && root.analysis.module_id === root.moduleId
-                         && root.moduleData.anchor !== undefined
+                visible: root.analysis.module_id === root.moduleId
                 Layout.fillWidth: true
                 Layout.leftMargin: 24 * root.uiScale
                 Layout.rightMargin: 24 * root.uiScale

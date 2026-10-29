@@ -42,7 +42,11 @@ Item {
     function soltar() {
         var destino = cuerpo.Drag.target
         cuerpo.Drag.active = false
-        if (destino && typeof destino.recibir === "function")
+        // Solo los huecos declarados por el reactivo pueden aceptar fichas.
+        // Cualquier otro DropArea de la pantalla se ignora y la ficha vuelve a
+        // su lugar de origen.
+        if (destino && destino.espacioAsignado === true
+                && typeof destino.recibir === "function")
             destino.recibir(ficha.elementoId)
     }
 
@@ -70,6 +74,7 @@ Item {
         Behavior on color { ColorAnimation { duration: 110 } }
 
         Drag.source: ficha
+        Drag.keys: ["evaluation-assignment"]
         Drag.hotSpot.x: cuerpo.width / 2
         Drag.hotSpot.y: cuerpo.height / 2
 

@@ -260,8 +260,8 @@ def _arrastrar(ventana, desde, hasta):
 
 
 def test_arrastrar_una_ficha_a_su_posicion_la_coloca(engine, banco):
-    """El arrastre se veía, pero al soltar la ficha volvía al montón: ningún
-    destino la recibía. Se arrastra con eventos de ratón reales."""
+    """Solo una ranura declarada recibe la ficha; soltarla fuera no responde."""
+    from PySide6.QtCore import QPoint
     from PySide6.QtQuick import QQuickItem
 
     componente = QQmlComponent(engine)
@@ -284,6 +284,11 @@ def test_arrastrar_una_ficha_a_su_posicion_la_coloca(engine, banco):
     )
     ranura = next(item for item in elementos if item.objectName() == "evaluationSlot_3")
     elemento = ficha.property("elementoId")
+
+    # Fuera de los espacios del reactivo la ficha vuelve al montón y no crea
+    # una asignación accidental.
+    _arrastrar(ventana, _centro(ficha), QPoint(1080, 20))
+    assert dict(_valor(reactivo, "asignaciones")) == {}
 
     _arrastrar(ventana, _centro(ficha), _centro(ranura))
     assert dict(_valor(reactivo, "asignaciones")) == {elemento: "3"}

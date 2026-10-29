@@ -855,17 +855,11 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(
     detach_button = window.findChild(QObject, "moduleLaboratoryDetachGuide")
     workspace_tabs = window.findChild(QObject, "moduleLaboratoryWorkspaceTabs")
     analyze_button = window.findChild(QObject, "moduleLaboratoryAnalyzeButton")
-    essential_level = window.findChild(QObject, "moduleLaboratoryEssentialLevel")
-    advanced_level = window.findChild(QObject, "moduleLaboratoryAdvancedLevel")
     training_mode = window.findChild(QObject, "moduleLaboratoryTrainingMode")
     inference_mode = window.findChild(QObject, "moduleLaboratoryInferenceMode")
-    level_tabs = window.findChild(QQuickItem, "moduleLaboratoryLearningLevelTabs")
     practice_card = window.findChild(QQuickItem, "moduleLaboratoryPracticeCard")
     practice_status = window.findChild(QObject, "moduleLaboratoryPracticeStatus")
-    closing_check = window.findChild(QObject, "moduleLaboratoryClosingCheck")
-    standard_practice_host = window.findChild(
-        QQuickItem, "moduleLaboratoryStandardPracticeHost"
-    )
+    open_posttest = window.findChild(QObject, "moduleLaboratoryOpenPosttest")
     advanced_practice_host = window.findChild(
         QQuickItem, "moduleLaboratoryAdvancedPracticeHost"
     )
@@ -932,15 +926,11 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(
             detach_button,
             workspace_tabs,
             analyze_button,
-            essential_level,
-            advanced_level,
             training_mode,
             inference_mode,
-            level_tabs,
             practice_card,
             practice_status,
-            closing_check,
-            standard_practice_host,
+            open_posttest,
             advanced_practice_host,
             mode_summary,
             detached_window,
@@ -984,27 +974,29 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(
     assert "Produce «" in str(guide_purpose.property("text"))
     assert "Datos reales" in str(guide_evidence.property("body"))
 
-    # La vista abre en nivel Esencial y muestra una sola fuente de atención.
-    assert screen.property("learningLevel") == "essential"
+    # El laboratorio abre directamente en la ruta avanzada: ya no existe un
+    # selector "Esencial para clase" que permita omitir operaciones.
+    assert screen.property("learningLevel") == "advanced"
+    assert window.findChild(QObject, "moduleLaboratoryEssentialLevel") is None
+    assert window.findChild(QObject, "moduleLaboratoryLearningLevelTabs") is None
+    assert window.findChild(QObject, "moduleLaboratoryClosingCheck") is None
+    assert window.findChild(QObject, "moduleLaboratoryStandardPracticeHost") is None
     assert bool(mode_summary.property("truncated")) is False
     assert int(workspace_tabs.property("currentIndex")) == 2
-    assert bool(step_pane.property("visible")) is False
-    assert bool(step_list.property("visible")) is False
-    assert bool(advanced_controls.property("visible")) is False
-    assert bool(detach_button.property("visible")) is False
-    assert bool(standard_practice_host.property("visible")) is True
-    assert bool(advanced_practice_host.property("visible")) is False
-    assert practice_card.parentItem().objectName() == (
-        "moduleLaboratoryStandardPracticeHost"
-    )
+    assert bool(step_pane.property("visible")) is True
+    assert bool(step_list.property("visible")) is True
+    assert bool(advanced_controls.property("visible")) is True
+    assert bool(detach_button.property("visible")) is True
+    assert bool(advanced_practice_host.property("visible")) is True
+    assert practice_card.parentItem().objectName() == "moduleLaboratoryAdvancedPracticeHost"
     assert 0 < float(progress.property("value")) <= 1
     assert screen.property("guideDetached") is False
     assert guide.property("visible") is False
     assert discovery_cycle.property("visible") is True
     assert int(screen.property("discoveryStage")) == 0
 
-    # El ciclo exige predecir, ejecutar un contrafactual, observar, explicar y
-    # recibir feedback antes de revelar la explicación completa.
+    # El ciclo exige predecir, observar y contestar. Al acertar avanza solo a
+    # la operación siguiente, sin requerir un botón adicional.
     screen.setProperty(
         "discoveryPrediction", int(discovery_cycle.property("correctPrediction"))
     )
@@ -1037,15 +1029,13 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(
     check_explanation.clicked.emit()
     qapp.processEvents()
     assert int(screen.property("discoveryStage")) == 4
-    show_explanation.clicked.emit()
-    qapp.processEvents()
-    assert int(screen.property("discoveryStage")) == 5
-    assert discovery_cycle.property("visible") is False
-    assert bool(guide.property("visible")) is True
-    assert bool(guide_input.property("visible")) is True
-    assert bool(guide_context.property("visible")) is False
-    assert bool(guide_details_toggle.property("visible")) is False
-    assert bool(guide_technical_details.property("visible")) is False
+    qtbot.waitUntil(
+        lambda: int(screen.property("currentStepIndex")) == 1
+        and int(screen.property("discoveryStage")) == 0,
+        timeout=3000,
+    )
+    assert discovery_cycle.property("visible") is True
+    assert bool(guide.property("visible")) is False
     screen.setProperty("workspaceSection", 0)
     wide_visual = _rect_in(visual_pane, workspace)
     assert screen.property("compactLayout") is False, (
@@ -1056,14 +1046,12 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(
     )
     assert wide_visual.left() >= -1
     assert wide_visual.right() >= workspace.width() - 2
-    # Sin encabezado avanzado, las pestañas deben comenzar arriba del panel y
-    # no dejar el gran bloque vacío que antes desplazaba toda la animación.
-    assert _rect_in(workspace_tabs, visual_pane).top() <= 20
+    # Las pestañas quedan inmediatamente bajo el resumen de la operación y no
+    # dejan el gran bloque vacío que antes desplazaba toda la animación.
+    assert _rect_in(workspace_tabs, visual_pane).top() <= 70
 
-    # Avanzado recupera la ventana separada y permite revelar los datos.
-    screen.setProperty("learningLevel", "advanced")
-    # El GridLayout pasa a dos columnas en su siguiente polish, no al instante:
-    # medir antes daba el ancho de una sola columna y la prueba fallaba a ratos.
+    # El GridLayout avanzado pasa a dos columnas en su siguiente polish, no al
+    # instante: medir antes daba el ancho de una sola columna intermitentemente.
     qtbot.waitUntil(lambda: _side_by_side(step_pane, visual_pane, workspace), timeout=3000)
     qtbot.waitUntil(
         lambda: practice_card.parentItem().objectName()
@@ -1075,24 +1063,45 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(
     assert bool(step_list.property("visible")) is True
     assert bool(advanced_controls.property("visible")) is True
     assert bool(detach_button.property("visible")) is True
-    assert bool(standard_practice_host.property("visible")) is False
     assert bool(advanced_practice_host.property("visible")) is True
     assert advanced_practice_host.y() >= workspace.y() + workspace.height() - 1
     assert bool(mode_summary.property("truncated")) is False
 
-    # Recorrer todas las operaciones en Avanzado es una ruta de finalización
-    # válida: debe mostrar la pregunta de cierre sin exigir retos esenciales.
+    # Visitar una operación no basta: solo completar cada ciclo la registra.
+    # Al terminar todas, el laboratorio queda completo y habilita el post-test.
     advanced_steps = _qml_value(screen.property("steps"))
     for step_index in range(len(advanced_steps)):
         screen.setProperty("currentStepIndex", step_index)
         for _ in range(2):
             qapp.processEvents()
-    advanced_progress = _qml_value(screen.property("labProgress"))
+    advanced_progress = view_model._course_controller.laboratoryProgress("module_3")
+    assert advanced_progress["advanced_steps"] == 1
+    step_ids = [str(step["id"]) for step in advanced_steps]
+    for step in advanced_steps[1:]:
+        advanced_progress = view_model._course_controller.recordAdvancedLaboratoryStep(
+            "module_3", "inference", str(step["id"]), step_ids
+        )
+    screen.setProperty("labProgress", advanced_progress)
+    qapp.processEvents()
     assert advanced_progress["advanced_steps"] == len(advanced_steps)
     assert advanced_progress["advanced_required"] == len(advanced_steps)
     assert advanced_progress["advanced_completed"] is True
-    assert bool(closing_check.property("visible")) is True
-    assert "EXPLORACIÓN AVANZADA COMPLETA" in str(practice_status.property("text"))
+    assert advanced_progress["completed"] is True
+    assert view_model._course_controller.stageAvailable("module_3", "posttest") is True
+    assert bool(open_posttest.property("visible")) is True
+    assert "POST-TEST" in str(practice_status.property("text")).upper()
+
+    # La explicación completa sigue disponible al cerrar la última operación.
+    screen.setProperty("currentStepIndex", 0)
+    screen.setProperty("workspaceSection", 2)
+    screen.setProperty("discoveryStage", 5)
+    qapp.processEvents()
+    assert discovery_cycle.property("visible") is False
+    assert bool(guide.property("visible")) is True
+    assert bool(guide_input.property("visible")) is False
+    assert bool(guide_context.property("visible")) is True
+    assert bool(guide_details_toggle.property("visible")) is True
+    assert bool(guide_technical_details.property("visible")) is False
 
     screen.setProperty("workspaceSection", 2)
     qapp.processEvents()
@@ -1158,18 +1167,17 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(
     assert detached_window.property("visible") is False
     assert screen.property("workspacePreferredHeight") < 1000
 
-    # Decoder abre primero un mapa general por bloques y permite saltar a cada
-    # parte sin mezclar todas sus operaciones en una sola explicación.
+    # Las agrupaciones siguen sincronizadas al cambiar de operación, aunque el
+    # mapa resumido del antiguo recorrido Esencial ya no se muestra.
     screen.setProperty("currentStepIndex", 0)
     view_model._course_controller.selectModule("module_6")
     view_model.moduleLaboratoryController.explore(
         "module_6", "texto", "inference", 0, 0, 1, 1.0, 5, 0.9, True
     )
     screen.setProperty("moduleId", "module_6")
-    screen.setProperty("learningLevel", "essential")
     for _ in range(4):
         qapp.processEvents()
-    assert bool(overview_map.property("visible")) is True
+    assert bool(overview_map.property("visible")) is False
     assert screen.property("activeGroupId") == "prepare"
     screen.setProperty("currentStepIndex", 2)
     qapp.processEvents()
@@ -1182,7 +1190,7 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(
     )
     for _ in range(4):
         qapp.processEvents()
-    assert bool(overview_map.property("visible")) is True
+    assert bool(overview_map.property("visible")) is False
     assert screen.property("activeGroupId") == "prepare"
     screen.setProperty("currentStepIndex", 2)
     qapp.processEvents()
@@ -1195,7 +1203,6 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(
     # el módulo 8 usa tarjetas temáticas, no sliders nativos sin jerarquía.
     window.setProperty("width", 1900)
     window.setProperty("height", 900)
-    screen.setProperty("learningLevel", "advanced")
     for _ in range(5):
         qapp.processEvents()
     assert bool(mode_summary.property("truncated")) is False
@@ -1282,14 +1289,8 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(
     assert screen.property("currentStepIndex") == 0
     assert window.findChild(QObject, "moduleLaboratoryPlaySteps") is None
 
-    # Los selectores de nivel y modo ejecutan su comportamiento, no solo
-    # cambian de apariencia.
-    essential_level.clicked.emit()
-    qapp.processEvents()
-    assert screen.property("learningLevel") == "essential"
-    advanced_level.clicked.emit()
-    qapp.processEvents()
-    assert screen.property("learningLevel") == "advanced"
+    # Los selectores de modo ejecutan su comportamiento, no solo cambian de
+    # apariencia. El selector de nivel fue retirado deliberadamente.
     training_mode.clicked.emit()
     for _ in range(5):
         qapp.processEvents()
@@ -1344,7 +1345,6 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(
     for module_id in SPECIALIZATIONS:
         view_model._course_controller.selectModule(module_id)
         screen.setProperty("moduleId", module_id)
-        screen.setProperty("learningLevel", "advanced")
         question_bank = ModuleQuestionBank(module_id=module_id)
         assessment_prompts = [
             _comparable_question(question["prompt"])
@@ -1621,9 +1621,8 @@ def test_pantalla_sincroniza_formula_en_accion_con_el_paso_actual(qapp, tmp_path
 
     title = window.findChild(QObject, "formulaAnimationTitle")
     assert title is not None
-    # En Avanzado la secuencia conserva también los pasos técnicos (pesos y
-    # gradientes), por lo que sus índices coinciden con el resultado completo.
-    screen.setProperty("learningLevel", "advanced")
+    # La secuencia conserva los pasos técnicos (pesos y gradientes), por lo que
+    # sus índices coinciden con el resultado completo.
     qapp.processEvents()
     steps = controller.result["steps"]
     demos = controller.result["formula_demos"]

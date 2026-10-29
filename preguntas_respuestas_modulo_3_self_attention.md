@@ -1,6 +1,6 @@
 # Preguntas y respuestas correctas — Módulo 3: Self-Attention
 
-Este documento corresponde a la versión 14 del banco modular. El pre-test y el
+Este documento corresponde a la versión 15 del banco modular. El pre-test y el
 post-test tienen 25 reactivos disponibles cada uno; cada intento selecciona 15.
 
 ## Pregunta ancla
@@ -244,8 +244,8 @@ QKᵀ, ¿qué forma tiene la tabla que compara los 5 tokens entre sí?
 
 ### PRE-A2. Score escalado
 
-**Pregunta:** `score escalado = score crudo/√d_k`. Si d_k=64 y el score crudo
-vale 16, ¿cuál es el resultado?
+**Pregunta:** Si d_k=64 y el score crudo vale 16, ¿qué score escalado se
+entrega a softmax?
 
 **Respuesta correcta:** `2`.
 
@@ -289,14 +289,14 @@ sola Key. ¿Verdadero o falso?
 ### PRE-A7. Cálculo de contexto
 
 **Pregunta:** Una Query mezcla Values `[10,0,2]` con pesos `[0.2,0.3,0.5]`.
-Calcula `0.2·10+0.3·0+0.5·2`.
+¿Cuál es el contexto resultante?
 
 **Respuesta correcta:** `3`.
 
 ### PRE-A8. Forma de pesos × V
 
-**Pregunta:** Una cabeza recibe T=6 Queries y produce un vector de d_v=16
-componentes por Query. ¿Qué forma tiene su salida?
+**Pregunta:** Una cabeza procesa T=6 Queries y sus Values tienen ancho d_v=16.
+¿Qué forma tiene su salida?
 
 **Respuesta correcta:** `[6,16]`.
 
@@ -501,14 +501,14 @@ positiva √d_k cambia cuál Key tiene el score más alto. ¿Verdadero o falso?
 ### POST-A7. Cálculo de contexto
 
 **Pregunta:** Una Query mezcla Values `[4,8,0]` con pesos `[0.5,0.25,0.25]`.
-Calcula `0.5·4+0.25·8+0.25·0`.
+¿Cuál es el contexto resultante?
 
 **Respuesta correcta:** `4`.
 
 ### POST-A8. Forma de la salida
 
-**Pregunta:** Hay T=9 Queries y cada una obtiene un contexto de d_v=32
-componentes. ¿Qué forma tiene la salida de la cabeza?
+**Pregunta:** Una cabeza procesa T=9 Queries y sus Values tienen ancho d_v=32.
+¿Qué forma tiene su salida?
 
 **Respuesta correcta:** `[9,32]`.
 

@@ -362,13 +362,27 @@ def test_reactivos_de_self_attention_no_adelantan_la_respuesta_y_son_concisos():
         assert "Respuesta propuesta" not in str(questions["A3"]["options"])
         assert max(len(option["text"]) for option in questions["A3"]["options"]) < 90
 
+        # La fórmula general pertenece al contexto; el enunciado debe dejar al
+        # estudiante la sustitución y la operación numérica.
+        numeric_body = questions["A7"]["prompt"].split("\n\n", 1)[1]
+        assert "Calcula " not in numeric_body
+        assert "·" not in numeric_body
+
+        scale_body = questions["A2"]["prompt"].split("\n\n", 1)[1]
+        assert "score crudo/√d_k" not in scale_body
+        assert "score/√d_k" not in scale_body
+
+        shape_body = questions["A8"]["prompt"].split("\n\n", 1)[1]
+        assert "por lo que produce" not in shape_body
+        assert "obtiene un vector de contexto" not in shape_body
+
 
 def test_archivo_consolidado_del_modulo_3_esta_actualizado():
     document = recurso("preguntas_respuestas_modulo_3_self_attention.md").read_text(
         encoding="utf-8"
     )
 
-    assert "versión 14" in document
+    assert "versión 15" in document
     assert len(re.findall(r"^### R\d+\.", document, flags=re.MULTILINE)) == 8
     assert len(re.findall(r"^### PRE-", document, flags=re.MULTILINE)) == 25
     assert len(re.findall(r"^### POST-", document, flags=re.MULTILINE)) == 25

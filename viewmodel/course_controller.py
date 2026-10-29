@@ -626,11 +626,16 @@ class CourseController(QObject):
         if not self._catalog.has_alignment:
             return True
         state = self._module_state(module_id)
-        practice_completed = (
+        # La ruta avanzada ya comprueba cada operación mediante el ciclo
+        # predecir→observar→contestar. Terminarla completa el laboratorio sin
+        # exigir una segunda pregunta de cierre. La ruta guiada breve conserva
+        # esa pregunta porque sólo exige tres operaciones.
+        if self._advanced_path_completed(module_id):
+            return True
+        return (
             self._distinct_cycles(module_id) >= self.REQUIRED_LAB_CYCLES
-            or self._advanced_path_completed(module_id)
+            and bool(state.get("anchor_closing"))
         )
-        return practice_completed and bool(state.get("anchor_closing"))
 
     def _refresh_laboratory_completion(self, module_id: str) -> None:
         state = self._module_state(module_id)

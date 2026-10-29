@@ -757,7 +757,7 @@
           "explanation": "Cada una de las 7 consultas se compara con las 7 claves: [7, 64] × [64, 7] = [7, 7]."
         },
         "m3_a2": {
-          "prompt": "El escalamiento usa score/√d_k. Con d_k=16 y un producto punto Query–Key de 12, ¿qué score escalado se entrega a softmax?",
+          "prompt": "Con d_k=16 y un producto punto Query–Key de 12, ¿qué score escalado se entrega a softmax?",
           "options": [
             "3",
             "0.75",
@@ -787,7 +787,7 @@
           }
         },
         "m3_a4": {
-          "prompt": "Una Query combina Values escalares 5 y 10 con pesos 0.6 y 0.4. ¿Cuál es la salida 0.6·5+0.4·10?",
+          "prompt": "Una Query combina Values escalares 5 y 10 con pesos 0.6 y 0.4. ¿Cuál es el contexto resultante?",
           "options": [
             "7",
             "7.5",
@@ -831,7 +831,7 @@
           "explanation": "Softmax se aplica por fila: reparte la atención de cada consulta entre las claves."
         },
         "m3_a8": {
-          "prompt": "Hay T=9 Queries. Cada una mezcla Values de d_v=32 componentes y obtiene un vector de contexto. ¿Qué forma tiene la salida de la cabeza?",
+          "prompt": "Una cabeza procesa T=9 Queries y sus Values tienen ancho d_v=32. ¿Qué forma tiene su salida?",
           "options": [
             "[9,32]",
             "[9,9]",
@@ -863,12 +863,12 @@
           "concept_id": "mezcla_valores",
           "kind": "respuesta_corta",
           "pre": {
-            "prompt": "Una Query mezcla tres Values escalares [10,0,2] con pesos de atención [0.2,0.3,0.5]. Calcula 0.2·10+0.3·0+0.5·2. ¿Cuál es el contexto resultante?",
+            "prompt": "Una Query mezcla tres Values escalares [10,0,2] con pesos de atención [0.2,0.3,0.5]. ¿Cuál es el contexto resultante?",
             "answer": "3",
             "explanation": "0.2·10 + 0.3·0 + 0.5·2 = 2 + 0 + 1 = 3."
           },
           "post": {
-            "prompt": "Una Query mezcla Values escalares [4,8,0] con pesos [0.5,0.25,0.25]. Calcula 0.5·4+0.25·8+0.25·0. ¿Cuál es el contexto resultante?",
+            "prompt": "Una Query mezcla Values escalares [4,8,0] con pesos [0.5,0.25,0.25]. ¿Cuál es el contexto resultante?",
             "answer": "4",
             "explanation": "0.5·4 + 0.25·8 + 0.25·0 = 2 + 2 + 0 = 4."
           }

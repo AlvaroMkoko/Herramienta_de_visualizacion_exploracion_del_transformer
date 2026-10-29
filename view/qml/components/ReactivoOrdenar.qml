@@ -96,6 +96,8 @@ AsignacionBase {
             DropArea {
                 id: areaMonton
                 anchors.fill: parent
+                keys: ["evaluation-assignment"]
+                property bool espacioAsignado: true
                 // Lo llama FichaAsignable al soltar encima.
                 function recibir(elementoId) {
                     Qt.callLater(root.liberar, String(elementoId))
@@ -188,6 +190,8 @@ AsignacionBase {
                 DropArea {
                     id: areaRanura
                     anchors.fill: parent
+                    keys: ["evaluation-assignment"]
+                    property bool espacioAsignado: true
                     // Lo llama FichaAsignable al soltar encima.
                     function recibir(elementoId) {
                         Qt.callLater(root.asignar, String(elementoId), ranura.destinoId)

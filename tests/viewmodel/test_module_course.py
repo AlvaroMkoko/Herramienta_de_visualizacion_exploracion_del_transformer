@@ -215,12 +215,8 @@ def test_terminar_exploracion_avanzada_desbloquea_el_posttest(tmp_path, monkeypa
     assert progress["advanced_required"] == len(advanced_steps)
     assert progress["advanced_completed"] is True
     assert progress["practice_ready"] is True
-    # La pregunta final se conserva como comprobación común a las dos rutas.
-    assert not course.stageCompleted("module_3", "laboratory")
-
-    closing = course.catalog.get("module_3")["anchor"]["closing"]
-    course.recordAnchorClosing("module_3", closing["correct_index"])
-
+    # Completar todas las operaciones avanzadas cierra el laboratorio sin una
+    # pregunta adicional y desbloquea el post-test inmediatamente.
     assert course.stageCompleted("module_3", "laboratory")
     assert course.stageAvailable("module_3", "posttest")
     restored = ModuleProgressRepository(tmp_path / "progress.json").snapshot()

@@ -45,7 +45,10 @@ class ModuleQuestionBank:
     # 14: se reescribieron los contextos de Self-Attention que adelantaban la
     # respuesta, los verdadero/falso con gramática mecánica y los casos dobles
     # demasiado extensos. Los de la 13 no son comparables.
-    VERSION_PREGUNTAS = 14
+    # 15: los problemas numéricos conservan la fórmula general en el contexto,
+    # pero el enunciado ya no desarrolla la sustitución que debe hacer el
+    # estudiante. Los resultados de la 14 no son comparables.
+    VERSION_PREGUNTAS = 15
 
     #: Una respuesta así se pide con una casilla por eje (presentación
     #: «forma_tensor»): sin ese molde, «[5,5]», «5x5» y «5 por 5» parecen
