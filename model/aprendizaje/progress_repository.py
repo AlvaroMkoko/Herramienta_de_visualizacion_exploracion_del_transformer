@@ -23,7 +23,7 @@ class ModuleProgressRepository:
     def _empty(cls) -> dict[str, Any]:
         return {
             "schema_version": cls.SCHEMA_VERSION,
-            "current_module_id": "module_1",
+            "current_module_id": "module_3",
             "modules": {},
             "model_configuration": {},
         }

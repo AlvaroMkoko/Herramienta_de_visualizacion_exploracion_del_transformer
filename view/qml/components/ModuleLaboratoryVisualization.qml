@@ -601,10 +601,20 @@ Item {
         return false
     }
 
+    function usesSelfAttentionOverview() {
+        // "Vista general" conserva el mismo mapa conceptual durante todo el
+        // módulo. El detalle propio de cada operación vive en la pestaña
+        // "Animación detallada".
+        return moduleId === "module_3"
+    }
+
     function animationDescriptionForStep() {
         var input = textValue(step && step.input, "la entrada")
         var title = textValue(step && step.title, "la operación")
         var output = textValue(step && step.output, "la salida")
+        if (usesSelfAttentionOverview())
+            return "Vista conceptual propia de «" + title
+                    + "»: muestra qué recibe esta etapa, qué ocurre y qué produce, sin adelantar el cálculo numérico de la animación detallada."
         if (usesSimpleStageOverride())
             return "La animación muestra tres tarjetas: «" + input + "» entra, «"
                     + title + "» aplica la fórmula del paso y «" + output
@@ -693,6 +703,8 @@ Item {
     }
 
     function componentForModule() {
+        if (usesSelfAttentionOverview())
+            return selfAttentionOverviewComponent
         if (usesSimpleStageOverride())
             return simpleStageComponent
         switch (moduleId) {
@@ -888,6 +900,28 @@ Item {
                                                "delta_norm"], "—")
             sx: root.uiSx
             sy: root.uiSy
+        }
+    }
+
+    Component {
+        id: selfAttentionOverviewComponent
+
+        Item {
+            objectName: "moduleLabSelfAttentionOverviewView"
+            SelfAttentionOverviewScene {
+                anchors.fill: parent
+                stepId: root.textValue(root.step && root.step.id, "attention_input")
+                trainingMode: root.trainingMode
+                tokens: root.normalizedTokens()
+                attentionData: root.attentionData(0)
+                selectedHead: root.selectedHead
+                selectedToken: root.selectedToken
+                causal: false
+                active: true
+                reducedMotion: Style.Theme.movimientoReducido
+                sx: root.uiSx
+                sy: root.uiSy
+            }
         }
     }
 

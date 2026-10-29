@@ -78,7 +78,7 @@ ApplicationWindow {
 SPECIALIZATIONS = {
     "module_1": ("tokenization", "moduleLabTokenizationView"),
     "module_2": ("embedding", "moduleLabEmbeddingView"),
-    "module_3": ("attention", "moduleLabAttentionView"),
+    "module_3": ("attention", "moduleLabSelfAttentionOverviewView"),
     "module_4": ("multi_head", "moduleLabMultiHeadView"),
     "module_5": ("encoder", "moduleLabEncoderView"),
     "module_6": ("decoder", "moduleLabDecoderView"),
@@ -124,6 +124,40 @@ ApplicationWindow {
         demo: ({
             animation_explanation: "Animacion numerica de prueba",
             caption: "Los valores cambian fase por fase."
+        })
+    }
+}
+"""
+
+SELF_ATTENTION_OVERVIEW_HOST = b"""\
+import QtQuick
+import QtQuick.Controls
+import "components" as Components
+
+ApplicationWindow {
+    width: 700
+    height: 760
+    visible: false
+
+    Components.SelfAttentionOverviewScene {
+        objectName: "compactSelfAttentionOverview"
+        anchors.fill: parent
+        stepId: "mask"
+        active: true
+        reducedMotion: true
+        tokens: [
+            { text: "el", position: 0 },
+            { text: "banco", position: 1 },
+            { text: "del", position: 2 },
+            { text: "rio", position: 3 }
+        ]
+        attentionData: ({
+            atencion: [
+                [0.10, 0.20, 0.15, 0.55],
+                [0.12, 0.25, 0.10, 0.53],
+                [0.20, 0.30, 0.15, 0.35],
+                [0.15, 0.18, 0.12, 0.55]
+            ]
         })
     }
 }
@@ -307,9 +341,6 @@ def test_cada_modulo_carga_su_visualizacion_especializada(
         ("module_1", "inference", "no_grad", "process"),
         ("module_2", "inference", "position", "process"),
         ("module_2", "training", "dropout", "process"),
-        ("module_3", "inference", "attention_input", "process"),
-        ("module_3", "inference", "output", "process"),
-        ("module_3", "training", "backward", "training"),
         ("module_5", "inference", "encoder_input", "process"),
         ("module_5", "inference", "encoder_attention", "process"),
         ("module_6", "inference", "decoder_prefix", "process"),
@@ -344,6 +375,183 @@ def test_etapas_antes_ambiguas_usan_una_animacion_fiel_a_sus_datos(
         assert definition["first"] == step["input"]
         assert definition["operation"] == step["title"]
         assert definition["last"] == step["output"]
+
+
+def test_vista_general_de_self_attention_cubre_todo_el_modulo_y_es_adaptable(
+    qapp, specialized_visual
+):
+    _window, visual, loader, _evidence = specialized_visual
+    visual.setProperty("moduleId", "module_3")
+    visual.setProperty(
+        "analysis",
+        {
+            "tokens": [
+                {"text": "el", "position": 0},
+                {"text": "banco", "position": 1},
+                {"text": "del", "position": 2},
+                {"text": "río", "position": 3},
+            ]
+        },
+    )
+
+    expected_kinds = {
+        "attention_input": "input",
+        "weights": "learned_weights",
+        "qkv": "qkv",
+        "dot": "compatibility",
+        "scale": "scale",
+        "mask": "mask",
+        "softmax": "softmax",
+        "weighted": "weighted",
+        "output": "output",
+        "backward": "backward",
+        "update": "update",
+    }
+    stage_contracts = {}
+
+    # Cada operación recibe una vista conceptual propia. Los cálculos
+    # particulares siguen en FormulaAnimationScene (Animación detallada).
+    for mode in ("inference", "training"):
+        visual.setProperty("mode", mode)
+        for step_index, step in enumerate(_module_steps("module_3", mode)):
+            visual.setProperty("stepIndex", step_index)
+            visual.setProperty("step", step)
+            for _ in range(3):
+                qapp.processEvents()
+
+            loaded_item = loader.property("item")
+            assert loaded_item is not None
+            assert loaded_item.objectName() == "moduleLabSelfAttentionOverviewView"
+            descendants = _visual_descendants(loaded_item)
+            by_name = {item.objectName(): item for item in descendants if item.objectName()}
+            names = set(by_name)
+            assert "selfAttentionOverviewScene" in names
+            scene = by_name["selfAttentionOverviewScene"]
+            assert scene.property("personalized") is True
+            assert scene.property("phaseIndicatorInteractive") is False
+            assert scene.property("stepId") == step["id"]
+            assert scene.property("stageKind") == expected_kinds[step["id"]]
+            assert "el banco del río" in str(scene.property("phraseText"))
+            assert str(scene.property("stageNarration"))
+            contract = (
+                str(scene.property("stageTitle")),
+                str(scene.property("stageQuestion")),
+                str(scene.property("stageInput")),
+                str(scene.property("stageAction")),
+                str(scene.property("stageOutput")),
+                str(scene.property("stageTakeaway")),
+            )
+            assert all(contract)
+            stage_contracts[step["id"]] = contract
+            assert by_name["selfAttentionOverviewFlow"].property("interactive") is False
+            assert "no es un botón" in str(
+                by_name["selfAttentionLocationHint"].property("text")
+            )
+            assert by_name.get("selfAttentionStageQuestion") is not None
+            assert by_name.get("selfAttentionReadingHint") is not None
+            assert by_name.get("selfAttentionExampleContext") is not None
+            assert by_name.get("selfAttentionStageNarration") is not None
+            assert "simpleOutputStageScene" not in names
+            assert "attentionComputationScene" not in names
+            assert step["title"] in str(visual.property("animationDescription"))
+
+    assert set(stage_contracts) == set(expected_kinds)
+    assert len(set(stage_contracts.values())) == len(expected_kinds)
+
+    # Revisa también el contenido y la geometría de la escena compartida.
+    visual.setProperty("mode", "inference")
+    visual.setProperty("stepIndex", 0)
+    visual.setProperty("step", _module_steps("module_3", "inference")[0])
+    for _ in range(3):
+        qapp.processEvents()
+
+    loaded_item = loader.property("item")
+    assert loaded_item is not None
+    assert loaded_item.objectName() == "moduleLabSelfAttentionOverviewView"
+    descendants = _visual_descendants(loaded_item)
+    by_name = {item.objectName(): item for item in descendants if item.objectName()}
+    scene = by_name.get("selfAttentionOverviewScene")
+    assert scene is not None
+    assert scene.property("conceptualOnly") is True
+    assert int(scene.property("visibleTokenCount")) == 4
+    assert int(scene.property("maximumConnectionCount")) == 4
+    assert int(scene.property("visibleConnectionCount")) <= 4
+    assert by_name.get("selfAttentionStageInput") is not None
+    assert by_name.get("selfAttentionStageAction") is not None
+    assert by_name.get("selfAttentionStageGraphic") is not None
+    assert by_name.get("selfAttentionStageOutput") is not None
+    assert by_name.get("simpleOutputStageScene") is None
+
+    cards = [
+        by_name["selfAttentionStageInput"],
+        by_name["selfAttentionStageAction"],
+        by_name["selfAttentionStageOutput"],
+    ]
+    assert int(scene.property("stageColumns")) == 4
+    boxes = [_rect_in(card, scene) for card in cards]
+    assert all(box.width() > 0 and box.height() > 0 for box in boxes)
+    for first_index, first in enumerate(boxes):
+        for second in boxes[first_index + 1 :]:
+            overlap = first.intersected(second)
+            assert overlap.width() <= 1 or overlap.height() <= 1
+
+
+def test_vista_general_de_self_attention_se_reordena_y_respeta_mascara_causal(
+    qapp
+):
+    engine = QQmlEngine()
+    component = QQmlComponent(engine)
+    component.setData(
+        SELF_ATTENTION_OVERVIEW_HOST,
+        QUrl.fromLocalFile(
+            str(ROOT / "view" / "qml" / "SelfAttentionOverviewHost.qml")
+        ),
+    )
+    assert component.status() != QQmlComponent.Status.Error, _errors(component)
+    window = component.create()
+    assert window is not None, _errors(component)
+    for _ in range(5):
+        qapp.processEvents()
+
+    scene = window.findChild(QQuickItem, "compactSelfAttentionOverview")
+    assert scene is not None
+    assert scene.property("stageKind") == "mask"
+    assert int(scene.property("stageColumns")) == 1
+    assert scene.property("usingCapturedAttention") is True
+    assert scene.property("maskUsesHypotheticalPad") is True
+    descendants = _visual_descendants(scene)
+    by_name = {item.objectName(): item for item in descendants if item.objectName()}
+    cards = [
+        by_name["selfAttentionStageInput"],
+        by_name["selfAttentionStageAction"],
+        by_name["selfAttentionStageOutput"],
+    ]
+    boxes = [_rect_in(card, scene) for card in cards]
+    for first_index, first in enumerate(boxes):
+        for second in boxes[first_index + 1 :]:
+            overlap = first.intersected(second)
+            assert overlap.width() <= 1 or overlap.height() <= 1
+
+    scene.setProperty(
+        "tokens",
+        [
+            {"text": "el", "position": 0},
+            {"text": "banco", "position": 1},
+            {"text": "río", "position": 2},
+        ],
+    )
+    scene.setProperty("selectedToken", 2)
+    scene.setProperty("causal", True)
+    qapp.processEvents()
+    assert int(scene.property("visibleTokenCount")) == 3
+    assert int(scene.property("focusedIndex")) == 2
+    assert int(scene.property("visibleConnectionCount")) == 3
+    scope = window.findChild(QObject, "selfAttentionOverviewScope")
+    assert "prefijo" in str(scope.property("text"))
+    assert "futuros" in str(scene.property("stageTitle"))
+
+    window.deleteLater()
+    engine.deleteLater()
 
 
 def test_guia_explica_formula_entrada_salida_y_animacion_de_todas_las_etapas(
@@ -653,6 +861,8 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(
     inference_mode = window.findChild(QObject, "moduleLaboratoryInferenceMode")
     level_tabs = window.findChild(QQuickItem, "moduleLaboratoryLearningLevelTabs")
     practice_card = window.findChild(QQuickItem, "moduleLaboratoryPracticeCard")
+    practice_status = window.findChild(QObject, "moduleLaboratoryPracticeStatus")
+    closing_check = window.findChild(QObject, "moduleLaboratoryClosingCheck")
     standard_practice_host = window.findChild(
         QQuickItem, "moduleLaboratoryStandardPracticeHost"
     )
@@ -728,6 +938,8 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(
             inference_mode,
             level_tabs,
             practice_card,
+            practice_status,
+            closing_check,
             standard_practice_host,
             advanced_practice_host,
             mode_summary,
@@ -867,6 +1079,21 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(
     assert bool(advanced_practice_host.property("visible")) is True
     assert advanced_practice_host.y() >= workspace.y() + workspace.height() - 1
     assert bool(mode_summary.property("truncated")) is False
+
+    # Recorrer todas las operaciones en Avanzado es una ruta de finalización
+    # válida: debe mostrar la pregunta de cierre sin exigir retos esenciales.
+    advanced_steps = _qml_value(screen.property("steps"))
+    for step_index in range(len(advanced_steps)):
+        screen.setProperty("currentStepIndex", step_index)
+        for _ in range(2):
+            qapp.processEvents()
+    advanced_progress = _qml_value(screen.property("labProgress"))
+    assert advanced_progress["advanced_steps"] == len(advanced_steps)
+    assert advanced_progress["advanced_required"] == len(advanced_steps)
+    assert advanced_progress["advanced_completed"] is True
+    assert bool(closing_check.property("visible")) is True
+    assert "EXPLORACIÓN AVANZADA COMPLETA" in str(practice_status.property("text"))
+
     screen.setProperty("workspaceSection", 2)
     qapp.processEvents()
     assert bool(guide_details_toggle.property("visible")) is True
@@ -933,6 +1160,7 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(
 
     # Decoder abre primero un mapa general por bloques y permite saltar a cada
     # parte sin mezclar todas sus operaciones en una sola explicación.
+    screen.setProperty("currentStepIndex", 0)
     view_model._course_controller.selectModule("module_6")
     view_model.moduleLaboratoryController.explore(
         "module_6", "texto", "inference", 0, 0, 1, 1.0, 5, 0.9, True

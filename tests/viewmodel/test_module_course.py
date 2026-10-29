@@ -182,6 +182,71 @@ def test_ejecutar_el_laboratorio_no_lo_completa(tmp_path):
     assert progress["completed"] and course.stageCompleted("module_4", "laboratory")
 
 
+def test_terminar_exploracion_avanzada_desbloquea_el_posttest(tmp_path, monkeypatch):
+    monkeypatch.setattr(CourseController, "REVIEW_MODE_UNLOCK_ALL", False)
+    course, results = _course(tmp_path)
+    _abrir_etapa(course, results, "module_3", "laboratory")
+    advanced_steps = [
+        "attention_input",
+        "weights",
+        "qkv",
+        "dot",
+        "scale",
+        "mask",
+        "softmax",
+        "weighted",
+        "output",
+    ]
+
+    for step_id in advanced_steps[:-1]:
+        progress = course.recordAdvancedLaboratoryStep(
+            "module_3", "inference", step_id, advanced_steps
+        )
+
+    assert progress["advanced_steps"] == len(advanced_steps) - 1
+    assert progress["advanced_completed"] is False
+    assert not course.stageCompleted("module_3", "laboratory")
+    assert not course.stageAvailable("module_3", "posttest")
+
+    progress = course.recordAdvancedLaboratoryStep(
+        "module_3", "inference", advanced_steps[-1], advanced_steps
+    )
+    assert progress["advanced_steps"] == len(advanced_steps)
+    assert progress["advanced_required"] == len(advanced_steps)
+    assert progress["advanced_completed"] is True
+    assert progress["practice_ready"] is True
+    # La pregunta final se conserva como comprobación común a las dos rutas.
+    assert not course.stageCompleted("module_3", "laboratory")
+
+    closing = course.catalog.get("module_3")["anchor"]["closing"]
+    course.recordAnchorClosing("module_3", closing["correct_index"])
+
+    assert course.stageCompleted("module_3", "laboratory")
+    assert course.stageAvailable("module_3", "posttest")
+    restored = ModuleProgressRepository(tmp_path / "progress.json").snapshot()
+    path = restored["modules"]["module_3"]["advanced_lab_paths"]["inference"]
+    assert set(path["visited_step_ids"]) == set(advanced_steps)
+
+
+def test_ruta_avanzada_de_desbloqueo_es_exclusiva_del_modulo_3(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr(CourseController, "REVIEW_MODE_UNLOCK_ALL", True)
+    course, _results = _course(tmp_path)
+    expected = ["project", "split", "maps", "contexts"]
+
+    for step_id in expected:
+        assert course.recordAdvancedLaboratoryStep(
+            "module_4", "inference", step_id, expected
+        ) == {}
+
+    progress = course.laboratoryProgress("module_4")
+    assert progress["advanced_steps"] == 0
+    assert progress["advanced_required"] == 0
+    assert progress["advanced_completed"] is False
+    assert progress["practice_ready"] is False
+
+
 def _result(module_id: str, assessment: str, percentage: float, answers: list) -> dict:
     return {
         "schema_version": 2,
@@ -282,7 +347,18 @@ def test_por_defecto_el_curso_aplica_los_prerrequisitos(tmp_path):
 
     assert CourseController.REVIEW_MODE_UNLOCK_ALL is False
     assert course.reviewMode is False
-    assert [module["available"] for module in course.modules] == [True] + [False] * 7
+    assert course.currentModuleId == "module_3"
+    assert [module["available"] for module in course.modules] == [
+        False,
+        False,
+        True,
+        False,
+        False,
+        False,
+        False,
+        False,
+    ]
+    assert course.stageAvailable("module_3", "pretest")
     assert course.stageAvailable("module_1", "pretest")
     assert not course.stageAvailable("module_1", "guided")
     assert not course.stageAvailable("module_1", "posttest")
@@ -293,6 +369,29 @@ def test_por_defecto_el_curso_aplica_los_prerrequisitos(tmp_path):
     _completar_etapas(course, results, "module_1", STAGES)
     assert course.stageAvailable("module_2", "pretest")
     assert not course.stageAvailable("module_2", "guided")
+
+
+def test_el_estudio_abre_modulo_3_aunque_el_progreso_anterior_apunte_al_1(
+    tmp_path,
+):
+    repository = ModuleProgressRepository(tmp_path / "progress.json")
+    repository.replace({"current_module_id": "module_1", "modules": {}})
+    evaluation = ModuleEvaluationController(
+        repository=ResultsRepository(tmp_path / "results.json")
+    )
+
+    course = CourseController(evaluation, repository=repository)
+
+    assert course.currentModuleId == "module_3"
+    available = {module["id"]: module["available"] for module in course.modules}
+    assert available["module_3"] is True
+    assert all(
+        is_available is False
+        for module_id, is_available in available.items()
+        if module_id != "module_3"
+    )
+    course.resetCourse()
+    assert course.currentModuleId == "module_3"
 
 
 def test_modo_revision_desbloquea_todos_los_modulos_y_etapas(tmp_path, monkeypatch):
@@ -509,7 +608,9 @@ def test_borrar_el_historial_no_deja_el_modulo_sin_forma_de_empezar(tmp_path):
     assert not course.stageAvailable("module_1", "guided")
 
 
-def test_exportar_resultados_genera_un_archivo_ligero_sin_enunciados(tmp_path):
+def test_exportar_resultados_genera_un_archivo_ligero_sin_enunciados(
+    tmp_path, monkeypatch
+):
     """Respaldo si falla la red y archivo para la encuesta: pocos kilobytes,
     puntajes por reactivo y ningún enunciado ni respuesta escrita."""
     import json
@@ -517,6 +618,9 @@ def test_exportar_resultados_genera_un_archivo_ligero_sin_enunciados(tmp_path):
 
     from PySide6.QtCore import QUrl
 
+    # Esta prueba aísla la exportación; habilita explícitamente el modo de
+    # revisión para no depender de los prerrequisitos pedagógicos del módulo 3.
+    monkeypatch.setattr(CourseController, "REVIEW_MODE_UNLOCK_ALL", True)
     results = ResultsRepository(tmp_path / "results.json")
     evaluation = ModuleEvaluationController(repository=results)
     course = CourseController(

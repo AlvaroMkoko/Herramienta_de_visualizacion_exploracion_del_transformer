@@ -36,11 +36,9 @@ class CourseController(QObject):
     # Debe quedar en False con estudiantes: abrir el post-test sin pasar por el
     # recorrido invalida la comparación pre/post.
     REVIEW_MODE_UNLOCK_ALL = False
-
-    # Módulos abiertos para las pruebas; el resto queda bloqueado. ``None``
-    # abre todos. Vence al modo revisión, como la restricción del docente, y el
-    # módulo abierto no exige terminar el anterior (que estaría bloqueado).
-    TEST_MODULES: tuple[str, ...] | None = ("module_3",)
+    # La aplicación de este estudio se concentra en Self-Attention. El modo
+    # revisión sigue permitiendo auditar los ocho módulos durante desarrollo.
+    FOCUS_MODULE_ID = "module_3"
 
     # Ejecutar el forward no es practicar: el laboratorio cuenta como hecho
     # cuando el alumno cerró este número de ciclos predecir→probar→observar→
@@ -63,13 +61,20 @@ class CourseController(QObject):
             dato("progreso", "progreso_modular.json")
         )
         self._state = self._repository.snapshot()
-        self._current_module_id = str(
-            self._state.get("current_module_id", self._catalog.module_ids[0])
+        default_module_id = (
+            self.FOCUS_MODULE_ID
+            if self.FOCUS_MODULE_ID in self._catalog.module_ids
+            else self._catalog.module_ids[0]
         )
-        if self._current_module_id not in self._catalog.module_ids:
-            self._current_module_id = self._catalog.module_ids[0]
-        if self._blocked_for_test(self._current_module_id):
-            self._current_module_id = self.TEST_MODULES[0]
+        stored_module_id = str(
+            self._state.get("current_module_id", default_module_id)
+        )
+        self._current_module_id = (
+            stored_module_id
+            if self.REVIEW_MODE_UNLOCK_ALL
+            and stored_module_id in self._catalog.module_ids
+            else default_module_id
+        )
         # Módulos que el docente habilitó en la clase. ``None`` = sin clase o
         # con todos habilitados; esta restricción vence al modo revisión.
         self._class_modules: frozenset[str] | None = None
@@ -101,9 +106,6 @@ class CourseController(QObject):
 
     def _blocked_by_class(self, module_id: str) -> bool:
         return self._class_modules is not None and module_id not in self._class_modules
-
-    def _blocked_for_test(self, module_id: str) -> bool:
-        return self.TEST_MODULES is not None and module_id not in self.TEST_MODULES
 
     def _student_filter(self) -> str | None:
         return self._evaluation._student_filter()  # frontera interna compartida
@@ -175,17 +177,22 @@ class CourseController(QObject):
         }.get(stage, False)
 
     def _module_unlocked(self, module_id: str) -> bool:
-        if self._blocked_by_class(module_id) or self._blocked_for_test(module_id):
+        if self._blocked_by_class(module_id):
             return False
-        if self.TEST_MODULES is not None:
-            return True
         if self.REVIEW_MODE_UNLOCK_ALL:
+            return True
+        if module_id == self.FOCUS_MODULE_ID:
             return True
         module = self._catalog.get(module_id)
         if module["order"] == 1:
             return True
         previous = self._catalog.modules[module["order"] - 2]["id"]
         return self._stage_done(previous, "results")
+
+    def _module_available_in_map(self, module_id: str) -> bool:
+        if self.REVIEW_MODE_UNLOCK_ALL or not self.FOCUS_MODULE_ID:
+            return self._module_unlocked(module_id)
+        return module_id == self.FOCUS_MODULE_ID and self._module_unlocked(module_id)
 
     def _module_status(self, module_id: str) -> str:
         if not self._module_unlocked(module_id):
@@ -204,7 +211,7 @@ class CourseController(QObject):
         result.update(
             {
                 "status": self._module_status(module_id),
-                "available": self._module_unlocked(module_id),
+                "available": self._module_available_in_map(module_id),
                 "completed_stages": done,
                 "total_stages": len(STAGES),
                 "progress_percent": round(done * 100 / len(STAGES)),
@@ -275,7 +282,7 @@ class CourseController(QObject):
     def stageAvailable(self, module_id: str, stage: str) -> bool:
         if module_id not in self._catalog.module_ids or stage not in STAGES:
             return False
-        if self._blocked_by_class(module_id) or self._blocked_for_test(module_id):
+        if self._blocked_by_class(module_id):
             return False
         if self.REVIEW_MODE_UNLOCK_ALL:
             return True
@@ -298,8 +305,6 @@ class CourseController(QObject):
             return ""
         if self._blocked_by_class(module_id):
             return "El docente todavía no habilita este módulo en la clase."
-        if self._blocked_for_test(module_id):
-            return "Este módulo no está disponible en esta prueba."
         if not self._module_unlocked(module_id):
             return "Completa el módulo anterior para desbloquear éste."
         if stage == "pretest" and self._pretest_closed(module_id):
@@ -307,13 +312,20 @@ class CourseController(QObject):
                 "El pre-test se cierra al entrar al recorrido guiado: mide lo que "
                 "sabías antes de verlo."
             )
+        posttest_reason = (
+            f"En el laboratorio, completa {self.REQUIRED_LAB_CYCLES} retos guiados "
+            "y responde la pregunta del módulo."
+        )
+        if module_id == "module_3":
+            posttest_reason = (
+                f"En el laboratorio, completa {self.REQUIRED_LAB_CYCLES} retos "
+                "guiados o toda la exploración avanzada, y responde la pregunta "
+                "del módulo."
+            )
         labels = {
             "guided": "Completa el pre-test del módulo.",
             "laboratory": "Completa el recorrido guiado del módulo.",
-            "posttest": (
-                f"En el laboratorio, completa {self.REQUIRED_LAB_CYCLES} retos guiados "
-                "y responde la pregunta del módulo."
-            ),
+            "posttest": posttest_reason,
             "results": "Completa el post-test del módulo.",
         }
         return labels.get(stage, "Etapa no disponible.")
@@ -520,14 +532,105 @@ class CourseController(QObject):
         cycles = self._module_state(module_id).get("lab_cycles", [])
         return len({str(item.get("step_id", "")) for item in cycles} - {""})
 
+    def _advanced_paths(self, module_id: str) -> dict[str, dict[str, Any]]:
+        raw = self._module_state(module_id).get("advanced_lab_paths", {})
+        return raw if isinstance(raw, dict) else {}
+
+    @staticmethod
+    def _advanced_path_counts(path: dict[str, Any]) -> tuple[int, int]:
+        expected = {str(value) for value in path.get("expected_step_ids", []) if value}
+        visited = {str(value) for value in path.get("visited_step_ids", []) if value}
+        return len(visited & expected), len(expected)
+
+    def _advanced_path_completed(self, module_id: str) -> bool:
+        if module_id != "module_3":
+            return False
+        for path in self._advanced_paths(module_id).values():
+            if not isinstance(path, dict):
+                continue
+            visited, required = self._advanced_path_counts(path)
+            if required >= self.REQUIRED_LAB_CYCLES and visited >= required:
+                return True
+        return False
+
+    def _best_advanced_path(self, module_id: str) -> tuple[str, int, int]:
+        best = ("", 0, 0)
+        best_ratio = -1.0
+        for mode, path in self._advanced_paths(module_id).items():
+            if not isinstance(path, dict):
+                continue
+            visited, required = self._advanced_path_counts(path)
+            ratio = visited / required if required else 0.0
+            if ratio > best_ratio or (ratio == best_ratio and visited > best[1]):
+                best = (str(mode), visited, required)
+                best_ratio = ratio
+        return best
+
+    @Slot(str, str, str, "QVariantList", result="QVariantMap")
+    def recordAdvancedLaboratoryStep(
+        self,
+        module_id: str,
+        mode: str,
+        step_id: str,
+        expected_step_ids: list[Any],
+    ) -> dict[str, Any]:
+        """Registra una operación realmente recorrida en la ruta avanzada.
+
+        Una ruta cuenta como terminada sólo al visitar todas las operaciones
+        anunciadas por el laboratorio en un mismo modo. La pregunta de cierre
+        sigue siendo obligatoria antes de desbloquear el post-test.
+        """
+        if (
+            module_id not in self._catalog.module_ids
+            or module_id != "module_3"
+            or not self.stageAvailable(module_id, "laboratory")
+        ):
+            return {}
+        normalized_mode = str(mode).strip().lower()
+        if normalized_mode not in {"inference", "training"}:
+            return {}
+        expected: list[str] = []
+        for value in expected_step_ids or []:
+            identifier = str(value).strip()
+            if identifier and identifier not in expected:
+                expected.append(identifier)
+        identifier = str(step_id).strip()
+        if len(expected) < self.REQUIRED_LAB_CYCLES or identifier not in expected:
+            return {}
+
+        state = self._module_state(module_id)
+        paths = state.setdefault("advanced_lab_paths", {})
+        path = paths.setdefault(normalized_mode, {})
+        previous_expected = [str(value) for value in path.get("expected_step_ids", [])]
+        previous_visited = [str(value) for value in path.get("visited_step_ids", [])]
+        visited = [value for value in previous_visited if value in expected]
+        if identifier not in visited:
+            visited.append(identifier)
+        changed = previous_expected != expected or previous_visited != visited
+        path["expected_step_ids"] = expected
+        path["visited_step_ids"] = visited
+        if changed:
+            self._refresh_laboratory_completion(module_id)
+        progress = self.laboratoryProgress(module_id)
+        current_visited, current_required = self._advanced_path_counts(path)
+        progress.update(
+            {
+                "advanced_mode": normalized_mode,
+                "advanced_steps": current_visited,
+                "advanced_required": current_required,
+            }
+        )
+        return progress
+
     def _laboratory_requirements_met(self, module_id: str) -> bool:
         if not self._catalog.has_alignment:
             return True
         state = self._module_state(module_id)
-        return (
+        practice_completed = (
             self._distinct_cycles(module_id) >= self.REQUIRED_LAB_CYCLES
-            and bool(state.get("anchor_closing"))
+            or self._advanced_path_completed(module_id)
         )
+        return practice_completed and bool(state.get("anchor_closing"))
 
     def _refresh_laboratory_completion(self, module_id: str) -> None:
         state = self._module_state(module_id)
@@ -561,14 +664,26 @@ class CourseController(QObject):
         if module_id not in self._catalog.module_ids:
             return {}
         state = self._module_state(module_id)
+        advanced_mode, advanced_steps, advanced_required = self._best_advanced_path(
+            module_id
+        )
+        advanced_completed = self._advanced_path_completed(module_id)
+        cycles = self._distinct_cycles(module_id)
         return {
-            "cycles": self._distinct_cycles(module_id),
+            "cycles": cycles,
             "required_cycles": self.REQUIRED_LAB_CYCLES,
             "cycle_step_ids": sorted(
                 {str(item.get("step_id", "")) for item in state.get("lab_cycles", [])}
                 - {""}
             ),
             "closing_answered": bool(state.get("anchor_closing")),
+            "advanced_mode": advanced_mode,
+            "advanced_steps": advanced_steps,
+            "advanced_required": advanced_required,
+            "advanced_completed": advanced_completed,
+            "practice_ready": (
+                cycles >= self.REQUIRED_LAB_CYCLES or advanced_completed
+            ),
             "completed": bool(state.get("laboratory_completed")),
         }
 
@@ -647,7 +762,7 @@ class CourseController(QObject):
             return
         self._module_state(module_id)["results_viewed"] = True
         next_id = self._catalog.next_id(module_id)
-        if next_id:
+        if next_id and (self.REVIEW_MODE_UNLOCK_ALL or not self.FOCUS_MODULE_ID):
             self._current_module_id = next_id
             self.moduleChanged.emit()
         self._persist()
@@ -893,7 +1008,11 @@ class CourseController(QObject):
         self._evaluation.repository.clear_module_results(self._student_filter())
         self._repository.clear()
         self._state = self._repository.snapshot()
-        self._current_module_id = self._catalog.module_ids[0]
+        self._current_module_id = (
+            self.FOCUS_MODULE_ID
+            if self.FOCUS_MODULE_ID in self._catalog.module_ids
+            else self._catalog.module_ids[0]
+        )
         self.moduleChanged.emit()
         self.progressChanged.emit()
 
@@ -920,7 +1039,11 @@ class CourseController(QObject):
                 for row in result.get("dimensions", [])
                 if float(row.get("percentage", 0)) < 70
             ]
-        self._current_module_id = module_id
+        self._current_module_id = (
+            module_id
+            if self.REVIEW_MODE_UNLOCK_ALL or not self.FOCUS_MODULE_ID
+            else self.FOCUS_MODULE_ID
+        )
         self._persist()
         self.moduleChanged.emit()
         self.progressChanged.emit()

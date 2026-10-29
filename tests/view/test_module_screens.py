@@ -33,14 +33,14 @@ ApplicationWindow {
     Item {
         anchors.fill: parent
         Screens.ModuleMapScreen { stackView: navigation }
-        Screens.ModuleScreen { stackView: navigation; moduleId: "module_1" }
-        Screens.ModuleGuidedTourScreen { stackView: navigation; moduleId: "module_1" }
-        Screens.ModuleLaboratoryScreen { stackView: navigation; moduleId: "module_1" }
-        Screens.ModuleResultsScreen { stackView: navigation; moduleId: "module_1" }
+        Screens.ModuleScreen { stackView: navigation; moduleId: "module_3" }
+        Screens.ModuleGuidedTourScreen { stackView: navigation; moduleId: "module_3" }
+        Screens.ModuleLaboratoryScreen { stackView: navigation; moduleId: "module_3" }
+        Screens.ModuleResultsScreen { stackView: navigation; moduleId: "module_3" }
         Screens.EvaluationIntroScreen {
             anchors.fill: parent
             stackView: navigation
-            moduleId: "module_1"
+            moduleId: "module_3"
             assessmentType: "pre"
         }
     }
@@ -232,6 +232,18 @@ def test_mapa_modular_reserva_espacio_para_numero_de_etapas(qapp):
     for _ in range(5):
         qapp.processEvents()
     assert_module_3_does_not_overlap()
+    map_screen = window.findChild(QQuickItem, "moduleMapScreen")
+    map_items = {
+        item.objectName(): item
+        for item in _visual_descendants(map_screen)
+        if item.objectName().startswith("moduleMapButton_")
+    }
+    assert map_items["moduleMapButton_module_3"].property("enabled") is True
+    assert all(
+        button.property("enabled") is False
+        for name, button in map_items.items()
+        if name != "moduleMapButton_module_3"
+    )
 
     # También se comprueba la cuadrícula de cuatro columnas, donde cada tarjeta
     # es más angosta y la descripción ocupa más renglones.
