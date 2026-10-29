@@ -21,6 +21,8 @@ Item {
     property int selectedExplanation: -1
     property int correctExplanation: -1
     property var explanationOptions: []
+    property string experimentTitle: "Modifica una condición"
+    property string experimentSubtitle: "El cambio se aplica al cálculo real de esta operación."
     property string experimentInstruction: ""
     property string experimentActionLabel: "Probar cambio sugerido"
     property string observationPrompt: ""
@@ -204,8 +206,8 @@ Item {
                 StageHeading {
                     Layout.fillWidth: true
                     number: "2"
-                    title: "Modifica una condición"
-                    subtitle: "El cambio se aplica al cálculo real de esta operación."
+                    title: root.experimentTitle
+                    subtitle: root.experimentSubtitle
                 }
 
                 InfoCard {

@@ -650,21 +650,21 @@
     "module_3": {
       "anchor": {
         "question": "En «el banco del río», ¿cómo puede el vector de «banco» incorporar información de «río» para no confundirse con un banco de dinero?",
-        "example": "Tres tokens con d_k = 4. Q(banco) = [1, 0, 1, 0]; K(el) = [0, 1, 0, 0], K(banco) = [1, 0, 0, 0], K(río) = [1, 0, 1, 0]. Scores Q·K = [0, 1, 2]; al dividir por √4 = 2 quedan [0, 0.5, 1]; softmax ≈ [0.19, 0.31, 0.51]. Con V(el) = 1, V(banco) = 2 y V(río) = 6, la salida es ≈ 0.19·1 + 0.31·2 + 0.51·6 ≈ 3.84: «banco» toma sobre todo información de «río».",
+        "example": "Cuatro tokens con d_k = 4. Q(banco) = [1, 0, 1, 0]; K(el) = [0, 1, 0, 0], K(banco) = [1, 0, 0, 0], K(del) = [0, 0, 0, 1] y K(río) = [1, 0, 1, 0]. Scores Q·K = [0, 1, 0, 2]; al dividir por √4 = 2 quedan [0, 0.5, 0, 1]; softmax ≈ [0.157, 0.259, 0.157, 0.427]. Con V(el) = 1, V(banco) = 2, V(del) = 1 y V(río) = 6, la salida es ≈ 3.39: «banco» toma sobre todo información de «río».",
         "closing": {
-          "prompt": "Con lo que observaste en el laboratorio, ¿qué decide cuánta información recibe un token de otro?",
+          "prompt": "En self-attention, el token que pregunta usa su Query para compararse con la Key de cada token. Después softmax convierte esas comparaciones en pesos. ¿Qué determina cuánta información de otro token entra en la mezcla final?",
           "options": [
             "La compatibilidad entre su Query y la Key del otro, normalizada por softmax",
             "La distancia entre sus posiciones",
             "El tamaño de sus Token IDs"
           ],
           "correct_index": 0,
-          "feedback": "El peso sale de comparar Q con K; luego ese peso decide cuánto del Value del otro token entra a la salida."
+          "feedback": "La comparación Query–Key produce un score; softmax lo convierte en un peso y ese peso multiplica el Value correspondiente."
         }
       },
       "step_checks": {
         "m3_s1": {
-          "prompt": "Una frase de 5 tokens con d_model = 64, ¿qué forma tiene X para un ejemplo?",
+          "prompt": "X coloca un vector de d_model componentes en cada fila. Para una frase de 5 tokens y d_model=64, ¿qué forma tiene X si omitimos el eje del batch?",
           "options": [
             "[64, 5]",
             "[5, 64]",
@@ -674,7 +674,7 @@
           "feedback": "Un vector de 64 componentes por cada uno de los 5 tokens."
         },
         "m3_s2": {
-          "prompt": "Con X [5, 64] y WQ [64, 16], ¿qué forma tiene Q?",
+          "prompt": "Q=XWQ. Si X contiene 5 tokens con 64 componentes y WQ proyecta de 64 a 16 componentes, ¿qué forma tiene Q?",
           "options": [
             "[5, 16]",
             "[64, 16]",
@@ -684,7 +684,7 @@
           "feedback": "[5, 64] × [64, 16] = [5, 16]: una consulta de 16 componentes por token."
         },
         "m3_s3": {
-          "prompt": "K tiene forma [5, 16]. ¿Qué forma tiene Kᵀ?",
+          "prompt": "K tiene una fila por cada uno de 5 tokens y 16 componentes por Key: [5,16]. Al intercambiar filas y columnas, ¿qué forma tiene Kᵀ?",
           "options": [
             "[5, 16]",
             "[16, 16]",
@@ -694,7 +694,7 @@
           "feedback": "Transponer intercambia los dos ejes para que d_k quede alineado en el producto Q·Kᵀ."
         },
         "m3_s4": {
-          "prompt": "Para q = [1, 2] y k = [3, 0], ¿qué score produce el producto punto?",
+          "prompt": "El score mide compatibilidad mediante el producto punto. Para Query q=[1,2] y Key k=[3,0], ¿qué score produce 1·3+2·0?",
           "options": [
             "3",
             "5",
@@ -704,7 +704,7 @@
           "feedback": "1·3 + 2·0 = 3. Cuanto más se parecen q y k, mayor es el score."
         },
         "m3_s5": {
-          "prompt": "Con d_k = 16, un score crudo de 8 queda en:",
+          "prompt": "El score escalado se calcula como score crudo/√d_k. Con d_k=16 y score crudo=8, ¿qué valor se entrega a softmax?",
           "options": [
             "0.5",
             "2",
@@ -714,7 +714,7 @@
           "feedback": "Se divide por √16 = 4: 8 / 4 = 2."
         },
         "m3_s6": {
-          "prompt": "Para la fila de scores [0, 0], ¿qué pesos produce softmax?",
+          "prompt": "Softmax convierte cada fila de scores en pesos positivos que suman 1. Si dos Keys reciben scores iguales [0,0], ¿qué pesos obtiene la Query?",
           "options": [
             "[0, 0]",
             "[1, 0]",
@@ -724,7 +724,7 @@
           "feedback": "Scores iguales producen pesos iguales, y cada fila suma 1."
         },
         "m3_s7": {
-          "prompt": "Con pesos [0.5, 0.5] y valores escalares [2, 6], ¿cuál es la salida?",
+          "prompt": "La salida es una suma ponderada de los Values. Si una Query asigna pesos [0.5,0.5] a Values escalares [2,6], ¿qué contexto obtiene?",
           "options": [
             "4",
             "8",
@@ -734,7 +734,7 @@
           "feedback": "0.5·2 + 0.5·6 = 4: una combinación ponderada de los Values."
         },
         "m3_s8": {
-          "prompt": "Con T = 5 consultas y d_v = 16, ¿cuántos vectores contextualizados entrega la cabeza?",
+          "prompt": "La atención conserva una salida por Query. Si entran T=5 Queries y cada salida tiene d_v=16 componentes, ¿cuántos vectores contextualizados entrega la cabeza?",
           "options": [
             "1",
             "5",
@@ -746,7 +746,7 @@
       },
       "post_variants": {
         "m3_a1": {
-          "prompt": "Q tiene [7,64] y K tiene [7,64]. ¿Qué forma tiene la matriz de scores QKᵀ?",
+          "prompt": "Una frase tiene 7 tokens. Q y K contienen una fila de 64 componentes por token: [7,64]. Al comparar cada Query con las 7 Keys mediante QKᵀ, ¿qué forma tiene la tabla de scores?",
           "options": [
             "[7,7]",
             "[64,64]",
@@ -757,7 +757,7 @@
           "explanation": "Cada una de las 7 consultas se compara con las 7 claves: [7, 64] × [64, 7] = [7, 7]."
         },
         "m3_a2": {
-          "prompt": "Con d_k = 16, el producto punto entre una consulta y una clave vale 12. ¿Cuál es el score escalado?",
+          "prompt": "El escalamiento usa score/√d_k. Con d_k=16 y un producto punto Query–Key de 12, ¿qué score escalado se entrega a softmax?",
           "options": [
             "3",
             "0.75",
@@ -768,7 +768,7 @@
           "explanation": "12 / √16 = 12 / 4 = 3."
         },
         "m3_a3": {
-          "prompt": "Una fila de pesos de atención es [0.5, 0.1, 0.4]. ¿Qué token aporta más a la salida de esa consulta?",
+          "prompt": "Para una Query, softmax asignó [0.5,0.1,0.4] a los Values de los tokens primero, segundo y tercero. ¿Qué token aporta más a la mezcla?",
           "options": [
             "El primero",
             "El segundo",
@@ -787,7 +787,7 @@
           }
         },
         "m3_a4": {
-          "prompt": "Pesos [0.6, 0.4] y valores escalares [5, 10]. ¿Cuál es la salida?",
+          "prompt": "Una Query combina Values escalares 5 y 10 con pesos 0.6 y 0.4. ¿Cuál es la salida 0.6·5+0.4·10?",
           "options": [
             "7",
             "7.5",
@@ -798,7 +798,7 @@
           "explanation": "0.6·5 + 0.4·10 = 3 + 4 = 7."
         },
         "m3_a5": {
-          "prompt": "«banco» debe decidir a qué palabras atender. ¿Cuál de sus vectores se compara con las Keys de las demás?",
+          "prompt": "En «el banco del río», «banco» es el token que busca contexto. ¿Cuál de sus vectores expresa lo que busca y se compara con las Keys de los demás?",
           "options": [
             "Query",
             "Key",
@@ -809,7 +809,7 @@
           "explanation": "La Query representa lo que el token busca; se compara con las Keys de los demás."
         },
         "m3_a6": {
-          "prompt": "La misma palabra aparece en dos frases y, por su contexto, recibe representaciones X distintas. WQ no cambia. ¿Qué ocurre con sus Queries?",
+          "prompt": "Q=XWQ. La misma palabra aparece en dos frases y recibe filas X distintas; WQ permanece fija porque es un parámetro ya aprendido. ¿Qué ocurre con sus Queries?",
           "options": [
             "Se recalculan a partir de cada X y son distintas",
             "Siempre quedan idénticas",
@@ -820,7 +820,7 @@
           "explanation": "Q = X·WQ: si X cambia, Q cambia aunque WQ sea la misma."
         },
         "m3_a7": {
-          "prompt": "En un mapa de atención [T, T], ¿qué conjunto de valores debe sumar 1 tras softmax?",
+          "prompt": "En un mapa [T,T], cada fila pertenece a una Query y cada columna a una Key. Después de aplicar softmax por fila, ¿qué conjunto debe sumar 1?",
           "options": [
             "Cada fila: los pesos de una consulta sobre todas las claves",
             "Toda la matriz",
@@ -831,7 +831,7 @@
           "explanation": "Softmax se aplica por fila: reparte la atención de cada consulta entre las claves."
         },
         "m3_a8": {
-          "prompt": "Con T = 9 y d_v = 32, ¿qué forma tiene la salida de una cabeza tras multiplicar pesos por V?",
+          "prompt": "Hay T=9 Queries. Cada una mezcla Values de d_v=32 componentes y obtiene un vector de contexto. ¿Qué forma tiene la salida de la cabeza?",
           "options": [
             "[9,32]",
             "[9,9]",
@@ -848,12 +848,12 @@
           "concept_id": "escalamiento_dk",
           "kind": "verdadero_falso",
           "pre": {
-            "statement": "Caso: si d_k crece de 16 a 256 y los scores no se dividen por √d_k, tienden a crecer en magnitud y softmax se concentra casi por completo en una sola clave.",
+            "statement": "Caso: los scores son productos punto de d_k componentes. Si d_k crece de 16 a 256 y no se dividen entre √d_k, su magnitud tiende a crecer y softmax puede concentrar casi todo el peso en una sola Key.",
             "correct": true,
             "explanation": "Productos punto más largos tienen mayor varianza; sin escalar, softmax se satura."
           },
           "post": {
-            "statement": "Caso: dividir los scores por √d_k cambia cuál es la clave con el score más alto en cada fila.",
+            "statement": "Caso: en una fila, todos los scores se dividen entre la misma constante positiva √d_k. Esta división cambia cuál Key tiene el score más alto.",
             "correct": false,
             "explanation": "Dividir todos los scores por la misma constante positiva conserva su orden; sólo reduce su magnitud."
           }
@@ -863,12 +863,12 @@
           "concept_id": "mezcla_valores",
           "kind": "respuesta_corta",
           "pre": {
-            "prompt": "Pesos [0.2, 0.3, 0.5] y valores escalares [10, 0, 2]. ¿Cuál es la salida de la atención?",
+            "prompt": "Una Query mezcla tres Values escalares [10,0,2] con pesos de atención [0.2,0.3,0.5]. Calcula 0.2·10+0.3·0+0.5·2. ¿Cuál es el contexto resultante?",
             "answer": "3",
             "explanation": "0.2·10 + 0.3·0 + 0.5·2 = 2 + 0 + 1 = 3."
           },
           "post": {
-            "prompt": "Pesos [0.5, 0.25, 0.25] y valores escalares [4, 8, 0]. ¿Cuál es la salida de la atención?",
+            "prompt": "Una Query mezcla Values escalares [4,8,0] con pesos [0.5,0.25,0.25]. Calcula 0.5·4+0.25·8+0.25·0. ¿Cuál es el contexto resultante?",
             "answer": "4",
             "explanation": "0.5·4 + 0.25·8 + 0.25·0 = 2 + 2 + 0 = 4."
           }
@@ -878,31 +878,31 @@
         {
           "id": "m3_l1",
           "concept_id": "producto_qk",
-          "prompt": "En el mapa del laboratorio hay 4 consultas y 4 claves, cada una con 8 componentes. ¿Cuántas filas y columnas tiene la tabla de compatibilidades?",
+          "prompt": "En la vista QKᵀ, sigue la fila de la Query de «banco» hasta la columna de la Key de «río». ¿Qué representa la celda donde se cruzan?",
           "options": [
-            "4 filas × 4 columnas",
-            "8 filas × 8 columnas",
-            "4 filas × 8 columnas"
+            "Un score de compatibilidad entre lo que busca «banco» y lo que identifica a «río»",
+            "El Value final de «banco», ya mezclado y contextualizado",
+            "Un parámetro de WQ que cambia para esa frase"
           ],
           "correct_index": 0,
-          "explanation": "Kᵀ tiene forma [8, 4]. [4, 8] × [8, 4] = [4, 4]: una fila por Query y una columna por Key. En el laboratorio, el mapa siempre es T × T."
+          "explanation": "La celda es el producto punto entre Q(banco) y K(río): mide compatibilidad antes de softmax; todavía no es un peso ni un Value mezclado."
         },
         {
           "id": "m3_l2",
           "concept_id": "escalamiento_dk",
-          "prompt": "Practica el escalamiento: con d_k = 25, un score crudo vale 10. ¿Cuánto vale ya escalado?",
+          "prompt": "La animación compara una fila antes y después de dividir entre √d_k: [0,5,10] pasa a [0,1,2]. ¿Qué cambió y qué se conservó?",
           "options": [
-            "2",
-            "0.4",
-            "250"
+            "Bajó la magnitud, pero el tercer score siguió siendo el mayor",
+            "Cambió el orden y el primer score pasó a ser el mayor",
+            "La fila se convirtió directamente en pesos que suman 1"
           ],
           "correct_index": 0,
-          "explanation": "Se divide entre √d_k: √25 = 5 y 10 / 5 = 2. En el laboratorio verás que los colores del mapa se suavizan, pero el orden de las celdas se conserva."
+          "explanation": "Dividir todos los scores entre la misma constante positiva reduce su magnitud, pero conserva su orden. Los pesos que suman 1 aparecen hasta el paso de softmax."
         },
         {
           "id": "m3_l3",
           "concept_id": "softmax_atencion",
-          "prompt": "Observa la fila de un token en el mapa de pesos: 0.2, 0.2 y 0.6. ¿Cuál de sus vecinos domina la mezcla y cuánto suman esos tres números?",
+          "prompt": "Ejemplo de una fila después de softmax: una Query asigna pesos [0.2,0.2,0.6] a tres Values, en ese orden. ¿Qué Value domina la mezcla y cuánto suman los pesos?",
           "options": [
             "El tercero; suman 1",
             "El primero; suman 1",
@@ -914,7 +914,7 @@
         {
           "id": "m3_l4",
           "concept_id": "mezcla_valores",
-          "prompt": "Ensayo de mezcla: un token reparte su atención 40 % y 60 % entre dos vecinos cuyos Values valen 5 y 10. ¿Qué valor sale?",
+          "prompt": "Ejemplo de la operación pesos×V: una Query asigna 40 % al Value 5 y 60 % al Value 10. ¿Qué contexto escalar produce 0.4·5+0.6·10?",
           "options": [
             "8",
             "7.5",
@@ -938,7 +938,7 @@
         {
           "id": "m3_l6",
           "concept_id": "pesos_qkv",
-          "prompt": "Cambia una palabra de la frase y repite el experimento. ¿Qué cambia y qué queda igual?",
+          "prompt": "Compara dos frases que difieren en una palabra. Como Q=XW_Q, K=XW_K y V=XW_V, cambia la entrada X; las matrices W son parámetros fijos durante esta exploración. ¿Qué cambia y qué queda igual?",
           "options": [
             "Cambian Q, K y V; W_Q, W_K y W_V quedan iguales",
             "Cambian W_Q, W_K y W_V; Q, K y V quedan iguales",
@@ -950,19 +950,19 @@
         {
           "id": "m3_l7",
           "concept_id": "softmax_atencion",
-          "prompt": "Activa la máscara: una posición bloqueada recibe un score de −∞ antes de softmax. ¿Qué peso recibe y cuánto suma su fila?",
+          "prompt": "Algunas frases se completan con el token especial PAD para que tengan la misma longitud. En el encoder, mask(S) impide atender esas columnas: cambia su score a −∞ antes de softmax. Si una columna contiene PAD, ¿qué peso recibe? Después de excluirla, ¿cuánto suman los pesos de los tokens reales de esa fila?",
           "options": [
             "Peso 0; la fila sigue sumando 1",
             "Peso 1; la fila suma 2",
             "Peso negativo; la fila suma 0"
           ],
           "correct_index": 0,
-          "explanation": "e^(−∞) = 0, así que la posición bloqueada no recibe atención. Softmax reparte el total (1) entre las posiciones que sí compiten."
+          "explanation": "PAD recibe peso 0 porque e^(−∞)=0. Softmax reparte el total 1 entre los tokens reales. Si la frase no contiene PAD, mask(S) no cambia ninguna celda."
         },
         {
           "id": "m3_l8",
           "concept_id": "salida_atencion",
-          "prompt": "Practica la forma de la salida: con T = 4 tokens y d_v = 8, ¿qué forma tiene el resultado de pesos × V?",
+          "prompt": "La operación pesos×V produce un vector de d_v componentes para cada Query. Con T=4 tokens y d_v=8, ¿qué forma tiene el contexto de una cabeza?",
           "options": [
             "[4, 8]",
             "[4, 4]",

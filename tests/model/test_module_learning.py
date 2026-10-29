@@ -88,9 +88,10 @@ def test_modulo_uno_distingue_encoder_decoder_padding_y_mascara():
         for section in theory["secciones"]
         for concept in section["conceptos"]
     }
-    assert "entrada del encoder se tokeniza sin agregar BOS ni EOS" in concepts[
-        "tokens_especiales"
-    ]["explanation"]
+    assert (
+        "entrada del encoder se tokeniza sin agregar BOS ni EOS"
+        in concepts["tokens_especiales"]["explanation"]
+    )
     assert concepts["padding"]["dimensions"]["salida"] == "[B, T_max]"
     mask_explanation = concepts["mascaras_en_scores"]["explanation"]
     assert "bloquea esas columnas como keys" in mask_explanation
@@ -324,6 +325,78 @@ def test_la_alineacion_se_fusiona_en_todos_los_modulos():
             "verdadero_falso",
             "respuesta_corta",
         ]
+
+
+def test_todos_los_reactivos_de_self_attention_explican_su_contexto():
+    """Q, K, V y las formas no deben aparecer como símbolos sin intención."""
+
+    bank = ModuleQuestionBank(module_id="module_3", rng=random.Random(61))
+
+    for assessment in ("pre", "post"):
+        questions = bank.all_questions(assessment)
+        assert len(questions) == 25
+        assert all(
+            question["prompt"].startswith("Contexto — ")
+            and "\n\n" in question["prompt"]
+            for question in questions
+        )
+
+
+def test_reactivos_de_self_attention_no_adelantan_la_respuesta_y_son_concisos():
+    bank = ModuleQuestionBank(module_id="module_3", rng=random.Random(63))
+
+    for assessment in ("pre", "post"):
+        questions = {
+            question["code"]: question
+            for question in bank.all_questions(assessment)
+        }
+        context_b6 = questions["B6"]["prompt"].split("\n\n", 1)[0]
+        context_i1 = questions["I1"]["prompt"].split("\n\n", 1)[0]
+        context_a6 = questions["A6"]["prompt"].split("\n\n", 1)[0]
+
+        assert "QKᵀ → escalamiento → softmax" not in context_b6
+        assert "primero se organiza X" not in context_i1
+        assert "conserva el orden" not in context_a6
+        assert "La función específica" not in questions["B3"]["prompt"]
+        assert "La función específica" not in questions["B4"]["prompt"]
+        assert "Respuesta propuesta" not in str(questions["A3"]["options"])
+        assert max(len(option["text"]) for option in questions["A3"]["options"]) < 90
+
+
+def test_archivo_consolidado_del_modulo_3_esta_actualizado():
+    document = recurso("preguntas_respuestas_modulo_3_self_attention.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert "versión 14" in document
+    assert len(re.findall(r"^### R\d+\.", document, flags=re.MULTILINE)) == 8
+    assert len(re.findall(r"^### PRE-", document, flags=re.MULTILINE)) == 25
+    assert len(re.findall(r"^### POST-", document, flags=re.MULTILINE)) == 25
+    assert len(re.findall(r"^### LAB-", document, flags=re.MULTILINE)) == 11
+    assert "token especial PAD" in document
+    assert "g es su gradiente" in document
+    assert "Hasta WQ, WK y WV" in document
+
+
+def test_retos_de_self_attention_no_piden_controles_inexistentes():
+    module = LearningModuleCatalog().get("module_3")
+    prompts = "\n".join(item["prompt"] for item in module["lab_challenges"])
+
+    for impossible_instruction in (
+        "Al seleccionar otro token",
+        "Alterna la máscara",
+        "Incrementa el peso",
+        "Activa la máscara",
+        "Cambia una palabra",
+    ):
+        assert impossible_instruction not in prompts
+
+    mask = next(item for item in module["lab_challenges"] if item["id"] == "m3_l7")
+    assert "mask(S)" in mask["prompt"]
+    assert "token especial PAD" in mask["prompt"]
+    assert "PAD" in mask["prompt"]
+    assert "−∞" in mask["prompt"]
+    assert "peso 0" in mask["explanation"]
 
 
 def test_catalogo_sin_archivo_de_alineacion_conserva_el_contrato_anterior(tmp_path):

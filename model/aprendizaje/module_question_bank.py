@@ -38,7 +38,14 @@ class ModuleQuestionBank:
     # numéricas sólo aceptan números y «completar» se contesta eligiendo del
     # banco de opciones (reconocer en vez de evocar). Los de la 11 no son
     # comparables.
-    VERSION_PREGUNTAS = 12
+    # 13: los reactivos de Self-Attention incluyen el contexto necesario para
+    # interpretar Q, K, V, las filas del mapa y la mezcla antes de preguntar.
+    # También se retiraron instrucciones que pedían editar pesos o máscaras
+    # que el laboratorio no permite manipular. Los de la 12 no son comparables.
+    # 14: se reescribieron los contextos de Self-Attention que adelantaban la
+    # respuesta, los verdadero/falso con gramática mecánica y los casos dobles
+    # demasiado extensos. Los de la 13 no son comparables.
+    VERSION_PREGUNTAS = 14
 
     #: Una respuesta así se pide con una casilla por eje (presentación
     #: «forma_tensor»): sin ese molde, «[5,5]», «5x5» y «5 por 5» parecen
@@ -113,6 +120,114 @@ class ModuleQuestionBank:
         6: {"pre": (0, 1, 6), "post": (0, 3, 6)},
         7: {"pre": (0, 1, 3), "post": (0, 4, 6)},
         8: {"pre": (0, 2, 6), "post": (0, 1, 3)},
+    }
+
+    # Una evaluación no debe lanzar símbolos aislados y esperar que el alumno
+    # adivine la intención. Estos encuadres se muestran antes de cada reactivo
+    # del módulo 3; dan la situación y el significado de los datos sin resolver
+    # la decisión concreta que se pregunta después.
+    MODULE_3_QUESTION_CONTEXTS = {
+        "B1": (
+            "La frase «el banco del río» ya fue convertida en vectores. X es "
+            "la tabla que recibe self-attention antes de calcular Q, K y V."
+        ),
+        "B2": (
+            "QKᵀ produce scores de compatibilidad. Si sus magnitudes son muy "
+            "grandes, softmax puede concentrar casi todo el peso en una sola Key."
+        ),
+        "B3": (
+            "En Q=XWQ, K=XWK y V=XWV intervienen dos clases de datos: la entrada "
+            "X de la frase y las matrices W del modelo."
+        ),
+        "B4": (
+            "Self-attention primero obtiene una tabla T×T y después produce un "
+            "vector de contexto por token. Identifica qué tarea corresponde a QKᵀ."
+        ),
+        "B5": (
+            "En una fila del mapa, la Query pertenece al token que busca "
+            "información. Cada columna corresponde a la Key de un token; su Value "
+            "contiene la información que podría aportar."
+        ),
+        "B6": (
+            "Los scores de QKᵀ aún no son pesos. Antes de usarlos para mezclar V, "
+            "se controla su magnitud y se normaliza cada fila."
+        ),
+        "B7": (
+            "Cada etapa resuelve un problema distinto: conservar los tokens en "
+            "orden, comparar pares, controlar los scores o construir contexto."
+        ),
+        "B8": (
+            "En las formas, B es el número de ejemplos, T el número de tokens, "
+            "d_model el ancho de X y d_v el ancho del contexto producido por una cabeza."
+        ),
+        "I1": (
+            "El punto de partida es X y el resultado buscado es la tabla de "
+            "compatibilidades. Ordena las operaciones usando la salida de una "
+            "como entrada de la siguiente."
+        ),
+        "I2": (
+            "El punto de partida son los scores crudos y el resultado buscado es "
+            "el contexto. Ordena las operaciones que conectan ambos extremos."
+        ),
+        "I3": (
+            "Aquí debes relacionar cada transformación con el resultado inmediato "
+            "que deja, no con una salida de pasos posteriores."
+        ),
+        "I4": (
+            "Sigue qué cambia realmente en cada etapa: pueden cambiar los ejes, "
+            "la magnitud de los números o el significado de la representación."
+        ),
+        "I5": (
+            "Una justificación correcta explica para qué es necesaria una operación; "
+            "no basta con repetir su nombre."
+        ),
+        "I6": (
+            "Para decidir si dos etapas son consecutivas, comprueba que la salida "
+            "de la primera sea la entrada que necesita la segunda."
+        ),
+        "I7": (
+            "La pregunta ya indica la entrada de una operación. Elige su salida "
+            "inmediata, no el resultado final de self-attention."
+        ),
+        "I8": (
+            "El propósito explica por qué hace falta la operación; no es una "
+            "descripción de sus pasos ni una consecuencia de otra etapa."
+        ),
+        "I9": (
+            "Un par entrada→salida sólo es válido si ambos pertenecen a la misma "
+            "etapa; no mezcles el inicio de una operación con el final de otra."
+        ),
+        "A1": (
+            "En QKᵀ, las T filas de Q se comparan con las T columnas de Kᵀ; "
+            "d_k es la dimensión interna que se multiplica y se suma."
+        ),
+        "A2": (
+            "El score que entra a softmax se calcula con score escalado = "
+            "score crudo/√d_k."
+        ),
+        "A3": (
+            "Los pesos de una fila indican cuánto multiplica cada Value; el "
+            "contexto se obtiene sumando esas contribuciones ponderadas."
+        ),
+        "A4": (
+            "Las cuatro tarjetas forman un solo cálculo. Ordénalas de modo que la "
+            "salida y las dimensiones de cada una sirvan a la siguiente."
+        ),
+        "A5": (
+            "Resuelve cada situación por separado. Recuerda que la Query busca, la "
+            "Key se compara, el Value aporta contenido y W sólo cambia al entrenar."
+        ),
+        "A6": (
+            "El escalamiento afecta la magnitud de los scores antes de softmax. "
+            "Evalúa exactamente el efecto que afirma el caso."
+        ),
+        "A7": (
+            "Para Values escalares, aplica directamente contexto = Σ(peso_j·Value_j)."
+        ),
+        "A8": (
+            "Pesos tiene forma [T,T] y V tiene forma [T,d_v]; la T interna se "
+            "suma y queda un vector de ancho d_v por cada Query."
+        ),
     }
 
     def __init__(
@@ -556,7 +671,9 @@ class ModuleQuestionBank:
             dict.fromkeys(str(item).strip() for item in accepted if str(item).strip())
         )
         bank = list(dict.fromkeys(str(item) for item in options if str(item).strip()))
-        es_forma = not bank and bool(aceptadas) and bool(cls._FORMA.fullmatch(aceptadas[0]))
+        es_forma = (
+            not bank and bool(aceptadas) and bool(cls._FORMA.fullmatch(aceptadas[0]))
+        )
         question = cls._base_question(
             prefix,
             code,
@@ -780,6 +897,30 @@ class ModuleQuestionBank:
     # Generación pedagógica de los 25 reactivos
     # ------------------------------------------------------------------
 
+    @classmethod
+    def _contextualize_module_questions(
+        cls, module: dict[str, Any], questions: list[dict[str, Any]]
+    ) -> None:
+        """Antecede cada reactivo del módulo 3 con la información que necesita.
+
+        El contexto se añade al final de la construcción para cubrir por igual
+        opciones, verdadero/falso, relaciones, ordenamientos y respuestas
+        cortas. Así ningún formato vuelve a presentar Q, K, V o una dimensión
+        como símbolos aislados.
+        """
+
+        if module.get("id") != "module_3":
+            return
+        for question in questions:
+            code = str(question.get("code", ""))
+            context = cls.MODULE_3_QUESTION_CONTEXTS.get(code, "").strip()
+            if not context:
+                raise QuestionBankError(
+                    f"module_3/{code or 'sin código'} no tiene contexto pedagógico."
+                )
+            prompt = str(question.get("prompt", "")).strip()
+            question["prompt"] = f"Contexto — {context}\n\n{prompt}"
+
     def _build_questions(
         self, module: dict[str, Any], assessment: str
     ) -> list[dict[str, Any]]:
@@ -807,6 +948,12 @@ class ModuleQuestionBank:
                 else f"¿Qué afirmación explica correctamente el papel de "
                 f"«{concept['title']}» dentro del módulo?"
             )
+            if module["id"] == "module_3":
+                prompt = (
+                    "¿Qué descripción explica correctamente qué contiene X?"
+                    if code == "B1"
+                    else "¿Qué hace el escalamiento por √d_k para evitarlo?"
+                )
             return self._single_choice(
                 prefix,
                 code,
@@ -832,6 +979,13 @@ class ModuleQuestionBank:
                     distractors.append(candidate)
                 if len(distractors) == 3:
                     break
+            prompt = f"¿Qué operación se realiza durante «{step['title']}»?"
+            if module["id"] == "module_3":
+                prompt = (
+                    "¿Qué operación construye la matriz X?"
+                    if code == "B1"
+                    else "¿Qué operación se realiza durante el escalamiento?"
+                )
             return self._single_choice(
                 prefix,
                 code,
@@ -839,7 +993,7 @@ class ModuleQuestionBank:
                 "Básica",
                 "Comprender",
                 "Reconocimiento de operaciones",
-                f"¿Qué operación se realiza durante «{step['title']}»?",
+                prompt,
                 [correct_operation, *distractors],
                 0,
                 explanation=(
@@ -861,7 +1015,16 @@ class ModuleQuestionBank:
         else:
             description = self.FALSE_CONCEPT_CLAIMS[module["id"]]["B3"]
             correct = False
-        statement = f"La función específica de «{concept['title']}» es: {description}"
+        statement = (
+            (
+                "WQ, WK y WV son parámetros aprendidos que transforman X para "
+                "obtener Q, K y V."
+                if assessment == "pre"
+                else "WQ, WK y WV son máscaras fijas, no parámetros aprendidos."
+            )
+            if module["id"] == "module_3"
+            else f"La función específica de «{concept['title']}» es: {description}"
+        )
         questions.append(
             self._true_false(
                 prefix,
@@ -883,7 +1046,16 @@ class ModuleQuestionBank:
         else:
             description = concept["description"]
             correct = True
-        statement = f"La función específica de «{concept['title']}» es: {description}"
+        statement = (
+            (
+                "QKᵀ mezcla directamente los Values y produce el contexto final."
+                if assessment == "pre"
+                else "QKᵀ compara la Query de cada token con la Key de todos los "
+                "tokens y produce una tabla de scores de compatibilidad."
+            )
+            if module["id"] == "module_3"
+            else f"La función específica de «{concept['title']}» es: {description}"
+        )
         questions.append(
             self._true_false(
                 prefix,
@@ -1258,6 +1430,40 @@ class ModuleQuestionBank:
         )
 
         first_challenge, second_challenge = challenges[2], challenges[3]
+        if module["id"] == "module_3":
+            paired_prompt = (
+                "Selecciona las DOS opciones en las que los pesos y su efecto "
+                "están emparejados correctamente."
+            )
+            if assessment == "pre":
+                paired_cases = [
+                    "Pesos [0.1, 0.7, 0.2] → el segundo Value aporta más.",
+                    "Pesos [0.25, 0.75] y Values [4, 8] → el contexto vale 7.",
+                    "Pesos [0.1, 0.7, 0.2] → el primer Value aporta más.",
+                    "Pesos [0.25, 0.75] y Values [4, 8] → el contexto vale 6.",
+                ]
+            else:
+                paired_cases = [
+                    "Pesos [0.5, 0.1, 0.4] → el primer Value aporta más.",
+                    "Pesos [0.6, 0.4] y Values [5, 10] → el contexto vale 7.",
+                    "Pesos [0.5, 0.1, 0.4] → el segundo Value aporta más.",
+                    "Pesos [0.6, 0.4] y Values [5, 10] → el contexto vale 7.5.",
+                ]
+        else:
+            paired_prompt = (
+                "Se presentan dos casos. Selecciona las DOS opciones en las que "
+                "el caso y la respuesta están emparejados correctamente."
+            )
+            paired_cases = [
+                f"Caso 1 — {self._challenge_prompt(first_challenge, assessment)} "
+                f"Respuesta propuesta: {self._correct_answer(first_challenge)}",
+                f"Caso 2 — {self._challenge_prompt(second_challenge, assessment)} "
+                f"Respuesta propuesta: {self._correct_answer(second_challenge)}",
+                f"Caso 1 — {self._challenge_prompt(first_challenge, assessment)} "
+                f"Respuesta propuesta: {self._wrong_answer(first_challenge)}",
+                f"Caso 2 — {self._challenge_prompt(second_challenge, assessment)} "
+                f"Respuesta propuesta: {self._wrong_answer(second_challenge)}",
+            ]
         questions.append(
             self._multiple_selection(
                 prefix,
@@ -1266,18 +1472,8 @@ class ModuleQuestionBank:
                 "Avanzada",
                 "Analizar",
                 "Razonamiento",
-                "Se presentan dos casos. Selecciona las DOS opciones en las que "
-                "el caso y la respuesta están emparejados correctamente.",
-                [
-                    f"Caso 1 — {self._challenge_prompt(first_challenge, assessment)} "
-                    f"Respuesta propuesta: {self._correct_answer(first_challenge)}",
-                    f"Caso 2 — {self._challenge_prompt(second_challenge, assessment)} "
-                    f"Respuesta propuesta: {self._correct_answer(second_challenge)}",
-                    f"Caso 1 — {self._challenge_prompt(first_challenge, assessment)} "
-                    f"Respuesta propuesta: {self._wrong_answer(first_challenge)}",
-                    f"Caso 2 — {self._challenge_prompt(second_challenge, assessment)} "
-                    f"Respuesta propuesta: {self._wrong_answer(second_challenge)}",
-                ],
+                paired_prompt,
+                paired_cases,
                 (0, 1),
                 related_concepts=[second_challenge["concept_id"]],
             )
@@ -1433,6 +1629,8 @@ class ModuleQuestionBank:
                 resource=challenge.get("resource"),
             )
         )
+
+        self._contextualize_module_questions(module, questions)
 
         if len(questions) != 25:
             raise QuestionBankError(

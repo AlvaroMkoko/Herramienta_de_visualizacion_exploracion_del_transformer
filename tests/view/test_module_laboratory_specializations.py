@@ -652,6 +652,13 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(
     training_mode = window.findChild(QObject, "moduleLaboratoryTrainingMode")
     inference_mode = window.findChild(QObject, "moduleLaboratoryInferenceMode")
     level_tabs = window.findChild(QQuickItem, "moduleLaboratoryLearningLevelTabs")
+    practice_card = window.findChild(QQuickItem, "moduleLaboratoryPracticeCard")
+    standard_practice_host = window.findChild(
+        QQuickItem, "moduleLaboratoryStandardPracticeHost"
+    )
+    advanced_practice_host = window.findChild(
+        QQuickItem, "moduleLaboratoryAdvancedPracticeHost"
+    )
     mode_summary = window.findChild(QObject, "moduleLaboratoryModeSummary")
     detached_window = window.findChild(
         QObject, "moduleLaboratoryDetachedGuideWindow"
@@ -720,6 +727,9 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(
             training_mode,
             inference_mode,
             level_tabs,
+            practice_card,
+            standard_practice_host,
+            advanced_practice_host,
             mode_summary,
             detached_window,
             detached_guide,
@@ -770,6 +780,11 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(
     assert bool(step_list.property("visible")) is False
     assert bool(advanced_controls.property("visible")) is False
     assert bool(detach_button.property("visible")) is False
+    assert bool(standard_practice_host.property("visible")) is True
+    assert bool(advanced_practice_host.property("visible")) is False
+    assert practice_card.parentItem().objectName() == (
+        "moduleLaboratoryStandardPracticeHost"
+    )
     assert 0 < float(progress.property("value")) <= 1
     assert screen.property("guideDetached") is False
     assert guide.property("visible") is False
@@ -838,11 +853,19 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(
     # El GridLayout pasa a dos columnas en su siguiente polish, no al instante:
     # medir antes daba el ancho de una sola columna y la prueba fallaba a ratos.
     qtbot.waitUntil(lambda: _side_by_side(step_pane, visual_pane, workspace), timeout=3000)
+    qtbot.waitUntil(
+        lambda: practice_card.parentItem().objectName()
+        == "moduleLaboratoryAdvancedPracticeHost",
+        timeout=3000,
+    )
     initial_visual_width = visual_pane.width()
     assert bool(step_pane.property("visible")) is True
     assert bool(step_list.property("visible")) is True
     assert bool(advanced_controls.property("visible")) is True
     assert bool(detach_button.property("visible")) is True
+    assert bool(standard_practice_host.property("visible")) is False
+    assert bool(advanced_practice_host.property("visible")) is True
+    assert advanced_practice_host.y() >= workspace.y() + workspace.height() - 1
     assert bool(mode_summary.property("truncated")) is False
     screen.setProperty("workspaceSection", 2)
     qapp.processEvents()
