@@ -141,8 +141,15 @@ PagePrincipal {
                     delegate: Rectangle {
                         id: moduleCard
                         required property var modelData
+                        objectName: "moduleMapCard_"
+                                    + String(moduleCard.modelData.id)
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 250 * root.sy
+                        Layout.fillHeight: true
+                        Layout.minimumHeight: moduleCardContent.implicitHeight
+                                              + 32 * root.sx
+                        Layout.preferredHeight: Math.max(
+                                                    250 * root.sy,
+                                                    Layout.minimumHeight)
                         radius: 14 * root.sx
                         color: modelData.available ? Style.Theme.surface : Style.Theme.superficie_alterna
                         border.width: modelData.id === root.courseController.currentModuleId ? 2 : 1
@@ -151,6 +158,7 @@ PagePrincipal {
                         opacity: modelData.available ? 1 : 0.62
 
                         ColumnLayout {
+                            id: moduleCardContent
                             anchors.fill: parent
                             anchors.margins: 16 * root.sx
                             spacing: 9 * root.sy
@@ -190,14 +198,23 @@ PagePrincipal {
                                 wrapMode: Text.WordWrap
                             }
                             Text {
+                                objectName: "moduleMapDescription_"
+                                            + String(moduleCard.modelData.id)
                                 Layout.fillWidth: true
-                                Layout.fillHeight: true
+                                Layout.preferredHeight: implicitHeight
+                                Layout.minimumHeight: implicitHeight
                                 text: moduleCard.modelData.description
                                 color: Style.Theme.texto_secundario_fuerte
                                 font.pixelSize: 13 * root.sx
                                 wrapMode: Text.WordWrap
                             }
+                            Item {
+                                Layout.fillHeight: true
+                                Layout.minimumHeight: 2 * root.sy
+                            }
                             Text {
+                                objectName: "moduleMapStageCount_"
+                                            + String(moduleCard.modelData.id)
                                 Layout.fillWidth: true
                                 text: moduleCard.modelData.completed_stages + " / "
                                       + moduleCard.modelData.total_stages + " etapas"
@@ -205,12 +222,16 @@ PagePrincipal {
                                 font.pixelSize: 11 * root.sx
                             }
                             ProgressBar {
+                                objectName: "moduleMapProgress_"
+                                            + String(moduleCard.modelData.id)
                                 Layout.fillWidth: true
                                 from: 0
                                 to: 100
                                 value: moduleCard.modelData.progress_percent
                             }
                             BotonPrincipal {
+                                objectName: "moduleMapButton_"
+                                            + String(moduleCard.modelData.id)
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 38 * root.sy
                                 enabled: Boolean(moduleCard.modelData.available)

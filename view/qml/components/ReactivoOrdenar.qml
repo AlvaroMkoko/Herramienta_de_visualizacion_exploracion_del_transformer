@@ -96,9 +96,9 @@ AsignacionBase {
             DropArea {
                 id: areaMonton
                 anchors.fill: parent
-                onDropped: function (drop) {
-                    if (drop.source && drop.source.elementoId)
-                        root.liberar(drop.source.elementoId)
+                // Lo llama FichaAsignable al soltar encima.
+                function recibir(elementoId) {
+                    Qt.callLater(root.liberar, String(elementoId))
                 }
             }
 
@@ -188,9 +188,9 @@ AsignacionBase {
                 DropArea {
                     id: areaRanura
                     anchors.fill: parent
-                    onDropped: function (drop) {
-                        if (drop.source && drop.source.elementoId)
-                            root.asignar(drop.source.elementoId, ranura.destinoId)
+                    // Lo llama FichaAsignable al soltar encima.
+                    function recibir(elementoId) {
+                        Qt.callLater(root.asignar, String(elementoId), ranura.destinoId)
                     }
                 }
 

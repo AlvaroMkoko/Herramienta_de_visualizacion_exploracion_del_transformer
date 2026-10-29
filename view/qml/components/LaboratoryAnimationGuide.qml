@@ -263,7 +263,7 @@ Item {
             if (sid === "qkv") return "La misma X se multiplica por tres matrices distintas: Q formula consultas, K permite compararlas y V lleva contenido."
             if (sid === "dot") return "La celda (i,j) de QKᵀ es el producto punto entre la query i y la key j: una compatibilidad sin normalizar."
             if (sid === "scale") return "Dividir S₀ entre √d_k controla su magnitud y evita que Softmax se vuelva excesivamente extrema."
-            if (sid === "mask") return "mask(S) conserva scores permitidos y sustituye los bloqueados por −∞ antes de normalizar."
+            if (sid === "mask") return "En este encoder, mask(S) revisa cada columna: conserva el score si corresponde a un token real y escribe −∞ si corresponde a PAD. Softmax convierte ese −∞ en peso 0. Si no hay PAD, la máscara no cambia la fila."
             if (sid === "softmax") return "Softmax se aplica por fila: convierte los scores permitidos en pesos A entre 0 y 1 que suman uno."
             if (sid === "weighted") return "AV multiplica cada Value por su peso de atención y suma las contribuciones para formar contexto."
             if (sid === "output") return "Concat reúne los contextos de todas las cabezas y Wᴼ los mezcla de regreso al ancho d_model."

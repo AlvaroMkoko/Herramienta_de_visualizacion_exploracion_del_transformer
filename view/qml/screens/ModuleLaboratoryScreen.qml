@@ -169,9 +169,17 @@ PagePrincipal {
                 "Las filas de los IDs consultados", "Todas las filas por igual", "Solo la primera fila de la tabla",
                 "El lookup conecta la pérdida directamente con las filas utilizadas por el batch."),
             "module_3:attention_input": root.labQuestion(
-                "lab_m3_attention_input", "En la matriz X mostrada, ¿qué representa cada fila antes de proyectar Q, K y V?",
+                "lab_m3_attention_input", "Self-attention comienza con la matriz X: una tabla que conserva los tokens en el orden de la frase. ¿Qué representa cada fila antes de calcular Q, K y V?",
                 "La representación de un token", "Una cabeza de atención completa", "Un token del vocabulario de salida",
                 "X conserva una fila de d_model componentes por posición de la secuencia."),
+            "module_3:backward": root.labQuestion(
+                "lab_m3_backward", "Durante entrenamiento, backward recorre el cálculo en sentido inverso para identificar qué parámetros influyeron en la pérdida L. Si Q=XWQ, K=XWK y V=XWV, ¿hasta qué matrices debe llegar el gradiente?",
+                "Hasta WQ, WK y WV, siguiendo en reversa las operaciones de Q, K y V", "Sólo hasta el texto original, sin pasar por las operaciones", "Debe detenerse en softmax y no llegar a los parámetros",
+                "El gradiente atraviesa en reversa las operaciones que produjeron Q, K y V; así se obtienen ∂L/∂WQ, ∂L/∂WK y ∂L/∂WV."),
+            "module_3:update": root.labQuestion(
+                "lab_m3_update", "En W′=W−ηg, W es el peso actual, g es su gradiente y η indica el tamaño del paso. El laboratorio sólo simula el cálculo y no modifica el modelo. ¿Qué representa W′?",
+                "El valor que tendría W después de un paso hipotético guiado por el gradiente", "Una nueva matriz de pesos de atención que debe sumar 1", "La salida contextual definitiva de la frase",
+                "W′ es el posible valor siguiente del parámetro si se aplicara ese paso de optimización."),
             "module_4:project": root.labQuestion(
                 "lab_m4_project", "¿Qué producen XWQ, XWK y XWV antes de separar las cabezas?",
                 "Q, K y V completos con anchura d_model", "Un único mapa T×T", "Los IDs de la secuencia",
@@ -374,6 +382,16 @@ PagePrincipal {
         if (["causal_mask", "masked_attention", "full_decoder"].indexOf(sid) !== -1)
             return ({ "label": "Alternar la máscara causal",
                       "instruction": "Contrasta el cálculo con y sin bloqueo del futuro. Busca qué celdas dejan de participar." })
+        if (root.moduleId === "module_3" && sid === "mask")
+            return ({ "title": "Comprueba qué hace mask(S)",
+                      "subtitle": "Aquí no se inventa un interruptor: se observa la máscara de padding que realmente usa el encoder.",
+                      "label": "Ver el caso de padding",
+                      "instruction": "Reproduce la animación detallada. En el encoder sólo se excluye PAD: si la frase no tiene relleno, todas las celdas permanecen permitidas; una columna PAD recibiría −∞ y después peso 0." })
+        if (root.moduleId === "module_3"
+                && ["attention_input", "qkv", "output"].indexOf(sid) !== -1
+                && root.tokens.length > 1)
+            return ({ "label": "Observar otro token",
+                      "instruction": "Cambia el token observado. Comprueba que cambia la fila que se sigue, mientras cada posición conserva su lugar dentro de la frase." })
         if (root.controlRelevant("head") && root.modelHeadCount > 1)
             return ({ "label": "Comparar otra cabeza",
                       "instruction": "Selecciona otra cabeza y compara qué relaciones entre tokens reciben mayor peso." })
@@ -640,6 +658,18 @@ PagePrincipal {
         }
         if (["causal_mask", "masked_attention", "full_decoder"].indexOf(sid) !== -1) {
             causalSwitch.checked = !causalSwitch.checked
+            root.runAnalysis(true, true)
+            return
+        }
+        if (root.moduleId === "module_3" && sid === "mask") {
+            root.workspaceSection = 1
+            formulaScene.replay()
+            return
+        }
+        if (root.moduleId === "module_3"
+                && ["attention_input", "qkv", "output"].indexOf(sid) !== -1
+                && root.tokens.length > 1) {
+            tokenSlider.value = (Math.round(tokenSlider.value) + 1) % root.tokens.length
             root.runAnalysis(true, true)
             return
         }
@@ -1262,14 +1292,28 @@ PagePrincipal {
 
             // Puente teoría→práctica: el ejemplo calculado a mano en el recorrido
             // junto a lo que exige la etapa (ciclos guiados y pregunta ancla).
-            RectanglePrincipal {
-                objectName: "moduleLaboratoryPracticeCard"
-                visible: root.analysis.module_id === root.moduleId
+            Item {
+                id: standardPracticeHost
+                objectName: "moduleLaboratoryStandardPracticeHost"
+                visible: !root.advancedMode
+                         && root.analysis.module_id === root.moduleId
                          && root.moduleData.anchor !== undefined
                 Layout.fillWidth: true
                 Layout.leftMargin: 24 * root.uiScale
                 Layout.rightMargin: 24 * root.uiScale
-                Layout.preferredHeight: practiceColumn.implicitHeight + 18 * root.uiScale
+                Layout.preferredHeight: visible ? practiceCard.implicitHeight : 0
+            }
+
+            // La misma tarjeta cambia de contenedor según el nivel para que en
+            // avanzado no interrumpa el recorrido entre controles y animación.
+            RectanglePrincipal {
+                id: practiceCard
+                objectName: "moduleLaboratoryPracticeCard"
+                parent: root.advancedMode ? advancedPracticeHost : standardPracticeHost
+                visible: root.analysis.module_id === root.moduleId
+                         && root.moduleData.anchor !== undefined
+                anchors.fill: parent
+                implicitHeight: practiceColumn.implicitHeight + 18 * root.uiScale
                 sx: root.uiScale
                 sy: root.uiScale
 
@@ -1697,6 +1741,10 @@ PagePrincipal {
                                     selectedExplanation: root.discoveryExplanation
                                     correctExplanation: Number(root.explanationBundle.correct)
                                     explanationOptions: root.explanationBundle.options || []
+                                    experimentTitle: String(root.experimentDescriptor.title
+                                                            || "Modifica una condición")
+                                    experimentSubtitle: String(root.experimentDescriptor.subtitle
+                                                               || "El cambio se aplica al cálculo real de esta operación.")
                                     experimentInstruction: String(root.experimentDescriptor.instruction || "")
                                     experimentActionLabel: String(root.experimentDescriptor.label || "Probar cambio")
                                     observationPrompt: "Sigue «"
@@ -1744,6 +1792,18 @@ PagePrincipal {
                     }
                 }
 
+            }
+
+            Item {
+                id: advancedPracticeHost
+                objectName: "moduleLaboratoryAdvancedPracticeHost"
+                visible: root.advancedMode
+                         && root.analysis.module_id === root.moduleId
+                         && root.moduleData.anchor !== undefined
+                Layout.fillWidth: true
+                Layout.leftMargin: 24 * root.uiScale
+                Layout.rightMargin: 24 * root.uiScale
+                Layout.preferredHeight: visible ? practiceCard.implicitHeight : 0
             }
 
             Item { Layout.fillWidth: true; Layout.preferredHeight: 18 * root.uiScale }

@@ -181,6 +181,44 @@ class LearningModuleCatalog:
                     )
             module["lab_challenges"] = deepcopy(lab_challenges)
             module["anchor"] = deepcopy(anchor)
+            self._merge_lessons(module, fragment.get("lessons"))
+
+    @staticmethod
+    def _merge_lessons(module: dict[str, Any], lessons: Any) -> None:
+        """Lección de cada paso del recorrido: intuición, términos, pasos y ejemplo.
+
+        Es opcional por módulo: un módulo sin lecciones conserva el recorrido de
+        tres paneles. Si un paso trae lección, debe venir completa, porque la
+        pantalla la dibuja como única fuente de explicación del paso.
+        """
+        if lessons is None:
+            return
+        module_id = module["id"]
+        step_ids = {step["id"] for step in module["guided_steps"]}
+        if not isinstance(lessons, dict) or not set(lessons) <= step_ids:
+            raise LearningModuleError(f"{module_id} declara lecciones de pasos inexistentes.")
+        for step in module["guided_steps"]:
+            lesson = lessons.get(step["id"])
+            if lesson is None:
+                continue
+            owner = f"{module_id}/{step['id']}/lección"
+            if not isinstance(lesson, dict) or not str(lesson.get("intuicion", "")).strip():
+                raise LearningModuleError(f"{owner} necesita una intuición.")
+            pasos = lesson.get("pasos")
+            if not isinstance(pasos, list) or not pasos or not all(
+                isinstance(paso, dict) and str(paso.get("texto", "")).strip()
+                for paso in pasos
+            ):
+                raise LearningModuleError(f"{owner} necesita sus pasos.")
+            terminos = lesson.get("terminos", [])
+            if not isinstance(terminos, list) or not all(
+                isinstance(item, dict)
+                and str(item.get("termino", "")).strip()
+                and str(item.get("definicion", "")).strip()
+                for item in terminos
+            ):
+                raise LearningModuleError(f"{owner} tiene un término incompleto.")
+            step["lesson"] = deepcopy(lesson)
 
     def _validate(self) -> None:
         if self._data.get("schema_version") != 1:

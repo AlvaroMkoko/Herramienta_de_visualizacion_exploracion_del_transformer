@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import Property, QObject, Signal, Slot
+from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot
 
 from core.rutas import dato
 from model.aprendizaje import LearningModuleCatalog, ModuleProgressRepository
+from model.aprendizaje import exportacion_resultados
 from model.aprendizaje.module_question_bank import ModuleQuestionBank
 from model.evaluacion.results_repository import primer_intento_vigente
 
@@ -33,7 +35,7 @@ class CourseController(QObject):
     # pero permite abrir cualquier módulo y etapa sin prerrequisitos (RN18).
     # Debe quedar en False con estudiantes: abrir el post-test sin pasar por el
     # recorrido invalida la comparación pre/post.
-    REVIEW_MODE_UNLOCK_ALL = False
+    REVIEW_MODE_UNLOCK_ALL = True
 
     # Ejecutar el forward no es practicar: el laboratorio cuenta como hecho
     # cuando el alumno cerró este número de ciclos predecir→probar→observar→
@@ -642,6 +644,28 @@ class CourseController(QObject):
         if module_id not in self._catalog.module_ids:
             return {}
         return self._build_results(module_id)
+
+    @Slot(str, str, str, result=str)
+    def exportarResultados(self, module_id: str, destino: str, apodo: str = "") -> str:
+        """Guarda el resumen ligero del módulo; devuelve la ruta o ``""``.
+
+        Es el respaldo si la red del aula falla y el archivo que se sube a la
+        encuesta de la página web (ver ``model.aprendizaje.exportacion_resultados``).
+        """
+        if module_id not in self._catalog.module_ids or not destino:
+            return ""
+        resultados = self._build_results(module_id)
+        if not resultados.get("pre") and not resultados.get("post"):
+            return ""
+        url = QUrl(destino)
+        ruta = Path(url.toLocalFile()) if url.isLocalFile() else Path(destino)
+        resumen = exportacion_resultados.resumen_modulo(
+            resultados, self._interaction_summary(module_id), apodo
+        )
+        try:
+            return str(exportacion_resultados.guardar(ruta, resumen))
+        except OSError:
+            return ""
 
     def _build_results(self, module_id: str) -> dict[str, Any]:
         pre = self._result(module_id, "pre")

@@ -83,6 +83,23 @@ ApplicationWindow {
 }
 """
 
+MODULE_MAP_LAYOUT_HOST = b"""\
+import QtQuick
+import QtQuick.Controls
+import "screens" as Screens
+
+ApplicationWindow {
+    width: 960
+    height: 700
+    visible: true
+    StackView { id: navigation; anchors.fill: parent }
+    Screens.ModuleMapScreen {
+        anchors.fill: parent
+        stackView: navigation
+    }
+}
+"""
+
 
 def _errors(component: QQmlComponent) -> str:
     return "\n".join(error.toString() for error in component.errors())
@@ -154,6 +171,75 @@ def test_ruta_modular_no_recorta_boton_del_laboratorio_con_escalado(qapp):
         assert card_bottom <= page_scroll.height() + 1
     assert max(button_tops) - min(button_tops) <= 1
     assert page_scroll.height() - max(card_bottoms) >= 10
+
+    window.deleteLater()
+    engine.deleteLater()
+
+
+def test_mapa_modular_reserva_espacio_para_numero_de_etapas(qapp):
+    engine = QQmlEngine()
+    view_model = MainViewModel()
+    engine.rootContext().setContextProperty("mainViewModel", view_model)
+    component = QQmlComponent(engine)
+    component.setData(
+        MODULE_MAP_LAYOUT_HOST,
+        QUrl.fromLocalFile(str(ROOT / "view" / "qml" / "ModuleMapLayoutHost.qml")),
+    )
+
+    assert component.status() != QQmlComponent.Status.Error, _errors(component)
+    window = component.create()
+    assert window is not None, _errors(component)
+
+    def assert_module_3_does_not_overlap():
+        screen = window.findChild(QQuickItem, "moduleMapScreen")
+        assert screen is not None
+        by_name = {
+            item.objectName(): item
+            for item in _visual_descendants(screen)
+            if item.objectName()
+        }
+        card = by_name.get("moduleMapCard_module_3")
+        description = by_name.get("moduleMapDescription_module_3")
+        stage_count = by_name.get("moduleMapStageCount_module_3")
+        progress = by_name.get("moduleMapProgress_module_3")
+        button = by_name.get("moduleMapButton_module_3")
+        assert all(
+            item is not None
+            for item in (card, description, stage_count, progress, button)
+        ), sorted(name for name in by_name if name.startswith("moduleMap"))
+
+        description_bottom = description.mapToItem(
+            card, QPointF(0, description.height())
+        ).y()
+        stage_top = stage_count.mapToItem(card, QPointF(0, 0)).y()
+        stage_bottom = stage_count.mapToItem(
+            card, QPointF(0, stage_count.height())
+        ).y()
+        progress_top = progress.mapToItem(card, QPointF(0, 0)).y()
+        progress_bottom = progress.mapToItem(
+            card, QPointF(0, progress.height())
+        ).y()
+        button_top = button.mapToItem(card, QPointF(0, 0)).y()
+        button_bottom = button.mapToItem(
+            card, QPointF(0, button.height())
+        ).y()
+
+        assert description_bottom <= stage_top + 1
+        assert stage_bottom <= progress_top + 1
+        assert progress_bottom <= button_top + 1
+        assert button_bottom <= card.height() + 1
+
+    for _ in range(5):
+        qapp.processEvents()
+    assert_module_3_does_not_overlap()
+
+    # También se comprueba la cuadrícula de cuatro columnas, donde cada tarjeta
+    # es más angosta y la descripción ocupa más renglones.
+    window.setProperty("width", 1280)
+    window.setProperty("height", 820)
+    for _ in range(5):
+        qapp.processEvents()
+    assert_module_3_does_not_overlap()
 
     window.deleteLater()
     engine.deleteLater()
