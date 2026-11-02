@@ -992,7 +992,8 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(
     assert bool(step_list.property("visible")) is False
     assert bool(advanced_controls.property("visible")) is False
     assert bool(detach_button.property("visible")) is False
-    assert bool(standard_practice_host.property("visible")) is True
+    # En «Esencial» la tarjeta sólo aparece al necesitarla: el estado vive en la barra fija.
+    assert bool(standard_practice_host.property("visible")) is False
     assert bool(advanced_practice_host.property("visible")) is False
     assert practice_card.parentItem().objectName() == (
         "moduleLaboratoryStandardPracticeHost"

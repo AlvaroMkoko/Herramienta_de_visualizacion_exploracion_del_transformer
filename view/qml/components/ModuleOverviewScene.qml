@@ -541,7 +541,7 @@ Item {
                                  : "")
                         color: Style.Theme.acento_fuerte
                         font.bold: true
-                        font.pixelSize: Math.max(8, 9 * root.sx)
+                        font.pixelSize: Math.max(10, 9 * root.sx)
                         wrapMode: Text.WordWrap
                     }
                 }
@@ -578,7 +578,7 @@ Item {
                             text: root.locationTitle
                             color: Style.Theme.texto_secundario_fuerte
                             font.bold: true
-                            font.pixelSize: Math.max(8, 9 * root.sx)
+                            font.pixelSize: Math.max(10, 9 * root.sx)
                             font.letterSpacing: 0.35
                             elide: Text.ElideRight
                         }
@@ -587,7 +587,7 @@ Item {
                             text: "Indicador informativo · no es un botón"
                             color: Style.Theme.texto_terciario
                             font.italic: true
-                            font.pixelSize: Math.max(8, 9 * root.sx)
+                            font.pixelSize: Math.max(10, 9 * root.sx)
                             elide: Text.ElideRight
                         }
                     }
@@ -639,7 +639,7 @@ Item {
                                         text: "ESTÁS AQUÍ"
                                         color: flowMoment.modelData.color
                                         font.bold: true
-                                        font.pixelSize: Math.max(7, 8 * root.sx)
+                                        font.pixelSize: Math.max(9, 8 * root.sx)
                                     }
                                     Text {
                                         anchors.left: parent.left
@@ -650,7 +650,7 @@ Item {
                                                ? flowMoment.modelData.color
                                                : Style.Theme.texto_terciario
                                         font.bold: flowMoment.current
-                                        font.pixelSize: Math.max(8, 9 * root.sx)
+                                        font.pixelSize: Math.max(10, 9 * root.sx)
                                         horizontalAlignment: Text.AlignHCenter
                                         elide: Text.ElideRight
                                     }
@@ -677,7 +677,7 @@ Item {
                     text: "PREGUNTA GUÍA · " + root.stageQuestion
                     color: Style.Theme.info_texto
                     font.bold: true
-                    font.pixelSize: Math.max(9, 10 * root.sx)
+                    font.pixelSize: Math.max(11, 10 * root.sx)
                     horizontalAlignment: Text.AlignHCenter
                     wrapMode: Text.WordWrap
                 }
@@ -689,7 +689,7 @@ Item {
                 text: "ENTRENAMIENTO · la señal vuelve por este recorrido para aprender"
                 color: Style.Theme.inferencia_transformacion
                 font.bold: true
-                font.pixelSize: Math.max(9, 10 * root.sx)
+                font.pixelSize: Math.max(11, 10 * root.sx)
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.WordWrap
             }
@@ -702,7 +702,7 @@ Item {
                       : "LEE DE IZQUIERDA A DERECHA · 1 qué entra → 2 qué pasa → 3 qué sale"
                 color: Style.Theme.texto_terciario
                 font.bold: true
-                font.pixelSize: Math.max(8, 9 * root.sx)
+                font.pixelSize: Math.max(10, 9 * root.sx)
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.WordWrap
             }
@@ -717,7 +717,7 @@ Item {
                           ? Style.Theme.inferencia_transformacion
                           : Style.Theme.inferencia_resultado)
                 font.bold: true
-                font.pixelSize: Math.max(9, 10 * root.sx)
+                font.pixelSize: Math.max(11, 10 * root.sx)
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.WordWrap
             }
@@ -784,14 +784,14 @@ Item {
                                 Layout.preferredHeight: 25 * root.sy
                                 radius: height / 2
                                 color: Style.Theme.inferencia_transformacion
-                                Text { anchors.centerIn: parent; text: "2"; color: Style.Theme.texto_sobre_color; font.bold: true; font.pixelSize: Math.max(9, 10 * root.sx) }
+                                Text { anchors.centerIn: parent; text: "2"; color: Style.Theme.texto_sobre_color; font.bold: true; font.pixelSize: Math.max(11, 10 * root.sx) }
                             }
                             Text {
                                 Layout.fillWidth: true
                                 text: "QUÉ PASA"
                                 color: Style.Theme.inferencia_transformacion
                                 font.bold: true
-                                font.pixelSize: Math.max(8, 9 * root.sx)
+                                font.pixelSize: Math.max(10, 9 * root.sx)
                                 font.letterSpacing: 0.4
                             }
                         }
@@ -829,7 +829,7 @@ Item {
                             text: String(root.stageDefinition.visualLabel || "")
                             color: Style.Theme.inferencia_transformacion
                             font.bold: true
-                            font.pixelSize: Math.max(8, 9 * root.sx)
+                            font.pixelSize: Math.max(10, 9 * root.sx)
                             wrapMode: Text.WordWrap
                             horizontalAlignment: Text.AlignHCenter
                         }
@@ -837,7 +837,7 @@ Item {
                             Layout.fillWidth: true
                             text: String(root.stageDefinition.actionDetail || "")
                             color: Style.Theme.texto_secundario_fuerte
-                            font.pixelSize: Math.max(8, 9 * root.sx)
+                            font.pixelSize: Math.max(10, 9 * root.sx)
                             wrapMode: Text.WordWrap
                             maximumLineCount: 2
                             elide: Text.ElideRight
@@ -893,7 +893,7 @@ Item {
                     text: "EN PALABRAS SIMPLES · " + root.stageTakeaway
                     color: root.learningStage ? Style.Theme.acento_texto : Style.Theme.exito_texto
                     font.bold: true
-                    font.pixelSize: Math.max(9, 10 * root.sx)
+                    font.pixelSize: Math.max(11, 10 * root.sx)
                     horizontalAlignment: Text.AlignHCenter
                     wrapMode: Text.WordWrap
                 }
@@ -1221,7 +1221,7 @@ Item {
                     text: cardContent.number
                     color: Style.Theme.texto_sobre_color
                     font.bold: true
-                    font.pixelSize: Math.max(9, 10 * cardContent.sx)
+                    font.pixelSize: Math.max(11, 10 * cardContent.sx)
                 }
             }
             Text {
@@ -1229,7 +1229,7 @@ Item {
                 text: cardContent.eyebrow
                 color: cardContent.accent
                 font.bold: true
-                font.pixelSize: Math.max(8, 9 * cardContent.sx)
+                font.pixelSize: Math.max(10, 9 * cardContent.sx)
                 font.letterSpacing: 0.4
             }
         }
@@ -1263,7 +1263,7 @@ Item {
                         text: itemChip.modelData.label
                         color: itemChip.modelData.ink
                         font.bold: true
-                        font.pixelSize: Math.max(8, 9 * cardContent.sx)
+                        font.pixelSize: Math.max(10, 9 * cardContent.sx)
                         horizontalAlignment: Text.AlignHCenter
                         elide: Text.ElideRight
                     }
@@ -1275,7 +1275,7 @@ Item {
             Layout.fillWidth: true
             text: cardContent.detail
             color: Style.Theme.texto_secundario_fuerte
-            font.pixelSize: Math.max(8, 9 * cardContent.sx)
+            font.pixelSize: Math.max(10, 9 * cardContent.sx)
             wrapMode: Text.WordWrap
             maximumLineCount: 3
             elide: Text.ElideRight

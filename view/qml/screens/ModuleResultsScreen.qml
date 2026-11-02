@@ -305,7 +305,12 @@ PagePrincipal {
                 Layout.preferredWidth: 230 * root.sx
                 Layout.preferredHeight: 46 * root.sy
                 text: "Ver todos los módulos"
-                onClicked: root.stackView.push("ModuleMapScreen.qml", { "stackView": root.stackView })
+                onClicked: inicioResultados.irAlInicio()
+            }
+            BotonInicio {
+                id: inicioResultados
+                visible: false
+                stackView: root.stackView
             }
             BotonPrincipal {
                 visible: root.moduleId !== "module_8"

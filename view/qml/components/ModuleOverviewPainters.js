@@ -7,7 +7,7 @@
 
 function txt(ctx, s, value, x, y, color, size, bold, maxWidth) {
     ctx.fillStyle = String(color)
-    ctx.font = (bold === false ? "" : "bold ") + Math.max(7, (size || 8) * s.sx) + "px sans-serif"
+    ctx.font = (bold === false ? "" : "bold ") + Math.max(9, (size || 8) * s.sx) + "px sans-serif"
     ctx.textAlign = "center"
     ctx.textBaseline = "middle"
     if (maxWidth !== undefined)

@@ -132,6 +132,21 @@ def _tamano_legible(numero_bytes: int) -> str:
     return f"{numero_bytes} B"
 
 
+def elegir_modelo_didactico(modelos: list[dict[str, Any]]) -> str:
+    """Modelo que abre el laboratorio sin preguntarle nada al alumno.
+
+    Un archivo con «didactico» en el nombre deja al equipo decidir cuál se usa en
+    clase; si no hay, el más ligero: carga rápido en cualquier equipo del aula.
+    """
+    candidatos = []
+    for modelo in modelos:
+        ruta = Path(str(modelo.get("ruta", "")))
+        if not modelo.get("compatible", True) or not ruta.is_file():
+            continue
+        candidatos.append(("didactico" not in ruta.name.lower(), ruta.stat().st_size, str(ruta)))
+    return min(candidatos)[2] if candidatos else ""
+
+
 class ModelLibraryController(QObject):
     """Gestiona importación, exportación, inspección y carga de modelos.
 

@@ -245,7 +245,8 @@ PagePrincipal {
                                     root.courseController.selectModule(moduleCard.modelData.id)
                                     root.stackView.push("ModuleScreen.qml", {
                                         "stackView": root.stackView,
-                                        "moduleId": moduleCard.modelData.id
+                                        "moduleId": moduleCard.modelData.id,
+                                        "firstUseGuidance": true
                                     })
                                 }
                             }

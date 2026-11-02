@@ -11,6 +11,8 @@ PagePrincipal {
     objectName: "moduleScreen"
 
     property string moduleId: "module_1"
+    // Sólo al entrar como alumno: las pruebas montan la pantalla sin guía ni modelo.
+    property bool firstUseGuidance: false
     readonly property var courseController: mainViewModel.courseController
     readonly property var moduleData: courseController.currentModule
     readonly property int moduleProgress: Number(moduleData.progress_percent || 0)
@@ -34,6 +36,8 @@ PagePrincipal {
         root.courseController.selectModule(root.moduleId)
         root.refreshStageStates()
         root.reviewData = root.courseController.spacedReview(root.moduleId) || ({})
+        if (root.firstUseGuidance)
+            moduleTour.startIfNew()
     }
 
     Connections {
@@ -73,6 +77,8 @@ PagePrincipal {
             properties.assessmentType = "pre"
         else if (stage.id === "posttest")
             properties.assessmentType = "post"
+        else if (stage.id === "laboratory" || stage.id === "guided")
+            properties.firstUseGuidance = root.firstUseGuidance
         root.stackView.push(stage.route, properties)
     }
 
@@ -114,6 +120,22 @@ PagePrincipal {
         case "posttest": return Style.Theme.formula_texto
         default: return Style.Theme.exito_texto
         }
+    }
+
+    GuidedTour {
+        id: moduleTour
+        tourId: "modulo"
+        s: Math.max(0.9, Math.min(1.1, root.sx))
+        scroller: pageScroll.contentItem
+        steps: [
+            { "title": "Bienvenida",
+              "text": "Antes de empezar, elige cómo prefieres ver la aplicación. Podrás cambiarlo, junto con el tamaño de letra, en el botón ⚙ de la esquina superior derecha.",
+              "preferences": true },
+            { "target": stageScroll, "title": "Cinco etapas, en orden",
+              "text": "Pre-test, recorrido guiado, laboratorio, post-test y resultados. Cada etapa se desbloquea al terminar la anterior; si una está bloqueada, su tarjeta dice qué falta." },
+            { "title": "Si te pierdes",
+              "text": "En las etapas siempre encontrarás «⌂ Inicio» para volver al mapa, y este botón «? Ver guía» para repetir esta explicación." }
+        ]
     }
 
     ScrollView {
@@ -170,6 +192,16 @@ PagePrincipal {
                         font.bold: true
                         font.letterSpacing: 0.8
                     }
+                }
+
+                BotonSecundario {
+                    objectName: "moduleGuideButton"
+                    Layout.preferredWidth: 110 * root.sx
+                    Layout.preferredHeight: 34 * root.sy
+                    sx: root.sx
+                    sy: root.sy
+                    text: "? Ver guía"
+                    onClicked: moduleTour.start()
                 }
 
                 // El extremo derecho queda libre para los controles globales

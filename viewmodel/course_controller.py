@@ -672,6 +672,12 @@ class CourseController(QObject):
             "advanced_mode": advanced_mode,
             "advanced_steps": advanced_steps,
             "advanced_required": advanced_required,
+            "advanced_visited_step_ids": [
+                str(value)
+                for value in self._advanced_paths(module_id)
+                .get(advanced_mode, {})
+                .get("visited_step_ids", [])
+            ],
             "advanced_completed": advanced_completed,
             "practice_ready": (
                 cycles >= self.REQUIRED_LAB_CYCLES or advanced_completed

@@ -267,6 +267,71 @@ def test_laboratorio_usa_modelo_guardado_y_vuelve_con_modelo_activo(entorno, qtb
     assert view_model.property("modeloListo") is True
 
 
+def test_cambiar_modelo_activo_repite_el_experimento_con_el_elegido(entorno, qtbot):
+    actual = entorno.biblioteca / "actual.tvismodel"
+    otro = entorno.biblioteca / "otro.tvismodel"
+    _guardar_modelo(actual)
+    _guardar_modelo(otro)
+    # El catálogo ordena por fecha: el otro modelo queda en la primera tarjeta.
+    os.utime(otro, (actual.stat().st_mtime + 60, actual.stat().st_mtime + 60))
+    window, view_model = entorno.montar()
+
+    navigation = _buscar(window, "laboratoryLibraryNavigation")
+    lab_controller = view_model.moduleLaboratoryController
+    biblioteca_modelos = view_model.modelLibraryController
+    biblioteca_modelos.cargarModelo(str(actual))
+    qtbot.waitUntil(lambda: lab_controller.property("modelReady") is True, timeout=15000)
+    _clic(_buscar(window, "moduleLaboratoryAnalyzeButton"))
+    qtbot.waitUntil(
+        lambda: lab_controller.property("result").get("module_id") == "module_3",
+        timeout=15000,
+    )
+
+    nombre = _buscar(window, "moduleLaboratoryActiveModelName")
+    assert "Modelo de laboratorio" in str(nombre.property("text"))
+    cambiar = _buscar(window, "moduleLaboratoryChangeModel")
+    assert cambiar.property("visible") is True
+
+    _clic(cambiar)
+    qtbot.waitUntil(lambda: navigation.property("depth") == 2, timeout=3000)
+    biblioteca = navigation.property("currentItem")
+    assert biblioteca.property("regresarAlLaboratorio") is True
+    usar_en_lab = _boton_de_tarjeta(qtbot, biblioteca)
+    qtbot.waitUntil(lambda: usar_en_lab.property("enabled") is True, timeout=3000)
+    _clic(usar_en_lab)
+
+    qtbot.waitUntil(
+        lambda: Path(biblioteca_modelos.property("modeloActivoRuta")).name == otro.name,
+        timeout=15000,
+    )
+    qtbot.waitUntil(lambda: navigation.property("depth") == 1, timeout=5000)
+    # Cambiar de modelo borra el análisis anterior: se repite sin pedir otro clic.
+    qtbot.waitUntil(
+        lambda: lab_controller.property("result").get("module_id") == "module_3",
+        timeout=15000,
+    )
+    assert _buscar(window, "moduleLaboratoryScreen").property("changingModel") is False
+
+
+def test_sin_modelos_guardados_no_se_ofrece_cambiar_el_activo(entorno):
+    window, view_model = entorno.montar()
+    config = ConfiguracionTransformer(
+        tamano_vocabulario=16,
+        dimension_modelo=8,
+        num_cabezas=2,
+        num_capas=1,
+        dimension_ff=16,
+        longitud_maxima_secuencia=8,
+        dropout=0.0,
+        id_token_relleno=13,
+    )
+    view_model.moduleLaboratoryController.set_model(Transformer(config), TokenizerFalso())
+
+    nombre = _buscar(window, "moduleLaboratoryActiveModelName")
+    assert str(nombre.property("text")) == "Modelo activo: sin guardar"
+    assert _buscar(window, "moduleLaboratoryChangeModel").property("visible") is False
+
+
 def test_laboratorio_sin_modelos_guardados_no_ofrece_cargarlos(entorno):
     window, _view_model = entorno.montar()
 

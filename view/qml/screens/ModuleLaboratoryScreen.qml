@@ -14,6 +14,17 @@ PagePrincipal {
     objectName: "moduleLaboratoryScreen"
 
     property string moduleId: "module_1"
+    // Al entrar como alumno: prepara el modelo, ejecuta y muestra la guía. Las
+    // pruebas y las vueltas desde la biblioteca montan la pantalla sin esto.
+    property bool firstUseGuidance: false
+    property bool phraseEditorOpen: false
+    property bool exampleOpen: false
+    // El modelo elegido en la biblioteca reemplaza al activo y borra el análisis:
+    // al llegar, el experimento se repite con él.
+    property bool changingModel: false
+    readonly property bool hasAnalysis: root.analysis.module_id === root.moduleId
+    readonly property bool preparingModel: typeof mainViewModel !== "undefined" && mainViewModel
+                                           ? mainViewModel.preparandoModeloLaboratorio : false
     readonly property var courseController: mainViewModel.courseController
     readonly property var laboratoryController: mainViewModel.moduleLaboratoryController
     readonly property var modelLibraryController: mainViewModel.modelLibraryController
@@ -39,6 +50,8 @@ PagePrincipal {
     readonly property real uiScale: Math.max(0.82, Math.min(1.08,
                                                            Math.min(root.sx,
                                                                     root.sy)))
+                                    * Style.Theme.escalaTexto
+    readonly property var nextAction: root.buildNextAction()
     // Tres modos evitan el salto brusco de tres columnas a una sola. En el
     // modo medio, los pasos ocupan la primera fila y la visualización conserva
     // todo el ancho. La explicación se mantiene en su propia ventana.
@@ -422,6 +435,129 @@ PagePrincipal {
                     root.advancedStepIds()) || ({})
         if (updated.advanced_required !== undefined)
             root.labProgress = updated
+    }
+
+    // Qué le toca hacer al alumno. Se muestra siempre arriba: en la prueba de
+    // usabilidad, no saber qué seguía fue la queja más ligada a un SUS bajo.
+    function buildNextAction() {
+        var progress = root.labProgress || ({})
+        if (!root.laboratoryController.modelReady) {
+            if (root.preparingModel)
+                return { "text": "Preparando un modelo de ejemplo. No tienes que hacer nada." }
+            return { "text": "Falta un modelo: créalo o usa uno guardado con los botones de abajo." }
+        }
+        if (!root.hasAnalysis)
+            return { "text": "Presiona «Ejecutar experimento» para empezar.",
+                     "action": "run", "label": "Ejecutar experimento" }
+        if (progress.completed)
+            return { "text": "Práctica completa. Ya puedes presentar el post-test.",
+                     "action": "posttest", "label": "Ir al post-test" }
+        if (progress.practice_ready)
+            return { "text": "Ya practicaste lo necesario. Responde la pregunta del módulo para desbloquear el post-test.",
+                     "action": "closing", "label": "Ir a la pregunta" }
+        if (root.advancedMode)
+            return { "text": "Recorre todas las operaciones. Al terminar, se abrirá la pregunta del módulo.",
+                     "action": "next", "label": "Siguiente operación" }
+        var operation = String(root.currentStep && root.currentStep.title || "esta operación")
+        switch (root.discoveryStage) {
+        case 0:
+            return { "text": "Reto de «" + operation + "»: elige qué crees que pasará. Esta predicción no se califica.",
+                     "action": root.workspaceSection === 2 ? "" : "challenge", "label": "Abrir el reto" }
+        case 1:
+            return { "text": "Prueba el cambio que te sugiere el reto.",
+                     "action": root.workspaceSection === 2 ? "" : "challenge", "label": "Abrir el reto" }
+        case 2:
+            return { "text": "Observa la animación y, cuando termines, presiona «Ya observé el cambio»." }
+        case 3:
+            return { "text": "Elige la explicación correcta. Puedes intentarlo varias veces: el reto cuenta al acertar.",
+                     "action": root.workspaceSection === 2 ? "" : "challenge", "label": "Abrir el reto" }
+        default:
+            return { "text": "Reto contado. Lee la explicación y pasa a otra operación.",
+                     "action": "next", "label": "Siguiente operación" }
+        }
+    }
+
+    function runNextAction() {
+        switch (root.nextAction.action) {
+        case "run":
+            root.runAnalysis()
+            break
+        case "challenge":
+            root.workspaceSection = 2
+            break
+        case "next":
+            root.nextStep()
+            break
+        case "closing":
+            pageScroll.contentItem.contentY = Math.max(
+                        0, practiceCard.mapToItem(pageScroll.contentItem, 0, 0).y
+                           - 16 * root.uiScale)
+            break
+        case "posttest":
+            root.stackView.push("EvaluationIntroScreen.qml", {
+                                    "stackView": root.stackView,
+                                    "moduleId": root.moduleId,
+                                    "assessmentType": "post"
+                                })
+            break
+        }
+    }
+
+    function stepTitles(identifiers, wanted) {
+        var titles = []
+        for (var index = 0; index < root.steps.length; ++index) {
+            var done = identifiers.indexOf(String(root.steps[index].id)) !== -1
+            if (done === wanted)
+                titles.push(String(root.steps[index].title))
+        }
+        return titles.join(", ")
+    }
+
+    // Decir sólo «2 de 3» no permitía saber qué faltaba.
+    function practiceDetailText() {
+        var progress = root.labProgress || ({})
+        if (progress.completed || !root.hasAnalysis)
+            return ""
+        var identifiers = root.advancedMode ? (progress.advanced_visited_step_ids || [])
+                                            : (progress.cycle_step_ids || [])
+        var done = root.stepTitles(identifiers, true)
+        var pending = root.stepTitles(identifiers, false)
+        var head = root.advancedMode
+                ? "Operaciones: " + Number(progress.advanced_steps || 0) + " de " + root.steps.length
+                : "Retos: " + Number(progress.cycles || 0) + " de " + Number(progress.required_cycles || 3)
+        return head + (done ? "  ·  Hechas: " + done : "")
+                + (pending && !progress.practice_ready ? "  ·  Pendientes: " + pending : "")
+    }
+
+    function activeModelName() {
+        var models = root.modelLibraryController
+                     ? (root.modelLibraryController.modelos || []) : []
+        for (var i = 0; i < models.length; ++i) {
+            if (models[i] && models[i].activo)
+                return String(models[i].nombre)
+        }
+        return "sin guardar"
+    }
+
+    function openModelLibrary() {
+        root.stackView.push(
+            "ModelLibraryScreen.qml", {
+                "stackView": root.stackView,
+                "regresarAlLaboratorio": true,
+                "moduloRetornoLaboratorio": root.moduleId,
+                "modoRetornoLaboratorio": root.mode
+            })
+    }
+
+    function beginGuidance() {
+        if (root.laboratoryController.modelReady) {
+            if (!root.hasAnalysis)
+                Qt.callLater(root.runAnalysis)
+            else
+                labTour.startIfNew()
+        } else if (typeof mainViewModel !== "undefined" && mainViewModel) {
+            mainViewModel.prepararModeloLaboratorio()
+        }
     }
 
     function practiceStatusText() {
@@ -859,6 +995,8 @@ PagePrincipal {
         if (root.modelLibraryController)
             root.modelLibraryController.refrescar()
         root.refreshLabProgress()
+        if (root.firstUseGuidance)
+            root.beginGuidance()
     }
     onCurrentStepChanged: if (root.advancedMode) Qt.callLater(root.recordAdvancedVisit)
     onAdvancedModeChanged: if (root.advancedMode) Qt.callLater(root.recordAdvancedVisit)
@@ -871,9 +1009,22 @@ PagePrincipal {
             root.pendingStepRestore = false
             root.errorMessage = message
         }
+        function onModelChanged() {
+            if (!root.laboratoryController.modelReady)
+                return
+            if (root.changingModel) {
+                root.changingModel = false
+                if (inputText.text.trim().length > 0)
+                    Qt.callLater(root.runAnalysis)
+            } else if (root.firstUseGuidance) {
+                root.beginGuidance()
+            }
+        }
         function onAnalysisCompleted(completedModuleId) {
             if (completedModuleId !== root.moduleId)
                 return
+            if (root.firstUseGuidance)
+                Qt.callLater(labTour.startIfNew)
             if (root.pendingStepRestore)
                 Qt.callLater(root.restorePendingStep)
             else {
@@ -883,9 +1034,84 @@ PagePrincipal {
         }
     }
 
+    GuidedTour {
+        id: labTour
+        tourId: "laboratorio"
+        s: root.uiScale
+        scroller: pageScroll.contentItem
+        steps: [
+            { "target": nextStepBar, "title": "Aquí siempre verás qué sigue",
+              "text": "Esta barra te dice qué hacer ahora y cuánto te falta. Si dudas, míralo aquí primero." },
+            { "target": controlCard, "title": "El modelo ya está listo",
+              "text": "Trabajas con una frase de ejemplo y un modelo ya cargado. Para probar otra frase, usa «Cambiar la frase»; para usar otro modelo guardado, «Cambiar modelo»." },
+            { "target": visualPane, "title": "Tres vistas de cada operación",
+              "text": "«Vista general» explica la idea, «Animación detallada» muestra el cálculo con números y «Reto guiado» es donde practicas." },
+            { "title": "Cómo funciona un reto",
+              "text": "Predices (no se califica), pruebas un cambio, observas y eliges la explicación. El reto cuenta cuando aciertas la explicación; puedes intentarlo varias veces. Con 3 retos en operaciones distintas, respondes la pregunta del módulo y se abre el post-test." }
+        ]
+    }
+
+    Rectangle {
+        id: nextStepBar
+        objectName: "moduleLaboratoryNextStepBar"
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        height: nextStepRow.implicitHeight + 14 * root.uiScale
+        color: Style.Theme.info_fondo
+        border.color: Style.Theme.inferencia_estructura
+        z: 2
+
+        RowLayout {
+            id: nextStepRow
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.leftMargin: 24 * root.uiScale
+            // Deja libre la esquina del cromo global (ver la cabecera, más abajo).
+            anchors.rightMargin: 208 * root.uiScale
+            spacing: 12 * root.uiScale
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
+                spacing: 2 * root.uiScale
+                Text {
+                    objectName: "moduleLaboratoryNextStepText"
+                    Layout.fillWidth: true
+                    text: "QUÉ SIGUE  ·  " + String(root.nextAction.text || "")
+                    color: Style.Theme.info_texto
+                    font.bold: true
+                    font.pixelSize: Math.max(12, 13 * root.uiScale)
+                    wrapMode: Text.WordWrap
+                }
+                Text {
+                    objectName: "moduleLaboratoryPracticeDetail"
+                    Layout.fillWidth: true
+                    visible: text.length > 0
+                    text: root.practiceDetailText()
+                    color: Style.Theme.texto_primario
+                    font.pixelSize: Math.max(11, 11 * root.uiScale)
+                    wrapMode: Text.WordWrap
+                }
+            }
+            BotonPrincipal {
+                objectName: "moduleLaboratoryNextStepAction"
+                visible: String(root.nextAction.action || "").length > 0
+                Layout.preferredWidth: 170 * root.uiScale
+                Layout.preferredHeight: 34 * root.uiScale
+                text: String(root.nextAction.label || "")
+                onClicked: root.runNextAction()
+            }
+        }
+    }
+
     ScrollView {
         id: pageScroll
-        anchors.fill: parent
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.top: nextStepBar.bottom
         clip: true
         contentWidth: availableWidth
         ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
@@ -912,6 +1138,22 @@ PagePrincipal {
                     Layout.preferredHeight: 40 * root.uiScale
                     text: "← Módulo"
                     onClicked: root.stackView.pop()
+                }
+                BotonInicio {
+                    Layout.preferredWidth: 100 * root.uiScale
+                    Layout.preferredHeight: 40 * root.uiScale
+                    sx: root.uiScale
+                    sy: root.uiScale
+                    stackView: root.stackView
+                }
+                BotonSecundario {
+                    objectName: "moduleLaboratoryGuideButton"
+                    Layout.preferredWidth: 100 * root.uiScale
+                    Layout.preferredHeight: 40 * root.uiScale
+                    sx: root.uiScale
+                    sy: root.uiScale
+                    text: "? Ver guía"
+                    onClicked: labTour.start()
                 }
                 ColumnLayout {
                     Layout.fillWidth: true
@@ -957,7 +1199,8 @@ PagePrincipal {
                     Text {
                         anchors.centerIn: parent
                         text: root.laboratoryController.modelReady
-                              ? "● Modelo activo" : "○ Falta un modelo"
+                              ? "● Modelo activo"
+                              : (root.preparingModel ? "◌ Preparando modelo" : "○ Falta un modelo")
                         color: root.laboratoryController.modelReady
                                ? Style.Theme.exito_texto : Style.Theme.aviso_texto
                         font.bold: true
@@ -967,6 +1210,7 @@ PagePrincipal {
             }
 
             RectanglePrincipal {
+                id: controlCard
                 Layout.fillWidth: true
                 Layout.leftMargin: 24 * root.uiScale
                 Layout.rightMargin: 24 * root.uiScale
@@ -1071,7 +1315,56 @@ PagePrincipal {
                         }
                     }
 
+                    // En «Esencial», una vez ejecutado, la frase y el ejemplo quedan a un
+                    // clic para no competir con el reto. El modelo se elige solo, pero
+                    // en cualquier nivel se puede ver cuál es y cambiarlo.
+                    RowLayout {
+                        objectName: "moduleLaboratoryTools"
+                        visible: root.laboratoryController.modelReady
+                        Layout.fillWidth: true
+                        spacing: 8 * root.uiScale
+                        BotonSecundario {
+                            objectName: "moduleLaboratoryChangePhrase"
+                            visible: !root.advancedMode && root.hasAnalysis
+                            sx: root.uiScale; sy: root.uiScale
+                            text: root.phraseEditorOpen ? "Ocultar la frase" : "Cambiar la frase"
+                            onClicked: root.phraseEditorOpen = !root.phraseEditorOpen
+                        }
+                        BotonSecundario {
+                            objectName: "moduleLaboratoryToggleExample"
+                            visible: !root.advancedMode && root.hasAnalysis
+                            sx: root.uiScale; sy: root.uiScale
+                            text: root.exampleOpen ? "Ocultar el ejemplo del recorrido"
+                                                   : "Ver el ejemplo del recorrido"
+                            onClicked: root.exampleOpen = !root.exampleOpen
+                        }
+                        Text {
+                            objectName: "moduleLaboratoryActiveModelName"
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 0
+                            text: "Modelo activo: " + root.activeModelName()
+                            color: Style.Theme.texto_secundario_fuerte
+                            font.pixelSize: Math.max(11, 11 * root.uiScale)
+                            horizontalAlignment: Text.AlignRight
+                            elide: Text.ElideMiddle
+                        }
+                        BotonSecundario {
+                            objectName: "moduleLaboratoryChangeModel"
+                            // Sin modelos guardados la biblioteca estaría vacía:
+                            // se oculta en vez de llevar a una pantalla sin salida.
+                            visible: root.hasSavedModels
+                            sx: root.uiScale; sy: root.uiScale
+                            text: "Cambiar modelo"
+                            onClicked: {
+                                root.changingModel = true
+                                root.openModelLibrary()
+                            }
+                        }
+                    }
+
                     GridLayout {
+                        objectName: "moduleLaboratoryPhraseEditor"
+                        visible: root.advancedMode || root.phraseEditorOpen || !root.hasAnalysis
                         Layout.fillWidth: true
                         // Una columna por control visible: los ocultos no ocupan
                         // celda, y con una de menos el último botón baja de fila.
@@ -1108,7 +1401,7 @@ PagePrincipal {
                         }
                         BotonPrincipal {
                             objectName: "moduleLaboratoryCreateModelButton"
-                            visible: !root.laboratoryController.modelReady
+                            visible: !root.laboratoryController.modelReady && !root.preparingModel
                             Layout.fillWidth: root.narrowControls
                             Layout.preferredWidth: root.narrowControls
                                                    ? 0 : 135 * root.uiScale
@@ -1127,19 +1420,14 @@ PagePrincipal {
                             // Sin modelos guardados la biblioteca estaría vacía:
                             // se oculta en vez de llevar a una pantalla sin salida.
                             visible: !root.laboratoryController.modelReady
+                                     && !root.preparingModel
                                      && root.hasSavedModels
                             Layout.fillWidth: root.narrowControls
                             Layout.preferredWidth: root.narrowControls
                                                    ? 0 : 185 * root.uiScale
                             Layout.preferredHeight: 42 * root.uiScale
                             text: "Usar modelo guardado"
-                            onClicked: root.stackView.push(
-                                "ModelLibraryScreen.qml", {
-                                    "stackView": root.stackView,
-                                    "regresarAlLaboratorio": true,
-                                    "moduloRetornoLaboratorio": root.moduleId,
-                                    "modoRetornoLaboratorio": root.mode
-                                })
+                            onClicked: root.openModelLibrary()
                         }
                     }
 
@@ -1363,6 +1651,7 @@ PagePrincipal {
                 visible: !root.advancedMode
                          && root.analysis.module_id === root.moduleId
                          && root.moduleData.anchor !== undefined
+                         && (root.exampleOpen || closingCheck.visible)
                 Layout.fillWidth: true
                 Layout.leftMargin: 24 * root.uiScale
                 Layout.rightMargin: 24 * root.uiScale
@@ -1395,6 +1684,7 @@ PagePrincipal {
                         spacing: 8 * root.uiScale
                         Text {
                             objectName: "moduleLaboratoryPracticeStatus"
+                            visible: root.advancedMode
                             Layout.fillWidth: true
                             text: root.practiceStatusText()
                             color: root.labProgress.completed ? Style.Theme.exito_texto : Style.Theme.acento_fuerte
@@ -1406,6 +1696,7 @@ PagePrincipal {
 
                     Text {
                         objectName: "moduleLaboratoryAnchorExample"
+                        visible: root.advancedMode || root.exampleOpen
                         Layout.fillWidth: true
                         text: "EJEMPLO DEL RECORRIDO  ·  " + String((root.moduleData.anchor || {}).example || "")
                               + "  Compáralo con los tensores reales de tu frase."
@@ -1666,6 +1957,7 @@ PagePrincipal {
                 }
 
                 RectanglePrincipal {
+                    id: visualPane
                     objectName: "moduleLaboratoryVisualPane"
                     Layout.fillWidth: true
                     Layout.minimumWidth: 0
