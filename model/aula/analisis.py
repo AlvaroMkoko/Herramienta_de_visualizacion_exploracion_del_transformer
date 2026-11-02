@@ -42,7 +42,7 @@ def _primero(resultados: Iterable[dict[str, Any]], modulo_id: str, tipo: str) ->
     # instrumento vigente (o el primero que haya, que no se compara).
     return primer_intento_vigente(
         _intentos(resultados, modulo_id, tipo),
-        ModuleQuestionBank.VERSION_PREGUNTAS,
+        ModuleQuestionBank.version_de_modulo(modulo_id),
         _version,
     )
 
@@ -54,7 +54,7 @@ def _primero_vigente(resultados: Iterable[dict[str, Any]], modulo_id: str, tipo:
         [
             resultado
             for resultado in _intentos(resultados, modulo_id, tipo)
-            if _version(resultado) == ModuleQuestionBank.VERSION_PREGUNTAS
+            if _version(resultado) == ModuleQuestionBank.version_de_modulo(modulo_id)
         ]
     )
 

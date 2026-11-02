@@ -146,9 +146,10 @@ Reglas que dependen de esta alineación (todas en `CourseController`):
   laboratorio del módulo *n − 1* (no reactivos del test). Cuenta el primer
   intento (`retention`).
 
-`INSTRUMENT_VERSION` del banco modular pasó a **11**: los resultados de la
-versión 10 no son comparables con los nuevos y `_build_results` ya los separa
-por versión. Un catálogo sin `alineacion.json` junto a él conserva el
+La versión del banco modular (`ModuleQuestionBank.VERSION_PREGUNTAS`) va en
+**16**; el porqué de cada salto está en el comentario junto a la constante.
+Resultados de versiones distintas no son comparables y `_build_results` ya los
+separa por versión. Un catálogo sin `alineacion.json` junto a él conserva el
 comportamiento anterior (lo usan algunas pruebas).
 
 El panel del aula (`model/aula/analisis.py`) añade `item_analysis`: por par
@@ -432,6 +433,14 @@ torch**), `constants.py` (rangos que
 están libres de Qt y de torch. `logger.py` está vacío (ver *Archivos vacíos o
 sin uso*).
 
+## Rueda del ratón entre áreas anidadas
+
+`ScrollView` hereda de `Control`, que acepta la rueda aunque su `Flickable` esté en
+el tope, y `wheelEnabled: false` también apaga su desplazamiento. Por eso `main.py`
+instala `viewmodel/encadenador_rueda.py` en cada ventana: al terminar un gesto en el
+tope de un área, el siguiente mueve al área que la contiene, como en un navegador.
+Un `ScrollView` nuevo no necesita nada especial.
+
 ## Scripts de línea de comandos
 - `main.py` — punto de entrada de la aplicación.
 - `entrenar.py` — entrenamiento sin interfaz, con todos los formatos de dataset.
@@ -461,6 +470,9 @@ Uso, desde la raíz: `python tools/filtrar_tatoeba.py <.en> <.es> data/datasets_
 Es la excepción a *Toda ruta de escritura pasa por `core.rutas`*: escribe solo
 en el directorio que recibe por argumento, a mano, nunca desde la aplicación ni
 desde las pruebas. Regenerar cambia la muestra: hay que volver a leerla.
+
+`tools/generar_preguntas_modulo.py` escribe el documento de preguntas y respuestas de
+los módulos 1, 2 y 4–8 a partir del banco real. Córrelo después de cambiar sus textos.
 
 ## Empaquetado (ejecutable del laboratorio)
 

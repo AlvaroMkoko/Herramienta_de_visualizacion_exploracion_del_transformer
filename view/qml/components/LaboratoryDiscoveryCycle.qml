@@ -38,11 +38,9 @@ Item {
     signal explanationChecked()
     signal explanationRequested()
 
-    // El estado interno conserva experimento y feedback, pero la persona ve un
-    // flujo corto y estable: predecir, observar y contestar.
-    readonly property var stageLabels: ["Predecir", "Observar", "Contestar"]
-    readonly property int flowStage: root.stage === 0 ? 0
-                                     : (root.stage <= 2 ? 1 : 2)
+    readonly property var stageLabels: [
+        "Predecir", "Probar", "Observar", "Explicar", "Feedback"
+    ]
     readonly property bool predictionIsCorrect: selectedPrediction === correctPrediction
     readonly property bool explanationIsCorrect: selectedExplanation === correctExplanation
 
@@ -97,7 +95,7 @@ Item {
                     Text {
                         id: stageCounter
                         anchors.centerIn: parent
-                        text: (root.flowStage + 1) + " / 3"
+                        text: (Math.min(root.stage, 4) + 1) + " / 5"
                         color: Style.Theme.acento_fuerte
                         font.bold: true
                         font.pixelSize: Math.max(10, 11 * root.sx)
@@ -119,22 +117,22 @@ Item {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 29 * root.sy
                         radius: height / 2
-                        color: stageChip.index === root.flowStage
+                        color: stageChip.index === root.stage
                                ? Style.Theme.acento
-                               : (stageChip.index < root.flowStage
+                               : (stageChip.index < root.stage
                                   ? Style.Theme.acento_fondo : Style.Theme.chip_fondo)
-                        border.color: stageChip.index <= root.flowStage
+                        border.color: stageChip.index <= root.stage
                                       ? Style.Theme.acento : Style.Theme.chip_borde
-                        opacity: stageChip.index <= root.flowStage ? 1 : 0.62
+                        opacity: stageChip.index <= root.stage ? 1 : 0.62
 
                         Text {
                             anchors.centerIn: parent
                             width: parent.width - 8 * root.sx
                             text: (stageChip.index + 1) + " · " + stageChip.modelData
-                            color: stageChip.index === root.flowStage
+                            color: stageChip.index === root.stage
                                    ? Style.Theme.texto_sobre_acento
                                    : Style.Theme.texto_secundario_fuerte
-                            font.bold: stageChip.index === root.flowStage
+                            font.bold: stageChip.index === root.stage
                             font.pixelSize: Math.max(9, 10 * root.sx)
                             horizontalAlignment: Text.AlignHCenter
                             elide: Text.ElideRight
@@ -208,8 +206,8 @@ Item {
                 StageHeading {
                     Layout.fillWidth: true
                     number: "2"
-                    title: "Ejecuta y observa el cambio"
-                    subtitle: root.experimentTitle + " · " + root.experimentSubtitle
+                    title: root.experimentTitle
+                    subtitle: root.experimentSubtitle
                 }
 
                 InfoCard {
@@ -236,7 +234,7 @@ Item {
 
                 StageHeading {
                     Layout.fillWidth: true
-                    number: "2"
+                    number: "3"
                     title: "Observa la animación"
                     subtitle: "Busca la relación entre la entrada, la operación y la salida."
                 }
@@ -276,8 +274,8 @@ Item {
 
                 StageHeading {
                     Layout.fillWidth: true
-                    number: "3"
-                    title: "Contesta qué ocurrió"
+                    number: "4"
+                    title: "Explica lo que ocurrió"
                     subtitle: "Elige la explicación que corresponde a esta operación, no solo una frase plausible."
                 }
 
@@ -319,7 +317,7 @@ Item {
                     objectName: "laboratoryDiscoveryCheckExplanation"
                     Layout.fillWidth: true
                     Layout.preferredHeight: 42 * root.sy
-                    text: "Comprobar respuesta"
+                    text: "Comprobar explicación"
                     enabled: root.selectedExplanation >= 0
                     opacity: enabled ? 1 : 0.45
                     onClicked: root.explanationChecked()
@@ -334,9 +332,9 @@ Item {
 
                 StageHeading {
                     Layout.fillWidth: true
-                    number: "✓"
-                    title: "Operación completada"
-                    subtitle: "Avanzarás automáticamente a la siguiente operación."
+                    number: "5"
+                    title: "Retroalimentación"
+                    subtitle: "Compara tu predicción inicial con el resultado que acabas de observar."
                 }
 
                 InfoCard {
@@ -381,7 +379,7 @@ Item {
                     objectName: "laboratoryDiscoveryShowExplanation"
                     Layout.fillWidth: true
                     Layout.preferredHeight: 44 * root.sy
-                    text: "Continuar ahora  →"
+                    text: "Ver fórmula y explicación completa  →"
                     onClicked: root.explanationRequested()
                 }
             }

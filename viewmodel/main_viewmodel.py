@@ -29,7 +29,7 @@ from .course_controller import CourseController
 from .evaluation_controller import EvaluationController
 from .inference_controller import InferenceController
 from .learning_controller import LearningController
-from .model_library_controller import ModelLibraryController
+from .model_library_controller import ModelLibraryController, elegir_modelo_didactico
 from .module_evaluation_controller import ModuleEvaluationController
 from .module_laboratory_controller import ModuleLaboratoryController
 from .progress_controller import ProgressController
@@ -76,6 +76,7 @@ class MainViewModel(QObject):
     trainingControllerCambio = Signal()
     inferenceControllerCambio = Signal()
     modeloListoCambio = Signal()
+    modeloLaboratorioCambio = Signal()
     modeloActualInfoCambio = Signal()
     errorDataset = Signal(str)
     datasetListoParaEntrenar = Signal(int)
@@ -157,6 +158,13 @@ class MainViewModel(QObject):
         self._temporizador_retiro.setInterval(50)
         self._temporizador_retiro.timeout.connect(self._intentar_finalizar_retiro)
 
+        self._fase_modelo_laboratorio = ""
+        self._error_modelo_laboratorio = ""
+        self.modeloListoCambio.connect(self._modelo_laboratorio_listo)
+        self._model_library_controller.error.connect(self._fallo_carga_modelo_laboratorio)
+        self._setup_controller.error_configuracion.connect(
+            self._fallo_creacion_modelo_laboratorio
+        )
         self._setup_controller.modelo_creado.connect(self._al_crear_modelo)
         self._model_library_controller.modelo_cargado.connect(self._al_cargar_modelo)
         self._modelo_movido_a_dispositivo.connect(self._al_mover_modelo)
@@ -245,6 +253,54 @@ class MainViewModel(QObject):
     @Property(bool, notify=modeloListoCambio)
     def modeloListo(self) -> bool:
         return self._training_controller is not None
+
+    @Property(bool, notify=modeloLaboratorioCambio)
+    def preparandoModeloLaboratorio(self) -> bool:
+        return bool(self._fase_modelo_laboratorio)
+
+    @Property(str, notify=modeloLaboratorioCambio)
+    def errorModeloLaboratorio(self) -> str:
+        return self._error_modelo_laboratorio
+
+    @Slot()
+    def prepararModeloLaboratorio(self) -> None:
+        """Deja un modelo listo sin pedirle al alumno que decida cuál.
+
+        Elegir entre crear y cargar un modelo era la primera barrera de la prueba de
+        usabilidad, antes de saber siquiera qué es un modelo. Primero se usa uno
+        guardado; si no hay ninguno o falla, se crea el de la configuración mínima.
+        """
+        if self.modeloListo or self._fase_modelo_laboratorio:
+            return
+        self._error_modelo_laboratorio = ""
+        ruta = elegir_modelo_didactico(self._model_library_controller.obtenerModelos())
+        if ruta:
+            self._fase_modelo_laboratorio = "biblioteca"
+            self.modeloLaboratorioCambio.emit()
+            self._model_library_controller.cargarModelo(ruta)
+        else:
+            self._crear_modelo_laboratorio()
+
+    def _crear_modelo_laboratorio(self) -> None:
+        self._fase_modelo_laboratorio = "creacion"
+        self.modeloLaboratorioCambio.emit()
+        self._setup_controller.aplicarConfiguracionPredefinida("minima")
+        self._setup_controller.crear_modelo_async()
+
+    def _modelo_laboratorio_listo(self) -> None:
+        if self.modeloListo and self._fase_modelo_laboratorio:
+            self._fase_modelo_laboratorio = ""
+            self.modeloLaboratorioCambio.emit()
+
+    def _fallo_carga_modelo_laboratorio(self, _mensaje: str) -> None:
+        if self._fase_modelo_laboratorio == "biblioteca":
+            self._crear_modelo_laboratorio()
+
+    def _fallo_creacion_modelo_laboratorio(self, mensaje: str) -> None:
+        if self._fase_modelo_laboratorio == "creacion":
+            self._fase_modelo_laboratorio = ""
+            self._error_modelo_laboratorio = mensaje
+            self.modeloLaboratorioCambio.emit()
 
     @Property("QVariantMap", notify=modeloActualInfoCambio)
     def modeloActualInfo(self) -> dict:

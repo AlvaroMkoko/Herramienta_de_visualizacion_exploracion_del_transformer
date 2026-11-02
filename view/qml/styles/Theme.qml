@@ -19,6 +19,7 @@ QtObject {
         category: "apariencia"
         property alias modoOscuro: theme.modoOscuro
         property alias movimientoReducido: theme.movimientoReducido
+        property alias escalaTexto: theme.escalaTexto
     }
 
     function alternarModo() { modoOscuro = !modoOscuro }
@@ -31,13 +32,13 @@ QtObject {
 
     // ========= Paletas =========
     readonly property var paletaClara: ({
-        "fondo":             "#fffeff",
+        "fondo":             "#f7f5f9",
         "fondo_gradiente":   "#e7d9f0",
         "boton":             "#f3eff5",
         "boton_gradiente":   "#dcc3ea",
         "boton_presionado":  "#d9cae2",
         "background":        "#F8FAFC",
-        "surface":           "#FFFFFF",
+        "surface":           "#FDFCFE",
         "texto_primario":    "#111827",
         "texto_secundario":  "#6B7280",
         "texto_secundario_fuerte":"#334155",
@@ -374,6 +375,10 @@ QtObject {
     // sensibles al movimiento; las de estado (hover, foco) se conservan
     // porque comunican interacción.
     property bool movimientoReducido: false
+    // Multiplica la escala de las pantallas de lectura: laboratorio y recorrido.
+    property real escalaTexto: 1
+    // Velo de lo que queda detrás de un modal o de la guía de primer uso.
+    readonly property color velo: "#990F172A"
     readonly property int duracionCorta: 120     // hover, presionado, foco
     readonly property int duracionMedia: 240     // cambios de estado
     readonly property int duracionEntrada: 320   // aparición de bloques

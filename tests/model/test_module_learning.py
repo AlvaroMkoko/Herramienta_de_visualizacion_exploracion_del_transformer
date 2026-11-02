@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from difflib import SequenceMatcher
+import hashlib
 import json
 import random
 import re
 import unicodedata
+
+import pytest
 
 from core.rutas import recurso
 from model.aprendizaje import LearningModuleCatalog, ModuleQuestionBank
@@ -53,6 +56,18 @@ def test_catalogo_declara_ocho_modulos_completos():
         for module in catalog.modules
     )
     assert all(module["laboratory"]["data_keys"] for module in catalog.modules)
+
+
+def test_ejemplo_de_self_attention_mantiene_la_misma_frase_y_cuatro_tokens():
+    module = LearningModuleCatalog().get("module_3")
+    contenido = json.dumps(module, ensure_ascii=False)
+    primera_leccion = module["guided_steps"][0]["lesson"]
+
+    assert module["anchor"]["lab_text"] == "El banco guarda dinero"
+    assert "dinero" in module["anchor"]["question"]
+    assert "T = 4" in primera_leccion["ejemplo"]["titulo"]
+    assert "forma [4, 4]" in primera_leccion["ejemplo"]["lineas"][-1]
+    assert "el banco del río" not in contenido.lower()
 
 
 def test_cada_paso_guiado_apunta_a_teoria_existente():
@@ -327,10 +342,97 @@ def test_la_alineacion_se_fusiona_en_todos_los_modulos():
         ]
 
 
-def test_todos_los_reactivos_de_self_attention_explican_su_contexto():
-    """Q, K, V y las formas no deben aparecer como símbolos sin intención."""
+MODULOS = tuple(f"module_{numero}" for numero in range(1, 9))
 
+
+# Huella del instrumento del módulo 3 en la versión 16. Si esta prueba falla, ese
+# instrumento cambió: los pre-tests ya tomados dejan de ser comparables con el
+# post. Sube su versión en VERSIONES_CONGELADAS antes de actualizar la huella.
+HUELLA_MODULO_3 = "7bbe3dd181ca54b920df4f09caccffda685ecb2b33ad3ace4b0587aa6bce52b4"
+
+
+def test_el_instrumento_del_modulo_3_no_cambia_sin_subir_su_version():
     bank = ModuleQuestionBank(module_id="module_3", rng=random.Random(61))
+    contenido = [
+        [
+            question["code"],
+            question["prompt"],
+            sorted(option["text"] for option in question.get("options", [])),
+            bank.answer_key(assessment, question["id"])["correct_text"],
+        ]
+        for assessment in ("pre", "post")
+        for question in bank.all_questions(assessment)
+    ]
+    huella = hashlib.sha256(
+        json.dumps(contenido, ensure_ascii=False, sort_keys=True, default=str).encode()
+    ).hexdigest()
+
+    assert huella == HUELLA_MODULO_3
+    assert bank.instrument_version == 16
+
+
+def test_el_generador_escribe_el_documento_de_un_modulo(tmp_path, monkeypatch):
+    from tools import generar_preguntas_modulo as generador
+
+    monkeypatch.setattr(generador, "RAIZ", tmp_path)
+
+    documento = generador.generar("module_4").read_text(encoding="utf-8")
+
+    assert f"versión {ModuleQuestionBank.VERSION_PREGUNTAS}" in documento
+    assert len(re.findall(r"^### PRE-", documento, flags=re.MULTILINE)) == 25
+    assert len(re.findall(r"^### POST-", documento, flags=re.MULTILINE)) == 25
+    assert len(re.findall(r"^### LAB-", documento, flags=re.MULTILINE)) == 8
+    assert "**Clave:** None" not in documento
+
+
+def test_los_demas_modulos_tienen_su_propia_version():
+    for module_id in MODULOS:
+        assert (
+            ModuleQuestionBank.version_de_modulo(module_id)
+            == ModuleQuestionBank.VERSION_PREGUNTAS
+        )
+
+
+@pytest.mark.parametrize("module_id", MODULOS)
+def test_cada_modulo_tiene_lecciones_completas(module_id):
+    """Con una sola lección, el recorrido cambiaría de vista y quedaría a medias."""
+    steps = LearningModuleCatalog().get(module_id)["guided_steps"]
+
+    assert all(step.get("lesson") for step in steps)
+    for step in steps:
+        lesson = step["lesson"]
+        assert lesson["terminos"] and lesson["ejemplo"]["lineas"] and lesson["clave"]
+
+
+@pytest.mark.parametrize("module_id", MODULOS)
+def test_ningun_modulo_usa_las_plantillas_mecanicas(module_id):
+    bank = ModuleQuestionBank(module_id=module_id, rng=random.Random(62))
+
+    for assessment in ("pre", "post"):
+        questions = {
+            question["code"]: question for question in bank.all_questions(assessment)
+        }
+        assert "La función específica" not in questions["B3"]["prompt"]
+        assert "La función específica" not in questions["B4"]["prompt"]
+        assert "Respuesta propuesta" not in str(questions["A3"]["options"])
+        assert max(len(option["text"]) for option in questions["A3"]["options"]) < 90
+
+
+@pytest.mark.parametrize("module_id", MODULOS)
+def test_b1_y_b2_miden_el_mismo_concepto_en_pre_y_post(module_id):
+    bank = ModuleQuestionBank(module_id=module_id, rng=random.Random(64))
+    pre = {question["code"]: question for question in bank.all_questions("pre")}
+    post = {question["code"]: question for question in bank.all_questions("post")}
+
+    for code in ("B1", "B2"):
+        assert pre[code]["concept_id"] == post[code]["concept_id"], code
+
+
+@pytest.mark.parametrize("module_id", MODULOS)
+def test_cada_reactivo_explica_su_contexto(module_id):
+    """Los símbolos y las formas no deben aparecer sin intención."""
+
+    bank = ModuleQuestionBank(module_id=module_id, rng=random.Random(61))
 
     for assessment in ("pre", "post"):
         questions = bank.all_questions(assessment)
@@ -382,7 +484,7 @@ def test_archivo_consolidado_del_modulo_3_esta_actualizado():
         encoding="utf-8"
     )
 
-    assert "versión 15" in document
+    assert "versión 16" in document
     assert len(re.findall(r"^### R\d+\.", document, flags=re.MULTILINE)) == 8
     assert len(re.findall(r"^### PRE-", document, flags=re.MULTILINE)) == 25
     assert len(re.findall(r"^### POST-", document, flags=re.MULTILINE)) == 25
@@ -392,8 +494,9 @@ def test_archivo_consolidado_del_modulo_3_esta_actualizado():
     assert "Hasta WQ, WK y WV" in document
 
 
-def test_retos_de_self_attention_no_piden_controles_inexistentes():
-    module = LearningModuleCatalog().get("module_3")
+@pytest.mark.parametrize("module_id", MODULOS)
+def test_los_retos_no_piden_controles_inexistentes(module_id):
+    module = LearningModuleCatalog().get(module_id)
     prompts = "\n".join(item["prompt"] for item in module["lab_challenges"])
 
     for impossible_instruction in (
@@ -402,8 +505,13 @@ def test_retos_de_self_attention_no_piden_controles_inexistentes():
         "Incrementa el peso",
         "Activa la máscara",
         "Cambia una palabra",
+        "Fija el embedding",
     ):
         assert impossible_instruction not in prompts
+
+
+def test_retos_de_self_attention_explican_la_mascara_de_padding():
+    module = LearningModuleCatalog().get("module_3")
 
     mask = next(item for item in module["lab_challenges"] if item["id"] == "m3_l7")
     assert "mask(S)" in mask["prompt"]
@@ -540,8 +648,13 @@ def test_los_nuevos_reactivos_se_responden_con_el_recorrido_del_modulo():
         steps = module["guided_steps"]
         post = {question["code"]: question for question in bank.all_questions("post")}
 
-        assert respuesta_unica(post["B1"]) == steps[0]["operation"]
-        assert respuesta_unica(post["B2"]) == steps[4]["operation"]
+        # B1 y B2 miden en el post el mismo concepto que en el pre.
+        for code, concept in (("B1", module["concepts"][0]), ("B2", module["concepts"][4])):
+            step = next(
+                (item for item in steps if item["concept_id"] == concept["id"]), None
+            )
+            assert step is not None, (module["id"], code)
+            assert respuesta_unica(post[code]) == step["operation"]
 
         for assessment, reason_indices, change_indices in (
             ("pre", (0, 2, 4, 6), (1, 3, 5, 7)),

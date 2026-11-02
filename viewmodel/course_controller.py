@@ -138,7 +138,7 @@ class CourseController(QObject):
             self._evaluation.repository.get_history(
                 assessment_type, self._student_filter(), module_id=module_id
             ),
-            ModuleQuestionBank.VERSION_PREGUNTAS,
+            ModuleQuestionBank.version_de_modulo(module_id),
             _instrument_version,
         )
 
@@ -313,15 +313,10 @@ class CourseController(QObject):
                 "sabías antes de verlo."
             )
         posttest_reason = (
-            f"En el laboratorio, completa {self.REQUIRED_LAB_CYCLES} retos guiados "
-            "y responde la pregunta del módulo."
+            f"En el laboratorio, completa {self.REQUIRED_LAB_CYCLES} retos "
+            "guiados o toda la exploración avanzada, y responde la pregunta "
+            "del módulo."
         )
-        if module_id == "module_3":
-            posttest_reason = (
-                f"En el laboratorio, completa {self.REQUIRED_LAB_CYCLES} retos "
-                "guiados o toda la exploración avanzada, y responde la pregunta "
-                "del módulo."
-            )
         labels = {
             "guided": "Completa el pre-test del módulo.",
             "laboratory": "Completa el recorrido guiado del módulo.",
@@ -543,8 +538,6 @@ class CourseController(QObject):
         return len(visited & expected), len(expected)
 
     def _advanced_path_completed(self, module_id: str) -> bool:
-        if module_id != "module_3":
-            return False
         for path in self._advanced_paths(module_id).values():
             if not isinstance(path, dict):
                 continue
@@ -582,7 +575,6 @@ class CourseController(QObject):
         """
         if (
             module_id not in self._catalog.module_ids
-            or module_id != "module_3"
             or not self.stageAvailable(module_id, "laboratory")
         ):
             return {}
@@ -626,16 +618,11 @@ class CourseController(QObject):
         if not self._catalog.has_alignment:
             return True
         state = self._module_state(module_id)
-        # La ruta avanzada ya comprueba cada operación mediante el ciclo
-        # predecir→observar→contestar. Terminarla completa el laboratorio sin
-        # exigir una segunda pregunta de cierre. La ruta guiada breve conserva
-        # esa pregunta porque sólo exige tres operaciones.
-        if self._advanced_path_completed(module_id):
-            return True
-        return (
+        practice_completed = (
             self._distinct_cycles(module_id) >= self.REQUIRED_LAB_CYCLES
-            and bool(state.get("anchor_closing"))
+            or self._advanced_path_completed(module_id)
         )
+        return practice_completed and bool(state.get("anchor_closing"))
 
     def _refresh_laboratory_completion(self, module_id: str) -> None:
         state = self._module_state(module_id)
@@ -685,6 +672,12 @@ class CourseController(QObject):
             "advanced_mode": advanced_mode,
             "advanced_steps": advanced_steps,
             "advanced_required": advanced_required,
+            "advanced_visited_step_ids": [
+                str(value)
+                for value in self._advanced_paths(module_id)
+                .get(advanced_mode, {})
+                .get("visited_step_ids", [])
+            ],
             "advanced_completed": advanced_completed,
             "practice_ready": (
                 cycles >= self.REQUIRED_LAB_CYCLES or advanced_completed

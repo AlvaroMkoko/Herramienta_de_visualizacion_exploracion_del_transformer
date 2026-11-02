@@ -37,7 +37,129 @@ ScrollView {
     readonly property var pasos: root.lesson.pasos || []
     readonly property var ejemplo: root.lesson.ejemplo || ({})
     readonly property var definicion: root.tour ? root.tour.currentConceptDefinition : ({})
-    readonly property real anchoLectura: Math.min(root.availableWidth - 32 * root.s, 1040 * root.s)
+    // El panel lateral de términos es opcional y sólo cabe en pantallas anchas.
+    property bool panelTerminosAbierto: false
+    readonly property bool panelTerminosCabe: root.availableWidth >= 1040 * root.s
+    readonly property bool panelTerminosVisible: root.panelTerminosAbierto && root.panelTerminosCabe
+    readonly property real anchoPanelTerminos: 300 * root.s
+    readonly property real anchoLectura: Math.min(
+        root.availableWidth - 32 * root.s
+        - (root.panelTerminosVisible ? root.anchoPanelTerminos + 16 * root.s : 0),
+        1040 * root.s)
+    // Lectura por partes: una sección tras otra, para no enfrentar todo el paso de golpe.
+    readonly property bool revelarPorPartes: root.tour ? root.tour.firstUseGuidance === true : false
+    property int seccionRevelada: 7
+    readonly property var glosario: root.construirGlosario()
+
+    function revelarInicio() {
+        var yaIntentado = root.tour ? root.tour.currentAttempted === true : false
+        root.seccionRevelada = root.revelarPorPartes && !yaIntentado ? 1 : 7
+    }
+
+    function revelada(numero) {
+        return numero <= root.seccionRevelada
+    }
+
+    function seguirLeyendo() {
+        var siguiente = root.seccionRevelada + 1
+        if (siguiente === 2 && root.terminos.length === 0)
+            siguiente = 3
+        if (siguiente === 5 && (root.ejemplo.lineas || []).length === 0)
+            siguiente = 6
+        root.seccionRevelada = Math.min(7, siguiente)
+    }
+
+    // Términos ya presentados hasta este paso, como en una consulta de glosario.
+    function construirGlosario() {
+        var entradas = []
+        var pasosModulo = root.tour ? (root.tour.steps || []) : []
+        var ultimo = root.tour ? Number(root.tour.currentIndex) : -1
+        for (var p = 0; p <= ultimo && p < pasosModulo.length; ++p) {
+            var leccion = pasosModulo[p].lesson || ({})
+            var lista = leccion.terminos || []
+            for (var t = 0; t < lista.length; ++t) {
+                var nombre = String(lista[t].termino)
+                // «Forma [B, T]» es un ejemplo, no una palabra que vaya a aparecer igual.
+                if (nombre.indexOf("[") !== -1)
+                    continue
+                var claves = nombre.replace(/\s*\(.*?\)/g, "").split(/,\s+|\s+y\s+/)
+                for (var c = 0; c < claves.length; ++c) {
+                    var clave = claves[c].trim()
+                    if (clave.length)
+                        entradas.push({ "clave": clave, "termino": nombre,
+                                        "definicion": String(lista[t].definicion) })
+                }
+            }
+        }
+        // Primero las más largas, para que «Token ID» gane sobre «Token».
+        entradas.sort(function (a, b) { return b.clave.length - a.clave.length })
+        return entradas
+    }
+
+    // Un término puede agrupar dos palabras («Token y T»): en el panel va una sola vez.
+    function terminosParaPanel() {
+        var vistos = []
+        var unicos = []
+        for (var e = 0; e < root.glosario.length; ++e) {
+            if (vistos.indexOf(root.glosario[e].termino) === -1) {
+                vistos.push(root.glosario[e].termino)
+                unicos.push(root.glosario[e])
+            }
+        }
+        return unicos
+    }
+
+    function esParteDePalabra(caracter) {
+        return caracter !== undefined && /[0-9A-Za-z_\u00C0-\u024F]/.test(caracter)
+    }
+
+    function escaparHtml(texto) {
+        return texto.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    }
+
+    // Convierte en enlace la primera aparición de cada término del glosario.
+    function marcarTerminos(texto) {
+        var original = String(texto)
+        var minusculas = original.toLowerCase()
+        var tramos = []
+        for (var e = 0; e < root.glosario.length; ++e) {
+            var clave = root.glosario[e].clave
+            var sensible = clave.length < 4
+            var donde = sensible ? original : minusculas
+            var buscada = sensible ? clave : clave.toLowerCase()
+            var inicio = donde.indexOf(buscada)
+            while (inicio !== -1) {
+                var fin = inicio + buscada.length
+                var libre = true
+                for (var r = 0; r < tramos.length; ++r)
+                    if (inicio < tramos[r].fin && fin > tramos[r].inicio)
+                        libre = false
+                if (libre && !root.esParteDePalabra(original[inicio - 1])
+                        && !root.esParteDePalabra(original[fin])) {
+                    tramos.push({ "inicio": inicio, "fin": fin, "entrada": e })
+                    break
+                }
+                inicio = donde.indexOf(buscada, inicio + 1)
+            }
+        }
+        tramos.sort(function (a, b) { return a.inicio - b.inicio })
+        var salida = ""
+        var cursor = 0
+        for (var i = 0; i < tramos.length; ++i) {
+            salida += root.escaparHtml(original.substring(cursor, tramos[i].inicio))
+            salida += '<a href="' + tramos[i].entrada + '">'
+                    + root.escaparHtml(original.substring(tramos[i].inicio, tramos[i].fin)) + "</a>"
+            cursor = tramos[i].fin
+        }
+        return salida + root.escaparHtml(original.substring(cursor))
+    }
+
+    function definicionDe(enlace) {
+        var entrada = root.glosario[Number(enlace)]
+        return entrada ? entrada.termino + ": " + entrada.definicion : ""
+    }
+
+    Component.onCompleted: root.revelarInicio()
 
     clip: true
     contentWidth: availableWidth
@@ -50,6 +172,7 @@ ScrollView {
         function onCurrentIndexChanged() {
             root.contentItem.contentY = 0
             comprobacion.selectedIndex = -1
+            root.revelarInicio()
         }
     }
 
@@ -88,12 +211,36 @@ ScrollView {
         }
     }
 
-    component Parrafo: Text {
+    // Texto con términos enlazados: al pasar el cursor, o al tocar, da su definición.
+    component TextoConTerminos: Text {
+        id: textoConTerminos
+        property string contenido: ""
+        property string enlaceFijado: ""
+        readonly property string enlaceActivo: hoveredLink.length ? hoveredLink : enlaceFijado
+        text: root.marcarTerminos(contenido)
+        textFormat: Text.StyledText
+        linkColor: Style.Theme.concepto_texto
+        wrapMode: Text.WordWrap
+        onLinkActivated: function (enlace) {
+            textoConTerminos.enlaceFijado = textoConTerminos.enlaceFijado === enlace ? "" : enlace
+        }
+        HoverHandler {
+            enabled: textoConTerminos.hoveredLink.length > 0
+            cursorShape: Qt.PointingHandCursor
+        }
+        ToolTip {
+            parent: textoConTerminos
+            visible: textoConTerminos.enlaceActivo.length > 0
+            text: root.definicionDe(textoConTerminos.enlaceActivo)
+            width: Math.min(420 * root.s, implicitWidth)
+        }
+    }
+
+    component Parrafo: TextoConTerminos {
         Layout.fillWidth: true
         color: Style.Theme.texto_primario
         font.pixelSize: 16 * root.s
         lineHeight: 1.3
-        wrapMode: Text.WordWrap
     }
 
     component Formula: Rectangle {
@@ -125,7 +272,7 @@ ScrollView {
         ColumnLayout {
             id: columna
             width: root.anchoLectura
-            anchors.horizontalCenter: parent.horizontalCenter
+            x: root.panelTerminosVisible ? 16 * root.s : (parent.width - width) / 2
             anchors.top: parent.top
             anchors.topMargin: 8 * root.s
             spacing: 26 * root.s
@@ -141,6 +288,14 @@ ScrollView {
                     font.bold: true
                     font.pixelSize: 12 * root.s
                     font.letterSpacing: 0.8
+                }
+                BotonSecundario {
+                    objectName: "moduleGuidedTermsPanelToggle"
+                    visible: root.panelTerminosCabe
+                    sx: root.s
+                    sy: root.s
+                    text: root.panelTerminosAbierto ? "Ocultar los términos" : "Ver los términos al lado"
+                    onClicked: root.panelTerminosAbierto = !root.panelTerminosAbierto
                 }
                 Text {
                     objectName: "moduleGuidedLessonTitle"
@@ -166,21 +321,21 @@ ScrollView {
             Seccion {
                 numero: "1"
                 titulo: "La idea"
+                objectName: "moduleGuidedSectionIdea"
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: textoIdea.implicitHeight + 32 * root.s
                     radius: 12 * root.s
                     color: Style.Theme.concepto_fondo
-                    Text {
+                    TextoConTerminos {
                         id: textoIdea
                         objectName: "moduleGuidedIntuition"
                         anchors.fill: parent
                         anchors.margins: 16 * root.s
-                        text: String(root.lesson.intuicion || "")
+                        contenido: String(root.lesson.intuicion || "")
                         color: Style.Theme.texto_primario
                         font.pixelSize: 17 * root.s
                         lineHeight: 1.35
-                        wrapMode: Text.WordWrap
                     }
                 }
             }
@@ -189,7 +344,7 @@ ScrollView {
             Seccion {
                 numero: "2"
                 titulo: "Términos que necesitas"
-                visible: root.terminos.length > 0
+                visible: root.terminos.length > 0 && root.revelada(2)
 
                 GridLayout {
                     Layout.fillWidth: true
@@ -243,6 +398,7 @@ ScrollView {
             Seccion {
                 numero: root.terminos.length > 0 ? "3" : "2"
                 titulo: "Míralo"
+                visible: root.revelada(3)
                 GuidedDemoVisualization {
                     objectName: "moduleGuidedVisualization"
                     Layout.fillWidth: true
@@ -257,6 +413,7 @@ ScrollView {
             Seccion {
                 numero: root.terminos.length > 0 ? "4" : "3"
                 titulo: "Paso a paso"
+                visible: root.revelada(4)
                 Repeater {
                     model: root.pasos
                     delegate: RowLayout {
@@ -284,7 +441,7 @@ ScrollView {
                         ColumnLayout {
                             Layout.fillWidth: true
                             spacing: 6 * root.s
-                            Parrafo { text: String(filaPaso.modelData.texto || "") }
+                            Parrafo { contenido: String(filaPaso.modelData.texto || "") }
                             Formula { texto: String(filaPaso.modelData.formula || "") }
                         }
                     }
@@ -295,7 +452,7 @@ ScrollView {
             Seccion {
                 numero: root.terminos.length > 0 ? "5" : "4"
                 titulo: "Con números: " + String(root.ejemplo.titulo || "")
-                visible: (root.ejemplo.lineas || []).length > 0
+                visible: (root.ejemplo.lineas || []).length > 0 && root.revelada(5)
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: lineasEjemplo.implicitHeight + 28 * root.s
@@ -327,6 +484,7 @@ ScrollView {
             // ── Resumen del paso ────────────────────────────────────
             Seccion {
                 titulo: "Resumen del paso"
+                visible: root.revelada(6)
 
                 Rectangle {
                     objectName: "moduleGuidedDefinition"
@@ -405,7 +563,7 @@ ScrollView {
             // ── Comprueba ───────────────────────────────────────────
             Seccion {
                 titulo: "Comprueba lo que entendiste"
-                visible: root.tour ? root.tour.currentHasCheck : false
+                visible: (root.tour ? root.tour.currentHasCheck : false) && root.revelada(7)
 
                 PredictionCheck {
                     id: comprobacion
@@ -421,7 +579,18 @@ ScrollView {
                 }
             }
 
+            BotonPrincipal {
+                objectName: "moduleGuidedContinue"
+                visible: root.seccionRevelada < 7
+                Layout.alignment: Qt.AlignHCenter
+                Layout.preferredWidth: 220 * root.s
+                Layout.preferredHeight: 42 * root.s
+                text: "Seguir leyendo  ↓"
+                onClicked: root.seguirLeyendo()
+            }
+
             RowLayout {
+                visible: root.seccionRevelada >= 7
                 Layout.fillWidth: true
                 spacing: 12 * root.s
                 Text {
@@ -439,6 +608,37 @@ ScrollView {
                     sy: root.s
                     text: "Profundizar en la teoría"
                     onClicked: root.tour.openTheoryConcept(root.tour.currentTheoryConceptId)
+                }
+            }
+        }
+
+        // Sigue a la lectura: queda a la vista mientras se desplaza la lección.
+        Rectangle {
+            objectName: "moduleGuidedTermsPanel"
+            visible: root.panelTerminosVisible
+            x: parent.width - width - 12 * root.s
+            y: root.contentItem.contentY + 8 * root.s
+            width: root.anchoPanelTerminos
+            height: root.height - 16 * root.s
+            radius: 10 * root.s
+            color: Style.Theme.surface
+            border.color: Style.Theme.borde_suave
+
+            ListView {
+                anchors.fill: parent
+                anchors.margins: 10 * root.s
+                clip: true
+                spacing: 8 * root.s
+                model: root.terminosParaPanel()
+                delegate: Text {
+                    required property var modelData
+                    width: ListView.view.width
+                    text: "<b>" + root.escaparHtml(modelData.termino) + ".</b> "
+                          + root.escaparHtml(modelData.definicion)
+                    textFormat: Text.StyledText
+                    color: Style.Theme.texto_primario
+                    font.pixelSize: 13 * root.s
+                    wrapMode: Text.WordWrap
                 }
             }
         }

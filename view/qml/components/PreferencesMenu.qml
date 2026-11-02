@@ -131,6 +131,32 @@ ControlActivableAccesible {
                 }
                 MotionSwitch {}
             }
+
+            RowLayout {
+                spacing: 6
+                Text {
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 92
+                    text: "Tamaño de letra"
+                    color: Style.Theme.texto_primario
+                    font.pixelSize: 12
+                }
+                Repeater {
+                    model: [{ "etiqueta": "A", "valor": 1, "nombre": "normal" },
+                            { "etiqueta": "A+", "valor": 1.15, "nombre": "grande" },
+                            { "etiqueta": "A++", "valor": 1.3, "nombre": "muy grande" }]
+                    delegate: BotonSecundario {
+                        id: botonLetra
+                        required property var modelData
+                        objectName: "preferencesTextScale" + botonLetra.modelData.etiqueta
+                        Layout.preferredWidth: 42
+                        text: botonLetra.modelData.etiqueta
+                        font.bold: Style.Theme.escalaTexto === botonLetra.modelData.valor
+                        Accessible.name: "Letra " + botonLetra.modelData.nombre
+                        onClicked: Style.Theme.escalaTexto = botonLetra.modelData.valor
+                    }
+                }
+            }
         }
     }
 }

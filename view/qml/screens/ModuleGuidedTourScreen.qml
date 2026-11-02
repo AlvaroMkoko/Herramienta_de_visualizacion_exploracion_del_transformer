@@ -11,10 +11,13 @@ PagePrincipal {
     objectName: "moduleGuidedTourScreen"
 
     property string moduleId: "module_1"
+    // Al entrar como alumno, la lección se descubre por partes.
+    property bool firstUseGuidance: false
     readonly property var courseController: mainViewModel.courseController
     readonly property var moduleData: courseController.currentModule
     readonly property var steps: moduleData.guided_steps || []
     readonly property real uiScale: Math.max(0.82, Math.min(width / 1280, height / 820))
+                                    * Style.Theme.escalaTexto
     property int currentIndex: 0
     property bool playing: false
     property var currentConcept: ({})
@@ -184,6 +187,13 @@ PagePrincipal {
                 Layout.preferredHeight: 42 * root.uiScale
                 text: "← Módulo"
                 onClicked: root.stackView.pop()
+            }
+            BotonInicio {
+                Layout.preferredWidth: 100 * root.uiScale
+                Layout.preferredHeight: 42 * root.uiScale
+                sx: root.uiScale
+                sy: root.uiScale
+                stackView: root.stackView
             }
             ColumnLayout {
                 Layout.fillWidth: true
