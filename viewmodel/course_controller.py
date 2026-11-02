@@ -36,9 +36,11 @@ class CourseController(QObject):
     # Debe quedar en False con estudiantes: abrir el post-test sin pasar por el
     # recorrido invalida la comparación pre/post.
     REVIEW_MODE_UNLOCK_ALL = False
-    # La aplicación de este estudio se concentra en Self-Attention. El modo
+    # Módulo único de un estudio enfocado (p. ej. "module_3" para aplicar solo
+    # Self-Attention): abre ése sin prerrequisitos y oculta los demás. Vacío,
+    # el curso recorre los ocho en secuencia desde el módulo 1. El modo
     # revisión sigue permitiendo auditar los ocho módulos durante desarrollo.
-    FOCUS_MODULE_ID = "module_3"
+    FOCUS_MODULE_ID = ""
 
     # Ejecutar el forward no es practicar: el laboratorio cuenta como hecho
     # cuando el alumno cerró este número de ciclos predecir→probar→observar→

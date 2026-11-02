@@ -238,12 +238,15 @@ def test_mapa_modular_reserva_espacio_para_numero_de_etapas(qapp):
         for item in _visual_descendants(map_screen)
         if item.objectName().startswith("moduleMapButton_")
     }
-    assert map_items["moduleMapButton_module_3"].property("enabled") is True
-    assert all(
-        button.property("enabled") is False
-        for name, button in map_items.items()
-        if name != "moduleMapButton_module_3"
-    )
+    # Curso en secuencia: el módulo 1 siempre está abierto y los abiertos son un
+    # tramo continuo desde él. No se fija «solo el 1» porque el temporal de datos
+    # se comparte en la corrida y otra prueba pudo completar módulos.
+    abiertos = [
+        map_items[f"moduleMapButton_module_{numero}"].property("enabled") is True
+        for numero in range(1, 9)
+    ]
+    assert abiertos[0] is True
+    assert abiertos == sorted(abiertos, reverse=True), abiertos
 
     # También se comprueba la cuadrícula de cuatro columnas, donde cada tarjeta
     # es más angosta y la descripción ocupa más renglones.

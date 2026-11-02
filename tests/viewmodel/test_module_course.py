@@ -354,19 +354,20 @@ def test_por_defecto_el_curso_aplica_los_prerrequisitos(tmp_path):
     course, results = _course(tmp_path)
 
     assert CourseController.REVIEW_MODE_UNLOCK_ALL is False
+    assert CourseController.FOCUS_MODULE_ID == ""
     assert course.reviewMode is False
-    assert course.currentModuleId == "module_3"
+    assert course.currentModuleId == "module_1"
     assert [module["available"] for module in course.modules] == [
-        False,
-        False,
         True,
         False,
         False,
         False,
         False,
         False,
+        False,
+        False,
     ]
-    assert course.stageAvailable("module_3", "pretest")
+    assert not course.stageAvailable("module_3", "pretest")
     assert course.stageAvailable("module_1", "pretest")
     assert not course.stageAvailable("module_1", "guided")
     assert not course.stageAvailable("module_1", "posttest")
@@ -380,8 +381,10 @@ def test_por_defecto_el_curso_aplica_los_prerrequisitos(tmp_path):
 
 
 def test_el_estudio_abre_modulo_3_aunque_el_progreso_anterior_apunte_al_1(
-    tmp_path,
+    tmp_path, monkeypatch
 ):
+    # El estudio enfocado se activa fijando el módulo; por defecto está apagado.
+    monkeypatch.setattr(CourseController, "FOCUS_MODULE_ID", "module_3")
     repository = ModuleProgressRepository(tmp_path / "progress.json")
     repository.replace({"current_module_id": "module_1", "modules": {}})
     evaluation = ModuleEvaluationController(
