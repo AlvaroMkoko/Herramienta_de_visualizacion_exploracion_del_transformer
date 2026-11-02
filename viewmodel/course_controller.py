@@ -35,7 +35,7 @@ class CourseController(QObject):
     # pero permite abrir cualquier módulo y etapa sin prerrequisitos (RN18).
     # Debe quedar en False con estudiantes: abrir el post-test sin pasar por el
     # recorrido invalida la comparación pre/post.
-    REVIEW_MODE_UNLOCK_ALL = False
+    REVIEW_MODE_UNLOCK_ALL = True
     # La aplicación de este estudio se concentra en Self-Attention. El modo
     # revisión sigue permitiendo auditar los ocho módulos durante desarrollo.
     FOCUS_MODULE_ID = "module_3"
@@ -138,7 +138,7 @@ class CourseController(QObject):
             self._evaluation.repository.get_history(
                 assessment_type, self._student_filter(), module_id=module_id
             ),
-            ModuleQuestionBank.VERSION_PREGUNTAS,
+            ModuleQuestionBank.version_de_modulo(module_id),
             _instrument_version,
         )
 
@@ -313,15 +313,10 @@ class CourseController(QObject):
                 "sabías antes de verlo."
             )
         posttest_reason = (
-            f"En el laboratorio, completa {self.REQUIRED_LAB_CYCLES} retos guiados "
-            "y responde la pregunta del módulo."
+            f"En el laboratorio, completa {self.REQUIRED_LAB_CYCLES} retos "
+            "guiados o toda la exploración avanzada, y responde la pregunta "
+            "del módulo."
         )
-        if module_id == "module_3":
-            posttest_reason = (
-                f"En el laboratorio, completa {self.REQUIRED_LAB_CYCLES} retos "
-                "guiados o toda la exploración avanzada, y responde la pregunta "
-                "del módulo."
-            )
         labels = {
             "guided": "Completa el pre-test del módulo.",
             "laboratory": "Completa el recorrido guiado del módulo.",
@@ -543,8 +538,6 @@ class CourseController(QObject):
         return len(visited & expected), len(expected)
 
     def _advanced_path_completed(self, module_id: str) -> bool:
-        if module_id != "module_3":
-            return False
         for path in self._advanced_paths(module_id).values():
             if not isinstance(path, dict):
                 continue
@@ -582,7 +575,6 @@ class CourseController(QObject):
         """
         if (
             module_id not in self._catalog.module_ids
-            or module_id != "module_3"
             or not self.stageAvailable(module_id, "laboratory")
         ):
             return {}

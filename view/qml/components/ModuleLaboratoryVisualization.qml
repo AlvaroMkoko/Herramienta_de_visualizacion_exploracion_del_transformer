@@ -5,6 +5,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import "../styles" as Style
 import "ValueKinds.js" as ValueKinds
+import "ModuleOverviewCatalog.js" as OverviewCatalog
 
 Item {
     id: root
@@ -18,10 +19,15 @@ Item {
     property int selectedLayer: 0
     property int selectedHead: 0
     property int selectedToken: 0
+    property bool causalEnabled: true
     property bool showContextChrome: true
     // La escena principal muestra una sola idea. Los tensores completos se
     // consultan desde la explicación técnica para evitar carga innecesaria.
     property bool showInspectionTools: false
+    // La pantalla del laboratorio abre la vista conceptual; con este botón se
+    // pasa a los datos que capturó el modelo, sin perder esas visualizaciones.
+    property bool conceptualOverview: false
+    property bool showCapturedData: false
     property real sx: 1
     property real sy: 1
     property real stageReveal: 1
@@ -608,11 +614,16 @@ Item {
         return moduleId === "module_3"
     }
 
+    function usesModuleOverview() {
+        return !usesSelfAttentionOverview() && conceptualOverview
+                && OverviewCatalog.supports(moduleId) && !showCapturedData
+    }
+
     function animationDescriptionForStep() {
         var input = textValue(step && step.input, "la entrada")
         var title = textValue(step && step.title, "la operación")
         var output = textValue(step && step.output, "la salida")
-        if (usesSelfAttentionOverview())
+        if (usesSelfAttentionOverview() || usesModuleOverview())
             return "Vista conceptual propia de «" + title
                     + "»: muestra qué recibe esta etapa, qué ocurre y qué produce, sin adelantar el cálculo numérico de la animación detallada."
         if (usesSimpleStageOverride())
@@ -705,6 +716,8 @@ Item {
     function componentForModule() {
         if (usesSelfAttentionOverview())
             return selfAttentionOverviewComponent
+        if (usesModuleOverview())
+            return moduleOverviewComponent
         if (usesSimpleStageOverride())
             return simpleStageComponent
         switch (moduleId) {
@@ -852,6 +865,21 @@ Item {
             }
         }
 
+        RowLayout {
+            objectName: "moduleLabOverviewSwitchRow"
+            visible: root.conceptualOverview && !root.usesSelfAttentionOverview()
+            Layout.fillWidth: true
+            Item { Layout.fillWidth: true }
+            BotonAccesible {
+                objectName: "moduleLabOverviewSwitch"
+                Layout.preferredWidth: 210 * root.uiSx
+                Layout.preferredHeight: 28 * root.uiSy
+                text: root.showCapturedData ? "◂ Volver a la vista conceptual"
+                                            : "Ver con los datos de tu modelo ▸"
+                onClicked: root.showCapturedData = !root.showCapturedData
+            }
+        }
+
         Loader {
             id: specializedLoader
             objectName: "moduleLabSpecializedLoader"
@@ -900,6 +928,31 @@ Item {
                                                "delta_norm"], "—")
             sx: root.uiSx
             sy: root.uiSy
+        }
+    }
+
+    Component {
+        id: moduleOverviewComponent
+
+        Item {
+            objectName: "moduleLabConceptualOverviewView"
+            ModuleOverviewScene {
+                anchors.fill: parent
+                moduleId: root.moduleId
+                stepId: root.textValue(root.step && root.step.id, "")
+                trainingMode: root.trainingMode
+                tokens: root.normalizedTokens()
+                candidates: root.analysis && root.analysis.candidates
+                            ? root.analysis.candidates : []
+                attentionData: root.attentionData(0)
+                selectedHead: root.selectedHead
+                selectedToken: root.selectedToken
+                causal: root.causalEnabled
+                active: true
+                reducedMotion: Style.Theme.movimientoReducido
+                sx: root.uiSx
+                sy: root.uiSy
+            }
         }
     }
 

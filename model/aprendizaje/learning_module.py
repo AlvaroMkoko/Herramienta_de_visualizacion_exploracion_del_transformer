@@ -182,6 +182,24 @@ class LearningModuleCatalog:
             module["lab_challenges"] = deepcopy(lab_challenges)
             module["anchor"] = deepcopy(anchor)
             self._merge_lessons(module, fragment.get("lessons"))
+            self._merge_question_text(module, fragment.get("question_text"))
+
+    @staticmethod
+    def _merge_question_text(module: dict[str, Any], written: Any) -> None:
+        """Textos del test redactados a mano: contextos, B1–B4 y A3."""
+        if written is None:
+            return
+        module_id = module["id"]
+        if not isinstance(written, dict) or not isinstance(written.get("contexts"), dict):
+            raise LearningModuleError(f"{module_id} declara mal sus textos del test.")
+        pairs = written.get("A3")
+        if pairs is not None and not (
+            isinstance(pairs, dict)
+            and str(pairs.get("prompt", "")).strip()
+            and all(len(pairs.get(moment, [])) == 4 for moment in ("pre", "post"))
+        ):
+            raise LearningModuleError(f"{module_id}/A3 necesita sus cuatro casos por forma.")
+        module["question_text"] = deepcopy(written)
 
     @staticmethod
     def _merge_lessons(module: dict[str, Any], lessons: Any) -> None:

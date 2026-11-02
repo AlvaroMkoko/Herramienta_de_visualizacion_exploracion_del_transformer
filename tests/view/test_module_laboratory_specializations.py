@@ -1395,16 +1395,19 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(
                 audited_question_ids[context] = question_id
                 audited += 1
     assert audited >= 120
-    assert audited_question_ids[("module_1", "inference", "batch")] == "lab_m1_batch_inference"
-    assert audited_question_ids[("module_1", "training", "batch")] == "lab_m1_batch_training"
-    assert audited_question_ids[("module_2", "inference", "dropout")] == "lab_m2_dropout_inference"
+    # Un paso con varios retos los rota al volver a entrar: vale cualquiera de ellos.
+    assert audited_question_ids[("module_1", "inference", "batch")] in {"m1_l1", "m1_l4"}
+    assert audited_question_ids[("module_1", "training", "batch")] in {"m1_l1", "m1_l4"}
+    assert audited_question_ids[("module_2", "inference", "dropout")] == "m2_l8"
     assert audited_question_ids[("module_2", "training", "dropout")] == "m2_l8"
     assert audited_question_ids[("module_3", "inference", "mask")] == "m3_l7"
-    assert audited_question_ids[("module_4", "inference", "contexts")] == "lab_m4_contexts"
-    assert audited_question_ids[("module_5", "inference", "ffn_project")] == "lab_m5_ffn_project"
+    assert audited_question_ids[("module_4", "inference", "contexts")] == "m4_l6"
+    assert audited_question_ids[("module_4", "training", "backward")] == "lab_m4_backward"
+    assert audited_question_ids[("module_5", "inference", "ffn_project")] == "m5_l2"
     assert audited_question_ids[("module_6", "inference", "decoder_prefix")] == "lab_m6_prefix_inference"
     assert audited_question_ids[("module_6", "training", "decoder_prefix")] == "m6_l7"
-    assert audited_question_ids[("module_7", "inference", "feedback")] == "m7_l7"
+    assert audited_question_ids[("module_7", "inference", "feedback")] == "m7_l8"
+    assert audited_question_ids[("module_7", "inference", "select")] == "m7_l7"
     assert audited_question_ids[("module_8", "training", "full_loss")] == "lab_m8_loss"
 
     window.deleteLater()
@@ -1636,3 +1639,16 @@ def test_pantalla_sincroniza_formula_en_accion_con_el_paso_actual(qapp, tmp_path
 
     window.deleteLater()
     engine.deleteLater()
+
+
+def test_cada_reto_del_laboratorio_puede_aparecer():
+    """Cada reto prepara un reactivo: uno que nunca se muestra no prepara nada."""
+    screen = (ROOT / "view" / "qml" / "screens" / "ModuleLaboratoryScreen.qml").read_text(
+        encoding="utf-8"
+    )
+    mapa = screen[screen.index("var maps = {") : screen.index("var moduleMap =")]
+    for module_id, cuerpo in re.findall(r'"(module_\d)":\s*\{(.*?)\}', mapa, flags=re.S):
+        indices = set()
+        for valor in re.findall(r'"[a-z_0-9]+":\s*(\[[^\]]*\]|\d+)', cuerpo):
+            indices.update(int(numero) for numero in re.findall(r"\d+", valor))
+        assert indices == set(range(8)), module_id

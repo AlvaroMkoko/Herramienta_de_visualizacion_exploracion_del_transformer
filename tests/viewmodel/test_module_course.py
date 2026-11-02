@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from model.aprendizaje import ModuleProgressRepository
 from model.evaluacion.results_repository import ResultsRepository
 from viewmodel.course_controller import STAGES, CourseController
@@ -228,23 +230,29 @@ def test_terminar_exploracion_avanzada_desbloquea_el_posttest(tmp_path, monkeypa
     assert set(path["visited_step_ids"]) == set(advanced_steps)
 
 
-def test_ruta_avanzada_de_desbloqueo_es_exclusiva_del_modulo_3(
-    tmp_path, monkeypatch
+@pytest.mark.parametrize(
+    "module_id", ["module_1", "module_2", "module_4", "module_5", "module_6", "module_7", "module_8"]
+)
+def test_la_ruta_avanzada_tambien_cuenta_en_los_demas_modulos(
+    tmp_path, monkeypatch, module_id
 ):
     monkeypatch.setattr(CourseController, "REVIEW_MODE_UNLOCK_ALL", True)
     course, _results = _course(tmp_path)
-    expected = ["project", "split", "maps", "contexts"]
+    expected = ["uno", "dos", "tres", "cuatro"]
 
-    for step_id in expected:
-        assert course.recordAdvancedLaboratoryStep(
-            "module_4", "inference", step_id, expected
-        ) == {}
+    for step_id in expected[:-1]:
+        course.recordAdvancedLaboratoryStep(module_id, "inference", step_id, expected)
+    assert course.laboratoryProgress(module_id)["advanced_completed"] is False
 
-    progress = course.laboratoryProgress("module_4")
-    assert progress["advanced_steps"] == 0
-    assert progress["advanced_required"] == 0
-    assert progress["advanced_completed"] is False
-    assert progress["practice_ready"] is False
+    course.recordAdvancedLaboratoryStep(module_id, "inference", expected[-1], expected)
+
+    progress = course.laboratoryProgress(module_id)
+    assert progress["advanced_steps"] == 4
+    assert progress["advanced_required"] == 4
+    assert progress["advanced_completed"] is True
+    assert progress["practice_ready"] is True
+    # La pregunta de cierre sigue siendo obligatoria.
+    assert progress["completed"] is False
 
 
 def _result(module_id: str, assessment: str, percentage: float, answers: list) -> dict:

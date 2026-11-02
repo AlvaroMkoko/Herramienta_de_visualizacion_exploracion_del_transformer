@@ -32,6 +32,7 @@ from PySide6.QtCore import QCoreApplication, QUrl
 from core.rutas import recurso
 from view.canvas.animation_engine import VispyItem
 from viewmodel.display_manager import DisplayManager
+from viewmodel.encadenador_rueda import EncadenadorRueda
 from viewmodel.main_viewmodel import MainViewModel
 
 
@@ -84,6 +85,9 @@ def main() -> None:
 
     if not engine.rootObjects():
         sys.exit(-1)
+
+    encadenador_rueda = EncadenadorRueda(app)
+    encadenador_rueda.instalar_en_toda_ventana(app)
 
     sys.exit(app.exec())
 

@@ -7,6 +7,7 @@ import QtQuick.Window
 import "../styles" as Style
 import "../components"
 import "../components/ValueKinds.js" as ValueKinds
+import "../components/LaboratoryExperiments.js" as LaboratoryExperiments
 
 PagePrincipal {
     id: root
@@ -87,6 +88,8 @@ PagePrincipal {
     // Una sola fuente de atención por vez: vista del componente, fórmula
     // animada o explicación. El contenido completo sigue disponible.
     property int workspaceSection: 2
+    // Sólo cambia al reiniciar el ciclo: un reto no debe cambiar a medio responderlo.
+    property int challengeRound: 0
     property int currentStepIndex: 0
     property int discoveryStage: 0
     property int discoveryPrediction: -1
@@ -140,30 +143,6 @@ PagePrincipal {
         var sid = String(root.currentStep && root.currentStep.id || "")
         var key = root.moduleId + ":" + sid
         var specific = {
-            "module_1:text": root.labQuestion(
-                "lab_m1_text", "¿Qué recibe el tokenizador al comenzar esta animación?",
-                "Texto Unicode todavía sin convertir en vectores", "Embeddings contextualizados", "Probabilidades del vocabulario",
-                "La entrada inicial es texto. Los tokens, IDs y vectores aparecen en operaciones posteriores."),
-            "module_1:ids": root.labQuestion(
-                "lab_m1_ids", "Al consultar el vocabulario, ¿qué debe reemplazar a cada token?",
-                "Un ID entero estable para ese token", "Un vector contextual completo", "Una probabilidad del siguiente token",
-                "El vocabulario realiza una correspondencia discreta token→ID; todavía no crea embeddings."),
-            "module_1:batch:training": root.labQuestion(
-                "lab_m1_batch_training", "Si las secuencias del batch tienen distinta longitud, ¿cómo se obtiene una matriz rectangular?",
-                "Se añade PAD a las secuencias más cortas", "Se mezclan todas las frases en una sola", "Se aumenta d_model",
-                "En entrenamiento, cada fila se rellena hasta la longitud común del batch."),
-            "module_1:batch:inference": root.labQuestion(
-                "lab_m1_batch_inference", "Si el texto supera el contexto máximo durante inferencia, ¿qué debe hacer este ajuste?",
-                "Recortar la secuencia al contexto admitido", "Añadir PAD hasta duplicar su longitud", "Cambiar el vocabulario",
-                "En inferencia se limita la longitud sin inventar contenido nuevo."),
-            "module_1:no_grad": root.labQuestion(
-                "lab_m1_no_grad", "Después de tokenizar, rellenar y crear la máscara, ¿qué parte de esta preparación aprende por gradiente?",
-                "Ninguna: son operaciones de datos", "Los IDs se vuelven parámetros", "La máscara aprende qué columnas bloquear",
-                "Estas operaciones preparan la entrada; no contienen parámetros que el optimizador pueda actualizar."),
-            "module_2:dropout:inference": root.labQuestion(
-                "lab_m2_dropout_inference", "¿Qué debe ocurrir con dropout durante inferencia?",
-                "Queda desactivado y conserva todas las activaciones", "Elimina tokens completos", "Cambia d_model en cada ejecución",
-                "Dropout regulariza el entrenamiento; al inferir se utiliza la representación completa y determinista."),
             "module_2:embedding_gradient": root.labQuestion(
                 "lab_m2_embedding_gradient", "Si el batch consultó solo algunos IDs, ¿qué filas de la tabla reciben gradiente directo en esta animación?",
                 "Las filas de los IDs consultados", "Todas las filas por igual", "Solo la primera fila de la tabla",
@@ -180,30 +159,10 @@ PagePrincipal {
                 "lab_m3_update", "En W′=W−ηg, W es el peso actual, g es su gradiente y η indica el tamaño del paso. El laboratorio sólo simula el cálculo y no modifica el modelo. ¿Qué representa W′?",
                 "El valor que tendría W después de un paso hipotético guiado por el gradiente", "Una nueva matriz de pesos de atención que debe sumar 1", "La salida contextual definitiva de la frase",
                 "W′ es el posible valor siguiente del parámetro si se aplicara ese paso de optimización."),
-            "module_4:project": root.labQuestion(
-                "lab_m4_project", "¿Qué producen XWQ, XWK y XWV antes de separar las cabezas?",
-                "Q, K y V completos con anchura d_model", "Un único mapa T×T", "Los IDs de la secuencia",
-                "Primero se calculan las proyecciones completas; después se reorganizan en h bloques de d_head."),
-            "module_4:contexts": root.labQuestion(
-                "lab_m4_contexts", "¿Cómo obtiene cada cabeza su vector de contexto?",
-                "Combina sus Values con sus propios pesos de atención", "Copia directamente la salida de otra cabeza", "Promedia todas las matrices WQ",
-                "Cada cabeza calcula C_h=A_hV_h dentro de su propio subespacio."),
-            "module_5:encoder_input": root.labQuestion(
-                "lab_m5_encoder_input", "Al seleccionar una capa del encoder, ¿qué recibe como X_l?",
-                "La salida de la capa anterior", "Los logits finales del vocabulario", "El objetivo desplazado del decoder",
-                "La primera capa recibe embeddings posicionados; las siguientes reciben la representación de la capa previa."),
-            "module_5:ffn_project": root.labQuestion(
-                "lab_m5_ffn_project", "Después de la activación en d_ff, ¿qué debe hacer la segunda proyección de la FFN?",
-                "Regresar de d_ff a d_model", "Expandir otra vez el número de tokens", "Convertir la salida en probabilidades",
-                "La salida vuelve a d_model para que pueda sumarse mediante la conexión residual."),
             "module_6:decoder_prefix:inference": root.labQuestion(
                 "lab_m6_prefix_inference", "Durante inferencia, ¿qué información puede formar el prefijo del decoder?",
                 "BOS y los tokens generados hasta ahora", "Toda la respuesta futura", "Los logits de todas las capas",
                 "La generación es autoregresiva: solo dispone de los tokens ya producidos."),
-            "module_6:decoder_embedding": root.labQuestion(
-                "lab_m6_decoder_embedding", "¿Qué se añade a los embeddings del prefijo antes de la atención?",
-                "La codificación de sus posiciones", "Las probabilidades Top-P", "La pérdida del batch",
-                "El decoder necesita representar tanto la identidad de cada token como su orden."),
             "module_6:decoder_residual_1": root.labQuestion(
                 "lab_m6_residual_1", "¿Qué combina la primera conexión residual del decoder?",
                 "El estado de entrada y el contexto causal", "La memoria del encoder y los logits", "Dos máscaras de padding",
@@ -212,22 +171,6 @@ PagePrincipal {
                 "lab_m6_residual_2", "¿Qué incorpora la segunda conexión residual del decoder?",
                 "El contexto recuperado de la fuente", "Un token elegido por Top-K", "La pérdida de entrenamiento",
                 "La segunda Add & Norm integra la salida de cross-attention con el estado del decoder."),
-            "module_6:decoder_ffn": root.labQuestion(
-                "lab_m6_ffn", "Después de las dos atenciones, ¿cómo actúa la FFN del decoder?",
-                "Transforma cada posición por separado", "Mezcla posiciones futuras sin máscara", "Selecciona directamente el siguiente token",
-                "La FFN procesa las características de cada posición; la mezcla entre tokens ya ocurrió en las atenciones."),
-            "module_6:decoder_layers": root.labQuestion(
-                "lab_m6_layers", "Al avanzar por la pila del decoder, ¿qué permanece y qué cambia?",
-                "Se conserva la forma y cambian los valores con parámetros de cada capa", "Aumenta un token en cada capa", "Todas las capas producen valores idénticos",
-                "Las capas comparten la interfaz [B,T,d_model], pero cada una aprende parámetros distintos."),
-            "module_7:hidden": root.labQuestion(
-                "lab_m7_hidden", "¿Qué representación alimenta la predicción asociada a la posición observada?",
-                "Su estado final del decoder", "La matriz completa del vocabulario", "El ID sin convertir a vector",
-                "La capa de salida recibe un vector d_model del decoder y lo proyecta al vocabulario."),
-            "module_7:select": root.labQuestion(
-                "lab_m7_select", "En esta animación reproducible, ¿qué candidato se seleccionará?",
-                "El de mayor probabilidad entre los supervivientes", "Siempre el primer ID del vocabulario", "Todos los candidatos a la vez",
-                "El laboratorio usa selección determinista para que el mismo experimento produzca el mismo resultado."),
             "module_7:target": root.labQuestion(
                 "lab_m7_target", "Durante entrenamiento, ¿para qué se muestra el token objetivo junto a los logits?",
                 "Para indicar la respuesta que debe recibir mayor probabilidad", "Para sustituir todos los logits", "Para aplicar Top-K antes de la pérdida",
@@ -236,30 +179,50 @@ PagePrincipal {
                 "lab_m7_loss", "¿Qué datos debe comparar cross-entropy en esta animación?",
                 "Los logits crudos y el token objetivo", "Los pesos de atención y Top-P", "El token elegido y la máscara causal",
                 "La pérdida de entrenamiento se calcula antes de Top-K, Top-P o muestreo."),
-            "module_8:full_tokens": root.labQuestion(
-                "lab_m8_tokens", "¿Qué debe producir primero el Transformer a partir del texto para poder consultar embeddings?",
-                "Una secuencia ordenada de IDs", "Probabilidades del vocabulario", "Pesos de cross-attention",
-                "El tokenizador segmenta el texto y el vocabulario convierte cada token en un índice."),
-            "module_8:full_batch": root.labQuestion(
-                "lab_m8_batch", "¿Qué necesita preparar el batch antes del recorrido de entrenamiento?",
-                "Entradas, objetivos desplazados y máscaras", "Solo el último token generado", "Top-K y temperatura",
-                "El entrenamiento requiere tensores alineados y máscaras que oculten padding y futuro."),
-            "module_8:full_logits": root.labQuestion(
-                "lab_m8_logits", "Al proyectar cada estado de d_model al vocabulario, ¿qué esperas obtener?",
-                "Un vector de puntuaciones, una por token posible", "Una sola probabilidad ya normalizada", "Una nueva máscara de padding",
-                "La proyección final cambia el último eje de d_model a |V| y todavía produce logits."),
-            "module_8:full_filters": root.labQuestion(
-                "lab_m8_filters", "¿Qué debería cambiar al aplicar temperatura, Top-K y Top-P a los logits?",
-                "La concentración y el conjunto de candidatos", "Los IDs del texto fuente", "Los parámetros ya aprendidos del encoder",
-                "Estos controles modifican la distribución usada para generar, no los pesos ni la entrada fuente."),
-            "module_8:full_select": root.labQuestion(
-                "lab_m8_select", "Después de normalizar los candidatos supervivientes, ¿qué produce la selección?",
-                "El siguiente token", "La memoria del encoder", "Un nuevo vocabulario",
-                "La distribución final permite escoger un único token para continuar el ciclo."),
-            "module_8:full_feedback": root.labQuestion(
-                "lab_m8_feedback", "¿Qué ocurrirá con el token recién seleccionado en el ciclo autoregresivo?",
-                "Se añadirá al prefijo para el siguiente paso", "Reemplazará la memoria del encoder", "Se convertirá en una cabeza de atención",
-                "El prefijo crece un token y vuelve a entrar al decoder; la memoria de la fuente se conserva."),
+            "module_2:embedding_update": root.labQuestion(
+                "lab_m2_update", "En E′=E−ηg, E es la tabla de embeddings, g su gradiente y η indica el tamaño del paso. El laboratorio no modifica el modelo. ¿Qué representa E′?",
+                "Cómo quedaría la tabla después de un paso hipotético", "La posición de cada token en la frase", "Un vector que ya incluye la suma con la posición",
+                "E′ es el posible valor siguiente de la tabla si se aplicara ese paso; aquí sólo se calcula."),
+            "module_4:backward": root.labQuestion(
+                "lab_m4_backward", "Durante el entrenamiento, backward recorre el cálculo en sentido inverso para identificar qué parámetros influyeron en la pérdida L. En multi-head, ¿hasta dónde debe llegar la señal?",
+                "Hasta WQ, WK, WV y WO", "Sólo hasta la cabeza seleccionada en pantalla", "Sólo hasta softmax, que no tiene parámetros",
+                "La señal alcanza tanto las proyecciones de las cabezas como la mezcla final."),
+            "module_4:update": root.labQuestion(
+                "lab_m4_update", "En θ′=θ−ηg, θ agrupa WQ, WK, WV y WO, g es su gradiente y η indica el tamaño del paso. ¿Qué representa θ′?",
+                "Cómo quedarían esas matrices tras un paso hipotético", "Un mapa de atención que debe sumar 1", "El número de cabezas del modelo",
+                "θ′ es el posible valor siguiente; el laboratorio no ejecuta el optimizador."),
+            "module_5:backward": root.labQuestion(
+                "lab_m5_backward", "Durante el entrenamiento, el gradiente indica cómo influyó cada parámetro en la pérdida L. En una capa del encoder, ¿qué parámetros lo reciben?",
+                "Los de atención, los de la FFN, y γ y β", "Sólo los de la FFN, por estar al final", "Ninguno: el atajo residual lo detiene",
+                "El error global llega a todos los parámetros de la capa; el atajo más bien facilita que llegue."),
+            "module_5:update": root.labQuestion(
+                "lab_m5_update", "En θₗ′=θₗ−ηgₗ, θₗ agrupa los parámetros de la capa l, gₗ su gradiente y η indica el tamaño del paso. ¿Qué representa θₗ′?",
+                "Cómo quedaría esa capa tras un paso hipotético", "La salida de la capa anterior", "La memoria final del encoder",
+                "θₗ′ sólo se calcula con fines didácticos; el modelo no cambia."),
+            "module_6:backward": root.labQuestion(
+                "lab_m6_backward", "Durante el entrenamiento, la pérdida se calcula a la salida y el gradiente regresa por el decoder. ¿Por qué subcapas pasa?",
+                "Por la FFN, por cross-attention y por la atención causal", "Sólo por la máscara causal, que no tiene parámetros", "Sólo por el prefijo de entrada",
+                "La señal retrocede por las tres subcapas, cada una con sus propios parámetros."),
+            "module_6:update": root.labQuestion(
+                "lab_m6_update", "En θ′=θ−ηg, θ agrupa los parámetros del decoder, g su gradiente y η indica el tamaño del paso. ¿Qué representa θ′?",
+                "Cómo quedaría el decoder tras un paso hipotético", "El siguiente token del prefijo", "Una nueva máscara causal",
+                "θ′ es el posible valor siguiente; el laboratorio no altera el modelo activo."),
+            "module_7:backward": root.labQuestion(
+                "lab_m7_backward", "La pérdida depende de la probabilidad del token correcto. ¿Qué indica el gradiente de W_vocab?",
+                "Cómo cambiar la proyección para aumentar esa probabilidad", "Qué token escribir en el paso siguiente", "Cuál es el valor de Top-K",
+                "Autograd calcula la dirección de cambio; Top-K y Top-P no participan al entrenar."),
+            "module_7:update": root.labQuestion(
+                "lab_m7_update", "En W′=W−ηg, W es W_vocab, g su gradiente y η indica el tamaño del paso. ¿Qué representa W′?",
+                "Cómo quedaría W_vocab tras un paso hipotético", "Una distribución de probabilidad", "Un vocabulario con más tokens",
+                "Se enseña el cambio de SGD sin aplicarlo al modelo."),
+            "module_8:full_backward": root.labQuestion(
+                "lab_m8_backward", "En el recorrido completo, la pérdida se calcula al final. ¿Hasta dónde llega el gradiente?",
+                "Cruza la salida, el decoder, el encoder y los embeddings", "Se detiene en la memoria del encoder", "Sólo llega a la capa de salida",
+                "La señal cruza también la memoria y alcanza los parámetros de todo el modelo."),
+            "module_8:full_update": root.labQuestion(
+                "lab_m8_update", "En θ′=θ−ηg, θ agrupa los parámetros del Transformer, g su gradiente y η indica el tamaño del paso. ¿Qué representa θ′?",
+                "Cómo quedaría el modelo tras un paso hipotético", "El siguiente token generado", "La memoria de la frase fuente",
+                "Se calcula un cambio representativo, sin ejecutar un optimizador."),
             "module_8:full_loss": root.labQuestion(
                 "lab_m8_loss", "¿Qué resume el escalar de pérdida mostrado en el flujo completo?",
                 "El desacuerdo entre logits y objetivos válidos", "El número de capas del decoder", "La cantidad de candidatos Top-K",
@@ -282,35 +245,35 @@ PagePrincipal {
                 "El laboratorio visualiza el paso de SGD, pero no modifica los parámetros activos.")
         if (!challenges.length)
             return ({})
+        // Cada reto prepara el reactivo de igual índice, así que todos deben poder
+        // aparecer. Un paso puede tener varios: rotan al volver a entrar a él.
         var maps = {
-            "module_1": { "text": 2, "tokens": 2, "ids": 7, "specials": 6,
-                          "batch": 3, "mask": 1, "no_grad": 0 },
-            "module_2": { "lookup": 1, "scale": 5, "position": 3, "sum": 2,
-                          "dropout": 7, "embedding_gradient": 6, "embedding_update": 6 },
+            "module_1": { "text": 4, "tokens": 2, "ids": 5, "specials": 6,
+                          "batch": [3, 0], "mask": 1, "no_grad": 7 },
+            "module_2": { "lookup": [1, 0], "scale": 5, "position": 3, "sum": [2, 4, 6],
+                          "dropout": 7, "embedding_gradient": 6 },
             "module_3": { "attention_input": 4, "weights": 5, "qkv": 4, "dot": 0,
                           "scale": 1, "mask": 6, "softmax": 2, "weighted": 3,
                           "output": 7, "backward": 5, "update": 5 },
-            "module_4": { "project": 7, "split": 0, "maps": 5, "contexts": 3,
-                          "concat": 2, "wo": 4, "backward": 6, "update": 6 },
+            "module_4": { "project": 7, "split": [0, 1], "maps": 3, "contexts": 5,
+                          "concat": 2, "wo": [4, 6] },
             "module_5": { "encoder_input": 7, "encoder_attention": 2, "residual_1": 0,
                           "norm_1": 3, "ffn_expand": 1, "ffn_activation": 5,
-                          "ffn_project": 1, "norm_2": 3, "stack": 4,
-                          "backward": 6, "update": 6 },
-            "module_6": { "decoder_prefix": 6, "decoder_embedding": 6, "causal_mask": 0,
+                          "ffn_project": 1, "norm_2": 3, "stack": [4, 6] },
+            "module_6": { "decoder_prefix": 6, "decoder_embedding": 6, "causal_mask": [0, 1],
                           "masked_attention": 4, "decoder_residual_1": 5,
-                          "cross_attention": 2, "decoder_residual_2": 5,
-                          "decoder_ffn": 5, "decoder_output": 7, "decoder_layers": 7,
-                          "backward": 5, "update": 5 },
-            "module_7": { "hidden": 0, "linear": 1, "temperature": 2, "top_k": 3,
-                          "top_p": 4, "softmax": 5, "select": 6, "feedback": 6,
-                          "target": 6, "loss": 5, "backward": 1, "update": 1 },
-            "module_8": { "full_tokens": 2, "full_batch": 0, "full_embedding": 4,
-                          "full_encoder": 1, "full_decoder": 3, "full_logits": 6,
-                          "full_filters": 6, "full_loss": 5, "full_select": 6,
-                          "full_feedback": 7, "full_backward": 5, "full_update": 5 }
+                          "cross_attention": [2, 3], "decoder_residual_2": 5,
+                          "decoder_ffn": 5, "decoder_output": 5, "decoder_layers": 7 },
+            "module_7": { "hidden": 0, "linear": [1, 0], "temperature": 2, "top_k": 3,
+                          "top_p": 4, "softmax": 5, "select": 6, "feedback": 7 },
+            "module_8": { "full_tokens": 2, "full_batch": 2, "full_embedding": 4,
+                          "full_encoder": [1, 7], "full_decoder": [3, 5], "full_logits": 0,
+                          "full_filters": 6, "full_select": 6, "full_feedback": 6 }
         }
         var moduleMap = maps[root.moduleId] || ({})
         var mapped = moduleMap[sid]
+        if (Array.isArray(mapped))
+            mapped = mapped[root.challengeRound % mapped.length]
         var index = mapped === undefined
                     ? root.safeStepIndex % challenges.length : Number(mapped)
         return challenges[Math.max(0, Math.min(challenges.length - 1, index))] || ({})
@@ -367,6 +330,14 @@ PagePrincipal {
 
     function buildExperimentDescriptor() {
         var sid = String(root.currentStep && root.currentStep.id || "")
+        var planned = LaboratoryExperiments.descriptor(root.moduleId, sid)
+        if (planned !== null)
+            return root.experimentAvailable(planned.action)
+                    ? planned
+                    : ({ "title": "Recorre la operación",
+                         "subtitle": "Este modelo no permite variar ese control en este paso.",
+                         "label": "Recorrer la fórmula",
+                         "instruction": "Reproduce la animación y mueve su control de avance: identifica entrada, transformación y resultado sin saltar fases." })
         if (sid === "temperature")
             return ({ "label": "Cambiar la temperatura",
                       "instruction": "Cambia T y compara si las probabilidades se concentran o se reparten entre más candidatos." })
@@ -411,6 +382,7 @@ PagePrincipal {
     }
 
     function resetDiscovery(openChallenge) {
+        root.challengeRound += 1
         root.discoveryStage = 0
         root.discoveryPrediction = -1
         root.discoveryExplanation = -1
@@ -438,7 +410,6 @@ PagePrincipal {
 
     function recordAdvancedVisit() {
         if (!root.advancedMode
-                || root.moduleId !== "module_3"
                 || root.analysis.module_id !== root.moduleId
                 || String(root.analysis.mode || "") !== root.mode
                 || root.steps.length === 0)
@@ -456,7 +427,7 @@ PagePrincipal {
     function practiceStatusText() {
         if (root.labProgress.completed)
             return "PRÁCTICA COMPLETA ✓  ·  Ya puedes presentar el post-test."
-        if (root.advancedMode && root.moduleId === "module_3") {
+        if (root.advancedMode) {
             var visited = Number(root.labProgress.advanced_steps || 0)
             var required = Number(root.labProgress.advanced_required || root.steps.length)
             if (root.labProgress.advanced_completed)
@@ -675,8 +646,51 @@ PagePrincipal {
         root.discoveryStage = 1
     }
 
+    function experimentAvailable(action) {
+        if (action === "token")
+            return root.tokens.length > 1
+        if (action === "head")
+            return root.controlRelevant("head") && root.modelHeadCount > 1
+        if (action === "layer")
+            return root.controlRelevant("layer") && root.modelLayerCount > 1
+        return true
+    }
+
+    function runPlannedExperiment(action) {
+        if (action === "token") {
+            tokenSlider.value = (Math.round(tokenSlider.value) + 1) % root.tokens.length
+        } else if (action === "head") {
+            headSlider.value = (Math.round(headSlider.value) + 1) % root.modelHeadCount
+        } else if (action === "layer") {
+            layerSlider.value = (Math.round(layerSlider.value) + 1) % root.modelLayerCount
+        } else if (action === "causal") {
+            causalSwitch.checked = !causalSwitch.checked
+        } else if (action === "temperature") {
+            temperatureSlider.value = temperatureSlider.value <= 0.7 ? 1.35 : 0.55
+        } else if (action === "top_k") {
+            topKSlider.value = topKSlider.value <= 5 ? 12 : 3
+        } else if (action === "top_p") {
+            topPSlider.value = topPSlider.value <= 0.65 ? 0.95 : 0.55
+        } else if (action === "filters") {
+            temperatureSlider.value = temperatureSlider.value <= 0.7 ? 1.35 : 0.55
+            topKSlider.value = topKSlider.value <= 6 ? 12 : 5
+            topPSlider.value = topPSlider.value <= 0.7 ? 0.92 : 0.62
+        } else if (action !== "rerun") {
+            root.workspaceSection = 1
+            formulaScene.replay()
+            return
+        }
+        root.runAnalysis(true, true)
+    }
+
     function applySuggestedExperiment() {
         var sid = String(root.currentStep && root.currentStep.id || "")
+        var planned = LaboratoryExperiments.descriptor(root.moduleId, sid)
+        if (planned !== null) {
+            root.runPlannedExperiment(root.experimentAvailable(planned.action)
+                                      ? planned.action : "replay")
+            return
+        }
         root.discoveryStage = 2
         root.discoveryHint = ""
         root.discoveryExperimentDone = true
@@ -1072,7 +1086,9 @@ PagePrincipal {
                             Layout.minimumWidth: 0
                             Layout.preferredHeight: 42 * root.uiScale
                             sx: root.uiScale; sy: root.uiScale
-                            text: "La atención conecta cada token con su contexto."
+                            // Parte de la frase del módulo: sus retos hablan de ella.
+                            text: String(root.moduleData.anchor && root.moduleData.anchor.lab_text
+                                         || "La atención conecta cada token con su contexto.")
                             placeholderText: "Escribe un texto para inspeccionarlo"
                             onAccepted: if (analyzeButton.enabled) root.runAnalysis()
                         }
@@ -1752,6 +1768,8 @@ PagePrincipal {
                                 selectedLayer: Math.round(layerSlider.value)
                                 selectedHead: Math.round(headSlider.value)
                                 selectedToken: Math.round(tokenSlider.value)
+                                causalEnabled: causalSwitch.checked
+                                conceptualOverview: true
                                 showContextChrome: false
                                 sx: root.uiScale; sy: root.uiScale
                                 onInspectRequested: function(panel) { root.openValues(panel) }
