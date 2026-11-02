@@ -6,7 +6,7 @@ Generado por `tools/generar_preguntas_modulo.py`. Corresponde a la versión 15 d
 
 **Pregunta:** Si al final del decoder el modelo duda entre «perro», «gato» y «pez», ¿cómo decide qué palabra escribir y cómo cambia esa decisión con la temperatura?
 
-**Ejemplo:** Logits [perro = 2.0, gato = 1.0, pez = 0.0]. Softmax con T = 1 ≈ [0.67, 0.24, 0.09]. Con T = 0.5 los logits pasan a [4, 2, 0] y softmax ≈ [0.87, 0.12, 0.02]: más concentrada. Con Top-K = 2 se elimina «pez» y se renormaliza: ≈ [0.73, 0.27]. El token elegido se añade al prefijo y el ciclo se repite.
+**Ejemplo:** Logits [perro = 2.0, gato = 1.0, pez = 0.0]. Softmax con T = 1 ≈ [0.665, 0.245, 0.090]. Con T = 0.5 los logits pasan a [4, 2, 0] y softmax ≈ [0.867, 0.117, 0.016]: queda más concentrada. Con Top-K = 2 se elimina «pez» y se renormaliza: ≈ [0.731, 0.269]. El token elegido se añade al prefijo y el ciclo se repite.
 
 **Cierre:** El modelo duda entre «perro», «gato» y «pez», y dividir los logits entre T cambia la distancia entre ellos. Al mover la temperatura, ¿qué cambia y qué no?
 

@@ -58,6 +58,18 @@ def test_catalogo_declara_ocho_modulos_completos():
     assert all(module["laboratory"]["data_keys"] for module in catalog.modules)
 
 
+def test_ejemplo_de_self_attention_mantiene_la_misma_frase_y_cuatro_tokens():
+    module = LearningModuleCatalog().get("module_3")
+    contenido = json.dumps(module, ensure_ascii=False)
+    primera_leccion = module["guided_steps"][0]["lesson"]
+
+    assert module["anchor"]["lab_text"] == "El banco guarda dinero"
+    assert "dinero" in module["anchor"]["question"]
+    assert "T = 4" in primera_leccion["ejemplo"]["titulo"]
+    assert "forma [4, 4]" in primera_leccion["ejemplo"]["lineas"][-1]
+    assert "el banco del río" not in contenido.lower()
+
+
 def test_cada_paso_guiado_apunta_a_teoria_existente():
     catalog = LearningModuleCatalog()
     with recurso("data", "teoria", "transformer.json").open(encoding="utf-8") as source:
@@ -333,10 +345,10 @@ def test_la_alineacion_se_fusiona_en_todos_los_modulos():
 MODULOS = tuple(f"module_{numero}" for numero in range(1, 9))
 
 
-# Huella del instrumento del módulo 3 en la versión 14. Si esta prueba falla, ese
+# Huella del instrumento del módulo 3 en la versión 15. Si esta prueba falla, ese
 # instrumento cambió: los pre-tests ya tomados dejan de ser comparables con el
 # post. Sube su versión en VERSIONES_CONGELADAS antes de actualizar la huella.
-HUELLA_MODULO_3 = "febd0d335e1ef42705cfe99d7b5e68e2b1cfda887ad24a8a3c8e48dffbbdf6c3"
+HUELLA_MODULO_3 = "35f1a60c7b76a2652736c8f419086ee2f7040b63a629d1f7142de44512d0decd"
 
 
 def test_el_instrumento_del_modulo_3_no_cambia_sin_subir_su_version():
@@ -356,7 +368,7 @@ def test_el_instrumento_del_modulo_3_no_cambia_sin_subir_su_version():
     ).hexdigest()
 
     assert huella == HUELLA_MODULO_3
-    assert bank.instrument_version == 14
+    assert bank.instrument_version == 15
 
 
 def test_el_generador_escribe_el_documento_de_un_modulo(tmp_path, monkeypatch):
@@ -375,8 +387,10 @@ def test_el_generador_escribe_el_documento_de_un_modulo(tmp_path, monkeypatch):
 
 def test_los_demas_modulos_tienen_su_propia_version():
     for module_id in MODULOS:
-        esperada = 14 if module_id == "module_3" else ModuleQuestionBank.VERSION_PREGUNTAS
-        assert ModuleQuestionBank.version_de_modulo(module_id) == esperada
+        assert (
+            ModuleQuestionBank.version_de_modulo(module_id)
+            == ModuleQuestionBank.VERSION_PREGUNTAS
+        )
 
 
 @pytest.mark.parametrize("module_id", MODULOS)
@@ -456,7 +470,7 @@ def test_archivo_consolidado_del_modulo_3_esta_actualizado():
         encoding="utf-8"
     )
 
-    assert "versión 14" in document
+    assert "versión 15" in document
     assert len(re.findall(r"^### R\d+\.", document, flags=re.MULTILINE)) == 8
     assert len(re.findall(r"^### PRE-", document, flags=re.MULTILINE)) == 25
     assert len(re.findall(r"^### POST-", document, flags=re.MULTILINE)) == 25

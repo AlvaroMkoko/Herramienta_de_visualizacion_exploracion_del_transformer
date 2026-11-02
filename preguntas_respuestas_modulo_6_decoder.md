@@ -6,7 +6,7 @@ Generado por `tools/generar_preguntas_modulo.py`. Corresponde a la versión 15 d
 
 **Pregunta:** Al traducir «the cat» a «el gato», ¿cómo predice el decoder «gato» sin espiar la respuesta y sin olvidar la frase en inglés?
 
-**Ejemplo:** Objetivo [el, gato, EOS]; entrada desplazada [BOS, el, gato]. La máscara causal de T = 3 deja ver {0} en la fila 0, {0, 1} en la fila 1 y {0, 1, 2} en la fila 2: 6 de 9 celdas. La posición 1 («el») predice «gato» mirando sólo [BOS, el] y, mediante cross-attention, las 2 posiciones de la memoria de «the cat» (mapa [3, 2]).
+**Ejemplo:** Objetivo [el, gato, EOS]; entrada desplazada [BOS, el, gato]. La máscara causal de T = 3 deja ver {0} en la fila 0, {0, 1} en la fila 1 y {0, 1, 2} en la fila 2: 6 de 9 celdas. La posición 1 («el») predice «gato» mirando sólo [BOS, el] y, mediante cross-attention, las 2 posiciones de la memoria de «the cat». Si se omiten los ejes de batch y cabeza, el mapa completo mide [3, 2].
 
 **Cierre:** Al entrenar, el decoder recibe la frase desplazada, y la máscara causal oculta lo que aún no debe ver. Si se desactiva esa máscara al entrenar, ¿qué puede aprender el decoder?
 

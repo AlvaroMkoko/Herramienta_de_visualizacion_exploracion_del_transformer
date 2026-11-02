@@ -1,17 +1,18 @@
 # Preguntas y respuestas correctas — Módulo 3: Self-Attention
 
-Este documento corresponde a la versión 14 del banco modular. El pre-test y el
+Este documento corresponde a la versión 15 del banco modular. El pre-test y el
 post-test tienen 25 reactivos disponibles cada uno; cada intento selecciona 15.
 
 ## Pregunta ancla
 
-**Pregunta:** En «el banco del río», ¿cómo puede el vector de «banco» incorporar
-información de «río» para no confundirse con un banco de dinero?
+**Pregunta:** En «El banco guarda dinero», ¿cómo puede el vector de «banco»
+incorporar información de «dinero» para reconocer que se habla de una
+institución financiera?
 
 **Respuesta correcta:** La Query de «banco» se compara con las Keys de todos los
-tokens. Si es más compatible con la Key de «río», softmax asigna mayor peso a
-esa posición y entra más del Value de «río» en la nueva representación de
-«banco».
+tokens. Si es más compatible con la Key de «dinero», softmax asigna mayor peso
+a esa posición y entra más del Value de «dinero» en la nueva representación
+de «banco».
 
 ## Comprobaciones del recorrido guiado
 
@@ -77,8 +78,8 @@ entrega la cabeza?
 
 ### PRE-B1. Entrada a atención
 
-**Pregunta:** Contexto: la frase «el banco del río» ya fue convertida en
-vectores. X es la tabla que recibe self-attention antes de calcular Q, K y V.
+**Pregunta:** Contexto: la frase «El banco guarda dinero» ya fue convertida
+en vectores. X es la tabla que recibe self-attention antes de calcular Q, K y V.
 ¿Qué descripción explica correctamente qué contiene X?
 
 **Respuesta correcta:** La matriz X reúne la frase: cada fila es el vector de un
@@ -304,8 +305,9 @@ componentes por Query. ¿Qué forma tiene su salida?
 
 ### POST-B1. Operación de Matriz X
 
-**Pregunta:** La frase «el banco del río» ya fue convertida en vectores. X es la
-tabla que recibirá self-attention. ¿Qué operación construye la matriz X?
+**Pregunta:** La frase «El banco guarda dinero» ya fue convertida en
+vectores. X es la tabla que recibirá self-attention. ¿Qué operación construye la
+matriz X?
 
 **Respuesta correcta:** Apilar un vector por token en el orden de la frase.
 
@@ -532,18 +534,18 @@ exploración. ¿Qué cambia y qué queda igual?
 
 ### LAB-3. Papeles de Q, K y V
 
-**Pregunta:** «río» le ofrece información a «banco». ¿Qué vector de «río» se
-compara con la Query de «banco» y cuál se mezcla en la salida?
+**Pregunta:** «dinero» le ofrece información a «banco». ¿Qué vector de
+«dinero» se compara con la Query de «banco» y cuál se mezcla en la salida?
 
-**Respuesta correcta:** Se compara la Key de «río» y se mezcla su Value.
+**Respuesta correcta:** Se compara la Key de «dinero» y se mezcla su Value.
 
 ### LAB-4. Celda de QKᵀ
 
 **Pregunta:** En la vista QKᵀ, sigue la fila de la Query de «banco» hasta la
-columna de la Key de «río». ¿Qué representa la celda donde se cruzan?
+columna de la Key de «dinero». ¿Qué representa la celda donde se cruzan?
 
 **Respuesta correcta:** Un score de compatibilidad entre lo que busca «banco» y
-lo que identifica a «río».
+lo que identifica a «dinero».
 
 ### LAB-5. Escalamiento
 

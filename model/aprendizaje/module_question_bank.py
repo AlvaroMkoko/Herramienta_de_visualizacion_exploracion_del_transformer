@@ -48,10 +48,12 @@ class ModuleQuestionBank:
     # 15: los módulos 1, 2 y 4–8 alcanzan el estándar del módulo 3: contexto
     # antes de cada reactivo, B1–B4 y A3 redactados a mano, retos reescritos y
     # B1/B2 midiendo el mismo concepto en pre y post.
+    # El módulo 3 adopta esta versión al reemplazar su caso ambiguo de banco y
+    # río por un ejemplo coherente en recorrido, laboratorio y evaluación.
     VERSION_PREGUNTAS = 15
     # Un módulo cuyo instrumento no cambió conserva su versión: subirla por
     # cambiar otro módulo invalidaría pre-tests ya tomados y comparables.
-    VERSIONES_CONGELADAS = {"module_3": 14}
+    VERSIONES_CONGELADAS: dict[str, int] = {}
 
     #: Una respuesta así se pide con una casilla por eje (presentación
     #: «forma_tensor»): sin ese molde, «[5,5]», «5x5» y «5 por 5» parecen

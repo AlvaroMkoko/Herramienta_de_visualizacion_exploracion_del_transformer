@@ -6,7 +6,7 @@ Generado por `tools/generar_preguntas_modulo.py`. Corresponde a la versión 15 d
 
 **Pregunta:** En «María le dio el libro a Ana porque ella lo pidió», ¿cómo puede el modelo seguir a la vez quién es «ella» y qué es «lo»?
 
-**Ejemplo:** Con d_model = 8 y h = 2, cada cabeza trabaja con d_head = 4. Por ejemplo, la cabeza 1 usa los componentes 0–3 y su mapa conecta «ella» → «Ana»; la cabeza 2 usa los componentes 4–7 y conecta «lo» → «libro». Cada una produce [T, 4]; al concatenar se recupera [T, 8] y WO (8 × 8) mezcla ambas relaciones en una sola representación.
+**Ejemplo:** Con d_model = 8 y h = 2, las proyecciones Q, K y V conservan 8 componentes y luego se reorganizan en dos cabezas de d_head = 4. En un caso ilustrativo, el mapa de la cabeza 1 da más peso de «ella» a «Ana» y el de la cabeza 2, de «lo» a «libro». Cada cabeza produce [T, 4]; al concatenarlas se recupera [T, 8] y WO (8 × 8) integra ambas relaciones en una sola representación.
 
 **Cierre:** En «María le dio el libro a Ana porque ella lo pidió» hay más de una relación que seguir a la vez. Cada cabeza calcula un mapa propio. ¿Por qué conviene tener varias?
 
@@ -600,7 +600,7 @@ Esta implementación reparte d_model en h bloques iguales. Se intenta usar d_mod
 
 ### LAB-m4_l1
 
-**Pregunta:** Ejemplo de reparto: con d_model = 40 y h = 5, cada cabeza toma una porción del ancho total. ¿Cuántas componentes le tocan, y qué pasa con los tokens?
+**Pregunta:** Ejemplo de reparto: con d_model = 40 y h = 5, cada cabeza recibe una porción de Q, K y V ya proyectados. ¿Cuántas componentes le tocan, y qué pasa con los tokens?
 
 **Respuesta correcta:** 8 componentes; todas las cabezas ven los mismos tokens
 

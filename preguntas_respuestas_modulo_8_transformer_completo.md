@@ -6,7 +6,7 @@ Generado por `tools/generar_preguntas_modulo.py`. Corresponde a la versión 15 d
 
 **Pregunta:** ¿Qué recorrido hace la frase «hola mundo» desde el texto hasta la primera palabra de la respuesta, y qué forma tiene la información en cada etapa?
 
-**Ejemplo:** B = 1, fuente [hola, mundo] (T_src = 2), d_model = 128 y |V| = 8 000. IDs [1, 2] → embeddings + posición [1, 2, 128] → N capas encoder → memoria [1, 2, 128]. El decoder recibe el prefijo [BOS] → [1, 1, 128] → cross-attention con un mapa [1, 2] → logits [1, 1, 8 000] → softmax → token «hello» → nuevo prefijo [BOS, hello], y el ciclo se repite.
+**Ejemplo:** B = 1, fuente [hola, mundo] (T_src = 2), d_model = 128 y |V| = 8 000. Con IDs de ejemplo [31, 47] → embeddings + posición [1, 2, 128] → N capas encoder → memoria [1, 2, 128]. El decoder recibe el prefijo [BOS] → [1, 1, 128] → cross-attention con un mapa [1, 2] por cabeza → logits [1, 1, 8 000] → softmax → token «hello» → nuevo prefijo [BOS, hello], y el ciclo se repite.
 
 **Cierre:** Mientras se genera la respuesta a «hola mundo», la frase de origen no cambia, pero se va escribiendo una frase nueva. ¿Qué se reutiliza en cada paso de generación y qué cambia?
 
@@ -600,7 +600,7 @@ La memoria conserva un vector de d_model números por token de la fuente. Con B=
 
 ### LAB-m8_l1
 
-**Pregunta:** Observa la última proyección: sólo se renombra un eje. Un lote de 3 frases con 2 posiciones, vectores de 40 números y 600 palabras posibles. ¿Cómo queda el tensor?
+**Pregunta:** Observa la última proyección: la capa lineal transforma el último eje de d_model al vocabulario. Un lote de 3 frases con 2 posiciones, vectores de 40 números y 600 palabras posibles. ¿Cómo queda el tensor de logits?
 
 **Respuesta correcta:** [3, 2, 600]
 

@@ -656,7 +656,7 @@ Cada token se cambia por el número de su fila: [«sol», «de», «mayo»] se m
 
 ### LAB-m1_l8
 
-**Pregunta:** Ejemplo: «banco» recibe el mismo ID en «el banco del río» y en «el banco cerró». ¿Dónde deberá resolverse la diferencia de sentido?
+**Pregunta:** Ejemplo: «banco» recibe el mismo ID en «me senté en el banco» y en «el banco cerró». ¿Dónde deberá resolverse la diferencia de sentido?
 
 **Respuesta correcta:** En las representaciones contextuales construidas por la atención
 

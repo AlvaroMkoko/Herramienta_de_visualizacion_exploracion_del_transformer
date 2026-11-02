@@ -715,7 +715,7 @@
         {
           "id": "m1_l8",
           "concept_id": "token_ids",
-          "prompt": "Ejemplo: «banco» recibe el mismo ID en «el banco del río» y en «el banco cerró». ¿Dónde deberá resolverse la diferencia de sentido?",
+          "prompt": "Ejemplo: «banco» recibe el mismo ID en «me senté en el banco» y en «el banco cerró». ¿Dónde deberá resolverse la diferencia de sentido?",
           "options": [
             "En las representaciones contextuales construidas por la atención",
             "En un ID secreto distinto para cada significado",
@@ -1431,7 +1431,7 @@
     "module_3": {
       "question_text": {
         "contexts": {
-          "B1": "La frase «el banco del río» ya fue convertida en vectores. X es la tabla que recibe self-attention antes de calcular Q, K y V.",
+          "B1": "La frase «El banco guarda dinero» ya fue convertida en vectores. X es la tabla que recibe self-attention antes de calcular Q, K y V.",
           "B2": "QKᵀ produce scores de compatibilidad. Si sus magnitudes son muy grandes, softmax puede concentrar casi todo el peso en una sola Key.",
           "B3": "En Q=XWQ, K=XWK y V=XWV intervienen dos clases de datos: la entrada X de la frase y las matrices W del modelo.",
           "B4": "Self-attention primero obtiene una tabla T×T y después produce un vector de contexto por token. Identifica qué tarea corresponde a QKᵀ.",
@@ -1490,9 +1490,9 @@
         }
       },
       "anchor": {
-        "lab_text": "el banco del río",
-        "question": "En «el banco del río», ¿cómo puede el vector de «banco» incorporar información de «río» para no confundirse con un banco de dinero?",
-        "example": "Cuatro tokens con d_k = 4. Q(banco) = [1, 0, 1, 0]; K(el) = [0, 1, 0, 0], K(banco) = [1, 0, 0, 0], K(del) = [0, 0, 0, 1] y K(río) = [1, 0, 1, 0]. Scores Q·K = [0, 1, 0, 2]; al dividir por √4 = 2 quedan [0, 0.5, 0, 1]; softmax ≈ [0.157, 0.259, 0.157, 0.427]. Con V(el) = 1, V(banco) = 2, V(del) = 1 y V(río) = 6, la salida es ≈ 3.39: «banco» toma sobre todo información de «río».",
+        "lab_text": "El banco guarda dinero",
+        "question": "En «El banco guarda dinero», ¿cómo puede el vector de «banco» incorporar información de «dinero» para reconocer que se habla de una institución financiera?",
+        "example": "Cuatro tokens con d_k = 4. Q(banco) = [1, 0, 1, 0]; K(el) = [0, 1, 0, 0], K(banco) = [1, 0, 0, 0], K(guarda) = [0, 0, 0, 1] y K(dinero) = [1, 0, 1, 0]. Scores Q·K = [0, 1, 0, 2]; al dividir por √4 = 2 quedan [0, 0.5, 0, 1]; softmax ≈ [0.157, 0.259, 0.157, 0.427]. Con V(el) = 1, V(banco) = 2, V(guarda) = 1 y V(dinero) = 6, la salida es ≈ 3.39: «banco» toma sobre todo información de «dinero».",
         "closing": {
           "prompt": "En self-attention, el token que pregunta usa su Query para compararse con la Key de cada token. Después softmax convierte esas comparaciones en pesos. ¿Qué determina cuánta información de otro token entra en la mezcla final?",
           "options": [
@@ -1640,7 +1640,7 @@
           "explanation": "0.6·5 + 0.4·10 = 3 + 4 = 7."
         },
         "m3_a5": {
-          "prompt": "En «el banco del río», «banco» es el token que busca contexto. ¿Cuál de sus vectores expresa lo que busca y se compara con las Keys de los demás?",
+          "prompt": "En «El banco guarda dinero», «banco» es el token que busca contexto. ¿Cuál de sus vectores expresa lo que busca y se compara con las Keys de los demás?",
           "options": [
             "Query",
             "Key",
@@ -1720,14 +1720,14 @@
         {
           "id": "m3_l1",
           "concept_id": "producto_qk",
-          "prompt": "En la vista QKᵀ, sigue la fila de la Query de «banco» hasta la columna de la Key de «río». ¿Qué representa la celda donde se cruzan?",
+          "prompt": "En la vista QKᵀ, sigue la fila de la Query de «banco» hasta la columna de la Key de «dinero». ¿Qué representa la celda donde se cruzan?",
           "options": [
-            "Un score de compatibilidad entre lo que busca «banco» y lo que identifica a «río»",
+            "Un score de compatibilidad entre lo que busca «banco» y lo que identifica a «dinero»",
             "El Value final de «banco», ya mezclado y contextualizado",
             "Un parámetro de WQ que cambia para esa frase"
           ],
           "correct_index": 0,
-          "explanation": "La celda es el producto punto entre Q(banco) y K(río): mide compatibilidad antes de softmax; todavía no es un peso ni un Value mezclado."
+          "explanation": "La celda es el producto punto entre Q(banco) y K(dinero): mide compatibilidad antes de softmax; todavía no es un peso ni un Value mezclado."
         },
         {
           "id": "m3_l2",
@@ -1768,7 +1768,7 @@
         {
           "id": "m3_l5",
           "concept_id": "qkv",
-          "prompt": "«río» le ofrece información a «banco». ¿Qué vector de «río» se compara con la Query de «banco» y cuál se mezcla en la salida?",
+          "prompt": "«dinero» le ofrece información a «banco». ¿Qué vector de «dinero» se compara con la Query de «banco» y cuál se mezcla en la salida?",
           "options": [
             "Se compara su Key y se mezcla su Value",
             "Se compara su Query y se mezcla su Key",
@@ -1820,7 +1820,7 @@
           "terminos": [
             {
               "termino": "Token",
-              "definicion": "Cada pedazo en que se divide el texto. En este curso casi siempre es una palabra: «el», «banco», «del», «río»."
+              "definicion": "Cada pedazo en que se divide el texto. En este curso casi siempre es una palabra: «el», «banco», «guarda», «dinero»."
             },
             {
               "termino": "Vector",
@@ -1840,7 +1840,7 @@
             },
             {
               "termino": "T",
-              "definicion": "Cuántos tokens tiene la frase (la longitud de la secuencia). En los ejemplos usaremos tres tokens, «el», «banco» y «río», así que T = 3."
+              "definicion": "Cuántos tokens tiene la frase (la longitud de la secuencia). En los ejemplos usaremos cuatro tokens: «el», «banco», «guarda» y «dinero», así que T = 4."
             },
             {
               "termino": "d_model",
@@ -1857,14 +1857,14 @@
           ],
           "pasos": [
             {
-              "texto": "Se toman los tokens de la frase en orden: «el», «banco», «río»."
+              "texto": "Se toman los tokens de la frase en orden: «el», «banco», «guarda», «dinero»."
             },
             {
               "texto": "Cada token ya llega como un vector de d_model números: su embedding más su posición (eso lo construye el módulo 2)."
             },
             {
-              "texto": "Los vectores se apilan, uno por fila: la fila 1 es «el», la fila 2 es «banco» y la fila 3 es «río».",
-              "formula": "X = [ x_el ; x_banco ; x_río ]"
+              "texto": "Los vectores se apilan, uno por fila: la fila 1 es «el», la fila 2 es «banco», la fila 3 es «guarda» y la fila 4 es «dinero».",
+              "formula": "X = [ x_el ; x_banco ; x_guarda ; x_dinero ]"
             },
             {
               "texto": "La forma de X es [T, d_model] para una frase. Con un batch se agrega el eje B al frente.",
@@ -1872,12 +1872,13 @@
             }
           ],
           "ejemplo": {
-            "titulo": "«el banco del río» con T = 3 y d_model = 4",
+            "titulo": "«El banco guarda dinero» con T = 4 y d_model = 4",
             "lineas": [
-              "x_el    = [0.1, 0.9, 0.0, 0.2]",
-              "x_banco = [0.8, 0.1, 0.7, 0.0]",
-              "x_río   = [0.9, 0.0, 0.8, 0.3]",
-              "X tiene 3 filas (tokens) y 4 columnas (rasgos): forma [3, 4]."
+              "x_el       = [0.1, 0.9, 0.0, 0.2]",
+              "x_banco    = [0.8, 0.1, 0.7, 0.0]",
+              "x_guarda = [0.2, 0.6, 0.1, 0.8]",
+              "x_dinero = [0.9, 0.0, 0.8, 0.3]",
+              "X tiene 4 filas (tokens) y 4 columnas (rasgos): forma [4, 4]."
             ]
           },
           "clave": "X es la tabla de partida: una fila por token y d_model columnas."
@@ -1932,8 +1933,9 @@
               "Q(banco) = [1, 0, 1, 0]    ← lo que busca «banco»",
               "K(el)    = [0, 1, 0, 0]",
               "K(banco) = [1, 0, 0, 0]",
-              "K(río)   = [1, 0, 1, 0]",
-              "Values simplificados a un número: V(el) = 1, V(banco) = 2, V(río) = 6"
+              "K(guarda) = [0, 0, 0, 1]",
+              "K(dinero) = [1, 0, 1, 0]",
+              "Values simplificados a un número: V(el) = 1, V(banco) = 2, V(guarda) = 1, V(dinero) = 6"
             ]
           },
           "clave": "Una sola X origina tres tablas: Q pregunta, K se anuncia y V entrega."
@@ -1963,17 +1965,17 @@
             }
           ],
           "ejemplo": {
-            "titulo": "Las Keys de «el banco del río»",
+            "titulo": "Las Keys de «El banco guarda dinero»",
             "lineas": [
-              "K tiene forma [3, 4]: tres tokens, d_k = 4.",
-              "Kᵀ tiene forma [4, 3]: cuatro filas y una columna por token.",
-              "La columna 3 de Kᵀ es la Key de «río»: [1, 0, 1, 0]."
+              "K tiene forma [4, 4]: cuatro tokens, d_k = 4.",
+              "Kᵀ tiene forma [4, 4]: cuatro filas y una columna por token.",
+              "La columna 4 de Kᵀ es la Key de «dinero»: [1, 0, 1, 0]."
             ]
           },
           "clave": "Transponer no calcula nada: acomoda K para poder multiplicar."
         },
         "m3_s4": {
-          "intuicion": "Para saber cuánto le interesa «río» a «banco», se compara lo que busca «banco» (su Query) con lo que ofrece «río» (su Key). Si los dos vectores se parecen, el número que resulta es grande: son compatibles.",
+          "intuicion": "Para saber cuánto le interesa «dinero» a «banco», se compara lo que busca «banco» (su Query) con lo que ofrece «dinero» (su Key). Si los dos vectores se parecen, el número que resulta es grande: son compatibles.",
           "terminos": [
             {
               "termino": "Producto punto",
@@ -2008,8 +2010,9 @@
             "lineas": [
               "con K(el)    = [0, 1, 0, 0]:  1·0 + 0·1 + 1·0 + 0·0 = 0",
               "con K(banco) = [1, 0, 0, 0]:  1·1 + 0·0 + 1·0 + 0·0 = 1",
-              "con K(río)   = [1, 0, 1, 0]:  1·1 + 0·0 + 1·1 + 0·0 = 2",
-              "Scores de «banco» = [0, 1, 2]: «río» es el más compatible."
+              "con K(guarda) = [0, 0, 0, 1]:  1·0 + 0·0 + 1·0 + 0·1 = 0",
+              "con K(dinero) = [1, 0, 1, 0]:  1·1 + 0·0 + 1·1 + 0·0 = 2",
+              "Scores de «banco» = [0, 1, 0, 2]: «dinero» es el más compatible."
             ]
           },
           "clave": "QKᵀ compara cada Query con todas las Keys y produce un mapa [T, T]."
@@ -2045,7 +2048,7 @@
             "titulo": "Scores de «banco» con d_k = 4",
             "lineas": [
               "√4 = 2",
-              "[0, 1, 2] / 2 = [0, 0.5, 1]",
+              "[0, 1, 0, 2] / 2 = [0, 0.5, 0, 1]",
               "Otro caso: con d_k = 9 (√9 = 3), un score de 6 queda en 6 / 3 = 2."
             ]
           },
@@ -2090,17 +2093,17 @@
             }
           ],
           "ejemplo": {
-            "titulo": "Fila de «banco», con scores escalados [0, 0.5, 1]",
+            "titulo": "Fila de «banco», con scores escalados [0, 0.5, 0, 1]",
             "lineas": [
-              "exponenciales: [1, 1.65, 2.72]   → suma ≈ 5.37",
-              "pesos: [1 / 5.37, 1.65 / 5.37, 2.72 / 5.37] ≈ [0.19, 0.31, 0.51]",
-              "«banco» pone cerca de la mitad de su atención en «río»."
+              "exponenciales: [1, 1.65, 1, 2.72]   → suma ≈ 6.37",
+              "pesos: [1 / 6.37, 1.65 / 6.37, 1 / 6.37, 2.72 / 6.37] ≈ [0.157, 0.259, 0.157, 0.427]",
+              "«banco» pone el mayor peso de atención en «dinero»."
             ]
           },
           "clave": "Softmax convierte cada fila de scores en un reparto positivo que suma 1."
         },
         "m3_s7": {
-          "intuicion": "Ya sabemos cuánta atención le da «banco» a cada token. Ahora «banco» arma su nueva representación tomando un poco de la información (el Value) de cada uno, en la proporción de sus pesos: mucho de «río» y poco de «el». Es como mezclar pinturas en distintas cantidades.",
+          "intuicion": "Ya sabemos cuánta atención le da «banco» a cada token. Ahora «banco» arma su nueva representación tomando un poco de la información (el Value) de cada uno, en la proporción de sus pesos: más de «dinero» y menos de los demás. Es como mezclar pinturas en distintas cantidades.",
           "terminos": [
             {
               "termino": "Suma ponderada",
@@ -2127,16 +2130,16 @@
             }
           ],
           "ejemplo": {
-            "titulo": "«banco» con pesos [0.19, 0.31, 0.51] y Values [1, 2, 6]",
+            "titulo": "«banco» con pesos [0.157, 0.259, 0.157, 0.427] y Values [1, 2, 1, 6]",
             "lineas": [
-              "0.19·1 + 0.31·2 + 0.51·6 ≈ 0.19 + 0.62 + 3.06 ≈ 3.8",
-              "El resultado queda mucho más cerca del Value de «río» (6) que del de «el» (1)."
+              "0.157·1 + 0.259·2 + 0.157·1 + 0.427·6 ≈ 0.157 + 0.518 + 0.157 + 2.562 ≈ 3.39",
+              "La mayor contribución individual viene del Value de «dinero» (6), porque también recibe el mayor peso."
             ]
           },
           "clave": "La salida de cada token es una mezcla de Values pesada por su atención."
         },
         "m3_s8": {
-          "intuicion": "Al final, cada token sale con un vector nuevo que ya «sabe» de su contexto. «banco» entró como una palabra ambigua y sale inclinado hacia el sentido de orilla, porque mezcló mucha información de «río».",
+          "intuicion": "Al final, cada token sale con un vector nuevo que ya «sabe» de su contexto. «banco» entró como una palabra ambigua y sale inclinado hacia el sentido de institución financiera, porque incorporó información de «dinero».",
           "terminos": [
             {
               "termino": "Representación contextualizada",
@@ -2170,8 +2173,8 @@
           "ejemplo": {
             "titulo": "La misma palabra en dos frases",
             "lineas": [
-              "«el banco del río»: «banco» atiende sobre todo a «río» → sentido de orilla.",
-              "«el banco cobró comisión»: atendería a «cobró» y «comisión» → sentido de dinero."
+              "«Me senté en el banco»: el contexto inclina «banco» hacia el sentido de asiento.",
+              "«El banco guarda dinero»: el contexto lo inclina hacia el sentido financiero."
             ]
           },
           "clave": "Entra un vector por token y sale un vector por token, ahora con contexto."
@@ -2330,8 +2333,8 @@
             "titulo": "Con d_model = 8 y h = 2",
             "lineas": [
               "d_head = 8 / 2 = 4",
-              "La cabeza 1 usa las componentes 0–3.",
-              "La cabeza 2 usa las componentes 4–7."
+              "La cabeza 1 recibe las componentes 0–3 de cada Q, K y V ya proyectado.",
+              "La cabeza 2 recibe las componentes 4–7 de cada Q, K y V ya proyectado."
             ]
           },
           "clave": "Se reparten las componentes, no los tokens."
@@ -2547,7 +2550,7 @@
       "anchor": {
         "lab_text": "María le dio el libro a Ana porque ella lo pidió",
         "question": "En «María le dio el libro a Ana porque ella lo pidió», ¿cómo puede el modelo seguir a la vez quién es «ella» y qué es «lo»?",
-        "example": "Con d_model = 8 y h = 2, cada cabeza trabaja con d_head = 4. Por ejemplo, la cabeza 1 usa los componentes 0–3 y su mapa conecta «ella» → «Ana»; la cabeza 2 usa los componentes 4–7 y conecta «lo» → «libro». Cada una produce [T, 4]; al concatenar se recupera [T, 8] y WO (8 × 8) mezcla ambas relaciones en una sola representación.",
+        "example": "Con d_model = 8 y h = 2, las proyecciones Q, K y V conservan 8 componentes y luego se reorganizan en dos cabezas de d_head = 4. En un caso ilustrativo, el mapa de la cabeza 1 da más peso de «ella» a «Ana» y el de la cabeza 2, de «lo» a «libro». Cada cabeza produce [T, 4]; al concatenarlas se recupera [T, 8] y WO (8 × 8) integra ambas relaciones en una sola representación.",
         "closing": {
           "prompt": "En «María le dio el libro a Ana porque ella lo pidió» hay más de una relación que seguir a la vez. Cada cabeza calcula un mapa propio. ¿Por qué conviene tener varias?",
           "options": [
@@ -2767,7 +2770,7 @@
         {
           "id": "m4_l1",
           "concept_id": "division_cabezas",
-          "prompt": "Ejemplo de reparto: con d_model = 40 y h = 5, cada cabeza toma una porción del ancho total. ¿Cuántas componentes le tocan, y qué pasa con los tokens?",
+          "prompt": "Ejemplo de reparto: con d_model = 40 y h = 5, cada cabeza recibe una porción de Q, K y V ya proyectados. ¿Cuántas componentes le tocan, y qué pasa con los tokens?",
           "options": [
             "8 componentes; todas las cabezas ven los mismos tokens",
             "5 componentes; cada cabeza recibe tokens distintos",
@@ -3237,7 +3240,7 @@
       "anchor": {
         "lab_text": "el gato duerme",
         "question": "Después de la atención, ¿cómo evita el encoder perder la información original de cada token y, al mismo tiempo, transformarla de forma no lineal?",
-        "example": "Un token con x = [1, 2] recibe la actualización de atención a = [0.5, −1]. Residual: x + a = [1.5, 1.0]. LayerNorm (media 1.25, desviación 0.25) → [1, −1]. Una FFN 2 → 8 → 2 con ReLU produce otra actualización f, y el segundo Add & Norm calcula Norm([1, −1] + f). La forma [T, 2] nunca cambia, así que la capa se puede apilar N veces.",
+        "example": "Un token con x = [1, 2] recibe la actualización de atención a = [0.5, −1]. Residual: x + a = [1.5, 1.0]. Si omitimos ε y usamos γ = 1, β = 0, LayerNorm (media 1.25, desviación 0.25) produce [1, −1]. Una FFN 2 → 8 → 2 con ReLU produce otra actualización f, y el segundo Add & Norm calcula Norm([1, −1] + f). La forma [T, 2] nunca cambia, así que la capa se puede apilar N veces.",
         "closing": {
           "prompt": "Después de la atención, cada token recibe una actualización y la capa debe evitar que se pierda lo que ya tenía. ¿Qué permite que la entrada original siga presente?",
           "options": [
@@ -3940,7 +3943,7 @@
       "anchor": {
         "lab_text": "the cat",
         "question": "Al traducir «the cat» a «el gato», ¿cómo predice el decoder «gato» sin espiar la respuesta y sin olvidar la frase en inglés?",
-        "example": "Objetivo [el, gato, EOS]; entrada desplazada [BOS, el, gato]. La máscara causal de T = 3 deja ver {0} en la fila 0, {0, 1} en la fila 1 y {0, 1, 2} en la fila 2: 6 de 9 celdas. La posición 1 («el») predice «gato» mirando sólo [BOS, el] y, mediante cross-attention, las 2 posiciones de la memoria de «the cat» (mapa [3, 2]).",
+        "example": "Objetivo [el, gato, EOS]; entrada desplazada [BOS, el, gato]. La máscara causal de T = 3 deja ver {0} en la fila 0, {0, 1} en la fila 1 y {0, 1, 2} en la fila 2: 6 de 9 celdas. La posición 1 («el») predice «gato» mirando sólo [BOS, el] y, mediante cross-attention, las 2 posiciones de la memoria de «the cat». Si se omiten los ejes de batch y cabeza, el mapa completo mide [3, 2].",
         "closing": {
           "prompt": "Al entrenar, el decoder recibe la frase desplazada, y la máscara causal oculta lo que aún no debe ver. Si se desactiva esa máscara al entrenar, ¿qué puede aprender el decoder?",
           "options": [
@@ -4619,7 +4622,7 @@
       "anchor": {
         "lab_text": "el perro y el gato",
         "question": "Si al final del decoder el modelo duda entre «perro», «gato» y «pez», ¿cómo decide qué palabra escribir y cómo cambia esa decisión con la temperatura?",
-        "example": "Logits [perro = 2.0, gato = 1.0, pez = 0.0]. Softmax con T = 1 ≈ [0.67, 0.24, 0.09]. Con T = 0.5 los logits pasan a [4, 2, 0] y softmax ≈ [0.87, 0.12, 0.02]: más concentrada. Con Top-K = 2 se elimina «pez» y se renormaliza: ≈ [0.73, 0.27]. El token elegido se añade al prefijo y el ciclo se repite.",
+        "example": "Logits [perro = 2.0, gato = 1.0, pez = 0.0]. Softmax con T = 1 ≈ [0.665, 0.245, 0.090]. Con T = 0.5 los logits pasan a [4, 2, 0] y softmax ≈ [0.867, 0.117, 0.016]: queda más concentrada. Con Top-K = 2 se elimina «pez» y se renormaliza: ≈ [0.731, 0.269]. El token elegido se añade al prefijo y el ciclo se repite.",
         "closing": {
           "prompt": "El modelo duda entre «perro», «gato» y «pez», y dividir los logits entre T cambia la distancia entre ellos. Al mover la temperatura, ¿qué cambia y qué no?",
           "options": [
@@ -5078,8 +5081,8 @@
           "ejemplo": {
             "titulo": "Con d_model = 128",
             "lineas": [
-              "src_ids [1, 2] → X_src [1, 2, 128]",
-              "tgt_ids [1, 1] → X_tgt [1, 1, 128]"
+              "src_ids [[31, 47]] → X_src [1, 2, 128]",
+              "tgt_ids [[1]] (BOS=1) → X_tgt [1, 1, 128]"
             ]
           },
           "clave": "Aquí aparece la primera representación continua del flujo."
@@ -5313,7 +5316,7 @@
       "anchor": {
         "lab_text": "hola mundo",
         "question": "¿Qué recorrido hace la frase «hola mundo» desde el texto hasta la primera palabra de la respuesta, y qué forma tiene la información en cada etapa?",
-        "example": "B = 1, fuente [hola, mundo] (T_src = 2), d_model = 128 y |V| = 8 000. IDs [1, 2] → embeddings + posición [1, 2, 128] → N capas encoder → memoria [1, 2, 128]. El decoder recibe el prefijo [BOS] → [1, 1, 128] → cross-attention con un mapa [1, 2] → logits [1, 1, 8 000] → softmax → token «hello» → nuevo prefijo [BOS, hello], y el ciclo se repite.",
+        "example": "B = 1, fuente [hola, mundo] (T_src = 2), d_model = 128 y |V| = 8 000. Con IDs de ejemplo [31, 47] → embeddings + posición [1, 2, 128] → N capas encoder → memoria [1, 2, 128]. El decoder recibe el prefijo [BOS] → [1, 1, 128] → cross-attention con un mapa [1, 2] por cabeza → logits [1, 1, 8 000] → softmax → token «hello» → nuevo prefijo [BOS, hello], y el ciclo se repite.",
         "closing": {
           "prompt": "Mientras se genera la respuesta a «hola mundo», la frase de origen no cambia, pero se va escribiendo una frase nueva. ¿Qué se reutiliza en cada paso de generación y qué cambia?",
           "options": [
@@ -5533,7 +5536,7 @@
         {
           "id": "m8_l1",
           "concept_id": "dimensiones_completas",
-          "prompt": "Observa la última proyección: sólo se renombra un eje. Un lote de 3 frases con 2 posiciones, vectores de 40 números y 600 palabras posibles. ¿Cómo queda el tensor?",
+          "prompt": "Observa la última proyección: la capa lineal transforma el último eje de d_model al vocabulario. Un lote de 3 frases con 2 posiciones, vectores de 40 números y 600 palabras posibles. ¿Cómo queda el tensor de logits?",
           "options": [
             "[3, 2, 600]",
             "[600, 2, 40]",

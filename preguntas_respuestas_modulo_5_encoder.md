@@ -6,7 +6,7 @@ Generado por `tools/generar_preguntas_modulo.py`. Corresponde a la versión 15 d
 
 **Pregunta:** Después de la atención, ¿cómo evita el encoder perder la información original de cada token y, al mismo tiempo, transformarla de forma no lineal?
 
-**Ejemplo:** Un token con x = [1, 2] recibe la actualización de atención a = [0.5, −1]. Residual: x + a = [1.5, 1.0]. LayerNorm (media 1.25, desviación 0.25) → [1, −1]. Una FFN 2 → 8 → 2 con ReLU produce otra actualización f, y el segundo Add & Norm calcula Norm([1, −1] + f). La forma [T, 2] nunca cambia, así que la capa se puede apilar N veces.
+**Ejemplo:** Un token con x = [1, 2] recibe la actualización de atención a = [0.5, −1]. Residual: x + a = [1.5, 1.0]. Si omitimos ε y usamos γ = 1, β = 0, LayerNorm (media 1.25, desviación 0.25) produce [1, −1]. Una FFN 2 → 8 → 2 con ReLU produce otra actualización f, y el segundo Add & Norm calcula Norm([1, −1] + f). La forma [T, 2] nunca cambia, así que la capa se puede apilar N veces.
 
 **Cierre:** Después de la atención, cada token recibe una actualización y la capa debe evitar que se pierda lo que ya tenía. ¿Qué permite que la entrada original siga presente?
 
