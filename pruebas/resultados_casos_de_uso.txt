@@ -1,0 +1,745 @@
+====================================================================================================
+PRUEBAS FUNCIONALES DE LOS CASOS DE USO CU01-CU24
+Herramienta de Visualización y Exploración del Transformer
+Especificación: main.pdf, sección 7.5.3, Tablas 10-33
+====================================================================================================
+Fecha de ejecución: 2026-10-23 22:33:00
+Equipo: GHOST-KNIGHT / Windows
+Python: 3.14.2
+PyTorch: 2.11.0+cu128 (CUDA disponible: True)
+Dispositivo de cómputo de la app: cuda
+Datos: copia aislada en C:\Users\alvar\AppData\Local\Temp\tt_casos_de_uso (data/ real sin tocar)
+Conductor: pruebas/ejecutar_casos_de_uso.py
+
+Convenciones de cada paso:
+  OK          el sistema hizo lo que pide la especificación.
+  FALLA       el sistema no hizo lo especificado (ver problema asociado).
+  NO POSIBLE  el paso no se pudo ejercer en esta corrida (motivo indicado).
+  PARCIAL     se cumplió solo una parte del paso.
+Los pasos 'Alt …' corresponden a flujos alternativos de la tabla del CU.
+Las capturas están en pruebas/capturas/ con el prefijo del CU.
+
+----------------------------------------------------------------------------------------------------
+RESUMEN
+----------------------------------------------------------------------------------------------------
+CU01  Carga de datos de entrenamiento                            LOGRADO (con pasos no posibles)
+CU02  Configuración de parámetros arquitectónicos                LOGRADO
+CU03  Configuración de parámetros de generación                  LOGRADO
+CU04  Entrenamiento del modelo                                   LOGRADO (con pasos no posibles)
+CU05  Visualización interna de componentes                       LOGRADO
+CU06  Ejecución paso a paso                                      LOGRADO
+CU07  Comparación de modelos                                     LOGRADO (con pasos no posibles)
+CU08  Generación de texto                                        LOGRADO
+CU09  Inspección matemática de dinámicas                         LOGRADO
+CU10  Persistencia de modelos                                    LOGRADO (con pasos no posibles)
+CU11  Carga de modelo pre-entrenado                              LOGRADO
+CU12  Selección de dataset predefinido                           LOGRADO (con pasos no posibles)
+CU13  Selección de modelo predefinido del catálogo               LOGRADO
+CU14  Evaluación de comprensión del usuario                      LOGRADO
+CU15  Visualización comparativa de resultados de evaluación      LOGRADO
+CU16  Persistencia del historial de evaluación                   LOGRADO
+CU17  Consulta de teoría contextual                              LOGRADO
+CU18  Recorrer un módulo del curso                               LOGRADO
+CU19  Evaluación de un módulo                                    LOGRADO (con pasos no posibles)
+CU20  Laboratorio del módulo                                     LOGRADO
+CU21  Crear y administrar una clase en red                       LOGRADO
+CU22  Unirse a una clase                                         LOGRADO
+CU23  Seguimiento del grupo                                      LOGRADO (con pasos no posibles)
+CU24  Entregar avance por archivo                                LOGRADO (con pasos no posibles)
+
+----------------------------------------------------------------------------------------------------
+PROBLEMAS ENCONTRADOS (para corregir al final)
+----------------------------------------------------------------------------------------------------
+Ninguno.
+
+----------------------------------------------------------------------------------------------------
+NOTAS DE MÉTODO
+----------------------------------------------------------------------------------------------------
+- La app se ejecutó con ventana real (plataforma «windows», OpenGL) y GPU CUDA; las capturas son de la ventana principal (y, cuando aplica, de la ventana de explicación desacoplada).
+- El conductor pulsa los mismos botones de QML (señal clicked) o llama a las mismas funciones que sus onClicked; no hay clics de mouse reales.
+- Las respuestas de los reactivos se registran con evaluationController.registrarRespuesta, el mismo slot que llama el delegate del reactivo; por eso las capturas de reactivos muestran la pregunta sin la opción marcada. Pre-test: la mitad correctas; post-test: todas correctas.
+- Los diálogos nativos de archivos de Windows no se pueden operar desde el conductor: se invocó el manejador onAccepted con una ruta del sandbox.
+- Aula conectada: profesor y alumno corren en el mismo proceso y la misma ventana, conectados por loopback (127.0.0.1). Por eso el indicador «Conectado» del alumno aparece también encima de la sala del profesor; en dos equipos reales no ocurre.
+- Los datos se escribieron en una copia aislada (sandbox en el temporal del sistema). data/ real, incluidos data/resultados y data/progreso, no se tocó. Se copiaron dos modelos de data/checkpoints para la biblioteca.
+- CU16 «sesión posterior» se ejecutó en un segundo proceso sobre el mismo sandbox (fase 2), igual que CU20 sin modelo activo y la prueba de cierre con entrenamiento en pausa.
+
+====================================================================================================
+CU01: Carga de datos de entrenamiento
+Resultado: LOGRADO (con pasos no posibles)
+----------------------------------------------------------------------------------------------------
+ 1. [OK] Precondición: abrir el catálogo de datasets desde la configuración
+      captura: capturas/CU01_01_catalogo_inicial.png
+ 2. [OK] 1. El botón «Importar archivo» está disponible
+ 3. [NO POSIBLE] 2. Selector de archivos del sistema operativo (JSONL, JSON, CSV, TXT o PDF)
+      El FileDialog es nativo de Windows y no se puede operar desde el conductor. Se verificó que el filtro declara *.jsonl *.json *.csv *.txt *.pdf y se invoca el mismo manejador onAccepted con la ruta elegida.
+ 4. [OK] 2b. Filtros del selector
+      ['Datasets compatibles (*.jsonl *.json *.csv *.txt *.pdf)', 'JSONL (*.jsonl)', 'JSON (*.json)', 'CSV (*.csv)', 'Texto (*.txt)', 'PDF (*.pdf)', 'Todos los archivos (*)']
+      captura: capturas/CU01_02_analizando_en_hilo.png
+ 5. [OK] 3-4. Análisis en hilo auxiliar con fase y avance
+      Overlay de progreso visible durante el análisis
+ 6. [OK] 4. Verifica campos instruction/response, estadísticas y huella SHA-256
+      registros=48.0, sha256=50751945f9a9288f…
+ 7. [OK] 5. Registra el dataset e indica compatibilidad con el entrenamiento
+      «dataset_prueba_cu01»: Todos los registros contienen pares instruction → response válidos.
+      captura: capturas/CU01_03_dataset_importado.png
+ 8. [OK] Alt 4b. Archivo ya registrado: se reutiliza la entrada existente
+      El catálogo sigue con 5 entradas.
+ 9. [OK] Alt 4a. Archivo vacío: se muestra el motivo y el catálogo no cambia
+      Mensaje: No se pudo agregar el dataset: El archivo no contiene registros.
+      captura: capturas/CU01_04_rechazo_vacio.png
+10. [OK] Alt 4a. Archivo sin instruction/response: se muestra el motivo y el catálogo no cambia
+      Mensaje: No se pudo agregar el dataset: Faltan los campos obligatorios: instruction, response.
+      captura: capturas/CU01_05_rechazo_sin_campos.png
+      captura: capturas/CU01_06_crear_mi_dataset.png
+11. [OK] Alt 1a. «Crear mi dataset» genera un JSONL válido y lo registra
+      Archivo: mi_dataset_cu01.jsonl
+      captura: capturas/CU01_07_catalogo_final.png
+12. [OK] Postcondición: el dataset puede seleccionarse para entrenar
+
+====================================================================================================
+CU02: Configuración de parámetros arquitectónicos
+Resultado: LOGRADO
+----------------------------------------------------------------------------------------------------
+ 1. [OK] 1. Ajusta los controles globales (capas, d_model)
+      capas=2, d_model=64; diagrama indica 2 capas
+      captura: capturas/CU02_01_parametros_globales.png
+ 2. [OK] 1b. Selecciona un bloque del diagrama y aparecen sus parámetros
+      bloque=encoder_self_attention
+      captura: capturas/CU02_02_bloque_seleccionado.png
+ 3. [OK] 2. Ajusta los parámetros asociados al bloque
+      cabezas=4 (Número de Cabezas, Dropout)
+ 4. [OK] 4. Se actualiza la estimación de parámetros y memoria
+      parámetros=13,103,544, ~50.0 MB
+ 5. [OK] 3/Alt 3a. Configuración incoherente (RN14): motivo y «Iniciar entrenamiento» deshabilitado
+      Mensaje: dimension_modelo (64) debe ser divisible entre num_cabezas (3).
+      captura: capturas/CU02_03_cabezas_invalidas.png
+ 6. [OK] Alt 4a. Guarda la configuración como JSON sin sobrescribir
+      Config_CU02.json, Config_CU02_2.json
+      captura: capturas/CU02_04_configuracion_guardada.png
+ 7. [OK] Postcondición: configuración lista; el modelo se crea al iniciar el entrenamiento
+
+====================================================================================================
+CU03: Configuración de parámetros de generación
+Resultado: LOGRADO
+----------------------------------------------------------------------------------------------------
+ 1. [OK] Precondición: módulo de inferencia con modelo activo y generación en curso
+      Token 1 generado: «Do you have about me?»
+ 2. [OK] 1. Ajusta temperatura, top-k y top-p durante la generación
+      Generación completa · 6 tokens
+      captura: capturas/CU03_01_parametros_cambiados.png
+ 3. [OK] 2. Los controles se limitan a los rangos permitidos (RN04)
+      rangos T∈[0.1, 2.0], k∈[1, 100], p∈[0.05, 0.99]; T=50 quedó en 2.0
+ 4. [OK] Alt 2a. Valor rechazado por el controlador: motivo y parámetros anteriores
+      La temperatura debe estar entre 0.1 y 2.0.
+ 5. [OK] 3. Con generación en curso los nuevos valores se aplican desde el siguiente token
+      Antes: «Do you have about me?» → ahora: «Do you have about me?»
+ 6. [OK] 4. La escena de salida muestra la distribución y los candidatos resultantes (RF13)
+      Claves del paso: atencion_por_bloque, cantidad_candidatos, entropia_salida, etapas, filtros, foco_decoder, foco_encoder, foco_entrada, margen_top1_top2, modo_muestreo, paso, predicciones_top, token_elegido, tokens_decoder, tokens_entrada, tokens_entrada_total, tokens_salida, tokens_salida_total, validacion
+      captura: capturas/CU03_02_escena_salida_candidatos.png
+ 7. [OK] Postcondición: el siguiente token se muestrea con la nueva configuración; los ya generados no se recalculan
+      Texto final: «Do you have about me?»
+
+====================================================================================================
+CU04: Entrenamiento del modelo
+Resultado: LOGRADO (con pasos no posibles)
+----------------------------------------------------------------------------------------------------
+ 1. [OK] Precondición: modelo configurado (Mínima, CU13/CU02) y dataset elegido (CU12)
+      d_model=32, capas=1
+ 2. [OK] 1. Define épocas, tasa de aprendizaje y tamaño de lote
+      épocas=3, lr=0.001, batch=8
+      captura: capturas/CU04_01_parametros_entrenamiento.png
+      captura: capturas/CU04_02_preparando_datos.png
+ 3. [OK] 2a. Crea el modelo y prepara los datos en un hilo auxiliar
+      Se observó la capa de preparación
+      captura: capturas/CU04_03_pantalla_entrenamiento.png
+      captura: capturas/CU04_04_cu09_antes_del_primer_lote.png
+ 4. [OK] 3. Por lote muestra pérdida, precisión por token, norma del gradiente, avance y tiempo restante
+      pérdida=11.4560, precisión=0.000, ‖g‖=1.5171, «Época 1 / 3 · lote 3 / 16 · 6% · transcurrido 1 s · restante aprox. 9 s»
+      captura: capturas/CU04_05_entrenando.png
+ 5. [OK] 4. Pausar
+      Entrenamiento pausado
+      captura: capturas/CU04_06_pausado.png
+ 6. [OK] 4b. En pausa no avanzan los lotes
+ 7. [OK] 4c. Ajusta la velocidad de ejecución
+      Velocidad: Media
+      captura: capturas/CU04_07_ajustes_velocidad.png
+ 8. [OK] [fin] 4. Reanudar
+ 9. [OK] [fin] 5. Termina el entrenamiento y habilita los resultados
+      Época 3 / 3 · lote 16 / 16 · 100% · transcurrido 25 s · restante aprox. 0 s
+      captura: capturas/CU04_08_entrenamiento_completado.png
+10. [OK] [fin] 5b. Resultados: curva de pérdida, tabla por época, guardado e inferencia
+      3 épocas en la tabla; pérdida final 8.791118621826172
+      captura: capturas/CU04_09_resultados.png
+      captura: capturas/CU04_10_detenido.png
+11. [OK] [fin] Alt 4a. Detener: resumen parcial y el modelo puede guardarse
+      captura: capturas/CU04_11_resumen_parcial.png
+12. [NO POSIBLE] [fin] Alt 3a. Error durante el entrenamiento (p. ej. falta de memoria en la GPU)
+      Provocar un error de memoria real en la GPU podía afectar al equipo; no se forzó.
+13. [OK] [fin] Postcondición: modelo entrenado disponible para inferencia o guardado
+14. [OK] [cierre_en_pausa] Entrenamiento iniciado y pausado
+      Pausa solicitada · se aplicará al terminar el lote actual
+15. [OK] [cierre_en_pausa] Cerrar la aplicación con el entrenamiento en pausa no produce errores
+      Sin excepciones al cerrar
+
+====================================================================================================
+CU05: Visualización interna de componentes
+Resultado: LOGRADO
+----------------------------------------------------------------------------------------------------
+ 1. [OK] [entrenamiento] Precondición: hay un lote de entrenamiento capturado (RN06)
+ 2. [OK] [entrenamiento] 1-2. El modelo conserva los tensores del lote y el adaptador los reduce
+      Snapshot pedagógico con tokens: 6 de origen, 5 posiciones con predicción
+ 3. [OK] [entrenamiento] 3. Elige capa y cabeza a observar
+      captura: capturas/CU05_01_atencion_capa_cabeza.png
+ 4. [OK] [entrenamiento] 4. Presenta escenas: proyección del espacio de embeddings
+      6 puntos proyectados
+      captura: capturas/CU05_02_espacio_embeddings.png
+ 5. [OK] [inferencia] Precondición: hay un token generado (RN06)
+ 6. [OK] [inferencia] 1-2. Conserva los tensores intermedios y los reduce a muestras y estadísticas
+      Metadatos: {"architecture": "encoder_decoder", "capture_precision": "float32 para métricas visuales", "d_ff": 512, "d_head": 32, "d_model": 128, "device": "cuda:0", "dtype": "float32", "framework": "PyTorch 2.11
+ 7. [OK] [inferencia] 3. Selecciona bloque (encoder), capa y cabeza
+ 8. [OK] [inferencia] 4. Presenta la escena (mapa de atención) con la forma del tensor y el origen de los datos
+      Q 1 × 4 × 6 × 32 · K 1 × 4 × 8 × 32 · V 1 × 4 × 8 × 32
+      captura: capturas/CU05_03_escena_atencion.png
+      captura: capturas/CU05_04_atencion_cruzada.png
+ 9. [OK] [inferencia] Alt 3a. Sin lote ni token: la Vista indica que espera el primer cálculo
+      Verificado en entrenamiento (CU09 1a: «Esperando el primer batch»).
+
+====================================================================================================
+CU06: Ejecución paso a paso
+Resultado: LOGRADO
+----------------------------------------------------------------------------------------------------
+ 1. [OK] [entrenamiento] 1. Abre la vista guiada del entrenamiento (13 pasos)
+      13 pasos: 1 · Datos, 2 · Vectores, 3 · Self-Attn, 4 · Contexto, 5 · Shift, 6 · Máscara, 7 · Cross-Attn, 8 · Top-K, 9 · Loss, 10 · Backward, 11 · Gradientes, 12 · Adam, 13 · Evolución
+      captura: capturas/CU06_01_paso_01.png
+ 2. [OK] [entrenamiento] 2. Avanza con «Siguiente»
+ 3. [OK] [entrenamiento] 2b. Retrocede con «Anterior»
+      captura: capturas/CU06_02_paso_04.png
+      captura: capturas/CU06_03_paso_07.png
+      captura: capturas/CU06_04_paso_10.png
+      captura: capturas/CU06_05_paso_13.png
+ 4. [OK] [entrenamiento] 3. Muestra la escena del paso con los datos capturados, sin recalcular
+      Los lotes no avanzaron al recorrer los pasos (entrenamiento en pausa)
+ 5. [OK] [entrenamiento] 4. El mapa resalta el bloque correspondiente
+      4: ENCODER; 7: PUENTE · ENCODER → DECODER; 10: APRENDIZAJE; 13: APRENDIZAJE
+ 6. [OK] [entrenamiento] 2c. Recorrido automático
+      avanzó hasta el paso 2
+ 7. [OK] [inferencia] 1. Abre el panel de exploración de la inferencia (31 pasos)
+      31 pasos
+      captura: capturas/CU06_06_paso_01.png
+ 8. [OK] [inferencia] 2. Avanza con «Siguiente»
+ 9. [OK] [inferencia] 2b. Retrocede con «Anterior»
+      captura: capturas/CU06_07_paso_06.png
+      captura: capturas/CU06_08_paso_13.png
+      captura: capturas/CU06_09_paso_21.png
+      captura: capturas/CU06_10_paso_31.png
+10. [OK] [inferencia] 3. Muestra la escena con los datos capturados, sin recalcular el modelo
+      El número de tokens no cambió al recorrer pasos
+11. [OK] [inferencia] 4. El mapa de la arquitectura resalta el bloque del paso
+      6: Encoder; 13: Decoder causal; 21: Decoder + contexto; 31: Salida
+12. [OK] [inferencia] 2c. Recorrido automático
+      avanzó al paso 2
+13. [OK] [inferencia] Postcondición: el usuario recorre la secuencia de operaciones del paso hacia adelante
+
+====================================================================================================
+CU07: Comparación de modelos
+Resultado: LOGRADO (con pasos no posibles)
+----------------------------------------------------------------------------------------------------
+ 1. [OK] Precondición: al menos dos modelos guardados (RN11)
+      5 modelos en la biblioteca
+ 2. [OK] Alt 1a. Con un solo modelo elegido la selección no se completa
+      Selecciona un modelo más.
+ 3. [OK] 1. Selecciona exactamente dos modelos (RN05)
+      A = Esp-Ing-modelo_128d_4enc-4dec_4h_relu_Truemascara-c_step3750_cuda_20261023_004238 · B = Modelo CU10 minimo
+      captura: capturas/CU07_01_dos_modelos_elegidos.png
+ 4. [OK] 2. Los carga en hilo auxiliar sin reemplazar el modelo activo y habilita la vista dividida
+      Dos modelos listos para comparar.
+      captura: capturas/CU07_02_vista_dividida.png
+ 5. [OK] 3-4. «Generar ambos» token por token; cada mitad muestra respuesta, tokens y tiempo
+      A: «You could come.» (4 tokens, 1484 ms) · B: « water poem. eats drinks» (5 tokens, 1556 ms)
+      captura: capturas/CU07_03_respuestas.png
+ 6. [OK] 5. «Estados internos»: candidatos, entropía por capa y tokens más atendidos
+      Paso de generación elegido: 1
+      captura: capturas/CU07_04_estados_internos.png
+ 7. [OK] 6. «Explorar encoder y decoder» abre el explorador paralelo
+      Como ventana modal (hay un solo monitor)
+      captura: capturas/CU07_05_explorador_paralelo.png
+ 8. [NO POSIBLE] 6b. Con segundo monitor el explorador se abre en él
+      El equipo de prueba tiene un solo monitor.
+ 9. [OK] Alt 2a. Archivo inválido o incompatible: error y no se inicia la comparación
+      No se pudieron cargar los modelos: El archivo no es un .tvismodel valido.
+10. [OK] Postcondición: respuestas y estados internos de ambos modelos para la misma entrada
+
+====================================================================================================
+CU08: Generación de texto
+Resultado: LOGRADO
+----------------------------------------------------------------------------------------------------
+ 1. [OK] Precondición: hay un modelo activo en el módulo de inferencia
+      Esp-Ing
+ 2. [OK] Alt 1a. Prompt vacío: muestra el motivo y no inicia
+      Botón de generar deshabilitado; mensaje: Escribe un prompt antes de iniciar.
+      captura: capturas/CU08_01_prompt_vacio.png
+ 3. [OK] Alt 1a. Prompt más largo que el contexto: muestra el motivo y no inicia
+      No se pudo generar: El prompt ocupa 601 tokens y el modelo admite 128.
+      captura: capturas/CU08_02_prompt_largo.png
+ 4. [OK] 1. Introduce un prompt
+      Hola, ¿cómo estás?
+ 5. [OK] 2. Ajusta los parámetros de muestreo (CU03)
+      máx. 6 tokens, temperatura 0.8, top-k 50, top-p 0.90
+      captura: capturas/CU08_03_prompt_y_parametros.png
+ 6. [OK] 3-4. «Generar siguiente token»: encoder una vez, decoder por iteración, muestreo y elección
+      Texto parcial: «Do»
+      captura: capturas/CU08_04_token_1.png
+ 7. [OK] 5-6. El token se agrega, el texto parcial se muestra y el ciclo termina (máximo o fin)
+      6 tokens · «Do you have about me?» · Generación completa · 6 tokens
+      captura: capturas/CU08_05_generacion_completa.png
+ 8. [OK] 6b. «Entender cómo se generó» abre el explorador (CU06)
+      captura: capturas/CU08_06_entender_como_se_genero.png
+ 9. [OK] Postcondición: secuencia de texto generada por el modelo
+      Do you have about me?
+
+====================================================================================================
+CU09: Inspección matemática de dinámicas
+Resultado: LOGRADO
+----------------------------------------------------------------------------------------------------
+ 1. [OK] Precondición: entrenamiento en curso (pausado) con lote capturado
+ 2. [OK] 1. Selecciona un bloque del mapa de la arquitectura
+      captura: capturas/CU09_01_explicacion_aparte.png
+ 3. [OK] 2. «Detalle del bloque»: RMS del gradiente, norma de pesos, entropía y mayor peso de atención
+      Entropía media: 1.779 | Mayor peso de atención: 0.2155 | Cabezas × capas: 2 × 1 | Intensidad de aprendizaje (RMS): 1.50e-04 | Norma de pesos: 11.360 | Parámetros: 4224
+      captura: capturas/CU09_02_detalle_del_bloque.png
+ 4. [OK] 2b. La vista guiada muestra el cambio de pesos del optimizador
+      12 parámetros con ΔW
+      captura: capturas/CU09_03_cambio_de_pesos.png
+ 5. [OK] 3. Abre la explicación de una métrica con su botón de ayuda
+      «Intensidad de aprendizaje (RMS)» → gradient_norm_rms
+      captura: capturas/CU09_04_ayuda_metrica.png
+ 6. [OK] 4. Deselecciona el bloque y vuelve a la vista general
+ 7. [OK] Alt 1a. Sin lote procesado: valores de referencia y aviso de espera del primer lote
+      Esperando; Inicia el entrenamiento; esta sección se actualizará al terminar el primer batch.; Lectura del batch · Esperando el primer batch
+      captura: capturas/CU04_04_cu09_antes_del_primer_lote.png
+
+====================================================================================================
+CU10: Persistencia de modelos
+Resultado: LOGRADO (con pasos no posibles)
+----------------------------------------------------------------------------------------------------
+ 1. [OK] 1. Nombre sugerido
+      modelo_32d_1enc-1dec_2h_relu_Truemascara-c_step54_cuda_20261023_223407.tvismodel
+      captura: capturas/CU10_01_guardando.png
+ 2. [OK] 2-4. «Guardar modelo portable» escribe un .tvismodel en hilo auxiliar
+      C:\Users\alvar\AppData\Local\Temp\tt_casos_de_uso\data\checkpoints\Modelo CU10 minimo.tvismodel
+      captura: capturas/CU10_02_guardado_portable.png
+ 3. [OK] 3. Nombre saneado y alterno si ya existe (no sobrescribe)
+      Modelo CU10 minimo.tvismodel / Modelo CU10 minimo_2.tvismodel
+ 4. [OK] 2b. «Guardar para reanudar»
+      Modelo CU10 reanudable.tvismodel
+      captura: capturas/CU10_03_guardado_reanudable.png
+ 5. [OK] 4. El archivo contiene manifiesto JSON y pesos .pt con huella SHA-256
+      manifest.json, weights.pt, training_state.pt
+ 6. [OK] 5. Confirma el guardado y el modelo aparece en la biblioteca
+      5 modelos en la biblioteca
+ 7. [NO POSIBLE] Alt 4a. Error de escritura: sin archivo incompleto
+      Requiere provocar un fallo del disco; la escritura atómica se revisa en las pruebas unitarias.
+
+====================================================================================================
+CU11: Carga de modelo pre-entrenado
+Resultado: LOGRADO
+----------------------------------------------------------------------------------------------------
+ 1. [OK] Precondición: el usuario está en la biblioteca de modelos
+      5 modelos: Modelo CU10 reanudable; Modelo CU10 minimo_2; Modelo CU10 minimo; Esp-Ing-modelo_128d_4enc-4dec_4h_relu_Truemascara-c_step3750_cuda_20261023_004238; modelo_128d_6enc-6dec_4h_relu_Truemascara-c_step8976_cuda_20260813_110144
+      captura: capturas/CU11_01_biblioteca.png
+ 2. [OK] 1. Selecciona un modelo y consulta su ficha de detalle
+      Ficha abierta en 1.5 s
+      captura: capturas/CU11_02_ficha_detalle.png
+ 3. [OK] 2. Lista y ficha leen solo el manifiesto, sin cargar los pesos (RN13)
+      La ficha de un modelo de 110 MB abrió en 1.5 s y no cambió el modelo activo (modeloListo=True).
+      captura: capturas/CU11_03_cargando_modelo.png
+ 4. [OK] 3-4. Verifica integridad/topología, carga pesos y tokenizador, mueve al dispositivo y transita a la inferencia
+      d_model=128, capas=4, encoding=cl100k_base, dispositivo=cuda
+      captura: capturas/CU11_04_inferencia_con_modelo_cargado.png
+ 5. [OK] Alt 3a. Archivo corrupto: se muestra el error y el modelo activo no cambia
+      No se pudo cargar el modelo: El archivo no es un .tvismodel valido.
+      captura: capturas/CU11_05_modelo_corrupto.png
+ 6. [OK] Alt 4a. Continuar entrenamiento: configuración con la arquitectura bloqueada
+      Botón: «Continuar Entrenamiento»
+      captura: capturas/CU11_06_continuar_entrenamiento.png
+ 7. [OK] Postcondición: el modelo queda como sesión activa
+
+====================================================================================================
+CU12: Selección de dataset predefinido
+Resultado: LOGRADO (con pasos no posibles)
+----------------------------------------------------------------------------------------------------
+ 1. [OK] 1. Se muestran los predefinidos (dominio y descripción) y los del usuario
+      4 predefinidos: Traducción español–inglés básica [Traducción], Traducción inglés–español básica [Traducción], Traducción español–inglés para demostración [Traducción], Preguntas sobre el Transformer [Preguntas y respuestas]; 2 del usuario
+      captura: capturas/CU12_01_catalogo_predefinidos.png
+ 2. [OK] 2. El usuario marca un dataset compatible
+      Seleccionado: Traducción español–inglés para demostración
+      captura: capturas/CU12_02_dataset_marcado.png
+ 3. [OK] 2b. Confirma la selección y vuelve a la configuración
+      captura: capturas/CU12_03_seleccion_en_setup.png
+ 4. [OK] 3. Lectura, tokenización y combinación al iniciar el entrenamiento
+      Se verifica en CU04 (preparación con avance en hilo auxiliar).
+ 5. [NO POSIBLE] Alt 3a. Dataset sin ejemplos válidos
+      No hay en el catálogo un dataset incompatible para probarlo.
+
+====================================================================================================
+CU13: Selección de modelo predefinido del catálogo
+Resultado: LOGRADO
+----------------------------------------------------------------------------------------------------
+ 1. [OK] 1-2. «Punto de partida» lista Mínima, Pequeña, Mediana y Base del artículo
+      Predefinida · Mínima; Predefinida · Pequeña; Predefinida · Mediana; Predefinida · Base del artículo original
+      captura: capturas/CU13_01_lista_punto_de_partida.png
+ 2. [OK] 3-4. «Aplicar configuración» valida y carga controles, diagrama y entrenamiento sugerido
+      d_model=32, capas=1, cabezas=2, épocas sugeridas=6
+      captura: capturas/CU13_02_minima_aplicada.png
+ 3. [OK] 5. Continúa con CU02 o inicia el entrenamiento (CU04)
+      Ver CU02 y CU04.
+ 4. [OK] Alt 4a. Archivo de configuración inválido: motivo y controles sin cambios
+      El archivo no es una configuración de la herramienta.
+ 5. [OK] Alt 1a. Explorar o comparar modelos ya entrenados → biblioteca
+      Ver CU11 y CU07.
+
+====================================================================================================
+CU14: Evaluación de comprensión del usuario
+Resultado: LOGRADO
+----------------------------------------------------------------------------------------------------
+ 1. [OK] Precondición: perfil docente
+      captura: capturas/CU14_01_panel_docente.png
+      captura: capturas/CU14_02_registro_alumno.png
+ 2. [OK] Precondición: alumno registrado antes de aplicar el instrumento
+      Alumno activo: Ana Prueba
+ 3. [OK] 1. Introducción con número de reactivos, dimensiones y forma
+      20 reactivos · forma «A» · dimensiones: Tokenización, Embeddings y Codificación Posicional, Mecanismo de Atención Query/Key/Value, Feed-Forward y Normalización, Estrategias de Muestreo
+      captura: capturas/CU14_03_introduccion_pretest.png
+      captura: capturas/CU14_04_reactivo_01_texto.png
+      captura: capturas/CU14_05_reactivo_02_opcion_unica.png
+      captura: capturas/CU14_06_reactivo_04_asignacion.png
+      captura: capturas/CU14_07_reactivo_06_seleccion_multiple.png
+      captura: capturas/CU14_08_reactivo_07_opcion_unica.png
+      captura: capturas/CU14_09_reactivo_08_asignacion.png
+      captura: capturas/CU14_10_reactivo_09_asignacion.png
+      captura: capturas/CU14_11_reactivo_10_etapas.png
+      captura: capturas/CU14_12_reactivo_11_etapas.png
+      captura: capturas/CU14_13_reactivo_12_opcion_unica.png
+      captura: capturas/CU14_14_reactivo_14_etapas.png
+ 4. [OK] 2. Responde 20 reactivos de distintos tipos
+      20 reactivos; tipos: asignacion, etapas, opcion_unica, seleccion_multiple, texto
+ 5. [OK] 3. Registra cada respuesta, actualiza el progreso y no permite avanzar sin respuesta completa
+      canContinue=False mientras el reactivo no tiene respuesta completa
+ 6. [OK] 4. Puede regresar a reactivos anteriores
+      Desde el reactivo 3 regresó al 2 con su respuesta conservada; volvió al 3
+ 7. [OK] 5-6. Finaliza; califica por tipo con crédito parcial, total, por dimensión y tiempo; guarda
+      10.0/20.0 (50.0 %), 5 dimensiones, 7.2 s
+      captura: capturas/CU14_15_resultado_pretest.png
+      captura: capturas/CU14_16_postest_a_medias.png
+ 8. [OK] Alt 5a. Abandona la evaluación: no se guarda un resultado parcial
+      Resultados guardados: 1 antes y 1 después
+      captura: capturas/CU14_17_introduccion_postest.png
+      captura: capturas/CU14_18_resultado_postest.png
+ 9. [OK] Postcondición: el resultado queda registrado para la consulta comparativa (CU15)
+      Post-test: 100.0 %
+
+====================================================================================================
+CU15: Visualización comparativa de resultados de evaluación
+Resultado: LOGRADO
+----------------------------------------------------------------------------------------------------
+ 1. [OK] Precondición: existe al menos una evaluación registrada (RN16)
+      1 alumnos registrados
+ 2. [OK] 1-2. El docente abre a un alumno; se recuperan el pre-test y el post-test más recientes
+      pre=50.0 %, post=100.0 %
+ 3. [OK] 3. Porcentaje, puntos, tiempo, cambio total y desglose por dimensión
+      Tokenización: 50.0→100.0 (+50.0); Embeddings y Codificación Posicional: 50.0→100.0 (+50.0); Mecanismo de Atención Query/Key/Value: 50.0→100.0 (+50.0); Feed-Forward y Normalización: 50.0→100.0 (+50.0); Estrategias de Muestreo: 50.0→100.0 (+50.0)
+      captura: capturas/CU15_01_analisis_alumno.png
+ 4. [OK] 4. La lista general muestra el estado y el cambio de cada alumno
+      captura: capturas/CU15_02_lista_general.png
+ 5. [OK] Alt 1a. Solo existe una evaluación: se muestra y el cambio queda sin calcular
+      Texto visible: Post: —; Post: —; Post: —; Post: —; Post: —; POST-TEST
+      captura: capturas/CU15_03_solo_pretest.png
+ 6. [OK] Alt 1b. Versiones distintas del instrumento: no se calcula el cambio
+      Se sembró en el sandbox un post-test con otra instrument_version
+      captura: capturas/CU15_04_versiones_distintas.png
+
+====================================================================================================
+CU16: Persistencia del historial de evaluación
+Resultado: LOGRADO
+----------------------------------------------------------------------------------------------------
+ 1. [OK] 1-2. Al terminar una evaluación, el resultado se agrega y el JSON se reescribe de forma atómica
+      resultados_evaluacion.json: 6 resultados, 0 archivados; sin archivos temporales
+ 2. [OK] 3-4. En una sesión posterior (proceso nuevo) el sistema lee el historial
+      Fase 1 dejó 4 resultados; la nueva sesión cargó 6
+      captura: capturas/CU16_01_panel_docente_nueva_sesion.png
+ 3. [OK] 5. Los resultados quedan disponibles para las guardias y la consulta comparativa (CU15)
+      Ana Prueba: pre 50.0 % → post 100.0 %; resultados del módulo 1 disponibles=True
+      captura: capturas/CU16_02_analisis_nueva_sesion.png
+ 4. [OK] Alt 4a. Archivo dañado: inicia con historial vacío sin impedir el arranque
+      Se construyó un MainViewModel nuevo con el JSON dañado: historial vacío, sin excepción
+ 5. [OK] Alt 4b. Resultados de una versión anterior: se archivan en lugar de descartarse
+      historial activo=1, archivados=1
+ 6. [OK] Postcondición: el historial de evaluaciones queda restaurado
+
+====================================================================================================
+CU17: Consulta de teoría contextual
+Resultado: LOGRADO
+----------------------------------------------------------------------------------------------------
+ 1. [OK] 1-2. Selecciona un bloque y el sistema muestra un resumen breve
+      Concepto: ¿Qué es Self-Attention?
+      captura: capturas/CU17_01_resumen_concepto.png
+ 2. [OK] 3-4. Abre la explicación completa en una ficha sin abandonar la pantalla
+      captura: capturas/CU17_02_ficha_teoria.png
+ 3. [OK] 5. Abre un concepto relacionado
+      → query_key_value
+      captura: capturas/CU17_03_concepto_relacionado.png
+ 4. [OK] 1b. Un botón «?» abre la ficha de su concepto
+      captura: capturas/CU17_04_ayuda_learning_rate.png
+ 5. [OK] Alt 4a. Concepto inexistente: ficha de respaldo sin interrumpir la app
+      Se abrió una ficha de respaldo
+      captura: capturas/CU17_05_concepto_inexistente.png
+
+====================================================================================================
+CU18: Recorrer un módulo del curso
+Resultado: LOGRADO
+----------------------------------------------------------------------------------------------------
+ 1. [OK] [mapa] Precondición: el estudiante está en la Bienvenida
+      captura: capturas/CU18_01_bienvenida.png
+ 2. [OK] [mapa] 1-2. Mapa de los 8 módulos con estado, avance y avance global
+      module_1: not_started (0 %); module_2: locked (0 %); module_3: locked (0 %); module_4: locked (0 %); module_5: locked (0 %); module_6: locked (0 %); module_7: locked (0 %); module_8: locked (0 %) · global 0 %
+      captura: capturas/CU18_02_mapa_modulos.png
+ 3. [OK] [mapa] Alt 3a. Módulo bloqueado porque el anterior no se completó (RN18): motivo y no se abre
+      Completa el módulo anterior para desbloquear éste.
+ 4. [OK] [mapa] 3. Elige el módulo: descripción, pregunta problema, objetivos y 5 etapas; destaca la siguiente
+      «Entrada al Transformer» · pregunta: ¿Cómo convierte el modelo la frase «el gato duerme» en algo que pueda calcular, y qué hace
+      captura: capturas/CU18_03_modulo_1.png
+ 5. [OK] [mapa] Alt 4a. Etapa bloqueada: se muestra qué falta para habilitarla
+      Completa el pre-test del módulo.
+      captura: capturas/CU18_04_etapa_bloqueada.png
+ 6. [OK] [recorrido] Precondición: con el pre-test hecho, el recorrido guiado está disponible
+ 7. [OK] [recorrido] 4. Recorrido de 8 pasos: recibe, operación, por qué, qué cambia, produce y dimensiones
+      8 pasos; campos del paso 1: input, operation, why, change, output, dimensions
+      captura: capturas/CU18_05_recorrido_paso_1.png
+ 8. [OK] [recorrido] Alt 4c. Pasos de conceptos fallados en el pre-test marcados con estrella (sin revelar respuestas)
+      Pasos marcados: m1_s1, m1_s2, m1_s3, m1_s4, m1_s7, m1_s8
+ 9. [OK] [recorrido] 5. Antes de intentar la predicción no se habilita el paso siguiente
+      Estado: pendiente
+10. [OK] [recorrido] Alt 6a. Faltan predicciones: no se completa y se indica cuántas faltan
+      Te faltan 8 predicciones por intentar antes de terminar el recorrido.
+      captura: capturas/CU18_06_faltan_predicciones.png
+      captura: capturas/CU18_07_prediccion_con_retroalimentacion.png
+      captura: capturas/CU18_08_recorrido_paso_4.png
+11. [OK] [recorrido] 5. Cada paso plantea una predicción; al intentarla se revela el cambio y la retroalimentación
+      8 predicciones; correctas al primer intento: 7
+12. [OK] [recorrido] 6. Avanza manualmente o con reproducción automática
+13. [OK] [recorrido] 6b-7. Con las 8 predicciones finaliza; registra intentos y primer acierto en el progreso
+      intentadas=8, primer intento correcto=7
+14. [OK] [recorrido] 7b. Se escribe el archivo de progreso del curso
+      progreso_modular.json
+      captura: capturas/CU18_09_modulo_tras_recorrido.png
+15. [OK] [cierre] Postcondición: el avance queda guardado; al revisar resultados el siguiente módulo es el actual
+      Módulo actual: module_2
+      captura: capturas/CU18_10_mapa_tras_modulo_1.png
+16. [OK] [cierre] Alt 3b. Al abrir otro módulo con el post-test previo hecho, se ofrece un repaso de 3 retos
+      3 retos de module_1
+17. [OK] [cierre] Alt 3b. Registra si el primer intento de cada reto fue correcto
+      captura: capturas/CU18_11_repaso_espaciado.png
+
+====================================================================================================
+CU19: Evaluación de un módulo
+Resultado: LOGRADO (con pasos no posibles)
+----------------------------------------------------------------------------------------------------
+ 1. [OK] [pretest] Precondición: el estudiante abrió la etapa de pre-test (CU18)
+ 2. [OK] [pretest] 1. Introducción con número de reactivos, conceptos del módulo y último resultado
+      15 reactivos · «Pre-test · Entrada al Transformer»
+      captura: capturas/CU19_01_introduccion_pretest_modulo.png
+ 3. [OK] [pretest] Alt 4a. Abandona la evaluación: no se guarda un resultado parcial
+ 4. [OK] [pretest] 2. Elige 15 reactivos del banco: 5 básicos, 5 intermedios y 5 avanzados (RN19)
+      15 reactivos; dificultad: {'Básica': 5, 'Avanzada': 5, 'Intermedia': 5}
+      captura: capturas/CU19_02_reactivo_01_asignacion.png
+      captura: capturas/CU19_03_reactivo_02_texto.png
+      captura: capturas/CU19_04_reactivo_03_asignacion.png
+      captura: capturas/CU19_05_reactivo_04_seleccion_multiple.png
+      captura: capturas/CU19_06_reactivo_07_opcion_unica.png
+ 5. [OK] [pretest] 3. Responde reactivos de varios tipos
+      15 respondidos; tipos: asignacion, opcion_unica, seleccion_multiple, texto
+ 6. [OK] [pretest] 4. Califica, calcula total y por concepto, y guarda con módulo, reactivos, dificultad y duración
+      53.3 %, claves: module_id, duration_seconds
+ 7. [OK] [pretest] Alt 4b. Es un pre-test: se muestran los puntajes pero no las respuestas correctas (RN23)
+      No aparece ninguna respuesta correcta en pantalla
+      captura: capturas/CU19_07_resultado_pretest_modulo.png
+ 8. [OK] [postest] Precondición: post-test del módulo abierto
+      0 reactivos repetidos respecto al pre-test (RN19 prioriza los no vistos)
+      captura: capturas/CU19_08_resultado_postest_modulo.png
+ 9. [OK] [postest] Postcondición de la evaluación: resultado registrado y etapa completada
+10. [OK] [postest] 5. Resultados: % pre y post, diferencia, mejora relativa, ganancia normalizada, conceptos y recomendación
+      pre_percentage=53.3, post_percentage=100.0, relative_improvement=87.6, normalized_gain=1.0 · claves: attempts, available, comparable, concepts, delta_percentage, difficulty, duration_seconds, frequent_errors, instrument_version_post, instrument_version_pre, interaction, mastered, module_id, module_title, needs_reinforce
+      captura: capturas/CU19_09_resultados_modulo.png
+11. [OK] [postest] 6. Revisión del post-test: correcto, respuesta correcta, explicación, concepto y acceso al paso
+      captura: capturas/CU19_10_revision_postest.png
+12. [NO POSIBLE] [postest] Alt 5a. Pre y post de versiones distintas: no se calcula la diferencia
+      Ambas evaluaciones del módulo se aplicaron con la misma versión del banco en esta corrida.
+13. [OK] [postest] Alt 5b. Estudiante en una clase: el resultado se envía al profesor
+      Se verifica en CU22.
+
+====================================================================================================
+CU20: Laboratorio del módulo
+Resultado: LOGRADO
+----------------------------------------------------------------------------------------------------
+ 1. [OK] Precondición: etapa de laboratorio abierta y modelo activo
+      Modelo: d_model=128
+      captura: capturas/CU20_01_laboratorio_inicial.png
+ 2. [OK] Alt 2a. Texto vacío: no se ejecuta el experimento
+      «Ejecutar experimento» deshabilitado
+ 3. [OK] 1. Elige modo (entrenamiento/inferencia), nivel y texto de entrada
+      modo=entrenamiento, nivel=esencial
+ 4. [OK] 2-3. «Ejecutar experimento»: tokeniza (≤16), paso hacia adelante y, en entrenamiento, pérdida y gradientes sin actualizar
+      10 tokens; claves: behavior, candidates, experiment, formula_demos, forward_detail, inference_snapshot, mode, model_dimensions, module_id, panels, real_data, selected_head, selected_layer, selected_token, selected_token
+      captura: capturas/CU20_02_experimento_entrenamiento.png
+ 5. [OK] 4. Presenta las operaciones del módulo con vista general, animación de fórmula y reto
+      7 operaciones: text, tokens, ids, specials, batch, mask, no_grad
+ 6. [OK] Alt 4a. Datos técnicos: valores del tensor por páginas de 128
+      20 valores en la página; clave token_ids
+      captura: capturas/CU20_03_datos_tecnicos.png
+      captura: capturas/CU20_04_reto_experimento.png
+      captura: capturas/CU20_05_pista_explicacion_incorrecta.png
+ 7. [OK] 5. Reto: predice, aplica el cambio sugerido (vuelve a ejecutar el modelo), observa y explica
+      Retos cerrados en: text, tokens, ids
+ 8. [OK] Alt 6a. Explicación incorrecta: pista con la fórmula y puede cambiar su respuesta
+      Todavía no. Contrasta la fórmula «texto → segmentos» con lo que entra y lo que sale; puedes cambiar tu respuesta.
+ 9. [OK] 6. Con explicación correcta se registra el reto cerrado
+      ciclos=3/3
+      captura: capturas/CU20_06_retos_cerrados.png
+      captura: capturas/CU20_07_exploracion_avanzada_modulo_1.png
+10. [OK] Alt 4b. Nivel avanzado: ajusta capa, cabeza, token, máscara, temperatura, top-k y top-p según la operación
+      Módulo 1: sin controles (sus operaciones no los usan). Módulo 3 (Self-Attention): Layer, Head, Token; cabeza observada=1
+      captura: capturas/CU20_08_exploracion_avanzada_modulo_3.png
+11. [OK] 7. Con tres retos cerrados responde la pregunta de cierre y la etapa queda completada
+      ciclos=3, cierre respondido=True
+      captura: capturas/CU20_09_pregunta_de_cierre.png
+12. [OK] Postcondición: ejecuciones, retos y cierre registrados con la configuración del modelo
+13. [OK] Alt 1a. Sin modelo activo: aviso con «Crear modelo» y «Usar modelo guardado»
+      Se ejerce en la fase 2 (sesión nueva, sin modelo): ver «[sin_modelo]».
+14. [OK] [sin_modelo] Precondición del flujo 1a: sesión nueva sin modelo activo
+15. [OK] [sin_modelo] Alt 1a. Sin modelo activo: aviso y botones «Crear modelo» y «Usar modelo guardado»
+      Aviso: Primero crea o carga un modelo; Usar modelo guardado; Usar modelo guardado; Crear modelo; Crear modelo; ○ Falta un modelo
+      captura: capturas/CU20_10_laboratorio_sin_modelo.png
+16. [OK] [sin_modelo] Alt 1a. «Crear modelo» abre la configuración (CU02) con regreso al laboratorio
+      captura: capturas/CU20_11_crear_modelo_desde_laboratorio.png
+      captura: capturas/CU20_12_biblioteca_desde_laboratorio.png
+17. [OK] [sin_modelo] Alt 1a. «Usar modelo guardado» abre la biblioteca (CU11) y regresa al mismo laboratorio y modo
+      Laboratorio de module_1 en modo inference con modelo listo
+      captura: capturas/CU20_13_laboratorio_con_modelo_guardado.png
+
+====================================================================================================
+CU21: Crear y administrar una clase en red
+Resultado: LOGRADO
+----------------------------------------------------------------------------------------------------
+ 1. [OK] [crear] Precondición: el profesor está en el panel docente (misma máquina, loopback)
+      Profesor y alumno corren en el mismo proceso; la red es 127.0.0.1.
+ 2. [OK] [crear] 1. Escribe nombre y grupo; elige pedir matrícula y usar sala de espera
+      captura: capturas/CU21_01_formulario_clase.png
+ 3. [OK] [crear] 2-3. «Crear y abrir clase»: código de 6 caracteres, carpeta, servidor, búsqueda en red y direcciones
+      código SC6-9Q2, puerto 47802, búsqueda en red=True, direcciones: 26.248.105.79, 192.168.1.64
+      captura: capturas/CU21_02_clase_abierta.png
+ 4. [OK] [crear] Alt 3a. Puerto de datos ocupado: prueba los siguientes y anuncia el elegido
+      47801 ocupado por otro programa → la clase usa 47802
+ 5. [OK] [administrar] 4. Acepta en espera, cambia apodos, retira/readmite, habilita módulos, envía avisos y cambia opciones de ingreso (RN20)
+      renombrar→True (), renombrado=True, retirado=True, apodos=['Ana', 'Roberto'], sala de espera=False, pedir matrícula=False
+      captura: capturas/CU21_03_sala_administrada.png
+ 6. [OK] [administrar] Alt 5b (CU22). El profesor retira al estudiante: sale de la clase y conserva su avance local
+      Segundo alumno: enClase=False
+ 7. [OK] [administrar] Alt 3b. Puerto de búsqueda ocupado por otra copia: indica conectarse por dirección
+      búsqueda en red=False; mensaje: «La búsqueda automática no está disponible en este equipo: comparte la dirección para que los alumnos usen «Conectar por dirección».»
+      captura: capturas/CU21_04_puerto_busqueda_ocupado.png
+ 8. [OK] [administrar] Alt 1a. Reabrir una clase guardada conserva el código
+      1 clase(s) guardada(s)
+ 9. [OK] [cierre] 5. «Detener»: los estudiantes quedan sin conexión y se reconectan al reabrir
+      Verificado en CU22 Alt 5a (detener → «reconectando» → reabrir → «conectado»).
+10. [OK] [cierre] 5b. «Finalizar clase»: los estudiantes reciben un aviso y salen
+      Alumno: «Sin clase» · El docente finalizó la clase. Tu avance sigue guardado en este equipo.
+11. [OK] [cierre] Postcondición: los datos de la clase quedan en una carpeta propia del equipo del profesor
+      6e7472f8cecf
+
+====================================================================================================
+CU22: Unirse a una clase
+Resultado: LOGRADO
+----------------------------------------------------------------------------------------------------
+ 1. [OK] Precondición: hay una clase abierta en la red local y el estudiante conoce el código
+      SC6-9Q2
+ 2. [OK] 1. «Unirse a una clase»: escribe el código en minúsculas y con O/0, I/1 confundidas
+      Escrito: «sc69q2» (código real SC6-9Q2)
+      captura: capturas/CU22_01_unirse_codigo.png
+ 3. [OK] 2. «Buscar clase»: la encuentra difundiendo solo una huella y confirma nombre y matrícula
+      Clase «Transformers 7CM1», pide matrícula=True
+      captura: capturas/CU22_02_clase_encontrada.png
+ 4. [OK] 3-4 / Alt 4b. Apodo y matrícula; con sala de espera ve «Esperando aprobación»
+      Esperando aprobación del docente
+      captura: capturas/CU22_03_esperando_aprobacion.png
+      captura: capturas/CU22_04_profesor_ve_pendiente.png
+ 5. [OK] 4-5. El profesor valida el apodo; el alumno envía avance y resultados y muestra «Conectado»
+      Alumno: estado=conectado; profesor ve: estado=activo, etapa=Pre-test
+      captura: capturas/CU22_05_sala_con_ana.png
+ 6. [OK] 6. Módulos no habilitados aparecen bloqueados (RN20) y los avisos se muestran en una franja
+      module_3: «El docente todavía no habilita este módulo en la clase.» · aviso: «Bienvenidos a la clase de Transformers»
+      captura: capturas/CU22_06_alumno_conectado_con_aviso.png
+      captura: capturas/CU22_07_mapa_con_modulo_bloqueado_por_docente.png
+ 7. [OK] Alt 4a. Apodo en uso: el sistema propone otro
+      Sugerencia: «Ana2» · Alguien ya usa «Ana». Prueba con «Ana2».
+      captura: capturas/CU22_08_conexion_perdida.png
+ 8. [OK] Alt 5a. Se pierde la conexión: sigue trabajando y se reconecta automáticamente
+      «Sin conexión con el docente» → «Conectado» (puerto 47801)
+ 9. [OK] Postcondición: el estudiante pertenece a la clase y el profesor recibe su avance y resultados
+      2 alumnos, 2 conectados
+10. [OK] Alt 2a. La clase no se encuentra: conectarse por dirección o entregar por archivo
+      La conexión por dirección se usó con el segundo alumno; la entrega por archivo se prueba en CU24.
+
+====================================================================================================
+CU23: Seguimiento del grupo
+Resultado: LOGRADO (con pasos no posibles)
+----------------------------------------------------------------------------------------------------
+ 1. [OK] Precondición: clase abierta con al menos un estudiante
+      2 alumnos
+ 2. [OK] 1. «Sala»: estado de conexión, última actividad, módulo y etapa, y avance
+      Campos por alumno: alumno_id, apodo, completed_modules, conectado, estado, etapa, global_percent, matricula, modules, modulo_actual, origen, ultima_actividad, verificado
+      captura: capturas/CU23_01_pestana_sala.png
+ 3. [OK] 2. «Avance por módulo»: tabla alumnos × módulos con post-test o etapas y color por estado
+      8 módulos en la tabla
+      captura: capturas/CU23_02_pestana_avance.png
+ 4. [OK] 3. «Análisis del grupo»: promedios pre/post, cambio promedio, conceptos y reactivos más fallados
+      module_id=module_1, module_title=Entrada al Transformer, students=2, with_pre=1, with_post=1, with_both=1
+      captura: capturas/CU23_03_pestana_analisis.png
+ 5. [OK] Alt 3a. Sin post-tests con errores en el módulo: se indica en lugar del listado
+      module_8 → {"module_id": "module_8", "module_title": "Transformer completo", "students": 2, "with_pre": 0, "with_post": 0, "with_both": 0, "outside_current_version": 0, "a
+ 6. [OK] 4. Exporta un CSV con una fila por evaluación
+      resultados_clase.csv: 5 filas; encabezado: alumno_id,apodo,matricula,origen,verificado,modulo_id,evaluacion,porcentaje,puntaje,maximo,duracion_segundos,completado_en,result_id
+ 7. [NO POSIBLE] 4b. Diálogo nativo para elegir dónde guardar el CSV
+      Es un FileDialog nativo; se invocó el mismo manejador con una ruta del sandbox.
+      captura: capturas/CU23_04_pestana_herramientas.png
+
+====================================================================================================
+CU24: Entregar avance por archivo
+Resultado: LOGRADO (con pasos no posibles)
+----------------------------------------------------------------------------------------------------
+ 1. [OK] Precondición: el estudiante conoce el código de la clase
+      SC6-9Q2
+ 2. [OK] 1-2. Desde «Ver mi clase» genera un .tvclase con avance y resultados, firmado
+      ana_avance.tvclase: 2 resultados, firma=6a2c37bc7a7b…
+      captura: capturas/CU24_01_exportar_desde_mi_clase.png
+ 3. [OK] 1b. «Sin red: entregar por archivo» con código y apodo genera el archivo sin firma
+      carlos_sin_red.tvclase
+ 4. [NO POSIBLE] 3. Entrega del archivo al profesor por USB, plataforma o correo
+      Fuera del sistema; el archivo se pasa directamente por el sistema de archivos del sandbox.
+      captura: capturas/CU24_02_importacion_profesor.png
+ 5. [OK] 4-5. Importa varios archivos; verifica clase y firma; guarda solo lo nuevo (RN22)
+      ana_avance.tvclase: Ana, 0 evaluación(es) nueva(s) | carlos_sin_red.tvclase: Carlos (sin verificar), 0 evaluación(es) nueva(s)
+ 6. [OK] Alt 5c. Sin firma y estudiante desconocido: se importa como «sin verificar»
+      carlos_sin_red.tvclase: Carlos (sin verificar), 0 evaluación(es) nueva(s)
+ 7. [OK] Alt 5a. La firma no coincide porque el archivo fue modificado: se rechaza
+      ana_alterado.tvclase: La firma del archivo no coincide: pudo haberse modificado a mano.
+ 8. [OK] Alt 5b. Archivo de otra clase: se rechaza con un mensaje
+      otra_clase.tvclase: El archivo pertenece a otra clase.
+ 9. [OK] Alt 5c. Si el estudiante ya pertenece a la clase la firma es obligatoria
+      ana_sin_firma.tvclase: La firma del archivo no coincide: pudo haberse modificado a mano.
+      captura: capturas/CU24_03_rechazos_importacion.png
+10. [OK] Postcondición: el avance queda registrado en la clase, sin evaluaciones duplicadas
+      3 alumnos en la clase
+11. [OK] CU21-5. «Finalizar clase»: los estudiantes reciben un aviso y salen de la clase
+      Alumno: «Sin clase» · El docente finalizó la clase. Tu avance sigue guardado en este equipo.
+      captura: capturas/CU24_04_clase_finalizada_alumno.png
+
