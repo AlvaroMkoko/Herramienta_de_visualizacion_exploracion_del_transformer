@@ -35,7 +35,7 @@ class CourseController(QObject):
     # pero permite abrir cualquier módulo y etapa sin prerrequisitos (RN18).
     # Debe quedar en False con estudiantes: abrir el post-test sin pasar por el
     # recorrido invalida la comparación pre/post.
-    REVIEW_MODE_UNLOCK_ALL = True
+    REVIEW_MODE_UNLOCK_ALL = False
     # La aplicación de este estudio se concentra en Self-Attention. El modo
     # revisión sigue permitiendo auditar los ocho módulos durante desarrollo.
     FOCUS_MODULE_ID = "module_3"

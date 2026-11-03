@@ -1,32 +1,32 @@
-# PENDIENTES QUE SE TIENEN QUE HACER EN VACACIONES
+# Trabajo pendiente verificado
 
-## PASAR A LIMPIO TODO EL DOCUMENTO PARA QUE LA PROFESORA LO REVISE POR QUE SI CORRIGE MUCHAS COSAS TENEMOS QUE CORREGIR 
+Este archivo registra tareas vigentes; las listas históricas ya resueltas se retiraron para no contradecir el estado actual del repositorio.
 
-## REALIZAR ENCUESTA VALIDADADA CON LOS METODOS METODOLOGICOS VISTOS EN LA PRESENTACION
+## Evaluación e instrumentos
 
-## TENEMOS QUE AVANZAR LO MAS POSIBLE EN LA CREACION DEL PROGRAMA PARA QUE CUANDO ENTREMOS SOLO TENGAN QUE SER RETOQUES LOS QUE TENGAMOS QUE HACER
+- Someter la tabla de especificaciones y los bancos de los ocho módulos a juicio de expertos.
+- Estimar confiabilidad, dificultad, discriminación y equivalencia empírica de las formas pre/post con una muestra independiente.
+- Definir el tamaño de una réplica mediante potencia estadística, efecto mínimo de interés y pérdida esperada; preregistrar el resultado principal y el plan de análisis.
+- Mantener una sola versión del instrumento por aplicación, registrar datos faltantes y, si es viable, incorporar un grupo de comparación con asignación aleatoria.
+- Usar una versión española de SUS con evidencia de traducción apropiada y volver a medir después de los cambios de interfaz.
 
+## Privacidad y uso en aula
 
+- Formalizar el aviso de privacidad institucional: responsable, finalidad, datos, transferencias, conservación, acceso, disociación y eliminación.
+- Probar el aula conectada entre equipos reales en las redes donde se desplegará, además de la prueba local y de carga automatizada.
+- Documentar que el almacenamiento local y TLS reducen exposición, pero no vuelven anónimos la matrícula, el apodo ni los resultados.
 
-## CUANDO TENGAMOS MAS INFORMCION SOBRE COMO HACER LA RUBRICA DE QUE SE CONSIDERA QUE ALGUIEN CONOCE LO QUE ES UN TRANSFORMER HACER LA LISTA DE PREGUNTAS
+## Validación técnica
 
+- Contrastar operaciones del Transformer y transformaciones visuales contra una implementación numérica independiente.
+- Añadir un modo de comparación controlada: mismo punto de control, semilla o generación codiciosa, una variable por vez y repeticiones.
+- Medir tasa de cuadros, latencia, memoria y sesiones prolongadas en el hardware mínimo declarado.
+- Separar datos de validación de los datos de entrenamiento para las métricas por época.
+- Probar teclado, foco, contraste, lectores de pantalla y movimiento reducido con herramientas y usuarios.
+- Firmar el ejecutable y, si se requiere autenticidad de modelos, usar firmas digitales; SHA-256 por sí solo detecta discrepancias, no acredita al autor.
 
-## Todos los diseños se tienen que parecer a lo que hicimos en el trabajo
+## Documentación y distribución
 
-# Pendientes de Codigo
-## .......Agregar El apartado de explicacion de DataSet y de como se puede construir uno
-## .......Agregar todas las tarjetas para que contengas explicaciones de lo que se esta mostrando 
-## .......Hacer que toda la aplicacion contenga los colores adecuados y que estos se mantengan a lo largo de las pantallas
-## .......Fuente de letra debe cambiarse
-## .......Mejorar las animaciones del Transformer
-
-
-.................
-## Detectar mas pantallas para mover las cosas y que no este amontonado 
-## Debe contener una pequeña introduccion 
-## En las explicaciones debe haber una sinematica para que no solo sea texto
-## En el entrenamiento reducir la carga visual 
-## las preguntas deben verse menos monotonas y deben probar comprencion no memoria 
-
-# Nombre
-## TransformEducation
+- Mantener sincronizados README, manual, capturas, arquitectura, medición y versión del ejecutable.
+- Retirar dependencias y rutas heredadas de VisPy que ya no usa la interfaz final.
+- Preparar y verificar distribuciones para sistemas distintos de Windows.

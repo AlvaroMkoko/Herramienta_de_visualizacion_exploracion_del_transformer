@@ -1,5 +1,4 @@
 cuda.py
-docs
 *.pt
 *.tvismodel
 *.tvischeckpoint

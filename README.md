@@ -58,27 +58,27 @@ La pantalla inicial permite elegir un perfil:
   aplicar una evaluación se registran nombre, matrícula o identificador, grupo
   y, opcionalmente, edad y correo. La matrícula vincula ambos test.
 
-La ruta guiada presenta la evolución prevista de la herramienta:
+La ruta formativa actual es un curso de ocho módulos: entrada al Transformer,
+embeddings y posición, self-attention, multi-head attention, encoder, decoder,
+generación y Transformer completo. Cada módulo contiene cinco etapas:
 
-1. **Pre-test** — diagnóstico inicial de 20 preguntas en cinco dimensiones.
-2. **Recorrido guiado** — disponible. Organiza 18 conceptos esenciales en seis
-   unidades, incluida una guía del contrato de datasets, y combina lectura con
-   el ciclo *predecir → observar → explicar*.
-3. **Laboratorios** — entrenamiento, apertura de modelos y comparación se
-  habilitan al completar el recorrido guiado; cada opción queda registrada al
-  abrirse.
-4. **Post-test** — evaluación final equivalente, con resultado total y por dimensión.
-5. **Progreso y resultados** — compara el pre-test con el post-test del perfil
-   activo: puntaje total, cambio, tiempo empleado y desglose por dimensión.
+1. **Pre-test** — 15 reactivos seleccionados de un banco de 25.
+2. **Recorrido guiado** — ocho pasos con una predicción antes de revelar cada resultado.
+3. **Laboratorio** — operaciones del modelo, animaciones controlables y retos
+   *predecir → probar → observar → explicar*.
+4. **Post-test** — una forma diseñada como paralela, sin mostrar las respuestas
+   del pre-test durante la intervención.
+5. **Resultados y repaso** — cambio total y por concepto, revisión del post-test
+   y accesos a los pasos y retos correspondientes.
 
-La ruta aplica guardias secuenciales: pre-test, recorrido, laboratorios,
-post-test y seguimiento. El interruptor de ruta estricta se conserva en la
-configuración para demostraciones y desarrollo. El pre-test y el post-test
-cuentan con flujo de entrada, resolución y resultados persistidos localmente,
-y el seguimiento reutiliza el análisis por alumno del panel docente.
-
-El recorrido guiado guarda localmente las unidades completadas y la última
-posición visitada. No requiere un dataset ni un modelo entrenado para comenzar.
+Las guardias están activas por defecto y el modo interno de revisión está
+desactivado. La configuración de esta rama mantiene el foco del estudio en
+`module_3` (Self-Attention); para distribuir la ruta completa se debe dejar
+`FOCUS_MODULE_ID` vacío y verificar nuevamente la suite y el ejecutable. Los
+conteos y umbrales del curso son reglas de diseño
+que todavía requieren validación pedagógica y psicométrica. El instrumento
+global histórico de 20 reactivos se conserva en el perfil docente, separado de
+las evaluaciones modulares.
 
 El flujo de los laboratorios es:
 
@@ -92,9 +92,10 @@ El flujo de los laboratorios es:
    `.txt` o `.pdf`, o se crea un JSONL desde un formulario. La herramienta
    analiza registros, palabras aproximadas, vocabulario, categorías y
    compatibilidad de entrenamiento. Se pueden seleccionar varios y se combinan
-   en un solo corpus. Incluye dos datasets predefinidos de solo lectura
-   (`data/datasets_predefinidos`): traducción español–inglés básica y
-   preguntas sobre el Transformer.
+   en un solo corpus. Incluye cuatro datasets predefinidos de solo lectura
+   (`data/datasets_predefinidos`): traducción español–inglés de Tatoeba,
+   traducción inglés–español de Tatoeba, una demostración breve de traducción
+   elaborada para el proyecto y preguntas sobre el Transformer.
 3. **Entrenamiento** — métricas en vivo (pérdida, precisión por token,
   norma del gradiente), controles de pausa/reanudación y de
   velocidad, y dos pestañas: recorrido pedagógico del batch real y nube PCA 3D
@@ -108,7 +109,9 @@ El flujo de los laboratorios es:
 6. **Comparación** — dos modelos guardados generan con el mismo prompt y los
    mismos parámetros; se comparan las respuestas y, paso a paso, los estados
    internos (candidatos de salida, entropía de la atención por capa y tokens
-   más atendidos por la atención cruzada).
+   más atendidos por la atención cruzada). Es una exploración descriptiva: para
+   atribuir una diferencia a un parámetro se requiere el mismo punto de control,
+   semilla o decodificación codiciosa, variar un solo factor y repetir.
 
 ## Formato de los datasets
 
