@@ -9,6 +9,8 @@ Vive en su propio archivo porque tanto `encoder.py` como
 import torch
 import torch.nn as nn
 
+from .traza_visual import inicio_ventana
+
 
 class ConexionResidual(nn.Module):
     """Conexión residual con normalización POSTERIOR (post-norm).
@@ -35,7 +37,7 @@ class ConexionResidual(nn.Module):
         # Ventana acotada para el rascacielos de capas. Los tensores de la
         # última posición se mantienen por compatibilidad con las métricas
         # existentes; esta ventana permite proyectar varios tokens juntos.
-        inicio_visual = max(0, salida.size(1) - 24)
+        inicio_visual = inicio_ventana(salida.size(1), 24)
         self.ultima_traza = {
             "entrada": x[:, -1, :].detach(),
             "actualizacion": actualizacion[:, -1, :].detach(),

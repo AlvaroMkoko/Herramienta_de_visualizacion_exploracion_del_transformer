@@ -665,7 +665,7 @@ PagePrincipal {
         if (!preserve)
             root.currentStepIndex = 0
         root.workspaceSection = preserveDiscovery || root.advancedMode ? 1 : 2
-        root.laboratoryController.explore(
+        root.laboratoryController.explore_ui(
             root.moduleId, inputText.text, root.mode,
             Math.round(layerSlider.value), Math.round(headSlider.value),
             Math.round(tokenSlider.value), temperatureSlider.value,
@@ -1392,8 +1392,10 @@ PagePrincipal {
                             Layout.preferredWidth: root.narrowControls
                                                    ? 0 : 185 * root.uiScale
                             Layout.preferredHeight: 42 * root.uiScale
-                            text: root.analysis.module_id === root.moduleId
-                                  ? "Actualizar experimento" : "Ejecutar experimento"
+                            text: root.laboratoryController.busy
+                                  ? "Calculando…"
+                                  : root.analysis.module_id === root.moduleId
+                                    ? "Actualizar experimento" : "Ejecutar experimento"
                             enabled: root.laboratoryController.modelReady
                                      && inputText.text.trim().length > 0
                             opacity: enabled ? 1 : 0.45

@@ -9,6 +9,7 @@ optimizador ni modifica pesos o buffers ``.grad`` del modelo compartido.
 from __future__ import annotations
 
 import math
+import threading
 from typing import Any
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
@@ -16,6 +17,7 @@ import torch
 import torch.nn.functional as F
 
 from model.motor_llm.muestreo import aplicar_temperatura, filtrar_top_k, filtrar_top_p
+from model.motor_llm.traza_visual import conservar_secuencia_completa
 from .formula_demos import build_formula_demos
 from .visual_adapter import construir_detalle_forward, resumir_paso_inferencia
 
@@ -1046,6 +1048,10 @@ class ModuleLaboratoryController(QObject):
     modelChanged = Signal()
     analysisCompleted = Signal(str)
     error = Signal(str)
+    busyChanged = Signal()
+    # Devuelven el resultado del hilo del laboratorio al hilo de la interfaz.
+    _analysisReady = Signal(int, object, object)
+    _analysisFailed = Signal(int, str)
 
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
@@ -1058,8 +1064,20 @@ class ModuleLaboratoryController(QObject):
         # seguro. Solo sirve de respaldo cuando no hay rol por posición (el
         # token elegido); se fija en cada exploración.
         self._special_ids_outside_vocabulary: dict[int, str] = {}
+        self._building_values: dict[str, list[float | int | bool]] = {}
+        # Cambia con cada modelo; un análisis iniciado con otro se descarta.
+        self._model_version = 0
+        self._lock = threading.Lock()
+        self._worker: threading.Thread | None = None
+        self._pending: tuple[tuple[Any, ...], bool] | None = None
+        # Las pruebas que recorren la pantalla lo activan: cada botón lanza
+        # un análisis y la prueba revisa el estado justo después.
+        self.run_inline = False
+        self._analysisReady.connect(self._on_worker_ready)
+        self._analysisFailed.connect(self._on_worker_failed)
 
     def set_model(self, model, tokenizer) -> None:
+        self._model_version += 1
         self._model = model
         self._tokenizer = tokenizer
         self._result = {}
@@ -1068,6 +1086,7 @@ class ModuleLaboratoryController(QObject):
         self.resultChanged.emit()
 
     def clear_model(self) -> None:
+        self._model_version += 1
         self._model = None
         self._tokenizer = None
         self._result = {}
@@ -1078,6 +1097,10 @@ class ModuleLaboratoryController(QObject):
     @Property(bool, notify=modelChanged)
     def modelReady(self) -> bool:
         return self._model is not None and self._tokenizer is not None
+
+    @Property(bool, notify=busyChanged)
+    def busy(self) -> bool:
+        return self._worker is not None
 
     @Property("QVariantMap", notify=resultChanged)
     def result(self) -> dict[str, Any]:
@@ -1131,7 +1154,9 @@ class ModuleLaboratoryController(QObject):
         detached = tensor.detach().cpu()
         values = detached.reshape(-1).tolist()
         normalized = [self._normalized_scalar(value) for value in values]
-        self._full_values[key] = normalized
+        # Se acumula aparte y se publica al terminar: el análisis puede correr
+        # en un hilo mientras la vista pagina los valores del resultado previo.
+        self._building_values[key] = normalized
         numeric = detached.float().reshape(-1)
         finite = numeric[torch.isfinite(numeric)]
         stats = (
@@ -2159,6 +2184,7 @@ class ModuleLaboratoryController(QObject):
             top_p,
             causal_mask,
             legacy=True,
+            background=False,
         )
 
     @Slot(str, str, str, int, int, int, float, int, float, bool)
@@ -2188,6 +2214,37 @@ class ModuleLaboratoryController(QObject):
             top_p,
             causal_mask,
             legacy=False,
+            background=False,
+        )
+
+    @Slot(str, str, str, int, int, int, float, int, float, bool)
+    def explore_ui(
+        self,
+        module_id: str,
+        text: str,
+        mode: str,
+        layer_index: int,
+        head_index: int,
+        token_index: int,
+        temperature: float,
+        top_k: int,
+        top_p: float,
+        causal_mask: bool,
+    ) -> None:
+        """Como ``explore``, pero calcula en un hilo para no congelar la vista."""
+        self._dispatch(
+            module_id,
+            text,
+            mode,
+            layer_index,
+            head_index,
+            token_index,
+            temperature,
+            top_k,
+            top_p,
+            causal_mask,
+            legacy=False,
+            background=True,
         )
 
     def _dispatch(
@@ -2204,6 +2261,7 @@ class ModuleLaboratoryController(QObject):
         causal_mask: bool,
         *,
         legacy: bool,
+        background: bool,
     ) -> None:
         if not self.modelReady:
             self.error.emit(
@@ -2246,22 +2304,114 @@ class ModuleLaboratoryController(QObject):
         normalized_mode = str(mode).lower()
         if normalized_mode not in {"training", "inference"}:
             normalized_mode = "inference"
+        request = (
+            normalized_module,
+            source_text,
+            normalized_mode,
+            int(layer_index),
+            int(head_index),
+            int(token_index),
+            float(temperature),
+            int(top_k),
+            float(top_p),
+            bool(causal_mask),
+        )
+        if not background or self.run_inline:
+            # Ambos caminos usan el mismo modelo: no se calcula a la par.
+            self.wait_for_analysis()
+            version = self._model_version
+            try:
+                result, values = self._compute(request, legacy)
+            except Exception as exc:  # noqa: BLE001 - el mensaje se muestra en QML
+                self._analysis_failed(version, f"No se pudo analizar el modelo: {exc}")
+            else:
+                self._analysis_ready(version, result, values)
+            return
+        with self._lock:
+            if self._worker is not None:
+                # Se atiende solo la última petición: los deslizadores emiten
+                # varias seguidas y las intermedias ya no interesan.
+                self._pending = (request, legacy)
+                return
+            self._start_worker(request, legacy)
+
+    def _compute(
+        self, request: tuple[Any, ...], legacy: bool
+    ) -> tuple[dict[str, Any], dict[str, list[float | int | bool]]]:
+        # Las trazas visuales guardan por defecto solo las últimas posiciones;
+        # el laboratorio deja elegir cualquier token y necesita todas.
+        with conservar_secuencia_completa():
+            return self._explore(*request, legacy=legacy)
+
+    def _start_worker(self, request: tuple[Any, ...], legacy: bool) -> None:
+        version = self._model_version
+
+        def task() -> None:
+            try:
+                result, values = self._compute(request, legacy)
+            except Exception as exc:  # frontera del hilo del laboratorio
+                self._analysisFailed.emit(
+                    version, f"No se pudo analizar el modelo: {exc}"
+                )
+            else:
+                self._analysisReady.emit(version, result, values)
+
+        worker = threading.Thread(target=task, name="module-laboratory", daemon=True)
+        self._worker = worker
+        self.busyChanged.emit()
         try:
-            self._explore(
-                normalized_module,
-                source_text,
-                normalized_mode,
-                int(layer_index),
-                int(head_index),
-                int(token_index),
-                float(temperature),
-                int(top_k),
-                float(top_p),
-                bool(causal_mask),
-                legacy=legacy,
-            )
-        except Exception as exc:  # noqa: BLE001 - el mensaje se muestra en QML
-            self.error.emit(f"No se pudo analizar el modelo: {exc}")
+            worker.start()
+        except RuntimeError as exc:
+            self._worker = None
+            self.busyChanged.emit()
+            self.error.emit(f"No se pudo iniciar el análisis: {exc}")
+
+    def _finish_worker(self) -> None:
+        with self._lock:
+            self._worker = None
+            pending, self._pending = self._pending, None
+            if pending is not None:
+                self._start_worker(*pending)
+        if pending is None:
+            self.busyChanged.emit()
+
+    def _analysis_ready(
+        self,
+        version: int,
+        result: dict[str, Any],
+        values: dict[str, list[float | int | bool]],
+    ) -> None:
+        if version != self._model_version:
+            # El modelo cambió mientras se calculaba: el resultado ya no
+            # corresponde al modelo activo y no se publica.
+            return
+        self._result = result
+        self._full_values = values
+        self.resultChanged.emit()
+        self.analysisCompleted.emit(str(result["module_id"]))
+
+    def _analysis_failed(self, version: int, message: str) -> None:
+        if version == self._model_version:
+            self.error.emit(message)
+
+    @Slot(int, object, object)
+    def _on_worker_ready(self, version: int, result: object, values: object) -> None:
+        self._finish_worker()
+        self._analysis_ready(version, result, values)
+
+    @Slot(int, str)
+    def _on_worker_failed(self, version: int, message: str) -> None:
+        self._finish_worker()
+        self._analysis_failed(version, message)
+
+    def wait_for_analysis(self, timeout: float | None = None) -> bool:
+        """Espera al hilo en curso; ``True`` si ya no queda ninguno activo."""
+        with self._lock:
+            worker = self._worker
+        if worker is None:
+            return True
+        worker.join(timeout)
+        return not worker.is_alive()
 
     def _explore(
         self,
@@ -2277,7 +2427,7 @@ class ModuleLaboratoryController(QObject):
         causal_mask: bool,
         *,
         legacy: bool,
-    ) -> None:
+    ) -> tuple[dict[str, Any], dict[str, list[float | int | bool]]]:
         model = self._model
         tokenizer = self._tokenizer
         config = model.config
@@ -2366,7 +2516,7 @@ class ModuleLaboratoryController(QObject):
         )
         top_k_probabilities = F.softmax(after_k, dim=-1)
 
-        self._full_values = {}
+        self._building_values = {}
         panels = self._base_panels(
             module_id,
             prepared,
@@ -2493,7 +2643,7 @@ class ModuleLaboratoryController(QObject):
             allowed = set(_LEGACY_PANEL_KEYS[module_id])
             panels = [panel for panel in panels if panel["key"] in allowed]
 
-        self._result = {
+        result = {
             "module_id": module_id,
             "mode": mode,
             "specialization": {
@@ -2553,8 +2703,7 @@ class ModuleLaboratoryController(QObject):
                 "vocabulary": int(config.tamano_vocabulario),
             },
         }
-        self.resultChanged.emit()
-        self.analysisCompleted.emit(module_id)
+        return result, self._building_values
 
     @Slot(str, int, int, result="QVariantList")
     def fullValues(self, key: str, offset: int, limit: int) -> list[Any]:

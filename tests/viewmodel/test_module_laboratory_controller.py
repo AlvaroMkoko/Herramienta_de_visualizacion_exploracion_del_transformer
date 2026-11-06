@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import threading
 
 import pytest
 from PySide6.QtCore import QObject
@@ -605,3 +606,111 @@ def test_prefijo_de_inferencia_conserva_un_token_real_con_el_id_de_pad():
     salida = [token["token_id"] for token in snapshot["tokens_salida"]]
     assert salida[:2] == [3, 7]
     assert snapshot["tokens_salida_total"] == 3
+
+
+class _LongTokenizerStub(TokenizerStub):
+    # Diez tokens: más que la ventana de tres posiciones de la FFN.
+    def encode(self, _text):
+        return [3, 7, 9, 4, 5, 6, 8, 10, 11, 12]
+
+
+def _long_laboratory():
+    config = ConfiguracionTransformer(
+        tamano_vocabulario=40,
+        dimension_modelo=16,
+        num_cabezas=4,
+        num_capas=2,
+        dimension_ff=32,
+        longitud_maxima_secuencia=40,
+        dropout=0.0,
+        id_token_relleno=0,
+    )
+    model = Transformer(config)
+    controller = ModuleLaboratoryController()
+    controller.set_model(model, _LongTokenizerStub())
+    return controller, model
+
+
+@pytest.mark.parametrize("mode", ["inference", "training"])
+@pytest.mark.parametrize("module_id", ["module_5", "module_6"])
+def test_encoder_y_decoder_analizan_tokens_desde_la_cuarta_posicion(module_id, mode):
+    # Antes, la FFN guardaba solo las tres últimas posiciones y el panel se
+    # indexaba con la posición absoluta: desde la cuarta fallaba y, antes de
+    # ella, mostraba la activación de otro token.
+    controller, _model = _long_laboratory()
+    messages: list[str] = []
+    controller.error.connect(messages.append)
+
+    for token in range(10):
+        controller.explore(module_id, "texto", mode, 0, 0, token, 0.8, 5, 0.9, True)
+        assert not messages, (token, messages)
+        assert controller.result["selected_token_index"] == token
+
+
+def test_ffn_del_laboratorio_corresponde_al_token_elegido():
+    controller, model = _long_laboratory()
+    ffn = model.encoder.bloques[0].feed_forward
+
+    for token in (0, 1, 5, 9):
+        controller.explore("module_5", "texto", "inference", 0, 0, token, 0.8, 5, 0.9, True)
+        entrada = torch.tensor(controller._full_values["attention_residual"])
+        esperado = ffn.activacion(ffn.capa_expansion(entrada)).detach()
+        obtenido = torch.tensor(controller._full_values["ffn_hidden"])
+        assert torch.allclose(obtenido, esperado, atol=1e-6), token
+
+
+def test_ventana_de_inferencia_se_conserva_fuera_del_laboratorio():
+    controller, model = _long_laboratory()
+    controller.explore("module_5", "texto", "inference", 0, 0, 9, 0.8, 5, 0.9, True)
+    ffn = model.encoder.bloques[0].feed_forward
+
+    model.eval()
+    with torch.no_grad():
+        model.encoder.bloques[0].feed_forward(torch.zeros(1, 10, 16))
+    assert ffn.ultima_traza["activacion_visual"].size(1) == 3
+
+
+def test_explore_ui_calcula_fuera_del_hilo_de_la_interfaz(qtbot, monkeypatch):
+    controller, _model = _long_laboratory()
+    threads: list[str] = []
+    original = controller._explore
+
+    def spy(*args, **kwargs):
+        threads.append(threading.current_thread().name)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(controller, "_explore", spy)
+    with qtbot.waitSignal(controller.analysisCompleted, timeout=30_000):
+        controller.explore_ui("module_5", "texto", "inference", 0, 0, 4, 0.8, 5, 0.9, True)
+        assert controller.busy is True
+    qtbot.waitUntil(lambda: controller.busy is False)
+
+    assert threads == ["module-laboratory"]
+    assert controller.result["selected_token_index"] == 4
+
+
+def test_explore_ui_atiende_solo_la_ultima_peticion_pendiente(qtbot):
+    controller, _model = _long_laboratory()
+    completed: list[str] = []
+    controller.analysisCompleted.connect(completed.append)
+
+    controller.explore_ui("module_5", "texto", "inference", 0, 0, 1, 0.8, 5, 0.9, True)
+    controller.explore_ui("module_5", "texto", "inference", 0, 0, 2, 0.8, 5, 0.9, True)
+    controller.explore_ui("module_6", "texto", "inference", 0, 0, 7, 0.8, 5, 0.9, True)
+    qtbot.waitUntil(lambda: controller.busy is False and len(completed) == 2, timeout=30_000)
+
+    assert completed == ["module_5", "module_6"]
+    assert controller.result["selected_token_index"] == 7
+
+
+def test_explore_ui_descarta_el_resultado_si_cambia_el_modelo(qtbot):
+    controller, _model = _long_laboratory()
+    completed: list[str] = []
+    controller.analysisCompleted.connect(completed.append)
+
+    controller.explore_ui("module_5", "texto", "inference", 0, 0, 3, 0.8, 5, 0.9, True)
+    controller.clear_model()
+    qtbot.waitUntil(lambda: controller.busy is False, timeout=30_000)
+
+    assert completed == []
+    assert controller.result == {}

@@ -10,6 +10,7 @@ import torch
 import torch.nn as nn
 
 from .config import ConfiguracionTransformer
+from .traza_visual import inicio_ventana
 
 _ACTIVACIONES = {"relu": nn.ReLU, "gelu": nn.GELU, "swish": nn.SiLU}
 
@@ -46,7 +47,7 @@ class FeedForward(nn.Module):
         # La interfaz de inferencia compara unos pocos tokens en paralelo.
         # Se conserva solo una ventana final pequeña para no retener toda la
         # secuencia ni inflar el snapshot que cruza hacia QML.
-        inicio_visual = max(0, entrada.size(1) - 3)
+        inicio_visual = inicio_ventana(entrada.size(1), 3)
         self.ultima_traza = {
             "entrada": entrada[:, -1, :].detach(),
             "preactivacion": preactivacion[:, -1, :].detach(),

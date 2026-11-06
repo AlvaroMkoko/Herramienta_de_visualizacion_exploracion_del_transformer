@@ -811,6 +811,8 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(
     )
     model = Transformer(config)
     view_model.moduleLaboratoryController.set_model(model, _ScreenTokenizer())
+    # La prueba revisa el estado justo después de cada botón del ciclo.
+    view_model.moduleLaboratoryController.run_inline = True
     view_model._modelo_actual_info = {
         "num_capas": 2,
         "num_cabezas": 4,
