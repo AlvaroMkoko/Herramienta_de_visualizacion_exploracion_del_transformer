@@ -17,10 +17,13 @@ números) y, al terminar, muestra la revisión de cada reactivo con el paso del
 recorrido que lo enseña. Ver `docs/architecture.md` → *Alineación
 teoría–práctica–evaluación*.
 
-La definición pedagógica vive en `data/aprendizaje/modules.json` (y su
-alineación en `data/aprendizaje/alineacion.json`); las cinco
+La definición del contenido y del flujo formativo vive en
+`data/aprendizaje/modules.json` (y su alineación interna en
+`data/aprendizaje/alineacion.json`); las cinco
 pantallas del ciclo son reutilizables y se alimentan dinámicamente desde
 `CourseController`, manteniendo la separación PySide6 + QML + MVVM.
+Esta organización expresa una intención educativa, pero no constituye por sí
+misma una validación pedagógica ni psicométrica.
 
 Herramienta de escritorio para explorar, entrenar e interpretar modelos tipo
 Transformer, construida bajo el patrón **MVVM**:
@@ -75,8 +78,8 @@ Las guardias están activas por defecto y el modo interno de revisión está
 desactivado. La configuración de esta rama mantiene el foco del estudio en
 `module_3` (Self-Attention); para distribuir la ruta completa se debe dejar
 `FOCUS_MODULE_ID` vacío y verificar nuevamente la suite y el ejecutable. Los
-conteos y umbrales del curso son reglas de diseño
-que todavía requieren validación pedagógica y psicométrica. El instrumento
+conteos y umbrales del curso son reglas de diseño que todavía requieren
+revisión de expertos y validación psicométrica. El instrumento
 global histórico de 20 reactivos se conserva en el perfil docente, separado de
 las evaluaciones modulares.
 

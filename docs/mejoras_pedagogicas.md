@@ -1,8 +1,12 @@
-# Mejoras pedagógicas a partir de la prueba con estudiantes
+# Ajustes al recorrido y la evaluación a partir de la prueba con estudiantes
 
 Registro de los cambios hechos para responder a las críticas de la prueba piloto
 del **Módulo 3 · Self-Attention**. Cada cambio dice qué se criticó, qué se hizo y
 dónde vive. Está escrito para quien (persona o agente) continúe el trabajo.
+
+Estos ajustes reflejan una intención educativa y observaciones de usabilidad;
+no demuestran por sí solos validez pedagógica, efectividad causal ni validez
+psicométrica del instrumento.
 
 **Estado.** Los módulos 1, 2 y 4–8 ya se llevaron a este estándar: el detalle, las
 decisiones y lo que queda pendiente están en `docs/paridad_modulos.md`. Las

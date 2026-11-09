@@ -6,8 +6,9 @@ App de escritorio educativa: **Python 3.12+ + PyTorch + PySide6 + QML**, patrón
 Es el Trabajo Terminal de un equipo de tres personas que trabajan sobre el mismo `main`. Dos
 consecuencias mandan sobre todo lo demás:
 
-1. **La aplicación mide aprendizaje.** Varias decisiones de interfaz que parecen mejoras obvias
-   invalidan la medición del pre-test y el post-test. Ver [medicion.md](medicion.md).
+1. **La aplicación registra cambios de desempeño entre pre-test y post-test como
+   indicadores exploratorios de aprendizaje.** Varias decisiones de interfaz que parecen
+   mejoras obvias invalidan esa comparación. Ver [medicion.md](medicion.md).
 2. **`data/resultados/` y `data/progreso/` son datos, no caché.** Guardan los resultados de
    estudiantes reales y su avance; borrarlos o reescribirlos para «limpiar estado» destruye
    datos de la tesis. Ver *Rutas y datos*, abajo.
@@ -78,7 +79,7 @@ Módulo → Pre-test → Recorrido guiado → Laboratorio → Post-test → Resu
 
 ### Componentes nuevos
 
-**Modelo educativo y datos**
+**Estructura del curso y datos**
 
 - `data/aprendizaje/modules.json`: ocho módulos, cada uno con ocho conceptos,
   ocho pasos guiados, configuración de laboratorio y ocho retos de aplicación.

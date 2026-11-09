@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "description": "Alineación pedagógica por módulo: ejemplo ancla, microcomprobaciones del recorrido, formas post isomorfas, reactivos de transferencia y retos de laboratorio distintos a los del test.",
+  "description": "Alineación interna del contenido por módulo: ejemplo ancla, microcomprobaciones del recorrido, formas post isomorfas, reactivos de transferencia y retos de laboratorio distintos a los del test. Esta estructura no implica validación pedagógica o psicométrica.",
   "modules": {
     "module_1": {
       "question_text": {

@@ -36,10 +36,12 @@ la primera vez).
   personas llega a 68.
 - **El problema es empezar, no la consistencia:** las funciones se perciben integradas,
   pero las personas sienten que necesitan ayuda y aprender mucho antes de usarla.
-- **El aprendizaje depende mucho de la disposición de la clase:** en las dos clases con
-  interés, el puntaje sube de 36.1 a 56.0 (+19.8; IC 95 %: 12.4–27.2), con ganancia de
-  **0.31**, media según la escala de Hake. La clase de las 21–22 h (UTC), que según el equipo
-  mostró apatía y desinterés, baja de 35.9 a 31.6. Con todas juntas, la ganancia es de 0.19.
+- **El cambio pre/post varía mucho entre clases:** en las dos clases que el equipo describió
+  con mayor interés, el puntaje sube de 36.1 a 56.0 (+19.8; IC 95 %: 12.4–27.2), con
+  ganancia de **0.31**, media según la escala de Hake. La clase de las 21–22 h (UTC), que
+  según el equipo mostró apatía y desinterés, baja de 35.9 a 31.6. Con todas juntas, la
+  ganancia observada es de 0.19. Esta diferencia no demuestra que la disposición sea la
+  causa.
 - **El problema de usabilidad no se explica por esa clase:** sin ella, el SUS sigue en **59.3**
   (IC 95 %: 54.0–64.6), por debajo de 68. Una de las clases con interés tiene un SUS de 46.4,
   igual de bajo.
@@ -134,14 +136,14 @@ se puede descartar que parte del desinterés venga de la propia herramienta.
 | Aprendibilidad | 38.3 | 42.0 | Sigue siendo lo peor |
 | Necesitó ayuda | 28 % | 24 % | Sigue alto |
 | Ganancia de la clase | 0.19 | **0.31** | Pasa de baja a media |
-| Diferencia pre → post | +12.4 | **+19.8** (IC 95 %: 12.4–27.2; 36 pares) | Aprendizaje claro |
+| Diferencia pre → post | +12.4 | **+19.8** (IC 95 %: 12.4–27.2; 36 pares) | Mejora observada en esta submuestra |
 | Ganancia negativa | 14 de 52 | 5 de 36 | Mucho menos frecuente |
 | Post-test por debajo de 50 | 29 de 52 | 13 de 36 | Sigue siendo más de un tercio |
 
 La respuesta de B no se elimina de los datos: en un aula real también habrá clases así. Lo que
-cambia es qué se concluye. **La clase C tiene interés y aprende, pero su SUS es de 46.4**, igual
-que el de B: la baja usabilidad afecta también a quienes sí quieren aprender. La muestra de C es
-pequeña (9).
+cambia es qué se concluye. **La clase C fue descrita con interés y muestra un incremento
+pre/post, pero su SUS es de 46.4**, igual que el de B: la baja usabilidad también aparece en
+una clase con incremento observado. La muestra de C es pequeña (9).
 
 ### Problemas señalados
 
