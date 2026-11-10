@@ -1139,7 +1139,7 @@ Item {
                     color: Style.Theme.texto_primario; font.bold: true; font.pixelSize: 15 * embeddingScene.sx
                 }
                 Text {
-                    text: "Pulsa cualquier dato para entenderlo"
+                    text: "Pulsa cualquier dato para ver su detalle"
                     color: Style.Theme.texto_secundario; font.pixelSize: 9 * embeddingScene.sx
                 }
             }

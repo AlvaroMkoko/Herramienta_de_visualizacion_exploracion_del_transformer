@@ -212,7 +212,7 @@ def analisis_reactivos(
         if fila["p_pre"] is not None and fila["p_pre"] >= P_TECHO_PRE:
             motivos.append("Casi todos aciertan en el pre-test")
         if fila["d_post"] is not None and fila["d_post"] < D_MINIMO:
-            motivos.append("No distingue a quienes dominan el tema")
+            motivos.append("No distingue a quienes obtienen puntajes altos")
         if fila["gain"] is not None and fila["gain"] <= 0:
             motivos.append("No mejora entre pre y post")
         fila["flags"] = motivos

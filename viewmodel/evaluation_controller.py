@@ -108,7 +108,7 @@ class EvaluationController(QObject):
         self._manager = EvaluationManager(self._bank)
         self._repository = repository or ResultsRepository(_ruta_resultados())
         self._profile_controller = None
-        # La pone ProgressController en la ruta general: una evaluación solo
+        # La pone ProgressController en la secuencia general: una evaluación solo
         # empieza si su etapa está abierta. «Repetir evaluación» no la salta.
         self._guardia_global: Callable[[str], str] | None = None
         self._assessment_type = "pre"
@@ -137,7 +137,7 @@ class EvaluationController(QObject):
 
     def _latest(self, assessment_type: str) -> dict[str, Any]:
         # El instrumento histórico ocupa el ámbito vacío. Los intentos del
-        # curso llevan ``module_id`` y no deben desbloquear la ruta global.
+        # curso llevan ``module_id`` y no deben desbloquear la secuencia global.
         return self._repository.latest(
             assessment_type, self._student_filter(), module_id=""
         )
@@ -336,7 +336,7 @@ class EvaluationController(QObject):
                 "avanzaste al completar el post-test."
             )
         if percentage >= 75:
-            return "Buen resultado: demuestras dominio de los conceptos evaluados."
+            return "Buen resultado: acertaste la mayoría de los conceptos evaluados."
         return "Revisa las dimensiones con menor puntuación y repite el recorrido guiado."
 
     @Property(bool, notify=questionChanged)

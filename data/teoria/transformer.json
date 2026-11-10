@@ -181,7 +181,7 @@
           "title": "Token IDs",
           "order": 3,
           "short_description": "Cada token se reemplaza por su número de índice en el vocabulario.",
-          "explanation": "El vocabulario es una lista fija de todos los tokens que el modelo conoce. Cada token ocupa una posición en esa lista, y ese número es su id. La secuencia de texto se convierte así en una secuencia de enteros. Es importante entender que el id no tiene significado numérico: que un token tenga id 500 y otro id 501 no implica ninguna relación entre ellos, igual que dos palabras contiguas en un diccionario no son sinónimos.",
+          "explanation": "El vocabulario es una lista fija de todos los tokens que el modelo conoce. Cada token ocupa una posición en esa lista, y ese número es su id. La secuencia de texto se convierte así en una secuencia de enteros. Conviene notar que el id no tiene significado numérico: que un token tenga id 500 y otro id 501 no implica ninguna relación entre ellos, igual que dos palabras contiguas en un diccionario no son sinónimos.",
           "example": "[\"el\", \" gato\", \" duerme\"] → [318, 9040, 15234]",
           "dimensions": {
             "entrada": "texto",
@@ -1219,7 +1219,7 @@
           "title": "Qué significa no observar tokens futuros",
           "order": 2,
           "short_description": "El token en la posición i solo puede atender a las posiciones 1 a i.",
-          "explanation": "La restricción es que la atención del token i se limita a sí mismo y a los anteriores. Esto se llama causalidad o autoregresividad: cada predicción depende únicamente del pasado, igual que ocurrirá en la generación real. Es importante entender que esto aplica solo a la self-attention del decoder. La atención cruzada no lleva máscara causal: el decoder puede ver la secuencia de entrada completa, porque esa secuencia ya está disponible entera desde el principio.",
+          "explanation": "La restricción es que la atención del token i se limita a sí mismo y a los anteriores. Esto se llama causalidad o autoregresividad: cada predicción depende únicamente del pasado, igual que ocurrirá en la generación real. Conviene notar que esto aplica solo a la self-attention del decoder. La atención cruzada no lleva máscara causal: el decoder puede ver la secuencia de entrada completa, porque esa secuencia ya está disponible entera desde el principio.",
           "related_concepts": [
             "por_que_mascara",
             "mascara_triangular",
@@ -1928,7 +1928,7 @@
           "title": "Dimensiones en cada operación",
           "order": 1,
           "short_description": "Recorrido de las formas de las matrices desde la entrada hasta la salida.",
-          "explanation": "Seguir cómo cambian las dimensiones es una de las formas más efectivas de entender qué hace cada operación. Hay tres observaciones que ayudan a orientarse. Primero, seq_len y d_model se conservan de punta a punta gracias a las conexiones residuales. Segundo, la matriz de atención es la única que tiene forma seq_len × seq_len, y es la responsable del costo cuadrático del modelo. Tercero, la dimensión d_k desaparece al calcular Q · Kᵀ, porque se suma sobre ella en cada producto punto.",
+          "explanation": "Seguir cómo cambian las dimensiones es una de las formas más directas de seguir qué hace cada operación. Hay tres observaciones que ayudan a orientarse. Primero, seq_len y d_model se conservan de punta a punta gracias a las conexiones residuales. Segundo, la matriz de atención es la única que tiene forma seq_len × seq_len, y es la responsable del costo cuadrático del modelo. Tercero, la dimensión d_k desaparece al calcular Q · Kᵀ, porque se suma sobre ella en cada producto punto.",
           "dimensions": {
             "X (entrada)": "[seq_len, d_model]",
             "Q = X · W_Q": "[seq_len, d_k]",

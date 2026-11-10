@@ -26,7 +26,7 @@ Item {
     implicitWidth: 360
 
     Accessible.role: Accessible.List
-    Accessible.name: "Etapas de la ruta"
+    Accessible.name: "Etapas de la secuencia"
 
     RowLayout {
         anchors.fill: parent

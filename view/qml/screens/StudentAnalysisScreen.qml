@@ -11,7 +11,7 @@ PagePrincipal {
     objectName: "studentAnalysisScreen"
 
     required property string studentId
-    // true cuando se abre desde la etapa "Seguimiento" de la ruta guiada.
+    // true cuando se abre desde la etapa "Seguimiento" de la secuencia guiada.
     property bool modoSeguimiento: false
     readonly property var profileController: mainViewModel.profileController
     property var analysis: ({})
@@ -166,10 +166,10 @@ PagePrincipal {
                             font.bold: true
                         }
                         Text {
-                            // Pre y post solo se comparan dentro del mismo módulo (o de la ruta general).
+                            // Pre y post solo se comparan dentro del mismo módulo (o de la secuencia general).
                             objectName: "studentAnalysisScope"
                             text: (root.analysis.comparable ? "Post-test menos pre-test" : "Se requieren ambas evaluaciones")
-                                  + " · " + (root.analysis.scope_label || "Ruta general")
+                                  + " · " + (root.analysis.scope_label || "Secuencia general")
                             color: Style.Theme.texto_secundario
                             font.pixelSize: 11
                         }

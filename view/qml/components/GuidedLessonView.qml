@@ -562,7 +562,7 @@ ScrollView {
 
             // ── Comprueba ───────────────────────────────────────────
             Seccion {
-                titulo: "Comprueba lo que entendiste"
+                titulo: "Pon a prueba la idea"
                 visible: (root.tour ? root.tour.currentHasCheck : false) && root.revelada(7)
 
                 PredictionCheck {

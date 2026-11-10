@@ -4,7 +4,7 @@ import "../styles" as Style
 // Barra de progreso fina, animada y accesible (lectores de pantalla la
 // anuncian como barra de progreso con su valor).
 //
-//   BarraProgreso { valor: 0.4; etiquetaAccesible: "Progreso de la ruta" }
+//   BarraProgreso { valor: 0.4; etiquetaAccesible: "Progreso de la secuencia" }
 Rectangle {
     id: root
 

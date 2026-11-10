@@ -188,7 +188,7 @@ PagePrincipal {
 
                     Text {
                         Layout.fillWidth: true
-                        text: "Ruta de aprendizaje Transformer"
+                        text: "Secuencia guiada del Transformer"
                         color: Style.Theme.texto_primario
                         font.pixelSize: Math.max(25, Math.min(34, root.width * 0.027))
                         font.bold: true
@@ -198,7 +198,7 @@ PagePrincipal {
 
                     Text {
                         Layout.fillWidth: true
-                        text: "Avanza en orden: diagnóstico, aprendizaje, práctica, evaluación y seguimiento."
+                        text: "Avanza en orden: diagnóstico, recorrido, práctica, evaluación y seguimiento."
                         color: Style.Theme.texto_secundario
                         font.pixelSize: 15
                         wrapMode: Text.WordWrap
@@ -216,7 +216,7 @@ PagePrincipal {
 
                     Text {
                         anchors.centerIn: parent
-                        text: "RUTA DE EXPLORACIÓN"
+                        text: "SECUENCIA EN 5 PASOS"
                         color: Style.Theme.acento_fuerte
                         font.pixelSize: 11
                         font.bold: true
@@ -488,7 +488,7 @@ PagePrincipal {
                                         text: root.guidedActionLabel
                                         focusPolicy: Qt.StrongFocus
                                         Accessible.name: text
-                                        Accessible.description: "Abre el paso 2 de la ruta de aprendizaje"
+                                        Accessible.description: "Abre el paso 2 de la secuencia guiada"
 
                                         background: Rectangle {
                                             radius: 8
@@ -851,9 +851,9 @@ PagePrincipal {
                     Loader {
                         objectName: "guidedStageCard"
                         property int stageOrder: 2
-                        property string eyebrow: "APRENDIZAJE"
+                        property string eyebrow: "RECORRIDO"
                         property string title: "Recorrido guiado"
-                        property string description: "Comprende el Transformer paso a paso mediante explicaciones y actividades."
+                        property string description: "Recorre el Transformer paso a paso mediante explicaciones y actividades."
                         property bool stageAvailable: root.isPlatformStageAvailable(2)
                         property string stageStatus: stageAvailable ? "Disponible" : "Bloqueado"
                         property string stageRoute: "GuidedLearningScreen.qml"
@@ -875,7 +875,7 @@ PagePrincipal {
                         property int stageOrder: 3
                         property string eyebrow: "PRÁCTICA"
                         property string title: "Laboratorios"
-                        property string description: "Aplica lo aprendido con datos, modelos y generaciones reales."
+                        property string description: "Pon a prueba lo visto con datos, modelos y generaciones reales."
                         property bool stageAvailable: root.isPlatformStageAvailable(3)
                         property string stageStatus: stageAvailable ? "Disponible" : "Bloqueado"
                         property string stageRoute: ""
@@ -897,7 +897,7 @@ PagePrincipal {
                         property int stageOrder: 4
                         property string eyebrow: "EVALUACIÓN"
                         property string title: "Post-test"
-                        property string description: "Comprobará cuánto aprendiste después del recorrido y la práctica."
+                        property string description: "Compara tus respuestas con las del diagnóstico después del recorrido y la práctica."
                         property bool stageAvailable: root.isPlatformStageAvailable(4)
                         property string stageStatus: stageAvailable ? "Disponible" : "Bloqueado"
                         property string stageRoute: "EvaluationIntroScreen.qml"
@@ -960,7 +960,7 @@ PagePrincipal {
                     Accessible.name: text
                     Accessible.description: "Borra el progreso del recorrido guiado y los resultados de las evaluaciones"
                     ToolTip.visible: hovered && !enabled
-                    ToolTip.text: "Disponible cuando completes los cinco pasos de la ruta ("
+                    ToolTip.text: "Disponible cuando completes los cinco pasos de la secuencia ("
                                   + (root.progressController
                                      ? root.progressController.pasosCompletados : 0)
                                   + " de 5)."
@@ -1101,7 +1101,7 @@ PagePrincipal {
                 Layout.leftMargin: root.pageMargin
                 Layout.rightMargin: root.pageMargin
                 visible: root.progressController && !root.progressController.rutaEstricta
-                text: "Acceso libre para pruebas: el orden recomendado de la ruta no se está aplicando."
+                text: "Acceso libre para pruebas: el orden recomendado de la secuencia no se está aplicando."
                 color: Style.Theme.texto_secundario
                 font.pixelSize: 11
                 horizontalAlignment: Text.AlignHCenter

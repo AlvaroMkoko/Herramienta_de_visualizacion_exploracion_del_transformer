@@ -1456,7 +1456,7 @@ def cu08(c: Conductor, datos: dict) -> None:
     c.capturar("generacion_completa")
     c.js(pantalla, "flujoInferencia.open()")
     c.pausa(1200)
-    c.comprobar("6b. «Entender cómo se generó» abre el explorador (CU06)",
+    c.comprobar("6b. «Ver cómo se generó» abre el explorador (CU06)",
                 c.js(pantalla, "flujoInferencia.opened"))
     c.capturar("entender_como_se_genero")
     c.js(pantalla, "flujoInferencia.close()")

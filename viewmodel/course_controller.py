@@ -905,7 +905,7 @@ class CourseController(QObject):
                     + ", ".join(item["label"] for item in recommendations[:3])
                     + " antes de continuar."
                     if recommendations
-                    else "Puedes continuar: los conceptos evaluados muestran un dominio sólido."
+                    else "Puedes continuar: acertaste los conceptos evaluados."
                 )
             ),
         }

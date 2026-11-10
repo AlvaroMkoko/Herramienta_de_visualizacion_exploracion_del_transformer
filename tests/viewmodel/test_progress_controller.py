@@ -128,7 +128,7 @@ def test_ruta_no_estricta_abre_todas_las_etapas(tmp_path):
 
 
 def test_el_candado_de_laboratorios_es_independiente_del_interruptor(tmp_path):
-    """Son dos banderas distintas: apagar la ruta estricta no debe desbloquear
+    """Son dos banderas distintas: apagar la secuencia estricta no debe desbloquear
     los laboratorios si el proyecto todavía exige el recorrido guiado."""
     _, _, progress = crear_controladores(tmp_path)
     progress.establecerRutaEstricta(False)
@@ -246,7 +246,7 @@ def test_borrar_el_progreso_persiste_el_borrado(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# Ruta general: la misma regla que el curso por módulos
+# Secuencia general: la misma regla que el curso por módulos
 # ---------------------------------------------------------------------------
 
 def test_el_pretest_general_se_cierra_al_entrar_al_recorrido(tmp_path):

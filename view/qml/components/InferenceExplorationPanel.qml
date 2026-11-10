@@ -1833,7 +1833,7 @@ Item {
 
                                     Text {
                                         Layout.fillWidth: true
-                                        text: "ENTIENDE TODO LO QUE VES"
+                                        text: "QUÉ ESTÁS VIENDO"
                                         color: root.stage.accent
                                         font.bold: true
                                         font.letterSpacing: 0.5

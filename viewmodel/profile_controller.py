@@ -221,7 +221,7 @@ class ProfileController(QObject):
         return str(result.get("module_id", "") or "")
 
     def _primary_scope(self, results: list[dict[str, Any]]) -> str:
-        """Ámbito que compara la fila: la ruta general si el alumno la usa, o
+        """Ámbito que compara la fila: la secuencia general si el alumno la usa, o
         el módulo de su actividad más reciente. Pre y post de ámbitos
         distintos nunca se restan: medirían contenidos distintos."""
         if any(not self._scope_of(result) for result in results):
@@ -234,7 +234,7 @@ class ProfileController(QObject):
 
     def _scope_label(self, scope: str) -> str:
         if not scope:
-            return "Ruta general"
+            return "Secuencia general"
         try:
             from model.aprendizaje import LearningModuleCatalog
 
@@ -255,7 +255,7 @@ class ProfileController(QObject):
             else self._evaluation.instrumentVersion
         )
         # En módulos, un resultado sin versión es anterior al campo y no se
-        # compara (misma regla que CourseController); la ruta general lo toma
+        # compara (misma regla que CourseController); la secuencia general lo toma
         # como v2, el instrumento con el que se produjo.
         version_de = _instrument_version if not scope else _module_instrument_version
         pre = primer_intento_vigente(pre_all, version, version_de)

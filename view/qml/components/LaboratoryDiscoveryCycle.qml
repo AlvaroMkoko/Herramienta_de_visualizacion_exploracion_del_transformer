@@ -346,7 +346,7 @@ Item {
                            ? "La observación fue compatible con tu idea inicial. Ahora ya puedes justificarla con la operación matemática."
                            : "La evidencia no coincidió con tu idea inicial. La respuesta esperada era: «"
                              + String(root.predictionOptions[root.correctPrediction] || "—")
-                             + "». Cambiar de explicación después de observar es parte del aprendizaje.")
+                             + "». Cambiar de explicación después de observar es parte de la exploración.")
                           + (String(root.value(root.challenge, "explanation", "")).length > 0
                              ? "  " + String(root.value(root.challenge, "explanation", "")) : "")
                     sx: root.sx; sy: root.sy

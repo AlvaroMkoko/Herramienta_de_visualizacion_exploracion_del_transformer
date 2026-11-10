@@ -1848,7 +1848,7 @@
             },
             {
               "termino": "B (batch)",
-              "definicion": "Cuántas frases se procesan a la vez. Si entran 8 frases juntas, B = 8. Para entender la atención basta pensar en una sola frase (B = 1)."
+              "definicion": "Cuántas frases se procesan a la vez. Si entran 8 frases juntas, B = 8. Para seguir la atención basta pensar en una sola frase (B = 1)."
             },
             {
               "termino": "Forma [B, T, d_model]",

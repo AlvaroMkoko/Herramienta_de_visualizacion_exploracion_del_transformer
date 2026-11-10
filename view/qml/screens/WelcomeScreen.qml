@@ -9,7 +9,7 @@ import "../components"
 // Pantalla de bienvenida (hub del estudiante).
 //
 // Responde a tres preguntas en este orden de lectura:
-//   1. ¿Dónde estoy?          → saludo + estado de la ruta
+//   1. ¿Dónde estoy?          → saludo + estado de la secuencia
 //   2. ¿Qué me conviene hacer? → UNA acción primaria según el progreso
 //   3. ¿Qué más puedo hacer?   → laboratorio como alternativa, sin competir
 //
@@ -22,10 +22,10 @@ PagePrincipal {
 
     // ─────────────────────────────────────────────────────────────
     // CONFIGURACIÓN: si es true, el laboratorio queda bloqueado según la
-    // misma regla que la ruta (progressController.etapaDisponible(3)).
+    // misma regla que la secuencia (progressController.etapaDisponible(3)).
     // En false, el laboratorio está siempre disponible desde aquí. Como
     // esta pantalla es la única entrada del perfil de estudiante, este
-    // valor decide si el estudiante puede experimentar antes de la ruta.
+    // valor decide si el estudiante puede experimentar antes de la secuencia.
     readonly property bool requireGuidedBeforeLabs: false
     // ─────────────────────────────────────────────────────────────
 
@@ -51,13 +51,13 @@ PagePrincipal {
         function onBanderasCambio() { root.revision += 1 }
     }
 
-    // ── Progreso de la ruta (5 etapas) ───────────────────────────────
+    // ── Progreso de la secuencia (5 etapas) ───────────────────────────────
     readonly property var etapas: {
         var r = root.revision
         var pc = root.progressController
         return [
             { nombre: "Diagnóstico", completada: pc ? pc.preTestCompletado : false },
-            { nombre: "Aprendizaje", completada: pc ? pc.recorridoCompletado : false },
+            { nombre: "Recorrido", completada: pc ? pc.recorridoCompletado : false },
             { nombre: "Práctica",    completada: pc ? pc.laboratoriosCompletados : false },
             { nombre: "Evaluación",  completada: pc ? pc.postTestCompletado : false },
             { nombre: "Seguimiento", completada: pc ? pc.seguimientoVisitado : false }
@@ -118,8 +118,8 @@ PagePrincipal {
                 tarjetaRuta.insignia: "Recomendado para empezar"
                 botonRuta.text: "Comenzar recorrido"
                 subtitulo.text: root.labsUnlocked
-                                ? "Te sugerimos empezar por la ruta guiada. El laboratorio queda disponible cuando quieras experimentar."
-                                : "Empieza por la ruta guiada: al completarla se abre el laboratorio."
+                                ? "Te sugerimos empezar por la secuencia guiada. El laboratorio queda disponible cuando quieras experimentar."
+                                : "Empieza por la secuencia guiada: al completarla se abre el laboratorio."
             }
         },
         State {
@@ -139,10 +139,10 @@ PagePrincipal {
                 tarjetaRuta.insignia: "Completada"
                 tarjetaRuta.insigniaFondo: Style.Theme.exito_fondo
                 tarjetaRuta.insigniaTexto: Style.Theme.exito_texto
-                botonRuta.text: "Repasar la ruta"
+                botonRuta.text: "Repasar la secuencia"
                 botonRuta.enfasis: "medio"
                 tarjetaLab.destacada: true
-                subtitulo.text: "Completaste la ruta. El laboratorio es tuyo para experimentar."
+                subtitulo.text: "Completaste la secuencia. El laboratorio es tuyo para experimentar."
             }
         }
     ]
@@ -172,7 +172,7 @@ PagePrincipal {
         if (!root.labsUnlocked)
             return
         // Abrir un laboratorio desde aquí también cuenta para la etapa
-        // "Práctica", igual que desde la ruta: el progreso es uno solo.
+        // "Práctica", igual que desde la secuencia: el progreso es uno solo.
         if (root.progressController && laboratorioId)
             root.progressController.registrarLaboratorioAbierto(laboratorioId)
         root.stackView.push(pantalla, { "stackView": root.stackView })
@@ -289,7 +289,7 @@ PagePrincipal {
                                     }
                                 }
                                 Text {
-                                    text: "TU ESPACIO DE APRENDIZAJE"
+                                    text: "TU ESPACIO DE EXPLORACIÓN"
                                     color: Style.Theme.acento_texto
                                     font.family: Style.Theme.fuente_interfaz
                                     font.pixelSize: 11
@@ -391,7 +391,7 @@ PagePrincipal {
                                     Layout.fillWidth: true
                                     Layout.topMargin: 3
                                     text: root.etapaActual === -1
-                                          ? "Ruta completada · sigue explorando"
+                                          ? "Secuencia completada · sigue explorando"
                                           : "Ahora: " + root.etapas[root.etapaActual].nombre
                                     color: Style.Theme.texto_secundario
                                     font.pixelSize: 11
@@ -411,11 +411,11 @@ PagePrincipal {
                     columnSpacing: 24
                     rowSpacing: 24
 
-                    // Proporción 56/44: la ruta pesa más (es la recomendada)
+                    // Proporción 56/44: la secuencia pesa más (es la recomendada)
                     // sin dejar al laboratorio tan angosto que trunque texto.
                     readonly property real anchoUtil: width - (columns > 1 ? columnSpacing : 0)
 
-                    // ── Ruta de aprendizaje (primaria) ──────────────
+                    // ── Secuencia guiada (primaria) ──────────────
                     TarjetaBienvenida {
                         id: tarjetaRuta
                         objectName: "welcomeLearningCard"
@@ -426,7 +426,7 @@ PagePrincipal {
 
                         glifo: "◆"
                         acentoTarjeta: Style.Theme.acento
-                        titulo: "Ruta de aprendizaje"
+                        titulo: "Secuencia guiada"
                         descripcion: "Recorre la arquitectura paso a paso, desde tu diagnóstico inicial hasta ver cuánto avanzaste."
 
                         RutaEtapas {
@@ -452,7 +452,7 @@ PagePrincipal {
 
                                 Text {
                                     Layout.fillWidth: true
-                                    text: root.etapaActual === -1 ? "RUTA COMPLETADA" : "SIGUIENTE PASO"
+                                    text: root.etapaActual === -1 ? "SECUENCIA COMPLETADA" : "SIGUIENTE PASO"
                                     color: Style.Theme.concepto_texto
                                     font.family: Style.Theme.fuente_interfaz
                                     font.pixelSize: 11
@@ -484,7 +484,7 @@ PagePrincipal {
                                         Layout.fillWidth: true
                                         valor: root.totalUnitsCount > 0
                                                ? root.completedUnitsCount / root.totalUnitsCount : 0
-                                        etiquetaAccesible: "Unidades de aprendizaje completadas"
+                                        etiquetaAccesible: "Unidades del recorrido completadas"
                                     }
                                     Text {
                                         text: root.completedUnitsCount + " de " + root.totalUnitsCount + " unidades"
@@ -502,7 +502,7 @@ PagePrincipal {
                             id: botonRuta
                             objectName: "welcomeLearningButton"
                             Layout.fillWidth: true
-                            Accessible.description: "Abre la ruta de aprendizaje"
+                            Accessible.description: "Abre la secuencia guiada"
                             onClicked: root.abrirRuta()
                         }
                     }
@@ -573,7 +573,7 @@ PagePrincipal {
                 }
 
                 // ── Clase en red ───────────────────────────────────
-                // Franja discreta: la ruta sigue siendo la acción principal.
+                // Franja discreta: la secuencia sigue siendo la acción principal.
                 Rectangle {
                     id: franjaClase
                     objectName: "welcomeClassroomStrip"

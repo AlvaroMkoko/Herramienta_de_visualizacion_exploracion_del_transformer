@@ -29,7 +29,7 @@
       "eyebrow": "DIAGNÓSTICO",
       "forma": "A",
       "description": "Identificará tus conocimientos previos sobre la arquitectura Transformer para personalizar la experiencia.",
-      "instructions": "Este instrumento evalúa tu comprensión conceptual de cinco componentes de la arquitectura Transformer. Contiene 20 reactivos en formatos variados; cada uno vale como máximo 1 punto, para un total de 20. Varios formatos permiten crédito parcial. Tiempo estimado: 30 a 40 minutos. Verás tus resultados al terminar.",
+      "instructions": "Este instrumento abarca cinco componentes de la arquitectura Transformer. Contiene 20 reactivos en formatos variados; cada uno vale como máximo 1 punto, para un total de 20. Varios formatos permiten crédito parcial. Tiempo estimado: 30 a 40 minutos. Verás tus resultados al terminar.",
       "questions": [
         {
           "id": "pre_t1", "code": "T1", "dimension_id": "tokenizacion",
@@ -424,7 +424,7 @@
       "title": "Post-test",
       "eyebrow": "EVALUACIÓN",
       "forma": "B",
-      "description": "Comprobará cuánto aprendiste después del recorrido guiado y la práctica en los laboratorios.",
+      "description": "Compara tus respuestas con las del diagnóstico después del recorrido guiado y la práctica en los laboratorios.",
       "instructions": "Forma equivalente al pre-test: mismos cinco componentes, mismos formatos y mismo blueprint cognitivo, con reactivos distintos. 20 reactivos, 20 puntos máximo. Tiempo estimado: 30 a 40 minutos. Verás tus resultados y tu comparación contra el pre-test al terminar.",
       "questions": [
         {

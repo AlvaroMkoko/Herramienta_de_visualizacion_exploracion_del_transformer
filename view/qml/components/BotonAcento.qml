@@ -6,7 +6,7 @@ import "../styles" as Style
 //
 // Regla de uso: como máximo UNO por vista. Si todo es primario, nada lo es.
 // `enfasis: "medio"` lo baja a contorno de acento cuando la acción sigue
-// siendo relevante pero ya no es la recomendada (p. ej. "Repasar la ruta"
+// siendo relevante pero ya no es la recomendada (p. ej. "Repasar la secuencia"
 // después de completarla).
 BotonAccesible {
     id: control

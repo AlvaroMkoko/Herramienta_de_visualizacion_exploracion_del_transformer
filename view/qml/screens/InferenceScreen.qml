@@ -353,7 +353,7 @@ PagePrincipal {
                             visible: root.pasosVisualizacion.length > 0
                             Layout.preferredWidth: 230 * root.sx
                             Layout.preferredHeight: 34 * root.sy
-                            text: "◎ Entender cómo se generó"
+                            text: "◎ Ver cómo se generó"
                             size_text: 0.22
                             onClicked: flujoInferencia.open()
                         }

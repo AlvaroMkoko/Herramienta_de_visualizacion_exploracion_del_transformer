@@ -172,5 +172,5 @@ def test_la_ruta_general_tiene_prioridad_y_no_se_mezcla_con_modulos(tmp_path):
     repository.save_result(_en(_result("post", 99.0, student), "module_3", 5))
 
     row = profiles.students[0]
-    assert row["scope"] == "" and row["scope_label"] == "Ruta general"
+    assert row["scope"] == "" and row["scope_label"] == "Secuencia general"
     assert row["post_completed"] is False and row["comparable"] is False

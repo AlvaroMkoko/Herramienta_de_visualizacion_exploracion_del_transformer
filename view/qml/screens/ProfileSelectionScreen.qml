@@ -64,7 +64,7 @@ PagePrincipal {
                     spacing: 0
 
                     Text {
-                        text: "VISUALIZA  ·  EXPLORA  ·  COMPRENDE"
+                        text: "VISUALIZA  ·  EXPLORA"
                         color: Style.Theme.acento_texto
                         font.family: Style.Theme.fuente_interfaz
                         font.pixelSize: 11
@@ -106,7 +106,7 @@ PagePrincipal {
                 spacing: 8
 
                 Repeater {
-                    model: ["Ruta guiada", "Laboratorios interactivos", "Progreso local"]
+                    model: ["Secuencia guiada", "Laboratorios interactivos", "Progreso local"]
 
                     Rectangle {
                         required property string modelData
@@ -174,7 +174,7 @@ PagePrincipal {
                         transformOrigin: Item.Center
                         Accessible.role: Accessible.Grouping
                         Accessible.name: "Perfil de estudiante"
-                        Accessible.description: "Ruta guiada, laboratorios y seguimiento del progreso"
+                        Accessible.description: "Secuencia guiada, laboratorios y seguimiento del progreso"
 
                         Behavior on scale { NumberAnimation { duration: Style.Theme.duracionCorta; easing.type: Easing.OutCubic } }
                         Behavior on border.color { ColorAnimation { duration: Style.Theme.duracionCorta } }
@@ -228,7 +228,7 @@ PagePrincipal {
                                     Text {
                                         id: alumnoTag
                                         anchors.centerIn: parent
-                                        text: "APRENDER"
+                                        text: "EXPLORAR"
                                         color: Style.Theme.acento_texto
                                         font.pixelSize: 10
                                         font.bold: true
@@ -247,7 +247,7 @@ PagePrincipal {
                             Text {
                                 Layout.fillWidth: true
                                 Layout.topMargin: 6
-                                text: "Comprende la arquitectura paso a paso y pon a prueba cada concepto."
+                                text: "Recorre la arquitectura paso a paso y pon a prueba cada concepto."
                                 color: Style.Theme.texto_secundario
                                 font.pixelSize: 14
                                 lineHeight: 1.25
@@ -256,7 +256,7 @@ PagePrincipal {
                             Text {
                                 Layout.fillWidth: true
                                 Layout.topMargin: 9
-                                text: "✓  Diagnóstico  ·  Ruta guiada  ·  Laboratorio"
+                                text: "✓  Diagnóstico  ·  Secuencia guiada  ·  Laboratorio"
                                 color: Style.Theme.acento_texto
                                 font.pixelSize: 12
                                 font.bold: true

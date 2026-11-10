@@ -114,7 +114,7 @@ Rectangle {
 
                 Text {
                     Layout.fillWidth: true
-                    text: "Comprueba lo aprendido"
+                    text: "Pon a prueba la idea"
                     color: Style.Theme.texto_primario
                     font.bold: true
                     font.pixelSize: 17 * root.scaleFactor

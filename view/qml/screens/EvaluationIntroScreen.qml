@@ -124,7 +124,7 @@ PagePrincipal {
                         Layout.fillWidth: true
                         text: root.isPreTest
                               ? "Descubre tu punto de partida"
-                              : "Comprueba cuánto aprendiste"
+                              : "Compara con tu punto de partida"
                         color: Style.Theme.texto_primario
                         font.pixelSize: 29 * root.sx
                         font.bold: true
@@ -262,7 +262,7 @@ PagePrincipal {
                             "Responde según el formato: elegir, seleccionar, ordenar, relacionar o escribir.",
                             "El intento combina 5 preguntas básicas, 5 intermedias y 5 avanzadas.",
                             "No se mostrará si acertaste hasta terminar.",
-                            "Cada intento combina memoria, comprensión, aplicación y razonamiento."
+                            "Cada intento combina preguntas para recordar, explicar, aplicar y razonar."
                         ] : [
                             "Responde según el formato: elegir, ordenar, relacionar o escribir.",
                             "Debes responder para poder avanzar.",

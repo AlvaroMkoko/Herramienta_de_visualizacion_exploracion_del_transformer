@@ -83,7 +83,7 @@ PagePrincipal {
                               : elegidas + " opciones seleccionadas"
     }
 
-    function returnToLearningPath() {
+    function returnToGuidedSequence() {
         if (mainViewModel.profileController.isTeacher) {
             if (root.stackView.depth >= 2)
                 root.stackView.pop(root.stackView.get(1))
@@ -825,7 +825,7 @@ PagePrincipal {
                         Layout.preferredWidth: 240 * root.sx
                         Layout.preferredHeight: 54 * root.sy
                         text: "Repetir evaluación"
-                        // Respeta las guardas de etapa (curso y ruta general): el
+                        // Respeta las guardas de etapa (curso y secuencia general): el
                         // pre-test se cierra al entrar al recorrido. Repetir no
                         // cambia la medición, que siempre toma el primer intento.
                         visible: root.moduleId.length === 0
@@ -852,7 +852,7 @@ PagePrincipal {
                                     "moduleId": root.moduleId
                                 })
                             } else {
-                                root.returnToLearningPath()
+                                root.returnToGuidedSequence()
                             }
                         }
                     }

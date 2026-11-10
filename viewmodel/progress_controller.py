@@ -1,4 +1,4 @@
-"""Estado global de avance del estudiante en la ruta de aprendizaje de cinco pasos."""
+"""Estado global de avance del estudiante en la secuencia guiada de cinco pasos."""
 
 from __future__ import annotations
 

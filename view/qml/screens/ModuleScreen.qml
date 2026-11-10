@@ -22,10 +22,10 @@ PagePrincipal {
     readonly property real minimumJourneyWidth: 1110
     readonly property var stages: [
         { id: "pretest", number: "01", eyebrow: "DIAGNÓSTICO", title: "Pre-test", subtitle: "15 de 25 preguntas aleatorias", route: "EvaluationIntroScreen.qml" },
-        { id: "guided", number: "02", eyebrow: "APRENDE", title: "Recorrido guiado", subtitle: "8 pasos: predice, comprueba y revela", route: "ModuleGuidedTourScreen.qml" },
+        { id: "guided", number: "02", eyebrow: "RECORRE", title: "Recorrido guiado", subtitle: "8 pasos: predice, comprueba y revela", route: "ModuleGuidedTourScreen.qml" },
         { id: "laboratory", number: "03", eyebrow: "PRÁCTICA", title: "Laboratorio especializado", subtitle: "3 retos guiados con el modelo real", route: "ModuleLaboratoryScreen.qml" },
         { id: "posttest", number: "04", eyebrow: "COMPRUEBA", title: "Post-test", subtitle: "15 reactivos equivalentes y distintos", route: "EvaluationIntroScreen.qml" },
-        { id: "results", number: "05", eyebrow: "REFLEXIONA", title: "Resultados", subtitle: "Mejora, dominio y recomendaciones", route: "ModuleResultsScreen.qml" }
+        { id: "results", number: "05", eyebrow: "REFLEXIONA", title: "Resultados", subtitle: "Mejora, aciertos y recomendaciones", route: "ModuleResultsScreen.qml" }
     ]
 
     property var reviewData: ({})
@@ -315,7 +315,7 @@ PagePrincipal {
                             Layout.fillWidth: true
                             text: root.moduleProgress === 100
                                   ? "MÓDULO COMPLETADO"
-                                  : "TU PRÓXIMO BLOQUE DE APRENDIZAJE"
+                                  : "TU PRÓXIMO BLOQUE"
                             color: Style.Theme.acento_fuerte
                             font.bold: true
                             font.pixelSize: Math.max(10, 11 * root.sx)

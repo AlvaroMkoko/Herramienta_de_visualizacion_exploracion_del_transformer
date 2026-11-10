@@ -202,7 +202,7 @@ PagePrincipal {
                             objectName: "joinClassContinueButton"
                             Layout.fillWidth: true
                             Layout.preferredHeight: 44
-                            text: "Ir a mi ruta"
+                            text: "Ir a mi secuencia"
                             onClicked: root.stackView.pop()
                         }
                         BotonSecundario {

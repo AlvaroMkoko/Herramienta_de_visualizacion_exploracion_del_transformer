@@ -1,6 +1,6 @@
-"""Pruebas de las guardias de navegación de la ruta de aprendizaje.
+"""Pruebas de las guardias de navegación de la secuencia guiada.
 
-La ruta formativa tiene cinco pasos que deben recorrerse en orden: sin el
+La secuencia guiada tiene cinco pasos que deben recorrerse en orden: sin el
 pre-test no hay recorrido guiado, sin el recorrido no hay laboratorios, sin
 abrir los tres laboratorios no hay post-test, y sin post-test no hay pantalla de
 progreso. Saltarse el orden invalida la medición: un post-test contestado antes
@@ -141,7 +141,7 @@ def home(qapp, qtbot, monkeypatch, tmp_path):
     qapp.processEvents()
 
     pantalla = _buscar(window, "homeScreen")
-    # La ruta estricta se fuerza: el valor por defecto podría cambiarse durante
+    # La secuencia estricta se fuerza: el valor por defecto podría cambiarse durante
     # el desarrollo y estas pruebas dejarían de probar lo que dicen probar.
     view_model.progressController.establecerRutaEstricta(True)
     view_model.progressController.establecerRequiereRecorridoParaLabs(True)

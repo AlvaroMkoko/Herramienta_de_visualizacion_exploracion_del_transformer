@@ -131,7 +131,7 @@ PagePrincipal {
             "number": "04",
             "title": "Por qué no puede mirar el futuro",
             "shortTitle": "Máscara y generación",
-            "objective": "Comprende la máscara causal y la generación autoregresiva token por token.",
+            "objective": "Explora la máscara causal y la generación autoregresiva token por token.",
             "conceptIds": ["por_que_mascara", "generacion_token_por_token", "seleccion_token"],
                         "activity": {
                 "visualType": "causal_mask",
@@ -438,7 +438,7 @@ PagePrincipal {
 
     Component.onCompleted: {
         if (root.hasLearningController) {
-            // Entrar cierra el pre-test de la ruta general (ver ProgressController).
+            // Entrar cierra el pre-test de la secuencia general (ver ProgressController).
             mainViewModel.learningController.markTourEntered()
             root.currentUnitIndex = root.bounded(mainViewModel.learningController.lastUnitIndex,
                                                  0, root.totalUnits - 1)
@@ -611,7 +611,7 @@ PagePrincipal {
 
                     Text {
                         Layout.fillWidth: true
-                        text: "Ruta de aprendizaje"
+                        text: "Secuencia guiada"
                         color: Style.Theme.texto_primario
                         font.bold: true
                         font.pixelSize: 15 * root.uiScale

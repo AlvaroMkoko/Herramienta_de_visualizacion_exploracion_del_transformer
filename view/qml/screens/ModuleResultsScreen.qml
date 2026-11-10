@@ -211,7 +211,7 @@ PagePrincipal {
                     ColumnLayout {
                         anchors.fill: parent
                         anchors.margins: 14 * root.sx
-                        Text { text: "Conceptos dominados"; color: Style.Theme.exito_texto; font.bold: true; font.pixelSize: 15 * root.sx }
+                        Text { text: "Conceptos acertados"; color: Style.Theme.exito_texto; font.bold: true; font.pixelSize: 15 * root.sx }
                         Text { Layout.fillWidth: true; Layout.fillHeight: true; text: (root.results.mastered || []).length ? (root.results.mastered || []).join(" · ") : "Aún no hay conceptos evaluados por encima de 80%."; color: Style.Theme.exito_texto; wrapMode: Text.WordWrap; font.pixelSize: 12 * root.sx }
                     }
                 }
