@@ -10,6 +10,9 @@ cuda.py
 *.pdf
 
 .pytest_cache/
+.venv-empaquetado/
+build/
+dist/
 .scannerwork/
 coverage.xml
 test-results.xml

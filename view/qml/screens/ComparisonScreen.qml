@@ -32,6 +32,7 @@ PagePrincipal {
     property var pasosA: []
     property var pasosB: []
     property bool mostrarInterior: false
+    property int modeloCompactoIndex: 0
     // Paso que muestran ambos paneles (0 = seguir el último token).
     property int pasoSeleccionado: 0
     readonly property int pasosDisponibles: Math.max(root.pasosA.length, root.pasosB.length)
@@ -56,6 +57,7 @@ PagePrincipal {
     property bool pasoPendienteB: false
 
     readonly property bool modelosListos: controller && controller.modelosListos
+    readonly property bool comparacionCompacta: width < 1120
     readonly property bool cargando: controller && controller.cargando
     readonly property var controladorA: controller ? controller.controladorA : null
     readonly property var controladorB: controller ? controller.controladorB : null
@@ -830,6 +832,7 @@ PagePrincipal {
 
     Item {
         id: vistaComparacion
+        objectName: "comparisonLoadedView"
         visible: root.modelosListos
         anchors.top: cabecera.bottom
         anchors.left: parent.left
@@ -1125,6 +1128,19 @@ PagePrincipal {
                 font.bold: checked
                 onClicked: root.mostrarInterior = true
             }
+            SelectorPrincipal {
+                objectName: "comparisonCompactResultSelector"
+                visible: root.comparacionCompacta
+                Layout.preferredWidth: visible ? 158 * root.sx : 0
+                Layout.preferredHeight: 32 * root.sy
+                model: ["Ver Modelo A", "Ver Modelo B"]
+                currentIndex: root.modeloCompactoIndex
+                sx: root.sx
+                sy: root.sy
+                onActivated: function(index) {
+                    root.modeloCompactoIndex = index
+                }
+            }
             Item { Layout.fillWidth: true }
             Text {
                 visible: root.mostrarInterior
@@ -1138,7 +1154,7 @@ PagePrincipal {
             Slider {
                 objectName: "comparisonStepSlider"
                 visible: root.mostrarInterior
-                Layout.preferredWidth: 260 * root.sx
+                Layout.preferredWidth: (root.comparacionCompacta ? 150 : 260) * root.sx
                 from: 1
                 to: Math.max(1, root.pasosDisponibles)
                 stepSize: 1
@@ -1167,6 +1183,7 @@ PagePrincipal {
             spacing: 16 * root.sx
 
             Repeater {
+                objectName: "comparisonResultRepeater"
                 model: [
                     {
                         etiqueta: "MODELO A",
@@ -1195,7 +1212,17 @@ PagePrincipal {
                 delegate: RectanglePrincipal {
                     id: resultadoModelo
                     required property var modelData
-                    Layout.fillWidth: true
+                    required property int index
+                    readonly property bool activoEnVistaCompacta:
+                        !root.comparacionCompacta
+                        || index === root.modeloCompactoIndex
+
+                    objectName: "comparisonResultModel" + (index + 1)
+                    visible: activoEnVistaCompacta
+                    Layout.fillWidth: visible
+                    Layout.minimumWidth: 0
+                    Layout.preferredWidth: visible ? 1 : 0
+                    Layout.maximumWidth: visible ? 16777215 : 0
                     Layout.fillHeight: true
                     sx: root.sx
                     sy: root.sy

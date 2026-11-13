@@ -679,7 +679,7 @@
         {
           "id": "m1_l5",
           "concept_id": "secuencias",
-          "prompt": "Compara dos frases escritas con las mismas palabras en distinto orden: cada palabra conserva su ID, pero cambia de columna. ¿Qué demuestra esto?",
+          "prompt": "En la fila de tokens mostrada, intercambiar dos tokens conservaría sus IDs, pero cambiaría sus columnas. ¿Qué demuestra esto?",
           "options": [
             "La identidad se conserva, pero la secuencia cambia",
             "El vocabulario asigna un ID nuevo en cada posición",
@@ -691,38 +691,38 @@
         {
           "id": "m1_l6",
           "concept_id": "vocabulario",
-          "prompt": "Observa el paso de consulta del vocabulario: dos apariciones de una misma palabra señalan la misma fila. ¿Qué puede variar más adelante?",
+          "prompt": "En la consulta del vocabulario, cada token señala una fila. Si el mismo token apareciera otra vez, ¿qué ocurriría con su ID?",
           "options": [
-            "Su representación contextual por estar rodeadas de tokens distintos",
-            "El significado fijo del ID dentro del vocabulario",
-            "El número de filas de la tabla"
+            "Se repetiría el mismo ID porque señala la misma fila",
+            "Recibiría un ID nuevo por aparecer en otra posición",
+            "Cambiaría el número de filas del vocabulario"
           ],
           "correct_index": 0,
-          "explanation": "El ID es estable; posición y atención harán que cada aparición adquiera un contexto diferente."
+          "explanation": "La consulta depende de la identidad del token: la misma pieza siempre señala la misma fila y obtiene el mismo ID."
         },
         {
           "id": "m1_l7",
           "concept_id": "tokens_especiales",
-          "prompt": "BOS, EOS y PAD usan IDs reservados: nunca coinciden con una palabra del texto. Si PAD compartiera ID con «casa», ¿qué dejaría de ser posible?",
+          "prompt": "En la visualización, BOS inicia la entrada del decoder y EOS termina el objetivo. ¿Por qué necesitan IDs reservados distintos de las palabras?",
           "options": [
-            "Que la máscara distinga el relleno de un token real",
-            "Que el batch tenga filas",
-            "Que la frase tenga un primer token"
+            "Para marcar inicio y fin sin confundirse con contenido real",
+            "Para que el batch tenga siempre una sola fila",
+            "Para cambiar el orden de las palabras del objetivo"
           ],
           "correct_index": 0,
-          "explanation": "La máscara se calcula comparando IDs con el de PAD: si coincide con una palabra, esa palabra también quedaría bloqueada."
+          "explanation": "BOS y EOS son señales de control agregadas por la aplicación; sus IDs propios permiten distinguirlas de los tokens del texto."
         },
         {
           "id": "m1_l8",
           "concept_id": "token_ids",
-          "prompt": "Ejemplo: «banco» recibe el mismo ID en «me senté en el banco» y en «el banco cerró». ¿Dónde deberá resolverse la diferencia de sentido?",
+          "prompt": "Los números mostrados después de consultar el vocabulario son IDs. ¿Qué información conservan en esta etapa?",
           "options": [
-            "En las representaciones contextuales construidas por la atención",
-            "En un ID secreto distinto para cada significado",
-            "En la máscara de padding"
+            "La identidad discreta y el orden de los tokens",
+            "El significado contextual completo de cada palabra",
+            "Las probabilidades del siguiente token"
           ],
           "correct_index": 0,
-          "explanation": "El ID identifica texto, no sentido; la atención incorpora las palabras vecinas para desambiguarlo."
+          "explanation": "Cada ID identifica una pieza del vocabulario y su lugar en la lista conserva el orden; todavía no contiene contexto ni probabilidades."
         }
       ]
     },
@@ -1417,14 +1417,14 @@
         {
           "id": "m2_l8",
           "concept_id": "representacion_entrada",
-          "prompt": "Observa las capas que vienen después: cada subcapa suma su entrada y su salida. Si la representación mide [1, 3, 8], ¿qué ancho debe tener lo que se le sume?",
+          "prompt": "En el paso de dropout, una representación mide [1, 3, 8]. Aunque algunas componentes queden en cero durante entrenamiento, ¿qué debe conservar la salida?",
           "options": [
-            "8, el mismo ancho d_model",
-            "3, el número de tokens",
-            "16, el doble para que quepan ambas"
+            "La forma [1, 3, 8] y el mismo ancho d_model",
+            "Sólo 3 valores, uno por token",
+            "Un ancho 16, el doble del original"
           ],
           "correct_index": 0,
-          "explanation": "Sólo se pueden sumar vectores del mismo ancho: por eso d_model se conserva a lo largo del Transformer."
+          "explanation": "Dropout puede anular componentes, pero no agrega ni elimina filas o columnas: la forma de la representación no cambia."
         }
       ]
     },
@@ -2055,52 +2055,59 @@
           "clave": "Escalar baja la magnitud de los scores sin cambiar su orden ni su forma."
         },
         "m3_s6": {
-          "intuicion": "Los scores dicen quién es más compatible, pero no son porcentajes. Softmax convierte cada fila en un reparto: qué parte de la atención de un token va a cada uno de los demás. Como repartir un pastel: los trozos son positivos y juntos suman el pastel completo, es decir, 1.",
+          "intuicion": "Cada fila pertenece a una Query y contiene un score por Key: son compatibilidades, no porcentajes. Softmax convierte esa fila en un reparto de atención. Primero excluye las Keys enmascaradas, después hace positivas y normaliza las compatibilidades permitidas. El resultado indica qué proporción aportará cada Value; no selecciona una sola Key ni calcula probabilidades del vocabulario.",
           "terminos": [
             {
               "termino": "Exponencial (eˣ)",
-              "definicion": "Función que convierte cualquier número en uno positivo; los números grandes crecen mucho más. e⁰ = 1, e^0.5 ≈ 1.65, e¹ ≈ 2.72."
+              "definicion": "Convierte cualquier score finito en un valor positivo y amplifica sus diferencias: e⁰=1, e⁻⁰·⁵≈0.607 y e⁻¹≈0.368. Un score enmascarado de −∞ produce e⁻∞=0."
             },
             {
               "termino": "Softmax",
-              "definicion": "Aplica eˣ a cada score de la fila y divide cada resultado entre la suma de la fila. Así todos quedan entre 0 y 1 y suman 1."
+              "definicion": "Para cada score sⱼ de una fila calcula exp(sⱼ−m)/Σₖexp(sₖ−m), donde m es el máximo de esa fila. Así obtiene pesos entre 0 y 1 cuya suma es 1."
             },
             {
               "termino": "Pesos de atención",
-              "definicion": "El resultado de softmax: qué fracción de su atención le da una Query a cada Key."
+              "definicion": "El resultado de Softmax: cuánto contribuirá el Value asociado a cada Key al contexto de esa Query. No son probabilidades del siguiente token."
             },
             {
               "termino": "Por fila",
               "definicion": "Cada Query reparte su propia atención. Por eso se normaliza cada fila por separado y no la tabla completa."
+            },
+            {
+              "termino": "Resta del máximo",
+              "definicion": "Se resta el mayor score de la fila antes de exponenciar para evitar números demasiado grandes. No cambia los pesos finales porque desplaza todos los scores por la misma cantidad."
             }
           ],
           "pasos": [
             {
-              "texto": "Toma una fila de scores escalados: la de una Query."
+              "texto": "Toma la fila de una Query después del escalamiento y de la máscara. Una Key bloqueada aparece como −∞ y terminará con peso 0."
             },
             {
-              "texto": "Aplica la exponencial a cada valor de la fila."
+              "texto": "Busca el máximo m de la fila y réstalo a todos los scores. El mayor queda en 0 y el orden relativo no cambia.",
+              "formula": "rⱼ = sⱼ − m"
             },
             {
-              "texto": "Suma los resultados de la fila."
+              "texto": "Aplica la exponencial a cada score desplazado. Todos los permitidos quedan positivos y los enmascarados quedan en 0.",
+              "formula": "uⱼ = exp(rⱼ)"
             },
             {
-              "texto": "Divide cada valor entre esa suma.",
-              "formula": "peso_j = e^(s_j) / Σ_k e^(s_k)"
+              "texto": "Suma las exponenciales y divide cada una entre ese total.",
+              "formula": "Aᵢⱼ = exp(sᵢⱼ−mᵢ) / Σₖ exp(sᵢₖ−mᵢ)"
             },
             {
-              "texto": "Repite en cada fila. La forma sigue siendo [T, T], pero ahora cada fila suma 1."
+              "texto": "Repite el cálculo en cada fila. La forma sigue siendo [T,T], cada fila suma 1 y luego Aᵢⱼ multiplica al Value Vⱼ para construir el contexto de la Query i."
             }
           ],
           "ejemplo": {
             "titulo": "Fila de «banco», con scores escalados [0, 0.5, 0, 1]",
             "lineas": [
-              "exponenciales: [1, 1.65, 1, 2.72]   → suma ≈ 6.37",
-              "pesos: [1 / 6.37, 1.65 / 6.37, 1 / 6.37, 2.72 / 6.37] ≈ [0.157, 0.259, 0.157, 0.427]",
-              "«banco» pone el mayor peso de atención en «dinero»."
+              "1) máximo m=1; scores−m = [−1, −0.5, −1, 0]",
+              "2) exp(scores−m) ≈ [0.368, 0.607, 0.368, 1]   → suma ≈ 2.343",
+              "3) dividir por 2.343 → A_banco ≈ [0.157, 0.259, 0.157, 0.427]   → ΣA_banco=1",
+              "4) esos pesos multiplican V_El, V_banco, V_guarda y V_dinero; «dinero» aporta más, pero los cuatro Values participan."
             ]
           },
-          "clave": "Softmax convierte cada fila de scores en un reparto positivo que suma 1."
+          "clave": "En atención, Softmax se aplica por fila: máscara → restar el máximo → exponenciar → dividir entre la suma. Produce pesos que suman 1 para mezclar Values; no elige una Key ni un token de salida."
         },
         "m3_s7": {
           "intuicion": "Ya sabemos cuánta atención le da «banco» a cada token. Ahora «banco» arma su nueva representación tomando un poco de la información (el Value) de cada uno, en la proporción de sus pesos: más de «dinero» y menos de los demás. Es como mezclar pinturas en distintas cantidades.",
@@ -4223,14 +4230,14 @@
         {
           "id": "m6_l6",
           "concept_id": "residuales_decoder",
-          "prompt": "Las tres rutas de atajo del decoder rodean subcapas distintas. ¿Qué actualizaciones se reincorporan al estado?",
+          "prompt": "En la tercera Add & Norm mostrada, ¿qué actualización se suma a N₂ antes de normalizar?",
           "options": [
-            "Contexto causal, contexto de fuente y transformación FFN",
-            "Tokenización, padding y muestreo",
-            "Temperatura, Top-K y Top-P"
+            "La transformación producida por la FFN",
+            "El contexto causal de la primera atención",
+            "El contexto de fuente de cross-attention"
           ],
           "correct_index": 0,
-          "explanation": "Cada subcapa principal aporta una actualización que se suma a su entrada mediante un atajo residual."
+          "explanation": "La tercera ruta residual rodea la FFN: suma su salida F con N₂ y después aplica LayerNorm."
         },
         {
           "id": "m6_l7",

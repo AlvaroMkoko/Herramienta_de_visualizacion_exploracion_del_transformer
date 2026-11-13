@@ -46,6 +46,7 @@ Rectangle {
 
     readonly property bool singleModelMode: width < 1680
     readonly property bool veryNarrow: width < 980
+    readonly property bool summarySingleModelMode: veryNarrow
     readonly property bool denseHeight: height < 760
     readonly property real panelMargin: (denseHeight ? 11 : 18) * sx
     readonly property real panelSpacing: (denseHeight ? 6 : 11) * sy
@@ -252,6 +253,21 @@ Rectangle {
                 onClicked: root.stepSelected(root.currentIndex + 1)
             }
 
+            SelectorPrincipal {
+                objectName: "comparisonCompactSummaryModelSelector"
+                visible: root.viewModeIndex === 0
+                         && root.summarySingleModelMode
+                Layout.preferredWidth: visible ? 152 * root.sx : 0
+                Layout.preferredHeight: 32 * root.sy
+                model: ["Ver Modelo A", "Ver Modelo B"]
+                currentIndex: root.compactModelIndex
+                sx: root.sx
+                sy: root.sy
+                onActivated: function(index) {
+                    root.compactModelIndex = index
+                }
+            }
+
             Item { Layout.fillWidth: true }
 
             Text {
@@ -308,7 +324,12 @@ Rectangle {
                     spacing: 14 * root.sx
 
                     ComparisonModelTrace {
-                        Layout.fillWidth: true
+                        visible: !root.summarySingleModelMode
+                                 || root.compactModelIndex === 0
+                        Layout.fillWidth: visible
+                        Layout.minimumWidth: 0
+                        Layout.preferredWidth: visible ? 1 : 0
+                        Layout.maximumWidth: visible ? 16777215 : 0
                         Layout.fillHeight: true
                         modelLabel: "MODELO A"
                         modelInfo: root.infoA
@@ -327,7 +348,12 @@ Rectangle {
                     }
 
                     ComparisonModelTrace {
-                        Layout.fillWidth: true
+                        visible: !root.summarySingleModelMode
+                                 || root.compactModelIndex === 1
+                        Layout.fillWidth: visible
+                        Layout.minimumWidth: 0
+                        Layout.preferredWidth: visible ? 1 : 0
+                        Layout.maximumWidth: visible ? 16777215 : 0
                         Layout.fillHeight: true
                         modelLabel: "MODELO B"
                         modelInfo: root.infoB

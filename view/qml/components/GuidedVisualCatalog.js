@@ -111,9 +111,9 @@ var stepVisuals = {
         before: "Scores", focus: "÷ √d_k", after: "Scores estables", kind: "scale_scores"
     },
     "m3_s6": {
-        title: "Softmax convierte cada fila en pesos",
-        caption: "Los valores quedan entre 0 y 1 y cada Query reparte un total de 1 entre todas las Keys.",
-        before: "Scores", focus: "Softmax por fila", after: "Pesos A", kind: "softmax_row"
+        title: "Softmax normaliza una fila completa",
+        caption: "Para cada Query: aplica la máscara, resta el máximo, exponencia y divide entre la suma. Los pesos resultantes suman 1 y ponderan los Values.",
+        before: "Scores + máscara", focus: "− máximo · exp · ÷ Σ", after: "Pesos A · Σ=1", kind: "softmax_row"
     },
     "m3_s7": {
         title: "Cada peso regula cuánto aporta su Value",

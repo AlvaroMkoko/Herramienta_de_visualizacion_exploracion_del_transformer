@@ -1040,7 +1040,10 @@ def resumir_paso_inferencia(
             "numero": "05",
             "titulo": "Linear + Softmax",
             "dato": f"{config.tamano_vocabulario} → {cantidad_candidatos}",
-            "explicacion": "Asigna un puntaje a todo el vocabulario y lo convierte en probabilidades.",
+            "explicacion": (
+                "Puntúa el vocabulario, aplica temperatura y filtros, y usa "
+                "Softmax estable para normalizar los candidatos elegibles."
+            ),
             "color": "#059669",
         },
         {
@@ -1765,7 +1768,7 @@ def resumir_paso_entrenamiento(
         "linear": _componente(
             "Proyección lineal",
             "Convierte cada vector del decoder en un puntaje (logit) por token del vocabulario.",
-            "Softmax transforma esos puntajes en probabilidades comparables.",
+            "Softmax resta el máximo, exponencia y normaliza esos puntajes en probabilidades que suman uno.",
             modelo.capa_salida,
             [
                 _metrica("Forma de logits", " × ".join(str(v) for v in logits.shape)),
@@ -1775,7 +1778,7 @@ def resumir_paso_entrenamiento(
         ),
         "softmax": _componente(
             "Softmax y pérdida",
-            "Convierte logits en probabilidades; la pérdida compara esa distribución con el token correcto.",
+            "Convierte cada fila de logits en probabilidades: resta su máximo, exponencia y divide por la suma; la pérdida compara esa distribución con el token correcto.",
             "El error resultante viaja hacia atrás y modifica todos los bloques entrenables.",
             metricas_extra=[
                 _metrica("Confianza top-1 media", confianza_media),

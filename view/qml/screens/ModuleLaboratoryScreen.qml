@@ -156,6 +156,18 @@ PagePrincipal {
         var sid = String(root.currentStep && root.currentStep.id || "")
         var key = root.moduleId + ":" + sid
         var specific = {
+            "module_1:text": root.labQuestion(
+                "lab_m1_text", "En la operación mostrada, ¿qué recibe el tokenizador antes de producir tokens o IDs?",
+                "Una cadena de texto Unicode todavía sin convertir en vectores", "Una matriz contextual producida por el encoder", "Probabilidades sobre todo el vocabulario",
+                "El recorrido comienza con los caracteres del texto; la separación en tokens y la conversión a números ocurren después."),
+            "module_1:batch:inference": root.labQuestion(
+                "lab_m1_batch_inference", "En inferencia se muestra el ajuste al contexto máximo. ¿Qué ocurre si la secuencia contiene más de T_max IDs?",
+                "Se recorta hasta T_max sin inventar posiciones de relleno", "Se agregan PAD hasta duplicar su longitud", "Se reordenan los IDs para conservar las palabras más frecuentes",
+                "Con una sola secuencia no hace falta formar un batch rectangular: sólo se limita su longitud al contexto admitido."),
+            "module_1:no_grad": root.labQuestion(
+                "lab_m1_no_grad", "La animación agrupa tokenización, padding y máscaras como preparación de datos. ¿Por qué esas operaciones no reciben gradiente?",
+                "No contienen parámetros entrenables que el optimizador pueda ajustar", "Porque ocurren después de calcular la pérdida", "Porque sus salidas nunca entran al Transformer",
+                "Estas operaciones construyen tensores de entrada mediante reglas fijas; el gradiente actualiza los parámetros aprendidos del modelo."),
             "module_2:embedding_gradient": root.labQuestion(
                 "lab_m2_embedding_gradient", "Si el batch consultó solo algunos IDs, ¿qué filas de la tabla reciben gradiente directo en esta animación?",
                 "Las filas de los IDs consultados", "Todas las filas por igual", "Solo la primera fila de la tabla",
@@ -184,6 +196,14 @@ PagePrincipal {
                 "lab_m6_residual_2", "¿Qué incorpora la segunda conexión residual del decoder?",
                 "El contexto recuperado de la fuente", "Un token elegido por Top-K", "La pérdida de entrenamiento",
                 "La segunda Add & Norm integra la salida de cross-attention con el estado del decoder."),
+            "module_6:decoder_embedding": root.labQuestion(
+                "lab_m6_decoder_embedding", "En Z₀ = E_out[prefijo] + PE, ¿qué dos señales combina la visualización para cada posición?",
+                "La identidad del token y su posición dentro del prefijo", "La pérdida y el gradiente del token", "Top-K y Top-P antes de la atención",
+                "El embedding representa qué token es y PE representa dónde aparece; ambos tienen ancho d_model y se suman."),
+            "module_6:decoder_ffn": root.labQuestion(
+                "lab_m6_decoder_ffn", "En la FFN mostrada, ¿cómo se procesan las distintas posiciones del decoder?",
+                "Cada posición se transforma por separado con los mismos parámetros", "Todas las posiciones se mezclan mediante una nueva atención", "Sólo se procesa la última posición y se descartan las demás",
+                "La mezcla entre posiciones ocurre en la atención; la FFN expande, activa y comprime cada fila de manera independiente."),
             "module_7:target": root.labQuestion(
                 "lab_m7_target", "Durante entrenamiento, ¿para qué se muestra el token objetivo junto a los logits?",
                 "Para indicar la respuesta que debe recibir mayor probabilidad", "Para sustituir todos los logits", "Para aplicar Top-K antes de la pérdida",
@@ -204,6 +224,14 @@ PagePrincipal {
                 "lab_m4_update", "En θ′=θ−ηg, θ agrupa WQ, WK, WV y WO, g es su gradiente y η indica el tamaño del paso. ¿Qué representa θ′?",
                 "Cómo quedarían esas matrices tras un paso hipotético", "Un mapa de atención que debe sumar 1", "El número de cabezas del modelo",
                 "θ′ es el posible valor siguiente; el laboratorio no ejecuta el optimizador."),
+            "module_5:encoder_input": root.labQuestion(
+                "lab_m5_encoder_input", "La visualización marca X_l como entrada de la capa seleccionada. ¿Qué representa esa matriz?",
+                "Las representaciones que esta capa recibirá y transformará", "Los logits finales de todo el vocabulario", "Los gradientes que ya actualizan los parámetros",
+                "X_l es la salida de la capa anterior —o la entrada posicionada en la primera— y conserva una fila por token."),
+            "module_5:ffn_project": root.labQuestion(
+                "lab_m5_ffn_project", "La proyección W₂ mostrada reduce el ancho de d_ff a d_model. ¿Por qué debe volver a d_model?",
+                "Para poder sumarse con la ruta residual y alimentar la siguiente etapa", "Para convertir cada fila en un token ID", "Para aumentar el número de posiciones de la frase",
+                "La FFN puede expandirse internamente, pero su salida recupera d_model para conservar la interfaz de la capa."),
             "module_5:backward": root.labQuestion(
                 "lab_m5_backward", "Durante el entrenamiento, el gradiente indica cómo influyó cada parámetro en la pérdida L. En una capa del encoder, ¿qué parámetros lo reciben?",
                 "Los de atención, los de la FFN, y γ y β", "Sólo los de la FFN, por estar al final", "Ninguno: el atajo residual lo detiene",
@@ -228,6 +256,26 @@ PagePrincipal {
                 "lab_m7_update", "En W′=W−ηg, W es W_vocab, g su gradiente y η indica el tamaño del paso. ¿Qué representa W′?",
                 "Cómo quedaría W_vocab tras un paso hipotético", "Una distribución de probabilidad", "Un vocabulario con más tokens",
                 "Se enseña el cambio de SGD sin aplicarlo al modelo."),
+            "module_7:hidden": root.labQuestion(
+                "lab_m7_hidden", "La visualización resalta h_t antes de proyectarlo al vocabulario. ¿Qué representa h_t?",
+                "El vector interno de d_model componentes para la posición seleccionada", "Una probabilidad para cada token del vocabulario", "El ID definitivo del siguiente token",
+                "h_t resume el contexto disponible en esa posición; la capa lineal del paso siguiente lo convertirá en logits."),
+            "module_7:select": root.labQuestion(
+                "lab_m7_select", "La regla mostrada es argmax(p). ¿Qué candidato selecciona?",
+                "El que tiene la probabilidad más alta", "Todos los que sobrevivieron a Top-K", "El token con el ID numéricamente mayor",
+                "Argmax devuelve un único índice: la posición del valor máximo de la distribución."),
+            "module_8:full_tokens": root.labQuestion(
+                "lab_m8_tokens", "En el inicio del flujo completo, ¿qué operación produce los IDs que recibe el modelo?",
+                "Tokenizar el texto y consultar cada pieza en el vocabulario", "Aplicar cross-attention sobre los caracteres", "Filtrar palabras con Top-K y Top-P",
+                "El texto se divide en tokens y cada token se sustituye por el índice de su fila en el vocabulario."),
+            "module_8:full_filters": root.labQuestion(
+                "lab_m8_filters", "La visualización recorre temperatura, Top-K y Top-P. ¿Qué modifican estas reglas?",
+                "La concentración y el conjunto de candidatos que pueden seleccionarse", "Los parámetros aprendidos del encoder", "La cantidad de capas del Transformer",
+                "Son controles de generación: reescalan o descartan logits, pero no entrenan ni cambian los pesos del modelo."),
+            "module_8:full_select": root.labQuestion(
+                "lab_m8_select", "Después de normalizar los candidatos supervivientes, ¿qué produce la selección mostrada?",
+                "Un único token siguiente, elegido por la regla configurada", "Una nueva memoria completa del encoder", "Un gradiente para cada candidato descartado",
+                "Esta vuelta termina al escoger un solo token; la realimentación del paso siguiente lo añadirá al prefijo."),
             "module_8:full_backward": root.labQuestion(
                 "lab_m8_backward", "En el recorrido completo, la pérdida se calcula al final. ¿Hasta dónde llega el gradiente?",
                 "Cruza la salida, el decoder, el encoder y los embeddings", "Se detiene en la memoria del encoder", "Sólo llega a la capa de salida",
@@ -261,27 +309,26 @@ PagePrincipal {
         // Cada reto prepara el reactivo de igual índice, así que todos deben poder
         // aparecer. Un paso puede tener varios: rotan al volver a entrar a él.
         var maps = {
-            "module_1": { "text": 4, "tokens": 2, "ids": 5, "specials": 6,
-                          "batch": [3, 0], "mask": 1, "no_grad": 7 },
+            "module_1": { "tokens": [2, 4], "ids": [5, 7], "specials": 6,
+                          "batch": [3, 0], "mask": 1 },
             "module_2": { "lookup": [1, 0], "scale": 5, "position": 3, "sum": [2, 4, 6],
-                          "dropout": 7, "embedding_gradient": 6 },
+                          "dropout": 7 },
             "module_3": { "attention_input": 4, "weights": 5, "qkv": 4, "dot": 0,
                           "scale": 1, "mask": 6, "softmax": 2, "weighted": 3,
                           "output": 7, "backward": 5, "update": 5 },
             "module_4": { "project": 7, "split": [0, 1], "maps": 3, "contexts": 5,
                           "concat": 2, "wo": [4, 6] },
-            "module_5": { "encoder_input": 7, "encoder_attention": 2, "residual_1": 0,
-                          "norm_1": 3, "ffn_expand": 1, "ffn_activation": 5,
-                          "ffn_project": 1, "norm_2": 3, "stack": [4, 6] },
-            "module_6": { "decoder_prefix": 6, "decoder_embedding": 6, "causal_mask": [0, 1],
-                          "masked_attention": 4, "decoder_residual_1": 5,
-                          "cross_attention": [2, 3], "decoder_residual_2": 5,
-                          "decoder_ffn": 5, "decoder_output": 5, "decoder_layers": 7 },
-            "module_7": { "hidden": 0, "linear": [1, 0], "temperature": 2, "top_k": 3,
-                          "top_p": 4, "softmax": 5, "select": 6, "feedback": 7 },
-            "module_8": { "full_tokens": 2, "full_batch": 2, "full_embedding": 4,
+            "module_5": { "encoder_attention": 2, "residual_1": 0,
+                          "norm_1": [3, 7], "ffn_expand": 1, "ffn_activation": 5,
+                          "norm_2": 3, "stack": [4, 6] },
+            "module_6": { "decoder_prefix": 6, "causal_mask": [0, 1],
+                          "masked_attention": 4, "cross_attention": [2, 3],
+                          "decoder_output": 5, "decoder_layers": 7 },
+            "module_7": { "linear": [1, 0], "temperature": 2, "top_k": 3,
+                          "top_p": 4, "softmax": 5, "feedback": [6, 7] },
+            "module_8": { "full_batch": 2, "full_embedding": 4,
                           "full_encoder": [1, 7], "full_decoder": [3, 5], "full_logits": 0,
-                          "full_filters": 6, "full_select": 6, "full_feedback": 6 }
+                          "full_feedback": 6 }
         }
         var moduleMap = maps[root.moduleId] || ({})
         var mapped = moduleMap[sid]
@@ -821,15 +868,20 @@ PagePrincipal {
 
     function applySuggestedExperiment() {
         var sid = String(root.currentStep && root.currentStep.id || "")
+        // El clic en «Probar» completa la fase experimental tanto para los
+        // descriptores declarativos como para los casos heredados de abajo.
+        // Antes, los módulos con un descriptor en LaboratoryExperiments.js
+        // ejecutaban la animación o el recálculo pero permanecían en la etapa
+        // 1; sólo el módulo 3, que usa la ruta heredada, llegaba a «Observar».
+        root.discoveryStage = 2
+        root.discoveryHint = ""
+        root.discoveryExperimentDone = true
         var planned = LaboratoryExperiments.descriptor(root.moduleId, sid)
         if (planned !== null) {
             root.runPlannedExperiment(root.experimentAvailable(planned.action)
                                       ? planned.action : "replay")
             return
         }
-        root.discoveryStage = 2
-        root.discoveryHint = ""
-        root.discoveryExperimentDone = true
 
         if (sid === "temperature") {
             temperatureSlider.value = temperatureSlider.value <= 0.6 ? 1.4 : 0.5

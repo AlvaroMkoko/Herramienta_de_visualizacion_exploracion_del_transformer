@@ -35,6 +35,15 @@ Rectangle {
     property real sy: 1
 
     readonly property int animationCount: 10
+    readonly property var sceneMinimumHeights: [
+        480, 420, 440, 420, 420, 390, 460, 420, 540, 540
+    ]
+    readonly property real minimumSceneHeight: Math.max(
+        360,
+        sceneMinimumHeights[Math.max(0, Math.min(animationCount - 1,
+                                                  animationIndex))]
+        * Math.max(0.82, Math.min(sx, sy))
+    )
     readonly property bool hasSnapshot: snapshot
                                                 && snapshot.token_elegido !== undefined
     readonly property bool hasDetail: detailIndex === selectedIndex
@@ -233,12 +242,31 @@ Rectangle {
             Layout.preferredHeight: 1
             clip: true
 
-            StackLayout {
+            Flickable {
+                id: sceneViewport
+                objectName: "comparisonAnimationViewport"
                 anchors.fill: parent
-                implicitWidth: 0
-                implicitHeight: 0
-                currentIndex: Math.max(0, Math.min(root.animationCount - 1,
-                                                   root.animationIndex))
+                contentWidth: width
+                contentHeight: Math.max(height, root.minimumSceneHeight)
+                boundsBehavior: Flickable.StopAtBounds
+                flickableDirection: Flickable.VerticalFlick
+                interactive: contentHeight > height + 0.5
+                clip: true
+
+                ScrollBar.vertical: ScrollBar {
+                    objectName: "comparisonAnimationScrollBar"
+                    policy: sceneViewport.contentHeight > sceneViewport.height + 0.5
+                            ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
+                }
+
+                StackLayout {
+                    width: sceneViewport.width
+                    height: sceneViewport.contentHeight
+                    implicitWidth: 0
+                    implicitHeight: 0
+                    currentIndex: Math.max(0, Math.min(root.animationCount - 1,
+                                                       root.animationIndex))
+                    onCurrentIndexChanged: sceneViewport.contentY = 0
 
                 TokenEmbeddingScene {
                     tensorData: root.currentEmbeddingTensor
@@ -339,6 +367,7 @@ Rectangle {
                     sy: root.sy
                     onStepSelected: function(index) { root.stepSelected(index) }
                 }
+            }
             }
 
             Rectangle {

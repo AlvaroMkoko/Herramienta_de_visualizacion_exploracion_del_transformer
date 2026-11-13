@@ -585,16 +585,18 @@
           "id": "softmax_attention",
           "title": "Softmax sobre los scores",
           "order": 5,
-          "short_description": "Convierte los scores en una distribución de probabilidad por cada fila.",
-          "explanation": "Softmax se aplica a cada fila de la matriz de scores por separado. Toma valores reales de cualquier magnitud y devuelve valores entre 0 y 1 que suman exactamente 1. Después de esta operación, la fila i contiene la distribución de atención del token i: cuánto peso le da a cada uno de los tokens de la secuencia, incluido él mismo. Que cada fila sume 1 es lo que convierte el paso siguiente en un promedio ponderado bien definido.",
-          "formula": "Aᵢⱼ = exp(S'ᵢⱼ) / Σₘ exp(S'ᵢₘ)",
-          "mathematical": "S' contiene los scores permitidos y −∞ en posiciones bloqueadas. Softmax se aplica sobre las keys de cada query: por eso Σⱼ Aᵢⱼ = 1 y exp(−∞) produce peso cero.",
+          "short_description": "Normaliza por separado los scores de cada query y los convierte en pesos para mezclar Values.",
+          "explanation": "Softmax no elige una sola key. Para cada query toma su fila completa de scores, conserva −∞ en las posiciones bloqueadas, resta el máximo de la fila para evitar desbordamiento numérico, exponencia y divide cada resultado por la suma de la fila. Así obtiene pesos no negativos que suman 1. Las diferencias entre scores importan más que su valor absoluto: sumar la misma constante a toda la fila no cambia los pesos. Después, cada peso multiplica el Value de su key y todas las contribuciones se suman para formar el contexto.",
+          "formula": "Aᵢⱼ = exp(S'ᵢⱼ − mᵢ) / Σₖ exp(S'ᵢₖ − mᵢ),  mᵢ = maxₖ S'ᵢₖ",
+          "mathematical": "La normalización ocurre sobre las keys j de una sola query i, nunca sobre toda la matriz. Por eso ΣⱼAᵢⱼ = 1 en cada fila. Si S'ᵢⱼ = −∞ por una máscara, exp(−∞) = 0 y esa key no aporta. Restar mᵢ no altera el cociente: solo hace seguro el cálculo.",
           "steps": [
             "Tomar una fila de scores S' para una query.",
-            "Exponenciar sus posiciones permitidas.",
-            "Dividir por la suma de la fila.",
-            "Obtener pesos entre 0 y 1 cuya suma es 1."
+            "Restar el máximo permitido de esa misma fila.",
+            "Exponenciar; las posiciones con −∞ se convierten en cero.",
+            "Dividir cada exponencial por la suma de la fila.",
+            "Usar los pesos resultantes para escalar y sumar los Values."
           ],
+          "example": "Con scores [2, 1, 0], se resta 2 y queda [0, −1, −2]. Sus exponenciales son aproximadamente [1, 0.368, 0.135]; al dividir por 1.503 se obtienen pesos [0.665, 0.245, 0.090].",
           "dimensions": {
             "entrada": "S': [Tq, Tk]",
             "salida": "A: [Tq, Tk]",
@@ -1414,9 +1416,19 @@
           "id": "softmax_final",
           "title": "Softmax final",
           "order": 4,
-          "short_description": "Convierte los logits en una distribución de probabilidad sobre el vocabulario.",
-          "explanation": "Es la misma función que se usa dentro de la atención, pero aplicada sobre otra dimensión y con otro propósito: acá normaliza sobre el vocabulario completo. Exponencia cada logit y lo divide por la suma de todas las exponenciales, produciendo valores entre 0 y 1 que suman exactamente 1. El resultado es la respuesta del modelo a la pregunta '¿qué tan probable es cada token del vocabulario como siguiente palabra?'.",
-          "formula": "P(token_i) = e^(logit_i) / Σ_j e^(logit_j)",
+          "short_description": "Convierte los logits elegibles en probabilidades relativas del siguiente token.",
+          "explanation": "En inferencia, primero se excluyen IDs reservados y se ajustan los logits con temperatura; si están activos, Top-K y Top-P marcan los candidatos descartados con −∞. Softmax trabaja sobre los logits que quedan: resta el máximo elegible, exponencia las diferencias y divide por la suma. Los descartados reciben probabilidad cero y las probabilidades restantes suman 1. Softmax conserva el orden de los logits, pero amplifica sus diferencias de forma exponencial. No selecciona el token ni garantiza que el texto sea verdadero: únicamente produce una distribución relativa para el contexto actual.",
+          "formula": "u = filtros(logits / T);  P(token_i) = exp(u_i − u_max) / Σ_j exp(u_j − u_max)",
+          "mathematical": "u_max es el mayor logit elegible. Restarlo evita overflow y no cambia el resultado porque el mismo factor se cancela en numerador y denominador. Un valor −∞ produce exp(−∞)=0. Si no hay filtros, la suma recorre todo el vocabulario; si los hay, solo los supervivientes tienen masa.",
+          "steps": [
+            "Partir de un logit por cada token del vocabulario.",
+            "Dividir por T si se usa temperatura y aplicar los filtros configurados.",
+            "Restar el mayor logit elegible para estabilizar el cálculo.",
+            "Exponenciar: todas las cantidades elegibles pasan a ser positivas.",
+            "Dividir por la suma para obtener probabilidades con Σp = 1.",
+            "Aplicar argmax en modo greedy o muestrear según p."
+          ],
+          "example": "Para logits [2, 1, 0] sin filtros y T=1: se usa [0, −1, −2], luego [1, 0.368, 0.135], y finalmente p≈[0.665, 0.245, 0.090]. El primer token es el más probable, pero en muestreo los otros todavía pueden salir.",
           "dimensions": {
             "entrada": "[tamano_vocabulario]",
             "salida": "[tamano_vocabulario]",
@@ -1433,7 +1445,7 @@
           "title": "La distribución sobre los tokens",
           "order": 5,
           "short_description": "El modelo no elige una palabra: produce un grado de preferencia por todas.",
-          "explanation": "La salida completa del Transformer para una posición no es un token, sino un vector con una probabilidad por cada token del vocabulario. Su forma dice mucho sobre el estado del modelo: una distribución muy concentrada indica alta confianza, y una distribución plana indica que muchas continuaciones le parecen igual de plausibles. Esa forma es también lo que manipulan los parámetros de muestreo como la temperatura.",
+          "explanation": "La salida completa del Transformer para una posición no es un token, sino un vector con una probabilidad por cada token elegible del vocabulario. Una distribución concentrada significa que, dentro del contexto y de los filtros actuales, un candidato domina a los demás; una distribución plana indica varias continuaciones competitivas. Esto no equivale automáticamente a certeza factual ni a una probabilidad calibrada de que la respuesta sea verdadera. La temperatura modifica la concentración y Top-K/Top-P modifican qué candidatos participan antes de la normalización final.",
           "example": "Después de \"el gato\", la distribución podría dar 0.4 a \"duerme\", 0.2 a \"come\", 0.1 a \"negro\" y repartir el resto entre miles de tokens con probabilidades ínfimas.",
           "visualization": {
             "componentes": [
@@ -1451,14 +1463,14 @@
           "title": "Selección del siguiente token",
           "order": 6,
           "short_description": "De la distribución hay que extraer un token concreto, y hay varias formas de hacerlo.",
-          "explanation": "La capa Linear produce logits. Si se usa temperatura, primero se dividen los logits entre T; después Softmax los convierte en probabilidades. Los filtros se aplican sobre esa distribución: top-k conserva una cantidad fija de candidatos y top-p conserva el grupo mínimo que alcanza la masa acumulada elegida. Tras filtrar se renormaliza. En modo greedy se toma el máximo; en modo de muestreo cada candidato conserva una posibilidad proporcional a su probabilidad. El token elegido se añade al contexto del decoder y provoca una nueva vuelta completa de inferencia.",
-          "formula": "q = softmax(logits / T)\np = renormalizar(filtros(q))\ntoken = argmax(p)  o  token ∼ p",
-          "mathematical": "T > 0 reescala las diferencias entre logits. Top-k conserva una cantidad fija de candidatos y top-p un conjunto de masa acumulada. Tras filtrar se renormaliza para que Σᵢpᵢ = 1.",
+          "explanation": "La capa Linear produce logits y se excluyen los IDs que no pueden generarse. Si se usa temperatura, los logits se dividen entre T. Top-K conserva una cantidad fija de candidatos; Top-P calcula masa acumulada para conservar el núcleo mínimo y los descartados quedan en −∞. La Softmax final normaliza exactamente los supervivientes. En modo greedy se toma el máximo; en modo de muestreo cada candidato puede salir con la probabilidad resultante. El token elegido se añade al contexto del decoder y provoca una nueva vuelta completa de inferencia.",
+          "formula": "u = filtrar_top_p(filtrar_top_k(logits / T))\np = softmax_estable(u)\ntoken = argmax(p)  o  token ∼ p",
+          "mathematical": "T > 0 reescala las diferencias entre logits. Los filtros ponen en −∞ los descartados. Softmax les asigna cero y normaliza los supervivientes para que Σᵢpᵢ = 1.",
           "steps": [
             "La capa Linear convierte el vector de la posición actual en logits.",
             "Si se usa temperatura, dividir los logits entre T.",
-            "Aplicar Softmax para obtener probabilidades.",
-            "Opcionalmente filtrar con top-k o top-p y renormalizar.",
+            "Aplicar Top-K y/o Top-P si están configurados; los descartados pasan a −∞.",
+            "Aplicar Softmax estable para obtener probabilidades normalizadas.",
             "Elegir un token: el más probable (greedy) o muestreando."
           ],
           "example": "Si p = [0.60, 0.25, 0.15], greedy siempre elige el primero. El muestreo puede elegir cualquiera, con esas frecuencias a largo plazo; top-k o top-p pueden retirar candidatos antes del sorteo.",

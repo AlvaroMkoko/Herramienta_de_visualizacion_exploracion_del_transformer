@@ -84,6 +84,52 @@ def test_cada_paso_guiado_apunta_a_teoria_existente():
         assert set(module["theory_sequence"]) <= theory_ids
 
 
+def test_softmax_explica_calculo_estable_filtros_y_seleccion():
+    with recurso("data", "teoria", "transformer.json").open(
+        encoding="utf-8"
+    ) as source:
+        theory = json.load(source)
+    concepts = {
+        concept["id"]: concept
+        for section in theory["secciones"]
+        for concept in section["conceptos"]
+    }
+
+    attention = concepts["softmax_attention"]
+    output = concepts["softmax_final"]
+    selection = concepts["seleccion_token"]
+    assert "resta el máximo" in attention["explanation"]
+    assert "no elige una sola key" in attention["explanation"]
+    assert "u_max" in output["mathematical"]
+    assert "Top-K y Top-P" in output["explanation"]
+    assert "garantiza que el texto sea verdadero" in output["explanation"]
+    assert selection["steps"][2].startswith("Aplicar Top-K")
+    assert selection["steps"][3].startswith("Aplicar Softmax estable")
+
+    output_module = LearningModuleCatalog().get("module_7")
+    softmax_step = next(
+        step
+        for step in output_module["guided_steps"]
+        if step["concept_id"] == "softmax_salida"
+    )
+    assert "exp(logit−máximo)" in softmax_step["operation"]
+    assert "Σp=1" in softmax_step["change"]
+
+    attention_module = LearningModuleCatalog().get("module_3")
+    attention_step = next(
+        step
+        for step in attention_module["guided_steps"]
+        if step["concept_id"] == "softmax_atencion"
+    )
+    lesson = attention_step["lesson"]
+    lesson_text = json.dumps(lesson, ensure_ascii=False)
+    assert "resta del máximo" in lesson_text.lower()
+    assert "−∞" in lesson_text
+    assert "exp(sᵢⱼ−mᵢ)" in lesson_text
+    assert "[0.157, 0.259, 0.157, 0.427]" in lesson_text
+    assert "no elige una Key ni un token de salida" in lesson["clave"]
+
+
 def test_modulo_uno_distingue_encoder_decoder_padding_y_mascara():
     catalog = LearningModuleCatalog()
     module = catalog.get("module_1")

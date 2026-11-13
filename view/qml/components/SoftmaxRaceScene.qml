@@ -283,7 +283,7 @@ Item {
                 Layout.fillWidth: true
                 spacing: 2 * root.sy
                 Text {
-                    text: "Probabilidad del siguiente token"
+                    text: "De logits a probabilidades y a un token"
                     color: Style.Theme.texto_primario
                     font.bold: true
                     font.pixelSize: Math.max(18, 18 * Math.min(root.sx, root.sy))
@@ -291,7 +291,7 @@ Item {
                 Text {
                     Layout.fillWidth: true
                     text: root.snapshots.length < 2
-                          ? "Primera distribución: genera otro token para comparar cómo cambia."
+                          ? "Softmax compara todos los candidatos elegibles para este contexto."
                           : "Contexto usado para esta predicción:  " + root.contextText()
                     color: Style.Theme.texto_secundario
                     elide: Text.ElideLeft
@@ -325,33 +325,55 @@ Item {
         }
 
         Rectangle {
+            objectName: "softmaxPipelineExplanation"
             Layout.fillWidth: true
-            Layout.preferredHeight: 44 * root.sy
+            Layout.preferredHeight: Math.max(64, 70 * root.sy)
             radius: 10 * root.sx
             color: Style.Theme.chip_fondo
             border.color: Style.Theme.inferencia_foco
-            RowLayout {
+            ColumnLayout {
                 anchors.fill: parent
                 anchors.margins: 8 * root.sx
-                Text {
-                    text: "CONTEXTO " + (root.stepIndex + 1) + " / " + root.snapshots.length
-                    color: Style.Theme.inferencia_foco
-                    font.bold: true
-                    font.pixelSize: 10 * root.sx
-                }
-                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 6 * root.sy; radius: height / 2; color: Style.Theme.aviso_fondo
-                    Rectangle {
-                        width: parent.width * (root.snapshots.length ? (root.stepIndex + 1) / root.snapshots.length : 0)
-                        height: parent.height
-                        radius: parent.radius
+                spacing: 3 * root.sy
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Text {
+                        text: "CONTEXTO " + (root.stepIndex + 1) + " / " + root.snapshots.length
                         color: Style.Theme.inferencia_foco
-                        Behavior on width { NumberAnimation { duration: root.reducedMotion ? 0 : 360; easing.type: Easing.InOutCubic } }
+                        font.bold: true
+                        font.pixelSize: 10 * root.sx
+                    }
+                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 6 * root.sy; radius: height / 2; color: Style.Theme.aviso_fondo
+                        Rectangle {
+                            width: parent.width * (root.snapshots.length ? (root.stepIndex + 1) / root.snapshots.length : 0)
+                            height: parent.height
+                            radius: parent.radius
+                            color: Style.Theme.inferencia_foco
+                            Behavior on width { NumberAnimation { duration: root.reducedMotion ? 0 : 360; easing.type: Easing.InOutCubic } }
+                        }
+                    }
+                    Text {
+                        text: root.snapshot
+                              ? String(root.snapshot.modo_muestreo || "muestreo")
+                                + " · " + String(root.snapshot.filtros || "sin filtros")
+                              : "—"
+                        color: Style.Theme.inferencia_foco
+                        font.pixelSize: 9 * root.sx
                     }
                 }
+
                 Text {
-                    text: root.snapshot ? root.snapshot.modo_muestreo + " · " + root.snapshot.filtros : "—"
-                    color: Style.Theme.inferencia_foco
-                    font.pixelSize: 9 * root.sx
+                    objectName: "softmaxStableFormula"
+                    Layout.fillWidth: true
+                    text: "z/T → filtros (descartados = −∞) → "
+                          + "pᵢ = exp(zᵢ−zmax) / Σⱼ exp(zⱼ−zmax) → "
+                          + "argmax o muestreo. Restar zmax evita desbordamiento y no cambia p."
+                    color: Style.Theme.texto_secundario_fuerte
+                    font.pixelSize: Math.max(8, 8.2 * root.sx)
+                    wrapMode: Text.WordWrap
+                    maximumLineCount: 2
+                    elide: Text.ElideRight
                 }
             }
         }
@@ -411,7 +433,7 @@ Item {
                             required property bool captured
                             readonly property real chosenAmount: chosen ? root.selectionReveal : 0
                             width: ListView.view.width
-                            height: 42 * root.sy
+                            height: Math.max(34, 42 * root.sy)
                             radius: 8 * root.sx
                             color: horseRow.chosenAmount > 0
                                    ? Qt.tint(Style.Theme.surface,
@@ -505,7 +527,7 @@ Item {
                 Rectangle {
                     objectName: "softmaxChosenTokenCard"
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 120 * root.sy
+                    Layout.preferredHeight: Math.max(104, 120 * root.sy)
                     radius: 12 * root.sx
                     color: Qt.tint(Style.Theme.superficie_alterna,
                                    Qt.alpha(Style.Theme.inferencia_resultado,
@@ -553,8 +575,9 @@ Item {
                 }
 
                 Rectangle {
+                    objectName: "softmaxOutsideMassCard"
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 85 * root.sy
+                    Layout.preferredHeight: Math.max(78, 85 * root.sy)
                     radius: 12 * root.sx
                     color: Style.Theme.aviso_fondo
                     border.color: Style.Theme.inferencia_foco
@@ -563,9 +586,9 @@ Item {
                         anchors.centerIn: parent
                         width: parent.width - 22 * root.sx
                         spacing: 4 * root.sy
-                        Text { text: "MASA FUERA DEL TOP"; color: Style.Theme.inferencia_foco; font.bold: true; font.pixelSize: 9 * root.sx }
+                        Text { text: "MASA NO MOSTRADA"; color: Style.Theme.inferencia_foco; font.bold: true; font.pixelSize: 9 * root.sx }
                         Text { text: ((1 - root.topSum) * 100).toFixed(2) + "%"; color: Style.Theme.aviso_texto; font.bold: true; font.pixelSize: 20 * root.sx }
-                        Text { width: parent.width; text: "Completa la distribución hasta Σp = 1."; color: Style.Theme.aviso_texto; elide: Text.ElideRight; font.pixelSize: 9 * root.sx }
+                        Text { width: parent.width; text: "Probabilidad de tokens no listados; completa Σp = 1."; color: Style.Theme.aviso_texto; elide: Text.ElideRight; font.pixelSize: 9 * root.sx }
                     }
                 }
 
@@ -573,7 +596,7 @@ Item {
                     objectName: "softmaxReturnToDecoder"
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    Layout.minimumHeight: 66 * root.sy
+                    Layout.minimumHeight: Math.max(92, 96 * root.sy)
                     radius: 12 * root.sx
                     color: Qt.tint(Style.Theme.superficie_alterna,
                                    Qt.alpha(Style.Theme.inferencia_contexto,

@@ -56,7 +56,7 @@ Item {
             return "Compatibilidad QKᵀ escalada"
         if (normalizedPhase === "mask")
             return "Aplicación de la máscara"
-        return "Softmax, atención ponderada y contexto"
+        return "Softmax por fila, mezcla de Values y contexto"
     }
     readonly property string phaseFormula: {
         if (normalizedPhase === "qkv")
@@ -67,7 +67,7 @@ Item {
             return "S = QKᵀ / √d_head"
         if (normalizedPhase === "mask")
             return "S'ᵢⱼ = Sᵢⱼ si está permitido; −∞ si está bloqueado"
-        return "A = softmax(S')   ·   Zᵢ = Σⱼ AᵢⱼVⱼ"
+        return "Aᵢⱼ = exp(S'ᵢⱼ−max S'ᵢ) / Σₘexp(S'ᵢₘ−max S'ᵢ)   ·   Zᵢ = ΣⱼAᵢⱼVⱼ"
     }
     readonly property string phaseExplanation: {
         if (normalizedPhase === "qkv") {
@@ -82,7 +82,7 @@ Item {
                     + ". El modelo calcula una fila por cada query; aquí cada fila visible corresponde a una cabeza y todavía no contiene probabilidades."
         if (normalizedPhase === "mask")
             return "La máscara se aplica antes de Softmax. Las celdas bloqueadas pasan a −∞ para recibir probabilidad cero."
-        return "Softmax produce los pesos A. Las contribuciones muestran ‖AᵢⱼVⱼ‖ y la salida por cabeza es el contexto Z de la query actual."
+        return "Para cada query, Softmax resta el máximo de su fila, exponencia solo las keys permitidas y divide por la suma: Aᵢⱼ ≥ 0 y ΣⱼAᵢⱼ = 1. −∞ se vuelve peso cero. No elige una sola key: esos pesos escalan todos los Values y sus contribuciones se suman para formar Z."
     }
     readonly property var phaseCards: buildPhaseCards()
     readonly property int totalRevealSteps: phaseCards.length

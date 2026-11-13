@@ -1399,18 +1399,47 @@ def test_pantalla_especializada_reordena_paneles_sin_encimarlos(
                 audited += 1
     assert audited >= 120
     # Un paso con varios retos los rota al volver a entrar: vale cualquiera de ellos.
-    assert audited_question_ids[("module_1", "inference", "batch")] in {"m1_l1", "m1_l4"}
+    assert audited_question_ids[("module_1", "inference", "text")] == "lab_m1_text"
+    assert (
+        audited_question_ids[("module_1", "inference", "batch")]
+        == "lab_m1_batch_inference"
+    )
     assert audited_question_ids[("module_1", "training", "batch")] in {"m1_l1", "m1_l4"}
+    assert audited_question_ids[("module_1", "inference", "no_grad")] == "lab_m1_no_grad"
     assert audited_question_ids[("module_2", "inference", "dropout")] == "m2_l8"
     assert audited_question_ids[("module_2", "training", "dropout")] == "m2_l8"
     assert audited_question_ids[("module_3", "inference", "mask")] == "m3_l7"
     assert audited_question_ids[("module_4", "inference", "contexts")] == "m4_l6"
     assert audited_question_ids[("module_4", "training", "backward")] == "lab_m4_backward"
-    assert audited_question_ids[("module_5", "inference", "ffn_project")] == "m5_l2"
+    assert (
+        audited_question_ids[("module_5", "inference", "encoder_input")]
+        == "lab_m5_encoder_input"
+    )
+    assert (
+        audited_question_ids[("module_5", "inference", "ffn_project")]
+        == "lab_m5_ffn_project"
+    )
     assert audited_question_ids[("module_6", "inference", "decoder_prefix")] == "lab_m6_prefix_inference"
     assert audited_question_ids[("module_6", "training", "decoder_prefix")] == "m6_l7"
-    assert audited_question_ids[("module_7", "inference", "feedback")] == "m7_l8"
-    assert audited_question_ids[("module_7", "inference", "select")] == "m7_l7"
+    assert (
+        audited_question_ids[("module_6", "inference", "decoder_embedding")]
+        == "lab_m6_decoder_embedding"
+    )
+    assert (
+        audited_question_ids[("module_6", "inference", "decoder_ffn")]
+        == "lab_m6_decoder_ffn"
+    )
+    assert audited_question_ids[("module_6", "inference", "decoder_output")] == "m6_l6"
+    assert audited_question_ids[("module_7", "inference", "hidden")] == "lab_m7_hidden"
+    assert audited_question_ids[("module_7", "inference", "feedback")] in {
+        "m7_l7",
+        "m7_l8",
+    }
+    assert audited_question_ids[("module_7", "inference", "select")] == "lab_m7_select"
+    assert audited_question_ids[("module_8", "inference", "full_tokens")] == "lab_m8_tokens"
+    assert audited_question_ids[("module_8", "inference", "full_filters")] == "lab_m8_filters"
+    assert audited_question_ids[("module_8", "inference", "full_select")] == "lab_m8_select"
+    assert audited_question_ids[("module_8", "inference", "full_feedback")] == "m8_l7"
     assert audited_question_ids[("module_8", "training", "full_loss")] == "lab_m8_loss"
 
     window.deleteLater()
@@ -1644,6 +1673,79 @@ def test_pantalla_sincroniza_formula_en_accion_con_el_paso_actual(qapp, tmp_path
     engine.deleteLater()
 
 
+def test_reto_planificado_avanza_a_observar_en_todos_los_modulos(
+    qapp, tmp_path, monkeypatch
+):
+    """Los descriptores declarativos no deben dejar el reto atorado en Probar."""
+    monkeypatch.setattr(CourseController, "REVIEW_MODE_UNLOCK_ALL", True)
+    view_model, controller = _formula_laboratory()
+    controller.run_inline = True
+    progress_repository = ModuleProgressRepository(tmp_path / "progress.json")
+    course = view_model._course_controller
+    course._repository = progress_repository
+    course._state = progress_repository.snapshot()
+    view_model._modelo_actual_info = {"num_capas": 2, "num_cabezas": 4}
+    controller.explore(
+        "module_1", "texto", "inference", 0, 1, 1, 0.8, 5, 0.9, True
+    )
+
+    engine = QQmlEngine()
+    engine.rootContext().setContextProperty("mainViewModel", view_model)
+    component = QQmlComponent(engine)
+    component.setData(
+        SCREEN_HOST,
+        QUrl.fromLocalFile(str(ROOT / "view" / "qml" / "ModuleLabScreenHost.qml")),
+    )
+    assert component.status() != QQmlComponent.Status.Error, _errors(component)
+    window = component.create()
+    assert window is not None, _errors(component)
+    for _ in range(4):
+        qapp.processEvents()
+
+    screen = window.findChild(QObject, "moduleLaboratoryScreen")
+    confirm_prediction = window.findChild(
+        QObject, "laboratoryDiscoveryConfirmPrediction"
+    )
+    run_experiment = window.findChild(QObject, "laboratoryDiscoveryRunExperiment")
+    assert all(item is not None for item in (screen, confirm_prediction, run_experiment))
+
+    # El módulo 3 ya recorría la ruta heredada. Estos siete usan descriptores
+    # de LaboratoryExperiments.js y eran los que quedaban detenidos en Probar.
+    for module_id in (
+        "module_1",
+        "module_2",
+        "module_4",
+        "module_5",
+        "module_6",
+        "module_7",
+        "module_8",
+    ):
+        course.selectModule(module_id)
+        screen.setProperty("moduleId", module_id)
+        controller.explore(
+            module_id, "texto", "inference", 0, 1, 1, 0.8, 5, 0.9, True
+        )
+        screen.setProperty("learningLevel", "essential")
+        screen.setProperty("currentStepIndex", 0)
+        screen.setProperty("discoveryPrediction", 0)
+        qapp.processEvents()
+
+        confirm_prediction.clicked.emit()
+        qapp.processEvents()
+        assert int(screen.property("discoveryStage")) == 1, module_id
+
+        run_experiment.clicked.emit()
+        for _ in range(4):
+            qapp.processEvents()
+        assert int(screen.property("discoveryStage")) == 2, module_id
+        assert bool(screen.property("discoveryExperimentDone")) is True, module_id
+
+    window.deleteLater()
+    component.deleteLater()
+    engine.deleteLater()
+    view_model.deleteLater()
+
+
 def test_cada_reto_del_laboratorio_puede_aparecer():
     """Cada reto prepara un reactivo: uno que nunca se muestra no prepara nada."""
     screen = (ROOT / "view" / "qml" / "screens" / "ModuleLaboratoryScreen.qml").read_text(
@@ -1655,3 +1757,98 @@ def test_cada_reto_del_laboratorio_puede_aparecer():
         for valor in re.findall(r'"[a-z_0-9]+":\s*(\[[^\]]*\]|\d+)', cuerpo):
             indices.update(int(numero) for numero in re.findall(r"\d+", valor))
         assert indices == set(range(8)), module_id
+
+
+def test_cada_reto_se_mapea_a_una_operacion_que_muestra_su_concepto():
+    """Evita reutilizar una pregunta sólo para completar los ocho índices."""
+    expected = {
+        "module_1": {
+            0: {"batch"},
+            1: {"mask"},
+            2: {"tokens"},
+            3: {"batch"},
+            4: {"tokens"},
+            5: {"ids"},
+            6: {"specials"},
+            7: {"ids"},
+        },
+        "module_2": {
+            0: {"lookup"},
+            1: {"lookup"},
+            2: {"sum"},
+            3: {"position"},
+            4: {"sum"},
+            5: {"scale"},
+            6: {"sum"},
+            7: {"dropout"},
+        },
+        "module_4": {
+            0: {"split"},
+            1: {"split"},
+            2: {"concat"},
+            3: {"maps"},
+            4: {"wo"},
+            5: {"contexts"},
+            6: {"wo"},
+            7: {"project"},
+        },
+        "module_5": {
+            0: {"residual_1"},
+            1: {"ffn_expand"},
+            2: {"encoder_attention"},
+            3: {"norm_1", "norm_2"},
+            4: {"stack"},
+            5: {"ffn_activation"},
+            6: {"stack"},
+            7: {"norm_1"},
+        },
+        "module_6": {
+            0: {"causal_mask"},
+            1: {"causal_mask"},
+            2: {"cross_attention"},
+            3: {"cross_attention"},
+            4: {"masked_attention"},
+            5: {"decoder_output"},
+            6: {"decoder_prefix"},
+            7: {"decoder_layers"},
+        },
+        "module_7": {
+            0: {"linear"},
+            1: {"linear"},
+            2: {"temperature"},
+            3: {"top_k"},
+            4: {"top_p"},
+            5: {"softmax"},
+            6: {"feedback"},
+            7: {"feedback"},
+        },
+        "module_8": {
+            0: {"full_logits"},
+            1: {"full_encoder"},
+            2: {"full_batch"},
+            3: {"full_decoder"},
+            4: {"full_embedding"},
+            5: {"full_decoder"},
+            6: {"full_feedback"},
+            7: {"full_encoder"},
+        },
+    }
+    screen = (ROOT / "view" / "qml" / "screens" / "ModuleLaboratoryScreen.qml").read_text(
+        encoding="utf-8"
+    )
+    mapa = screen[screen.index("var maps = {") : screen.index("var moduleMap =")]
+    actual = {}
+    for module_id, cuerpo in re.findall(
+        r'"(module_\d)":\s*\{(.*?)\}', mapa, flags=re.S
+    ):
+        if module_id == "module_3":
+            continue
+        by_question = {index: set() for index in range(8)}
+        for step_id, value in re.findall(
+            r'"([a-z_0-9]+)":\s*(\[[^\]]*\]|\d+)', cuerpo
+        ):
+            for number in re.findall(r"\d+", value):
+                by_question[int(number)].add(step_id)
+        actual[module_id] = by_question
+
+    assert actual == expected

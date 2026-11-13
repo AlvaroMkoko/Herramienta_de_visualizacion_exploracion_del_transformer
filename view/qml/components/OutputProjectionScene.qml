@@ -295,6 +295,7 @@ Item {
                 spacing: 6 * root.sy
 
                 Rectangle {
+                    objectName: "outputHiddenVectorPanel"
                     Layout.fillWidth: true
                     Layout.minimumHeight: Math.max(68, 76 * root.sy)
                     Layout.preferredHeight: Math.max(72, 82 * root.sy)
@@ -340,6 +341,11 @@ Item {
                             clip: true
                             spacing: 3 * root.sx
                             model: root.finalHidden
+                            boundsBehavior: Flickable.StopAtBounds
+                            ScrollBar.horizontal: ScrollBar {
+                                objectName: "outputHiddenVectorScrollBar"
+                                policy: ScrollBar.AsNeeded
+                            }
                             delegate: Rectangle {
                                 id: hiddenCell
                                 required property var modelData
@@ -399,11 +405,13 @@ Item {
                 }
 
                 Rectangle {
+                    objectName: "outputHistogramPanel"
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     radius: 12 * root.sx
                     color: Style.Theme.fondo
                     border.color: Style.Theme.inferencia_foco
+                    clip: true
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -667,7 +675,7 @@ Item {
                                     ? Math.min(1, Math.abs(logit)
                                                / root.candidateMaximumAbsoluteLogit) : 0
                             width: ListView.view.width
-                            height: 51 * root.sy
+                            height: Math.max(40, 51 * root.sy)
                             radius: 8 * root.sx
                             color: Style.Theme.surface
                             border.color: Style.Theme.borde_medio

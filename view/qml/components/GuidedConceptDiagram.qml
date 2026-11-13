@@ -209,8 +209,15 @@ Item {
             arrow(ctx, 278, 74, 330, 74, accent, "÷ √dₖ")
             box(ctx, 334, 54, 84, 40, "[0.5, .12, −.25]", "escalados",
                 Style.Theme.proceso_fondo, Style.Theme.proceso_texto)
-        } else if (kind === "softmax_row" || kind === "final_softmax"
-                   || kind === "logits_probabilities") {
+        } else if (kind === "softmax_row") {
+            box(ctx, 180, 43, 104, 38, "[0, .5, 0, 1]", "fila s",
+                Style.Theme.formula_fondo, Style.Theme.formula_texto)
+            arrow(ctx, 285, 62, 313, 62, accent, "−max")
+            box(ctx, 316, 43, 122, 38, "[−1, −.5, −1, 0]", "fila estable",
+                Style.Theme.concepto_fondo, Style.Theme.concepto_texto)
+            label(ctx, "exp ÷ Σ2.343  →  [.157, .259, .157, .427]",
+                  309, 101, Style.Theme.proceso_texto, 8, true, "center")
+        } else if (kind === "final_softmax" || kind === "logits_probabilities") {
             miniBars(ctx, 196, 96, [0.18, 0.72, 0.1], 78, 55,
                      [Style.Theme.formula_texto, Style.Theme.formula_texto,
                       Style.Theme.formula_texto])

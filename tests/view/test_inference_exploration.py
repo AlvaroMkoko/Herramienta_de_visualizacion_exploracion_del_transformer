@@ -510,6 +510,10 @@ def test_explorador_conserva_siete_animaciones_y_agrega_recorrido(qapp):
     assert "Barra relativa" in softmax_terms
     assert "Retorno al decoder" in softmax_terms
     assert "probabilidad real" in softmax_step["visualMeaning"]
+    assert "resta el máximo" in softmax_step["operation"]
+    assert "Σp = 1" in softmax_step["operation"]
+    assert "no elige por sí mismo" in softmax_step["purpose"]
+    assert "no una garantía" in softmax_step["caveat"]
     for step in flow_steps:
         for field in (
             "operation",

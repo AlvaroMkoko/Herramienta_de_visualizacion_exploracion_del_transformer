@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import "../styles" as Style
 
@@ -301,7 +302,7 @@ Item {
                             readonly property var rowToken: root.tokenAt(index)
                             readonly property real rowNorm: root.normAt(index)
                             width: ListView.view.width
-                            height: 43 * root.sy
+                            height: Math.max(36, 43 * root.sy)
                             radius: 8 * root.sx
                             color: index === root.safeRow ? Style.Theme.aviso_fondo : Style.Theme.surface
                             border.color: index === root.safeRow
@@ -433,6 +434,11 @@ Item {
                         clip: true
                         spacing: 4 * root.sx
                         model: root.selectedVector
+                        boundsBehavior: Flickable.StopAtBounds
+                        ScrollBar.horizontal: ScrollBar {
+                            objectName: "tokenEmbeddingVectorScrollBar"
+                            policy: ScrollBar.AsNeeded
+                        }
 
                         delegate: Rectangle {
                             id: vectorCell
@@ -481,6 +487,7 @@ Item {
                     }
 
                     RowLayout {
+                        objectName: "tokenEmbeddingMetrics"
                         Layout.fillWidth: true
                         Layout.preferredHeight: 50 * root.sy
                         spacing: 7 * root.sx
@@ -520,6 +527,7 @@ Item {
                     }
 
                     Rectangle {
+                        objectName: "tokenEmbeddingNorm"
                         Layout.fillWidth: true
                         Layout.preferredHeight: 36 * root.sy
                         radius: 8 * root.sx

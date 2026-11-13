@@ -51,12 +51,12 @@ QtObject {
         step(
             "output_softmax", "output", "Softmax + token", 6, 1, 9, "", false,
             "seleccion_token", "La distribución elige el siguiente token",
-            "p = softmax(filtros(logits / T)); token = argmax(p) o token \u223c p",
-            "Softmax convierte los logits elegibles en probabilidades; el modo configurado decide cómo sale el token final.",
-            "Primero crecen las barras relativas; después el token elegido se vuelve verde y entra al contexto del decoder. El porcentaje numérico conserva la probabilidad real.",
-            "La distribución permite elegir el máximo en modo greedy o muestrear cuando esa opción está activa.",
+            "u = filtros(logits / T); pᵢ = exp(uᵢ-u_max) / Σⱼ exp(uⱼ-u_max); token = argmax(p) o token ∼ p",
+            "Temperatura reescala los logits; Top-K y Top-P convierten descartados en -\u221e. Softmax resta el máximo por estabilidad, exponencia y divide por la suma para obtener p \u2265 0 y \u03a3p = 1.",
+            "Las barras muestran la probabilidad real final de cada token elegible. Los tokens filtrados reciben cero; la masa no listada pertenece a candidatos válidos que no caben en el Top visible.",
+            "Softmax no elige por sí mismo: produce la distribución que después usa argmax en modo greedy o un sorteo proporcional en modo de muestreo.",
             "El token elegido se añade al contexto del decoder y comienza otra vuelta autoregresiva.",
-            "Temperatura, top-k y top-p solo intervienen cuando están activos; son reglas de generación, no capas aprendidas.",
+            "Restar u_max no cambia las probabilidades; evita que exp(u) desborde. La probabilidad es relativa al contexto y a los candidatos elegibles, no una garantía de que el texto sea verdadero.",
             5600, false)
     ]
 
@@ -320,9 +320,12 @@ QtObject {
                     guideItem("|V|", "tamaño del vocabulario"),
                     guideItem("logit", "score crudo previo a Softmax"),
                     guideItem("desv.", "desviación estándar de los logits")]
-        return [guideItem("T", "temperatura; reescala logits antes de Softmax"),
+        return [guideItem("logit z\u1d62", "score crudo del token i antes de normalizar"),
+                guideItem("T", "temperatura; divide los logits antes de filtrar"),
                 guideItem("top-k", "conserva solo los k candidatos con mayor logit"),
                 guideItem("top-p", "conserva el conjunto mínimo cuya probabilidad acumulada alcanza p"),
+                guideItem("u_max", "mayor logit elegible; se resta para calcular Softmax con estabilidad"),
+                guideItem("exp", "convierte diferencias de logits en cantidades positivas"),
                 guideItem("p(token|contexto)", "probabilidad condicional del siguiente token"),
                 guideItem("Σp = 1", "la masa total de probabilidad"),
                 guideItem("∼ p", "muestreo aleatorio según la distribución")]
@@ -458,13 +461,13 @@ QtObject {
             shortLabel = cross ? "Softmax cruzado" : (causal ? "Softmax causal" : "Softmax atención")
             title = label + ": normaliza los scores"
             formula = "A = softmax(S + máscara)"
-            operation = "Softmax transforma cada fila permitida en pesos no negativos cuya suma es uno."
+            operation = "En cada fila se resta su máximo, se exponencian los scores permitidos y se divide por la suma. Así Aᵢⱼ ≥ 0, ΣⱼAᵢⱼ = 1 y las posiciones con −∞ reciben cero."
             visual = cross
                 ? "Sigue una query del decoder hacia las keys del prompt: una curva más gruesa y opaca significa mayor peso real."
                 : "Sigue una query hacia las keys accesibles: una curva más gruesa y opaca significa mayor peso real de atención."
-            purpose = "Los coeficientes comparables permiten decidir cuánto usar de cada Value."
+            purpose = "Los coeficientes comparables indican qué proporción de cada Value entra al contexto; Softmax no selecciona una sola key."
             next = "Cada A\u1d62\u2c7c pondera V\u2c7c y las contribuciones se suman."
-            caveat = "El umbral solo oculta curvas para evitar saturación visual; no modifica el cálculo."
+            caveat = "Restar el máximo evita desbordamiento sin cambiar los pesos. El umbral visual solo oculta curvas pequeñas y no modifica el cálculo."
             concept = "softmax_attention"
             visualIndex = 3
         } else {
